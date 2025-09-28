@@ -9,12 +9,6 @@ import { IChainRegistry } from "../../interfaces/IChainRegistry.sol";
  * @title EagleShareOFT
  * @dev Registry-based LayerZero OFT for Eagle Vault Shares
  * 
- * DETERMINISTIC ARCHITECTURE:
- * - Uses universal registry to get chain-specific LayerZero endpoints
- * - Same constructor parameters = same bytecode = same address everywhere
- * - Registry deployed at same address on all chains
- * - Enables vanity addresses like 0x4747...EA91E across all chains
- * 
  */
 contract EagleShareOFT is OFT {
     /// @dev Universal registry (same address on all chains)
@@ -37,7 +31,7 @@ contract EagleShareOFT is OFT {
      * @param _delegate Contract delegate (identical on all chains)
      */
     constructor(
-        string memory _name,        // "Eagle Vault Shares"
+        string memory _name,        // "Eagle"
         string memory _symbol,      // "EAGLE"
         address _registry,          // Registry address (same on all chains)
         address _delegate           // Your deployer address
