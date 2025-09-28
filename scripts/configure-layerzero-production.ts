@@ -55,7 +55,7 @@ async function main() {
 
     // Get EagleShareOFT contract
     const eagleOFT = await ethers.getContractAt("EagleShareOFT", currentChain.eagleOFTAddress) as EagleShareOFT;
-    const endpointV2 = await ethers.getContractAt("ILayerZeroEndpointV2", currentChain.endpointV2);
+    const endpointV2 = await ethers.getContractAt("@layerzerolabs/lz-evm-protocol-v2/contracts/interfaces/ILayerZeroEndpointV2.sol:ILayerZeroEndpointV2", currentChain.endpointV2);
 
     // 1. SET PEERS FOR ALL PATHWAYS ✅
     console.log("\n1️⃣ Setting Peer Configurations...");
