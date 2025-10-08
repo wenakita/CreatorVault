@@ -64,7 +64,7 @@ contract EagleOVaultV3Chainlink is ERC4626, Ownable, ReentrancyGuard {
     
     // Oracle configuration
     uint32 public twapInterval = 1800; // 30 minutes for WLFI
-    uint256 public maxPriceAge = 3600; // 1 hour max for Chainlink
+    uint256 public maxPriceAge = 86400; // 24 hours max for Chainlink (stablecoins update less frequently)
     
     // Batch deployment
     uint256 public deploymentThreshold = 100e18;
