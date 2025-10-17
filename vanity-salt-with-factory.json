@@ -1,0 +1,25 @@
+{
+  "success": true,
+  "timestamp": "2025-10-17T11:30:00.000Z",
+  "target": "0x47...EA91E",
+  "result": {
+    "salt": "0x000000000000000000000000000000000000000000000000000000001d73b5e6",
+    "address": "0x4708e8d0dc262d0ecbba3ad0bf7ac8358f5ea91e",
+    "attempts": 494122471,
+    "timeSeconds": 20.06,
+    "attemptsPerSecond": 24630408
+  },
+  "verification": {
+    "startsWithFour7": true,
+    "endsWithEA91E": true,
+    "patternMatch": "PERFECT"
+  },
+  "deployment": {
+    "factory": "0x695d6B3628B4701E7eAfC0bc511CbAF23f6003eE",
+    "registry": "0x472656c76f45e8a8a63fffd32ab5888898eea91e",
+    "bytecodeHash": "0x7cb51b4b9ebc67b1bf8be6a1329ed1cfa0cdfe8efa83ddf2defc3938e2965cbc",
+    "contractName": "EagleShareOFT",
+    "useThisSaltInDeployment": "0x000000000000000000000000000000000000000000000000000000001d73b5e6"
+  }
+}
+

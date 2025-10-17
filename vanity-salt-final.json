@@ -1,0 +1,32 @@
+{
+  "success": true,
+  "timestamp": "2025-10-17T10:50:00.000Z",
+  "target": "0x47...EA91E",
+  "result": {
+    "salt": "0x000000000000000000000000000000000000000000000000000000000b7c90ed",
+    "address": "0x47a20863dce028bd702ea0f2f91dd4fe6e8ea91e",
+    "attempts": 192712942,
+    "timeSeconds": 6.83,
+    "attemptsPerSecond": 28202652
+  },
+  "verification": {
+    "startsWithFour7": true,
+    "endsWithEA91E": true,
+    "patternMatch": "PERFECT"
+  },
+  "deployment": {
+    "factory": "0x695d6B3628B4701E7eAfC0bc511CbAF23f6003eE",
+    "bytecodeHash": "0xa42ae322e6f6a9d071cf55ccc15b51bd3c7d730b318cef884af841d01e04319f",
+    "contractName": "EagleShareOFT",
+    "useThisSaltInDeployment": "0x000000000000000000000000000000000000000000000000000000000b7c90ed"
+  },
+  "chains": {
+    "note": "This address will be SAME on all chains when using this salt!",
+    "expectedAddress": "0x47a20863dce028bd702ea0f2f91dd4fe6e8ea91e",
+    "ethereum": "0x47a20863dce028bd702ea0f2f91dd4fe6e8ea91e",
+    "arbitrum": "0x47a20863dce028bd702ea0f2f91dd4fe6e8ea91e",
+    "sonic": "0x47a20863dce028bd702ea0f2f91dd4fe6e8ea91e",
+    "base": "0x47a20863dce028bd702ea0f2f91dd4fe6e8ea91e"
+  }
+}
+

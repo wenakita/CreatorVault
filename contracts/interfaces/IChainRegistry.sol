@@ -73,7 +73,4 @@ interface IChainRegistry {
     function setLayerZeroEndpoint(uint16 _chainId, address _endpoint) external;
     function setChainIdToEid(uint256 _chainId, uint32 _eid) external;
     function setChainStatus(uint16 _chainId, bool _isActive) external;
-    
-    // Ownable
-    function owner() external view returns (address);
 }

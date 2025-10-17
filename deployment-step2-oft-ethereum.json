@@ -1,0 +1,15 @@
+{
+  "network": "ethereum",
+  "timestamp": "2025-10-17T17:14:39.712Z",
+  "deployer": "0x7310Dd6EF89b7f829839F140C6840bc929ba2031",
+  "contracts": {
+    "EagleShareOFT": {
+      "address": "0x88eC224a082fAADB88709420B37be17aA5c09a09",
+      "token": {
+        "name": "Eagle",
+        "symbol": "EAGLE"
+      },
+      "vanityMatch": false
+    }
+  }
+}

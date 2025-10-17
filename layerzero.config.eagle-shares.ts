@@ -43,7 +43,7 @@ const config = {
         },
         receiveConfig: {
           ulnConfig: {
-            confirmations: 10, // Sonic block confirmations  
+            confirmations: 15, // Sonic block confirmations  
             requiredDVNs: [
               '0x282b3386571f7f794450d5789911a9804fa346b4', // From .env: SONIC_LZ_DVN (receiving from Sonic)
             ],
@@ -69,7 +69,7 @@ const config = {
             executor: '0x4208D6E27538189bB48E603D6123A94b8Abe0A0b', // From .env: SONIC_LZ_EXECUTOR
           },
           ulnConfig: {
-            confirmations: 10, // Sonic block confirmations
+            confirmations: 15, // Sonic block confirmations
             requiredDVNs: [
               '0x282b3386571f7f794450d5789911a9804fa346b4', // From .env: SONIC_LZ_DVN
             ],

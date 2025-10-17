@@ -1,0 +1,13 @@
+{
+  "contract": "EagleOVault",
+  "initCodeHash": "0x37ed57ab3c010f35e7143fd0001f2f2c7adabdcc1f035419ca3e50458195c8d3",
+  "constructorParams": {
+    "wlfi": "0xdA5e1988097297dCdc1f90D4dFE7909e847CBeF6",
+    "usd1": "0x8d0D000Ee44948FC98c9B98A4FA4921476f08B0d",
+    "usd1PriceFeed": "0xF0d9bb015Cd7BfAb877B7156146dc09Bf461370d",
+    "wlfiUsd1Pool": "0x4637ea6ecf7e16c99e67e941ab4d7d52eac7c73d",
+    "uniswapRouter": "0xE592427A0AEce92De3Edee1F18E0157C05861564",
+    "owner": "0x7310Dd6EF89b7f829839F140C6840bc929ba2031"
+  },
+  "timestamp": "2025-10-17T16:11:19.511Z"
+}

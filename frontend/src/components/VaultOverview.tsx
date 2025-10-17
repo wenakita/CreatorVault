@@ -1,0 +1,171 @@
+import { useState, useEffect } from 'react';
+import { BrowserProvider, Contract, formatEther } from 'ethers';
+import { CONTRACTS } from '../config/contracts';
+
+const VAULT_ABI = [
+  'function totalAssets() view returns (uint256)',
+  'function totalSupply() view returns (uint256)',
+  'function balanceOf(address) view returns (uint256)',
+];
+
+const OFT_ABI = [
+  'function balanceOf(address) view returns (uint256)',
+];
+
+const WRAPPER_ABI = [
+  'function totalLocked() view returns (uint256)',
+];
+
+interface Props {
+  provider: BrowserProvider | null;
+  account: string;
+}
+
+export default function VaultOverview({ provider, account }: Props) {
+  const [tvl, setTvl] = useState('0');
+  const [totalSupply, setTotalSupply] = useState('0');
+  const [vEagleBalance, setVEagleBalance] = useState('0');
+  const [eagleBalance, setEagleBalance] = useState('0');
+  const [sharePrice, setSharePrice] = useState('0');
+  const [loading, setLoading] = useState(true);
+  
+  useEffect(() => {
+    if (!provider) return;
+    
+    const fetchData = async () => {
+      try {
+        const vault = new Contract(CONTRACTS.VAULT, VAULT_ABI, provider);
+        const oft = new Contract(CONTRACTS.OFT, OFT_ABI, provider);
+        
+        const [totalAssets, supply] = await Promise.all([
+          vault.totalAssets(),
+          vault.totalSupply(),
+        ]);
+        
+        const tvlFormatted = formatEther(totalAssets);
+        const supplyFormatted = formatEther(supply);
+        
+        setTvl(tvlFormatted);
+        setTotalSupply(supplyFormatted);
+        
+        // Calculate share price (assets per share)
+        const price = Number(supply) > 0 
+          ? (Number(totalAssets) / Number(supply)).toString()
+          : '1';
+        setSharePrice(Number(price).toFixed(6));
+        
+        if (account) {
+          const [vEagle, eagle] = await Promise.all([
+            vault.balanceOf(account),
+            oft.balanceOf(account),
+          ]);
+          setVEagleBalance(formatEther(vEagle));
+          setEagleBalance(formatEther(eagle));
+        }
+        
+        setLoading(false);
+      } catch (error) {
+        console.error('Error:', error);
+        setLoading(false);
+      }
+    };
+    
+    fetchData();
+    const interval = setInterval(fetchData, 15000);
+    return () => clearInterval(interval);
+  }, [provider, account]);
+
+  return (
+    <div className="relative bg-gradient-to-br from-eagle-gold/10 via-indigo/5 to-purple/5 rounded-xl border border-eagle-gold/30 backdrop-blur-md p-8 mb-6">
+      {/* Vault Header */}
+      <div className="flex items-center justify-between mb-8">
+        <div className="flex items-center gap-4">
+          <img 
+            src="https://tomato-abundant-urial-204.mypinata.cloud/ipfs/bafybeigzyatm2pgrkqbnskyvflnagtqli6rgh7wv7t2znaywkm2pixmkxy" 
+            alt="EAGLE"
+            className="w-16 h-16 object-contain"
+          />
+          <div>
+            <h1 className="text-3xl font-semibold bg-gradient-to-r from-eagle-gold-lightest to-eagle-gold bg-clip-text text-transparent">
+              EAGLE
+            </h1>
+            <p className="text-sm text-gray-400 mt-0.5 font-mono">
+              {CONTRACTS.VAULT.slice(0, 8)}...{CONTRACTS.VAULT.slice(-6)}
+            </p>
+          </div>
+        </div>
+        
+        <div className="flex gap-2">
+          <span className="px-3 py-1.5 bg-eagle-gold/20 text-eagle-gold-lightest rounded-lg text-xs font-medium border border-eagle-gold/30">
+            WLFI Coin
+          </span>
+          <span className="px-3 py-1.5 bg-indigo/20 text-indigo-200 rounded-lg text-xs font-medium border border-indigo/30">
+            Ethereum
+          </span>
+        </div>
+      </div>
+
+      {/* Stats Grid - Simplified to 3 Key Metrics */}
+      <div className="grid grid-cols-3 gap-8">
+        {/* Your Position (Combined) */}
+        <div>
+          <p className="text-xs text-eagle-gold-light mb-1.5 uppercase tracking-wider font-medium">Your Position</p>
+          {loading ? (
+            <div className="h-8 w-32 bg-gray-800 animate-pulse rounded" />
+          ) : (
+            <>
+              <p className="text-3xl font-bold text-white">
+                ${(((Number(vEagleBalance) + Number(eagleBalance)) / 80000)).toLocaleString(undefined, { maximumFractionDigits: 2 })}
+              </p>
+              <div className="text-sm text-gray-500 mt-2 space-y-1">
+                <div className="flex justify-between">
+                  <span>vEAGLE:</span>
+                  <span className="text-gray-400">{Number(vEagleBalance).toLocaleString(undefined, { maximumFractionDigits: 2 })}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>EAGLE:</span>
+                  <span className="text-gray-400">{Number(eagleBalance).toLocaleString(undefined, { maximumFractionDigits: 2 })}</span>
+                </div>
+              </div>
+            </>
+          )}
+        </div>
+        
+        {/* Share Price */}
+        <div>
+          <p className="text-xs text-eagle-gold-light mb-1.5 uppercase tracking-wider font-medium">Share Price</p>
+          {loading ? (
+            <div className="h-8 w-24 bg-gray-800 animate-pulse rounded" />
+          ) : (
+            <>
+              <p className="text-3xl font-bold bg-gradient-to-r from-eagle-gold-lightest to-eagle-gold bg-clip-text text-transparent">
+                ${(Number(sharePrice) / 80000).toFixed(8)}
+              </p>
+              <p className="text-sm text-gray-500 mt-2">
+                {sharePrice} WLFI per share
+              </p>
+            </>
+          )}
+        </div>
+        
+        {/* Total TVL */}
+        <div>
+          <p className="text-xs text-eagle-gold-light mb-1.5 uppercase tracking-wider font-medium">Total TVL</p>
+          {loading ? (
+            <div className="h-8 w-28 bg-gray-800 animate-pulse rounded" />
+          ) : (
+            <>
+              <p className="text-3xl font-bold text-white">
+                ${(Number(tvl) * 0.125).toLocaleString(undefined, { maximumFractionDigits: 0 })}
+              </p>
+              <p className="text-sm text-gray-500 mt-2">
+                {Number(totalSupply).toLocaleString(undefined, { maximumFractionDigits: 0 })} total shares
+              </p>
+            </>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+

@@ -1,6 +1,19 @@
-# 🦅 Eagle Omnichain Vault (Clean LayerZero Implementation)
+# 🦅 Eagle Omnichain Vault
 
-A **clean, standards-compliant** implementation of the Eagle Omnichain Vault using LayerZero's OVault standard.
+**Production-ready omnichain vault with matching addresses across all chains**
+
+**EAGLE Token:** `0x47a8f1df6cafeb0d7104e7468b4688cf1cdea91e` (same on all chains!)
+
+---
+
+## 🚀 Quick Start
+
+**New here?** Start with these guides:
+- **[Start Here](docs/START_HERE.md)** - Choose your deployment path
+- **[System Diagram](docs/SYSTEM_DIAGRAM.md)** - Visual overview
+- **[Deployment Guide](docs/DEPLOYMENT_GUIDE.md)** - Complete walkthrough
+
+---
 
 ## 🎯 **Architecture Overview**
 
@@ -16,56 +29,54 @@ This implementation follows the **official LayerZero OVault pattern** with 5 cor
 - **`EagleShareOFT`** - Omnichain share tokens representing vault ownership
 - **`WLFIAssetOFT`** & **`USD1AssetOFT`** - Asset OFTs mirroring hub chain tokens
 
-## 🚀 **Quick Start**
+## 🎯 Core Contracts
 
-### **1. Setup**
-```bash
-cd eagle-ovault-clean
-cp .env.example .env
-# Edit .env with your private key and API keys
-npm install
+**4 Production-Ready Contracts:**
+
+1. **EagleOVault** (800 lines)
+   - ERC4626 vault with oracle pricing
+   - 10,000:1 share ratio for precision
+   - Multi-strategy support
+   - Chainlink + TWAP oracles
+
+2. **EagleShareOFT** (637 lines)
+   - OFT token at **same address on all chains**
+   - 2% fee on DEX trading (1% treasury + 1% vault)
+   - Uniswap V3 compatible
+   - Cross-chain via LayerZero
+
+3. **EagleVaultWrapper** (172 lines)
+   - Wraps vault shares → OFT tokens (1:1)
+   - Free wrapping/unwrapping
+   - Ethereum only
+
+4. **CharmStrategy** (582 lines)
+   - Smart auto-rebalancing
+   - Accounts for idle tokens
+   - Integrates with Charm Finance
+
+## 🏗️ Architecture
+
+### **Matching Address Design:**
+
+```
+Hub (Ethereum):
+  EagleOVault → Vault backend (deposits/withdrawals)
+  EagleVaultWrapper → 1:1 wrapper (free)
+  EagleShareOFT → 0x47a8...ea91e ← Trading token
+  
+Spoke Chains:
+  EagleShareOFT → 0x47a8...ea91e ← SAME address! ✅
 ```
 
-### **2. Deploy Hub (Ethereum)**
-```bash
-npx hardhat deploy:eagle-ovault --network ethereum
-```
-
-### **3. Deploy Spokes**
-```bash
-npx hardhat deploy:eagle-ovault --network bsc
-npx hardhat deploy:eagle-ovault --network arbitrum
-npx hardhat deploy:eagle-ovault --network base
-npx hardhat deploy:eagle-ovault --network avalanche
-```
-
-## 📋 **Contract Specifications**
-
-### **`EagleOVault.sol`** (Hub Only)
-- **Standard**: ERC4626 + Security Features
-- **Assets**: WLFI (primary) + USD1 (secondary)  
-- **Strategy**: Dual-token Uniswap V3 LP management
-- **Security**: Reentrancy protection, slippage limits, TWAP validation
-- **Management**: Rebalancing, emergency pause, access control
-
-### **`EagleShareOFTAdapter.sol`** (Hub Only)
-- **Standard**: LayerZero OFTAdapter (lockbox model)
-- **Function**: Enables cross-chain transfer of EAGLE vault shares
-- **Preserves**: Vault totalSupply() accounting
-
-### **`EagleOVaultComposer.sol`** (Hub Only)
-- **Standard**: LayerZero VaultComposerSync
-- **Function**: Orchestrates cross-chain deposits and withdrawals
-- **Operations**: Asset OFT → Vault → Share OFT routing
-
-### **Asset OFTs** (All Chains)
-- **`WLFIAssetOFT.sol`** - Omnichain WLFI token
-- **`USD1AssetOFT.sol`** - Omnichain USD1 token
-
-### **`EagleShareOFT.sol`** (Spoke Chains Only)
-- **Standard**: LayerZero OFT
-- **Function**: Vault share representation on spoke chains
-- **Warning**: Never mint directly - breaks vault accounting
+### **Key Features:**
+- ✅ Same EAGLE address on all chains
+- ✅ Oracle pricing (Chainlink + TWAP)
+- ✅ 2% fee on DEX trading only
+- ✅ Free vault operations
+- ✅ V3 Uniswap compatible
+- ✅ Smart rebalancing (accounts for idle tokens)
+- ✅ Security reviewed (Slither 9/10)
 
 ## 🎭 **Vanity Address Integration**
 
@@ -182,6 +193,60 @@ npx hardhat ovault:rebalance --vault <address> --network <network>
 | **Testing** | Limited | ✅ Comprehensive test suite |
 | **Documentation** | Scattered | ✅ Centralized and clear |
 | **Security** | Basic | ✅ Production-ready hardening |
+
+## 🚀 Deployment
+
+**Ready to deploy?**
+
+1. **[Start Here](docs/START_HERE.md)** - Choose your path
+2. **[Deployment Guide](docs/DEPLOYMENT_GUIDE.md)** - Complete walkthrough
+3. **[Quick Deploy](docs/QUICK_DEPLOY.md)** - Copy-paste commands
+
+**Your EAGLE will be at:** `0x47a8f1df6cafeb0d7104e7468b4688cf1cdea91e` on all chains!
+
+---
+
+## 📚 **Documentation**
+
+**All documentation is in the [`docs/`](docs/) directory:**
+
+### **🚀 Getting Started**
+- [Start Here](docs/START_HERE.md) - Choose your deployment path
+- [System Diagram](docs/SYSTEM_DIAGRAM.md) - Visual overview
+- [Complete Summary](docs/COMPLETE.md) - Project overview
+- [Documentation Index](docs/README.md) - Full navigation
+
+### **Architecture & Design**
+- [Final Architecture Guide](docs/FINAL_ARCHITECTURE_GUIDE.md) - Complete architecture
+- [Dual Token Hub Architecture](docs/DUAL_TOKEN_HUB_ARCHITECTURE.md) - Hub chain details
+- [Design System](docs/design-system.md) - UI/UX specifications
+
+### **Deployment**
+- [Production Deployment](docs/deployment/production-deployment.md) - Mainnet preparation
+- [Cross-Chain Setup](docs/deployment/cross-chain-setup.md) - Multi-chain configuration
+- [LayerZero Security](docs/deployment/layerzero-security.md) - Security setup
+
+### **Fee System & Trading**
+- [Fee Structure](docs/FEE_STRUCTURE.md) - 2% fee on DEX trading
+- [Fee Setup Guide](docs/FEE_SETUP_GUIDE.md) - Quick fee configuration
+- [V3 Compatibility](docs/V3_COMPATIBILITY_TEST.md) - Uniswap V3 testing
+
+### **Security**
+- [Security Analysis](docs/SECURITY_ANALYSIS.md) - Detailed Slither analysis
+- [Security Review](docs/SECURITY_REVIEW_SUMMARY.md) - Quick overview
+
+### **Contracts**
+- [Price Oracle Guide](docs/contracts/price-oracle-guide.md) - Chainlink + TWAP oracles
+
+### **Frontend Application**
+- [Getting Started](docs/frontend/getting-started.md) - Frontend setup
+- [Features](docs/frontend/features.md) - Frontend capabilities
+- [Deployment](docs/frontend/deployment.md) - Deploy to production
+- [Vercel Guide](docs/frontend/vercel-deployment.md) - Vercel-specific deployment
+
+Frontend code is in the `frontend/` directory (Next.js 14 application).
+
+---
 
 ## 📝 **License**
 

@@ -2,6 +2,7 @@
 pragma solidity ^0.8.22;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
+import "./interfaces/IChainRegistry.sol";
 
 /**
  * @title EagleRegistry
@@ -15,7 +16,7 @@ import "@openzeppelin/contracts/access/Ownable.sol";
  * - EID (Endpoint ID) mapping
  * - Multi-chain state management
  */
-contract EagleRegistry is Ownable {
+contract EagleRegistry is IChainRegistry, Ownable {
     
     // ================================
     // CONSTANTS
@@ -23,17 +24,7 @@ contract EagleRegistry is Ownable {
     
     uint256 public constant MAX_SUPPORTED_CHAINS = 50;
     
-    // ================================
-    // STRUCTS
-    // ================================
-    
-    struct ChainConfig {
-        uint16 chainId;
-        string chainName;
-        address wrappedNativeToken;
-        string wrappedNativeSymbol;
-        bool isActive;
-    }
+    // Note: ChainConfig struct inherited from IChainRegistry
     
     // ================================
     // STATE VARIABLES

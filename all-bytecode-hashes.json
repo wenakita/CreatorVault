@@ -1,0 +1,25 @@
+{
+  "timestamp": "2025-10-17T10:44:17.367Z",
+  "contracts": {
+    "EagleShareOFT": {
+      "initCodeHash": "0xa42ae322e6f6a9d071cf55ccc15b51bd3c7d730b318cef884af841d01e04319f",
+      "bytecodeSize": 24112,
+      "purpose": "Matching addresses across all chains"
+    },
+    "EagleOVault": {
+      "creationCodeHash": "0x8cd797d38d3c0291cd0df46f85dcaead57d2239f922193244098cf95f9cb291f",
+      "bytecodeSize": 19955,
+      "purpose": "Ethereum hub only (vault backend)"
+    },
+    "EagleVaultWrapper": {
+      "creationCodeHash": "0xed005c0d47bb9f3796d8583e841650938eff76aad0145b9d3c77a3cdb0af6a4a",
+      "bytecodeSize": 4816,
+      "purpose": "Ethereum only (vEAGLE ↔ EAGLE bridge)"
+    },
+    "CharmStrategy": {
+      "creationCodeHash": "0x6f1fd24a81fb84c2af7b5c8a793b91b20d3b270b4346dd0e2b3f8aaef2dea32b",
+      "bytecodeSize": 10596,
+      "purpose": "Ethereum only (WLFI/WETH strategy)"
+    }
+  }
+}

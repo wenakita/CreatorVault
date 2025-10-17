@@ -1,0 +1,11 @@
+{
+  "contract": "EagleOVault",
+  "salt": "0x0000000000000000000000000000000000000000000000000000000003aa57aa",
+  "predictedAddress": "0x47df9b746fe1b109affeebae9be70e02870ea91e",
+  "bytecodeHash": "0x37ed57ab3c010f35e7143fd0001f2f2c7adabdcc1f035419ca3e50458195c8d3",
+  "factory": "0x695d6B3628B4701E7eAfC0bc511CbAF23f6003eE",
+  "attempts": 61495211,
+  "timeSeconds": 2.5,
+  "timestamp": "2025-10-17T14:30:00.000Z"
+}
+

@@ -1,26 +1,28 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.22;
 
-import { EagleShareOFTV2 } from "../layerzero-ovault/oft/EagleShareOFTV2.sol";
+import { EagleShareOFT } from "../layerzero-ovault/oft/EagleShareOFT.sol";
 
 /**
  * @title EagleShareOFTV2Testable
- * @notice Testable version of EagleShareOFTV2 with mint function for testing
+ * @notice Testable version of EagleShareOFT with test mint function
+ * @dev Updated to use unified EagleShareOFT (v3.0.0)
  */
-contract EagleShareOFTV2Testable is EagleShareOFTV2 {
+contract EagleShareOFTV2Testable is EagleShareOFT {
     constructor(
         string memory _name,
         string memory _symbol,
+        address _lzEndpoint,
         address _registry,
         address _delegate,
         SwapFeeConfig memory _feeConfig
-    ) EagleShareOFTV2(_name, _symbol, _registry, _delegate, _feeConfig) {}
+    ) EagleShareOFT(_name, _symbol, _lzEndpoint, _registry, _delegate, _feeConfig) {}
 
     /**
      * @notice Mint tokens for testing (owner only)
+     * @dev Renamed to avoid conflict with bridge mint function
      */
-    function mint(address to, uint256 amount) external onlyOwner {
+    function testMint(address to, uint256 amount) external onlyOwner {
         _mint(to, amount);
     }
 }
-

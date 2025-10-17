@@ -1,0 +1,14 @@
+{
+  "network": "ethereum",
+  "version": "v2",
+  "timestamp": "2025-10-17T17:20:04.606Z",
+  "contracts": {
+    "EagleShareOFT": {
+      "address": "0xa85287cEBc43e0ebb6CAF135A39079d97fE4d039",
+      "name": "Eagle",
+      "symbol": "EAGLE",
+      "lzEndpoint": "0x1a44076050125825900e736c501f859c50fE728c",
+      "delegate": "0x7310Dd6EF89b7f829839F140C6840bc929ba2031"
+    }
+  }
+}

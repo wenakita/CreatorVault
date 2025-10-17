@@ -77,6 +77,13 @@ const config: HardhatUserConfig = {
       default: 0, // Use first account as deployer
     },
   },
+  etherscan: {
+    apiKey: process.env.ETHERSCAN_API_KEY || '',
+    customChains: []
+  },
+  sourcify: {
+    enabled: true
+  }
 }
 
 export default config

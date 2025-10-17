@@ -1,0 +1,18 @@
+{
+  "timestamp": "2025-10-17T11:59:55.216Z",
+  "factory": "0x695d6B3628B4701E7eAfC0bc511CbAF23f6003eE",
+  "registry": "0x472656c76f45e8a8a63fffd32ab5888898eea91e",
+  "contract": {
+    "name": "EagleShareOFT",
+    "initCodeHash": "0x7cb51b4b9ebc67b1bf8be6a1329ed1cfa0cdfe8efa83ddf2defc3938e2965cbc",
+    "bytecodeSize": 24112,
+    "parameters": {
+      "name": "Eagle",
+      "symbol": "EAGLE",
+      "registry": "0x472656c76f45e8a8a63fffd32ab5888898eea91e",
+      "owner": "0x7310Dd6EF89b7f829839F140C6840bc929ba2031",
+      "treasury": "0xe5a1d534eb7f00397361F645f0F39e5D16cc1De3",
+      "vaultBeneficiary": "0xe5a1d534eb7f00397361F645f0F39e5D16cc1De3"
+    }
+  }
+}

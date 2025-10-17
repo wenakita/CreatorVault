@@ -6,13 +6,18 @@ import { OFTAdapter } from "@layerzerolabs/oft-evm/contracts/OFTAdapter.sol";
 
 /**
  * @title EagleShareAdapter  
- * @dev LayerZero Share OFT Adapter for Eagle Vault shares
- * Wraps vault shares (ERC4626 tokens) for cross-chain transfers
- * Deployed on the hub chain (Ethereum) only
+ * @notice LayerZero OFT Adapter for Eagle Vault shares
+ * 
+ * @dev Wraps EagleOVault's ERC20 shares for cross-chain transfers
+ *      Deployed on hub chain (Ethereum) only
+ * 
+ * NOTE: This adapter does NOT have fee-on-swap.
+ *       Fee-on-swap is only on spoke chains (EagleShareOFT).
+ *       This keeps the hub chain simple and vault-focused.
  */
 contract EagleShareAdapter is OFTAdapter {
     constructor(
-        address _token,        // The vault share token (ERC4626)
+        address _token,        // EagleOVault address (the vault shares)
         address _lzEndpoint,   // LayerZero endpoint
         address _delegate      // Contract owner/delegate
     ) OFTAdapter(_token, _lzEndpoint, _delegate) Ownable(_delegate) {

@@ -1,0 +1,17 @@
+{
+  "network": "ethereum",
+  "timestamp": "2025-10-17T12:16:52.937Z",
+  "deployer": "0x7310Dd6EF89b7f829839F140C6840bc929ba2031",
+  "contracts": {
+    "EagleVaultWrapper": {
+      "address": "0xA3d9e8f0de77241267A9d162c535C2A69385792A",
+      "vaultAddress": "0xf7eDdA9959249D96773BB2858bE1011C7E424855",
+      "oftAddress": "0x05D8Fe8B549bC8F45615FDAc1BF77eE7F4033569",
+      "feeRecipient": "0xe5a1d534eb7f00397361F645f0F39e5D16cc1De3",
+      "fees": {
+        "deposit": "1%",
+        "withdraw": "2%"
+      }
+    }
+  }
+}
