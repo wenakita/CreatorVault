@@ -79,13 +79,16 @@ fn main() {
                 return None;
             }
             
-            // Suffix: must end with ea91e (last 2.5 bytes)
-            // address[17] = 0xea
-            // address[18] = 0x91  
-            // address[19] & 0xf0 = 0xe0 (first nibble is 'e')
-            if address[17] == 0xea && 
-               address[18] == 0x91 && 
-               (address[19] & 0xf0) == 0xe0 {
+            // Suffix: must end with EXACTLY ea91e (last 5 hex chars)
+            // In hex string: ...ea91e means:
+            // - address[17] low nibble = 0xe  -> (address[17] & 0x0f) == 0x0e
+            // - address[18] = 0xa9
+            // - address[19] = 0x1e
+            // This gives us: ?ea91e where ? is the high nibble of address[17]
+            
+            if (address[17] & 0x0f) == 0x0e &&  // Last nibble of byte 17 is 'e'
+               address[18] == 0xa9 &&            // Byte 18 is 'a9'
+               address[19] == 0x1e {             // Byte 19 is '1e'
                 found.store(true, Ordering::Relaxed);
                 Some((salt, address))
             } else {
