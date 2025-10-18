@@ -131,7 +131,7 @@ export default function VaultActions({ provider, account, onConnect, onToast }: 
         const usd1Allowance = await usd1.allowance(account, CONTRACTS.VAULT);
         if (usd1Allowance < usd1Wei) {
           onToast({ message: 'Approving USD1...', type: 'info' });
-          const maxApproval = ethers.MaxUint256;
+          const maxApproval = MaxUint256;
           const usd1ApproveTx = await usd1.approve(CONTRACTS.VAULT, maxApproval);
           await usd1ApproveTx.wait();
           onToast({ message: 'USD1 approved!', type: 'success' });
