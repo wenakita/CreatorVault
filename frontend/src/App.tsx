@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { BrowserProvider } from 'ethers';
 import { AuthProvider } from './lib/GoogleAuth';
 import Header from './components/Header';
+import StatsBanner from './components/StatsBanner';
 import VaultOverview from './components/VaultOverview';
 import StrategyBreakdown from './components/StrategyBreakdown';
 import VaultActions from './components/VaultActions';
@@ -33,6 +34,7 @@ function App() {
     <AuthProvider>
       <div className="min-h-screen bg-gradient-to-b from-[#0a0a0a] to-[#171717]">
         <Header account={account} onConnect={connectWallet} />
+        <StatsBanner />
       
       <main className="container mx-auto px-4 py-8 max-w-5xl">
         {/* Back Button */}
@@ -44,14 +46,29 @@ function App() {
         </button>
 
         {/* Protocol Badges - Above Hero */}
-        <div className="text-center text-sm text-gray-400 mb-4">
-          <span>Powered by </span>
+        <div className="flex flex-wrap items-center justify-center gap-3 text-sm text-gray-400 mb-4">
+          <span>Powered by</span>
+          <img 
+            src="https://tomato-abundant-urial-204.mypinata.cloud/ipfs/bafkreichw4b4wxvinfu4dmkloxajj4mm7672k6q3nyqzvdnvogvlbbycfq" 
+            alt="Uniswap"
+            className="h-4 w-4 inline"
+          />
           <span className="text-gray-300">Uniswap</span>
-          <span className="mx-2">•</span>
-          <span>Managed by </span>
+          <span className="mx-1">•</span>
+          <span>Managed by</span>
+          <img 
+            src="https://tomato-abundant-urial-204.mypinata.cloud/ipfs/bafkreid3difftzksqy3xlummzzobhk674ece35d7drmgo3ftt7wrix6dwu" 
+            alt="Charm"
+            className="h-4 w-4 inline"
+          />
           <span className="text-gray-300">Charm</span>
-          <span className="mx-2">•</span>
-          <span>via </span>
+          <span className="mx-1">•</span>
+          <span>via</span>
+          <img 
+            src="https://tomato-abundant-urial-204.mypinata.cloud/ipfs/bafkreihml3nahd2duwdjg2ltoeixax2xdj2ldp5unnrjwntyicar74nwra" 
+            alt="LayerZero"
+            className="h-4 w-4 inline"
+          />
           <span className="text-gray-300">LayerZero V2</span>
         </div>
 

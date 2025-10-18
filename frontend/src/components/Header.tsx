@@ -1,9 +1,34 @@
+import { useState, useEffect } from 'react';
+import { BrowserProvider, Contract, formatEther } from 'ethers';
+import { CONTRACTS } from '../config/contracts';
+
 interface HeaderProps {
   account: string;
   onConnect: () => void;
 }
 
+const VAULT_ABI = ['function getWLFIPrice() view returns (uint256)'];
+
 export default function Header({ account, onConnect }: HeaderProps) {
+  const [wlfiPrice, setWlfiPrice] = useState<string>('0.130');
+
+  useEffect(() => {
+    const fetchPrice = async () => {
+      try {
+        const provider = new BrowserProvider((window as any).ethereum);
+        const vault = new Contract(CONTRACTS.VAULT, VAULT_ABI, provider);
+        const price = await vault.getWLFIPrice();
+        setWlfiPrice(Number(formatEther(price)).toFixed(3));
+      } catch (error) {
+        console.error('Error fetching WLFI price:', error);
+      }
+    };
+
+    fetchPrice();
+    const interval = setInterval(fetchPrice, 30000); // Update every 30s
+    return () => clearInterval(interval);
+  }, []);
+
   return (
     <header className="bg-[#0a0a0a]/95 backdrop-blur-lg border-b border-gray-800">
       <div className="container mx-auto px-4 py-4 flex items-center justify-between max-w-7xl">
@@ -19,10 +44,20 @@ export default function Header({ account, onConnect }: HeaderProps) {
           </div>
         </div>
 
-        <nav className="hidden md:flex items-center gap-1">
+        <nav className="hidden md:flex items-center gap-3">
+          {/* WLFI Price Indicator */}
+          <div className="flex items-center gap-2 px-3 py-1.5 bg-eagle-gold/10 border border-eagle-gold/30 rounded-lg">
+            <img 
+              src="https://tomato-abundant-urial-204.mypinata.cloud/ipfs/bafkreifvnbzrefx4pdd6mr653dmrgkz2bdcamrwdsl334f7ed75miosaxu" 
+              alt="WLFI"
+              className="h-4 w-4"
+            />
+            <span className="text-xs font-medium text-gray-300">WLFI</span>
+            <span className="text-sm font-semibold text-eagle-gold-light">${wlfiPrice}</span>
+          </div>
+
           <a href="#" className="px-4 py-2 text-gray-400 hover:text-white transition-colors rounded-lg hover:bg-gray-800/50">Docs</a>
-          <a href="#" className="px-4 py-2 text-gray-400 hover:text-white transition-colors rounded-lg hover:bg-gray-800/50">Support</a>
-          <a href="#" className="px-4 py-2 text-gray-400 hover:text-white transition-colors rounded-lg hover:bg-gray-800/50">Blog</a>
+          <a href="#" className="px-4 py-2 text-gray-400 hover:text-white transition-colors rounded-lg hover:bg-gray-800/50">Analytics</a>
         </nav>
 
         <div className="flex items-center gap-3">
