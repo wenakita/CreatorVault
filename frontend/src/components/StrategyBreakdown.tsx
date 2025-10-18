@@ -64,33 +64,32 @@ export default function StrategyBreakdown({ provider }: Props) {
             <span className="text-white font-medium">Charm Finance Alpha Vault</span>
           </div>
           
-          {/* Right: Liquidity Pair with Uniswap Logo */}
-          <div className="flex items-center gap-2">
+          {/* Right: Liquidity Info */}
+          <div className="flex items-center gap-3 px-4 py-2 bg-gray-800/50 rounded-lg border border-gray-700">
             <img 
               src="https://tomato-abundant-urial-204.mypinata.cloud/ipfs/bafkreichw4b4wxvinfu4dmkloxajj4mm7672k6q3nyqzvdnvogvlbbycfq" 
               alt="Uniswap"
               className="h-5 w-5"
             />
-            <div className="flex items-center gap-1.5 px-2 py-1 bg-gray-800/50 rounded-md border border-gray-700">
+            <div className="flex items-center gap-2">
               <img 
                 src="https://tomato-abundant-urial-204.mypinata.cloud/ipfs/bafkreifvnbzrefx4pdd6mr653dmrgkz2bdcamrwdsl334f7ed75miosaxu" 
                 alt="WLFI"
-                className="h-4 w-4"
+                className="h-5 w-5"
               />
-              <span className="text-xs font-medium text-gray-300">WLFI</span>
-            </div>
-            <span className="text-gray-500 text-sm">/</span>
-            <div className="flex items-center gap-1.5 px-2 py-1 bg-gray-800/50 rounded-md border border-gray-700">
+              <span className="text-sm font-medium text-gray-200">WLFI</span>
+              <span className="text-gray-500">/</span>
               <img 
                 src="https://tomato-abundant-urial-204.mypinata.cloud/ipfs/bafkreiagnmvgbx3g7prmcg57pu3safks7ut6j3okopfmji7h5pndz2zeqy" 
                 alt="WETH"
-                className="h-4 w-4"
+                className="h-5 w-5"
               />
-              <span className="text-xs font-medium text-gray-300">WETH</span>
+              <span className="text-sm font-medium text-gray-200">WETH</span>
+              <span className="mx-2 text-gray-600">|</span>
+              <span className="px-2 py-0.5 bg-blue-500/30 text-blue-300 rounded text-xs font-semibold">
+                1%
+              </span>
             </div>
-            <span className="px-2 py-1 bg-blue-500/20 text-blue-300 rounded-md text-xs font-medium border border-blue-500/30">
-              1% Fee
-            </span>
           </div>
         </div>
       </div>
@@ -110,8 +109,15 @@ export default function StrategyBreakdown({ provider }: Props) {
             
             {/* WLFI */}
             <div className="mb-4">
-              <div className="flex justify-between text-sm mb-2">
-                <span className="text-gray-400">WLFI Balance</span>
+              <div className="flex justify-between items-center text-sm mb-2">
+                <div className="flex items-center gap-2">
+                  <img 
+                    src="https://tomato-abundant-urial-204.mypinata.cloud/ipfs/bafkreifvnbzrefx4pdd6mr653dmrgkz2bdcamrwdsl334f7ed75miosaxu" 
+                    alt="WLFI"
+                    className="h-5 w-5"
+                  />
+                  <span className="text-gray-400">WLFI Balance</span>
+                </div>
                 <span className="text-white font-semibold">
                   {Number(wlfiAmount).toLocaleString(undefined, { maximumFractionDigits: 2 })}
                 </span>
@@ -141,8 +147,15 @@ export default function StrategyBreakdown({ provider }: Props) {
 
             {/* WETH */}
             <div>
-              <div className="flex justify-between text-sm mb-2">
-                <span className="text-gray-400">WETH Balance</span>
+              <div className="flex justify-between items-center text-sm mb-2">
+                <div className="flex items-center gap-2">
+                  <img 
+                    src="https://tomato-abundant-urial-204.mypinata.cloud/ipfs/bafkreiagnmvgbx3g7prmcg57pu3safks7ut6j3okopfmji7h5pndz2zeqy" 
+                    alt="WETH"
+                    className="h-5 w-5"
+                  />
+                  <span className="text-gray-400">WETH Balance</span>
+                </div>
                 <span className="text-white font-semibold">
                   {Number(wethAmount).toLocaleString(undefined, { maximumFractionDigits: 4 })}
                 </span>
