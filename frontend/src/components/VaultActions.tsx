@@ -148,6 +148,24 @@ export default function VaultActions({ provider, account, onConnect, onToast }: 
       console.log('Getting signer...');
       const signer = await provider.getSigner();
       
+      // ✅ CHECK NETWORK FIRST!
+      const network = await provider.getNetwork();
+      const chainId = Number(network.chainId);
+      console.log('🌐 NETWORK CHECK:');
+      console.log('  Current Chain ID:', chainId);
+      console.log('  Current Network:', chainId === 1 ? 'Ethereum ✅' : `Chain ${chainId} ❌ WRONG!`);
+      
+      if (chainId !== 1) {
+        onToast({ 
+          message: `Wrong network! You're on Chain ${chainId}. Switch to Ethereum Mainnet (Chain 1) using the network selector in the header.`, 
+          type: 'error' 
+        });
+        setShowSimulator(false);
+        setLoading(false);
+        setApprovalStep('idle');
+        return;
+      }
+      
       console.log('💼 Contract addresses being used:');
       console.log('  Vault:', CONTRACTS.VAULT);
       console.log('  WLFI:', CONTRACTS.WLFI);
