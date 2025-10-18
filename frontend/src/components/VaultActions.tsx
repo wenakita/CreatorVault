@@ -115,9 +115,18 @@ export default function VaultActions({ provider, account, onConnect, onToast }: 
       const wlfiWei = parseEther(wlfiAmount);
       const usd1Wei = parseEther(usd1Amount); // USD1 is 18 decimals (verified on Etherscan)
 
-      await wlfi.approve(CONTRACTS.VAULT, wlfiWei);
-      await usd1.approve(CONTRACTS.VAULT, usd1Wei);
+      // Approve tokens (wait for each to confirm)
+      onToast({ message: 'Approving WLFI...', type: 'info' });
+      const wlfiApproveTx = await wlfi.approve(CONTRACTS.VAULT, wlfiWei);
+      await wlfiApproveTx.wait();
+      
+      if (Number(usd1Amount) > 0) {
+        onToast({ message: 'Approving USD1...', type: 'info' });
+        const usd1ApproveTx = await usd1.approve(CONTRACTS.VAULT, usd1Wei);
+        await usd1ApproveTx.wait();
+      }
 
+      onToast({ message: 'Depositing...', type: 'info' });
       const depositTx = await vault.depositDual(wlfiWei, usd1Wei);
       const receipt = await depositTx.wait();
 
