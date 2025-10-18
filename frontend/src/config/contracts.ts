@@ -3,7 +3,7 @@ export const CONTRACTS = {
   VAULT: '0x47dc58aad89d87f54dab4055fd7c444948bea91e',       // FINAL - REAL WLFI + 80,000 multiplier!
   OFT: '0x477d42841dC5A7cCBc2f72f4448f5eF6B61eA91E',         // V3 - Vanity!
   WRAPPER: '0x4e0E57301460cD27eBC7F42dcF4F3918A7ba2Ece',     // FINAL - Connected to FINAL vault
-  STRATEGY: '0x47A2B9199dd3feDe5AC83bcbEC224D9aD73Ea91E',    // V3 - Vanity!
+  STRATEGY: '0xB722b2a97744aFc5A67F340901B285a33f1af998',    // FINAL - Connected to FINAL vault
   CHARM_VAULT: '0x3314e248F3F752Cd16939773D83bEb3a362F0AEF', // Charm Alpha Vault
   
   // Token addresses (REAL tokens!)
