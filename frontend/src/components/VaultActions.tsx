@@ -3,7 +3,7 @@ import { BrowserProvider, Contract, parseEther, formatEther, formatUnits, MaxUin
 import { CONTRACTS } from '../config/contracts';
 
 const VAULT_ABI = [
-  'function depositDual(uint256 wlfiAmount, uint256 usd1Amount) returns (uint256)',
+  'function depositDual(uint256 wlfiAmount, uint256 usd1Amount, address receiver) returns (uint256)',
   'function withdraw(uint256 shares, address receiver, address owner) returns (uint256, uint256)',
   'function balanceOf(address) view returns (uint256)',
   'function totalAssets() view returns (uint256)',
@@ -139,7 +139,7 @@ export default function VaultActions({ provider, account, onConnect, onToast }: 
       }
 
       onToast({ message: 'Depositing to vault...', type: 'info' });
-      const depositTx = await vault.depositDual(wlfiWei, usd1Wei);
+      const depositTx = await vault.depositDual(wlfiWei, usd1Wei, account);
       const receipt = await depositTx.wait();
 
       onToast({ 
