@@ -31,7 +31,8 @@ fn main() {
         .try_into()
         .unwrap();
     
-    let init_code_hash: [u8; 32] = hex::decode("37a1f854032383c968549884f002d1af533897115efee98bbb1c3821f03a9933")
+    // REAL WLFI token hash
+    let init_code_hash: [u8; 32] = hex::decode("bdcac092877d46e8155704146da96762430793841d3fad3b259b6cc2b085134f")
         .unwrap()
         .try_into()
         .unwrap();

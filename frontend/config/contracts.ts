@@ -56,7 +56,7 @@ export const ADDRESSES = {
   VAULT: (import.meta.env.VITE_VAULT_ADDRESS || '0x4764Ed46281cd065602Eb1e49988E659F2DEa91E') as `0x${string}`,
   
   // Token contracts
-  WLFI: (import.meta.env.VITE_WLFI_ADDRESS || '0x4780940f87d2Ce81d9dBAE8cC79B2239366e4747') as `0x${string}`,
+  WLFI: (import.meta.env.VITE_WLFI_ADDRESS || '0xdA5e1988097297dCdc1f90D4dFE7909e847CBeF6') as `0x${string}`,
   USD1: (import.meta.env.VITE_USD1_ADDRESS || '0x8d0D000Ee44948FC98c9B98A4FA4921476f08B0d') as `0x${string}`,
   
   // Oracle contracts
