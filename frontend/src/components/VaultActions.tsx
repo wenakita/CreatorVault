@@ -107,7 +107,7 @@ export default function VaultActions({ provider, account, onConnect, onToast }: 
   }, [provider, wlfiAmount, usd1Amount]);
 
   const confirmAndDeposit = async () => {
-    if (!provider || !wlfiAmount || !usd1Amount) return;
+    if (!provider || (!wlfiAmount && !usd1Amount)) return;
 
     setShowSimulator(false);
     setLoading(true);
@@ -167,7 +167,7 @@ export default function VaultActions({ provider, account, onConnect, onToast }: 
   };
 
   const handleDeposit = () => {
-    if (!wlfiAmount || !usd1Amount) return;
+    if (!wlfiAmount && !usd1Amount) return; // At least one amount required
     setShowSimulator(true);
   };
 
@@ -411,7 +411,7 @@ export default function VaultActions({ provider, account, onConnect, onToast }: 
             {/* Deposit Button */}
             <button
               onClick={handleDeposit}
-              disabled={loading || !wlfiAmount || !usd1Amount}
+              disabled={loading || (!wlfiAmount && !usd1Amount)}
               className="w-full px-6 py-3 bg-blue-600 hover:bg-blue-500 disabled:bg-gray-700 disabled:text-gray-500 disabled:cursor-not-allowed text-white font-semibold rounded-lg transition-all duration-200 hover:shadow-lg hover:shadow-blue-500/20"
             >
               {loading ? 'Depositing...' : 'Deposit and Stake'}
