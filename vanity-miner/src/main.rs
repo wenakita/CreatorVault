@@ -32,14 +32,14 @@ fn compute_create2_address(
 fn main() {
     println!("=== Rust Vanity Address Miner (Ultra Fast!) ===\n");
     
-    // Correct CREATE2FactoryWithOwnership address
-    let factory: [u8; 20] = hex::decode("695d6B3628B4701E7eAfC0bc511CbAF23f6003eE")
+    // Use the factory from .env (CREATE2_FACTORY_ADDRESS)
+    let factory: [u8; 20] = hex::decode("AA28020DDA6b954D16208eccF873D79AC6533833")
         .unwrap()
         .try_into()
         .unwrap();
     
-    // Init code hash from the compiled contract
-    let init_code_hash: [u8; 32] = hex::decode("1d3a653c67ae540b94f8a8549a3f0d5e7133ba97c0a8c0dbdc8ffe919b0738b6")
+    // Latest vault bytecode hash from current compilation
+    let init_code_hash: [u8; 32] = hex::decode("7eef73c0fb8d9c002cf1ec3630884beb7744f4794be2278d46d463432571faa1")
         .unwrap()
         .try_into()
         .unwrap();
