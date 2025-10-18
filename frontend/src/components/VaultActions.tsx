@@ -266,6 +266,7 @@ export default function VaultActions({ provider, account, onConnect, onToast }: 
                 </div>
                 <div className="flex justify-between text-xs mt-1">
                   <span className="text-gray-500">Based on live oracle prices</span>
+                  <span className="text-gray-500">80,000 shares per $1</span>
                 </div>
               </div>
             )}
