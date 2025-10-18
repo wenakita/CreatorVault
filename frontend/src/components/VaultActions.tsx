@@ -4,7 +4,7 @@ import { CONTRACTS } from '../config/contracts';
 
 const VAULT_ABI = [
   'function depositDual(uint256 wlfiAmount, uint256 usd1Amount, address receiver) returns (uint256)',
-  'function withdraw(uint256 shares, address receiver, address owner) returns (uint256, uint256)',
+  'function withdrawDual(uint256 shares, address receiver) returns (uint256 wlfiAmount, uint256 usd1Amount)',
   'function balanceOf(address) view returns (uint256)',
   'function totalAssets() view returns (uint256)',
   'function totalSupply() view returns (uint256)',
@@ -165,7 +165,8 @@ export default function VaultActions({ provider, account, onConnect, onToast }: 
       const vault = new Contract(CONTRACTS.VAULT, VAULT_ABI, signer);
 
       const shares = parseEther(withdrawAmount);
-      const withdrawTx = await vault.withdraw(shares, account, account);
+      onToast({ message: 'Withdrawing from vault...', type: 'info' });
+      const withdrawTx = await vault.withdrawDual(shares, account);
       const receipt = await withdrawTx.wait();
 
       onToast({ 
