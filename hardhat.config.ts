@@ -30,9 +30,10 @@ const config: HardhatUserConfig = {
     },
     // HUB CHAIN - Where the main EagleOVault and Charm Strategy live
     ethereum: {
-      url: 'https://ethereum-rpc.publicnode.com',
+      url: process.env.ETHEREUM_RPC_URL || 'https://eth-mainnet.g.alchemy.com/v2/omeyMm6mGtblMX7rCT-QTGQvTLFD4J9F',
       accounts,
       chainId: 1,
+      timeout: 120000, // 2 minute timeout for large contracts
     },
     // SPOKE CHAINS - Where users can deposit/withdraw via LayerZero
     bsc: {
