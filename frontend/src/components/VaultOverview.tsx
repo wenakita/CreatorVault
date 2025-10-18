@@ -73,6 +73,42 @@ export default function VaultOverview({ provider, account }: Props) {
 
   return (
     <div className="relative bg-gradient-to-br from-eagle-gold/10 via-indigo/5 to-purple/5 rounded-xl border border-eagle-gold/30 backdrop-blur-md p-8 mb-6">
+      {/* Protocol Badges */}
+      <div className="flex flex-wrap items-center justify-center gap-4 mb-6 pb-6 border-b border-gray-800/50">
+        {/* Powered by Uniswap */}
+        <div className="flex items-center gap-2 px-3 py-1.5 bg-gray-900/50 rounded-lg border border-gray-800">
+          <span className="text-xs text-gray-500">Powered by</span>
+          <img 
+            src="https://tomato-abundant-urial-204.mypinata.cloud/ipfs/bafkreichw4b4wxvinfu4dmkloxajj4mm7672k6q3nyqzvdnvogvlbbycfq" 
+            alt="Uniswap"
+            className="h-4 w-4"
+          />
+          <span className="text-xs font-medium text-gray-300">Uniswap</span>
+        </div>
+
+        {/* Managed by Charm */}
+        <div className="flex items-center gap-2 px-3 py-1.5 bg-gray-900/50 rounded-lg border border-gray-800">
+          <span className="text-xs text-gray-500">Managed by</span>
+          <img 
+            src="https://tomato-abundant-urial-204.mypinata.cloud/ipfs/bafkreid3difftzksqy3xlummzzobhk674ece35d7drmgo3ftt7wrix6dwu" 
+            alt="Charm Finance"
+            className="h-4 w-4"
+          />
+          <span className="text-xs font-medium text-gray-300">Charm</span>
+        </div>
+
+        {/* via LayerZero V2 */}
+        <div className="flex items-center gap-2 px-3 py-1.5 bg-gray-900/50 rounded-lg border border-gray-800">
+          <span className="text-xs text-gray-500">via</span>
+          <img 
+            src="https://tomato-abundant-urial-204.mypinata.cloud/ipfs/bafkreihml3nahd2duwdjg2ltoeixax2xdj2ldp5unnrjwntyicar74nwra" 
+            alt="LayerZero"
+            className="h-4 w-4"
+          />
+          <span className="text-xs font-medium text-gray-300">LayerZero V2</span>
+        </div>
+      </div>
+
       {/* Vault Header */}
       <div className="flex items-center justify-between mb-8">
         <div className="flex items-center gap-4">
@@ -100,13 +136,13 @@ export default function VaultOverview({ provider, account }: Props) {
             />
             <span className="text-xs font-medium text-eagle-gold-lightest">WLFI</span>
           </div>
-          <div className="flex items-center gap-2 px-3 py-1.5 bg-indigo/20 rounded-lg border border-indigo/30">
+          <div className="flex items-center gap-2 px-3 py-1.5 bg-green-500/20 rounded-lg border border-green-500/30">
             <img 
-              src="https://tomato-abundant-urial-204.mypinata.cloud/ipfs/bafkreiagnmvgbx3g7prmcg57pu3safks7ut6j3okopfmji7h5pndz2zeqy" 
-              alt="ETH"
+              src="https://tomato-abundant-urial-204.mypinata.cloud/ipfs/bafkreic74no55hhm544qjraibffhrb4h7zldae5sfsyipvu6dvfyqubppy" 
+              alt="USD1"
               className="h-5 w-5"
             />
-            <span className="text-xs font-medium text-indigo-200">ETH</span>
+            <span className="text-xs font-medium text-green-200">USD1</span>
           </div>
         </div>
       </div>

@@ -52,12 +52,32 @@ export default function StrategyBreakdown({ provider }: Props) {
     <div className="bg-[#0a0a0a]/60 rounded-xl border border-eagle-gold/30 backdrop-blur-md p-6 mb-6">
       {/* Strategy Status */}
       <div className="mb-6 p-4 bg-gray-900/30 rounded-lg border border-gray-800">
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between flex-wrap gap-3">
           <div className="flex items-center gap-3">
             <div className="w-2 h-2 rounded-full bg-green-500" />
             <span className="text-white font-medium">Charm Finance Alpha Vault</span>
           </div>
-          <div className="text-sm text-gray-400">WLFI/WETH Concentrated Liquidity</div>
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-gray-500">Liquidity:</span>
+            <div className="flex items-center gap-1.5 px-2 py-1 bg-gray-800/50 rounded-md border border-gray-700">
+              <img 
+                src="https://tomato-abundant-urial-204.mypinata.cloud/ipfs/bafkreifvnbzrefx4pdd6mr653dmrgkz2bdcamrwdsl334f7ed75miosaxu" 
+                alt="WLFI"
+                className="h-4 w-4"
+              />
+              <span className="text-xs font-medium text-gray-300">WLFI</span>
+            </div>
+            <span className="text-gray-500">/</span>
+            <div className="flex items-center gap-1.5 px-2 py-1 bg-gray-800/50 rounded-md border border-gray-700">
+              <img 
+                src="https://tomato-abundant-urial-204.mypinata.cloud/ipfs/bafkreiagnmvgbx3g7prmcg57pu3safks7ut6j3okopfmji7h5pndz2zeqy" 
+                alt="WETH"
+                className="h-4 w-4"
+              />
+              <span className="text-xs font-medium text-gray-300">WETH</span>
+            </div>
+            <span className="text-xs text-gray-500 ml-1">1% Fee</span>
+          </div>
         </div>
       </div>
 
