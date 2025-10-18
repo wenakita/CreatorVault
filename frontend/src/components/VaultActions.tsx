@@ -122,6 +122,12 @@ export default function VaultActions({ provider, account, onConnect, onToast }: 
     try {
       console.log('Getting signer...');
       const signer = await provider.getSigner();
+      
+      console.log('💼 Contract addresses being used:');
+      console.log('  Vault:', CONTRACTS.VAULT);
+      console.log('  WLFI:', CONTRACTS.WLFI);
+      console.log('  USD1:', CONTRACTS.USD1);
+      
       const vault = new Contract(CONTRACTS.VAULT, VAULT_ABI, signer);
       const wlfi = new Contract(CONTRACTS.WLFI, ERC20_ABI, signer);
       const usd1 = new Contract(CONTRACTS.USD1, ERC20_ABI, signer);
@@ -130,6 +136,7 @@ export default function VaultActions({ provider, account, onConnect, onToast }: 
       const usd1Wei = parseEther(usd1Amount || '0'); // USD1 is 18 decimals (verified on Etherscan)
       
       console.log('Amounts in wei:', wlfiWei.toString(), usd1Wei.toString());
+      console.log('Account (receiver):', account);
 
       // Check and approve WLFI if needed
       const wlfiAllowance = await wlfi.allowance(account, CONTRACTS.VAULT);
@@ -177,7 +184,15 @@ export default function VaultActions({ provider, account, onConnect, onToast }: 
   };
 
   const handleDeposit = () => {
-    if (!wlfiAmount && !usd1Amount) return; // At least one amount required
+    console.log('🎯 handleDeposit clicked');
+    console.log('Amounts:', wlfiAmount, usd1Amount);
+    
+    if (!wlfiAmount && !usd1Amount) {
+      console.log('❌ No amounts entered');
+      return;
+    }
+    
+    console.log('✅ Showing simulator');
     setShowSimulator(true);
   };
 
