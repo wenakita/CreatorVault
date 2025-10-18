@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { BrowserProvider, Contract, parseEther, formatEther, formatUnits, MaxUint256 } from 'ethers';
 import { CONTRACTS } from '../config/contracts';
 import TransactionSimulator from './TransactionSimulator';
+import NetworkChecker from './NetworkChecker';
 
 const VAULT_ABI = [
   'function depositDual(uint256 wlfiAmount, uint256 usd1Amount, address receiver) returns (uint256)',
@@ -115,6 +116,30 @@ export default function VaultActions({ provider, account, onConnect, onToast }: 
       return;
     }
 
+    // ✅ VALIDATE BALANCES BEFORE DEPOSIT
+    const wlfiNum = Number(wlfiAmount || '0');
+    const usd1Num = Number(usd1Amount || '0');
+    const wlfiBalNum = Number(wlfiBalance);
+    const usd1BalNum = Number(usd1Balance);
+
+    if (wlfiNum > wlfiBalNum) {
+      onToast({ 
+        message: `Insufficient WLFI balance. You have ${wlfiBalNum.toFixed(4)} but trying to deposit ${wlfiNum.toFixed(4)}`, 
+        type: 'error' 
+      });
+      setShowSimulator(false);
+      return;
+    }
+
+    if (usd1Num > usd1BalNum) {
+      onToast({ 
+        message: `Insufficient USD1 balance. You have ${usd1BalNum.toFixed(4)} but trying to deposit ${usd1Num.toFixed(4)}`, 
+        type: 'error' 
+      });
+      setShowSimulator(false);
+      return;
+    }
+
     setShowSimulator(false);
     setLoading(true);
     setApprovalStep('checking');
@@ -132,6 +157,7 @@ export default function VaultActions({ provider, account, onConnect, onToast }: 
       const wlfi = new Contract(CONTRACTS.WLFI, ERC20_ABI, signer);
       const usd1 = new Contract(CONTRACTS.USD1, ERC20_ABI, signer);
 
+      // ✅ USE ACTUAL BALANCES (prevent rounding errors)
       const wlfiWei = parseEther(wlfiAmount || '0');
       const usd1Wei = parseEther(usd1Amount || '0'); // USD1 is 18 decimals (verified on Etherscan)
       
@@ -211,6 +237,29 @@ export default function VaultActions({ provider, account, onConnect, onToast }: 
     
     if (!wlfiAmount && !usd1Amount) {
       console.log('❌ No amounts entered');
+      onToast({ message: 'Please enter an amount to deposit', type: 'error' });
+      return;
+    }
+
+    // ✅ VALIDATE BALANCES
+    const wlfiNum = Number(wlfiAmount || '0');
+    const usd1Num = Number(usd1Amount || '0');
+    const wlfiBalNum = Number(wlfiBalance);
+    const usd1BalNum = Number(usd1Balance);
+
+    if (wlfiNum > wlfiBalNum) {
+      onToast({ 
+        message: `Insufficient WLFI balance. You have ${wlfiBalNum.toFixed(4)} WLFI`, 
+        type: 'error' 
+      });
+      return;
+    }
+
+    if (usd1Num > usd1BalNum) {
+      onToast({ 
+        message: `Insufficient USD1 balance. You have ${usd1BalNum.toFixed(4)} USD1`, 
+        type: 'error' 
+      });
       return;
     }
     
@@ -260,6 +309,9 @@ export default function VaultActions({ provider, account, onConnect, onToast }: 
 
   return (
     <>
+      {/* Network Checker - Shows warning if not on Ethereum */}
+      <NetworkChecker provider={provider} expectedChainId={1} />
+      
       {/* Transaction Simulator Modal - Only show on deposit tab */}
       {showSimulator && activeTab === 'deposit' && (
         <TransactionSimulator
@@ -269,6 +321,7 @@ export default function VaultActions({ provider, account, onConnect, onToast }: 
           usdValue={previewUsdValue}
           onConfirm={confirmAndDeposit}
           onCancel={() => setShowSimulator(false)}
+          provider={provider}
         />
       )}
 

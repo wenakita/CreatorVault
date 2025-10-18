@@ -8,6 +8,7 @@ interface TransactionSimulatorProps {
   usdValue: string;
   onConfirm: () => void;
   onCancel: () => void;
+  provider?: BrowserProvider | null;
 }
 
 export default function TransactionSimulator({ 
@@ -16,10 +17,60 @@ export default function TransactionSimulator({
   shares, 
   usdValue,
   onConfirm,
-  onCancel 
+  onCancel,
+  provider 
 }: TransactionSimulatorProps) {
   const [estimatedGas, setEstimatedGas] = useState('0.003');
   const [ethPrice, setEthPrice] = useState(3855);
+  const [loadingGas, setLoadingGas] = useState(false);
+  const [apyData, setApyData] = useState({ current: 12, historical: 14.5, projected: 11.2 });
+
+  // Fetch real ETH price
+  useEffect(() => {
+    const fetchEthPrice = async () => {
+      try {
+        const response = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=ethereum&vs_currencies=usd');
+        const data = await response.json();
+        if (data.ethereum?.usd) {
+          setEthPrice(data.ethereum.usd);
+        }
+      } catch (error) {
+        console.error('Failed to fetch ETH price:', error);
+      }
+    };
+    fetchEthPrice();
+    const interval = setInterval(fetchEthPrice, 60000); // Update every minute
+    return () => clearInterval(interval);
+  }, []);
+
+  // Estimate gas (in real implementation, this would call the actual contract)
+  useEffect(() => {
+    const estimateGas = async () => {
+      setLoadingGas(true);
+      try {
+        // Simulating gas estimation - in production, estimate from actual contract call
+        // For deposits > $100 (triggers Charm deployment): ~500k gas
+        // For deposits < $100: ~250k gas
+        const depositValue = Number(usdValue);
+        const gasLimit = depositValue > 100 ? 500000 : 250000;
+        
+        if (provider) {
+          const feeData = await provider.getFeeData();
+          const gasPrice = feeData.gasPrice || BigInt(30000000000); // 30 gwei fallback
+          const estimatedCost = (gasPrice * BigInt(gasLimit)) / BigInt(10**18);
+          setEstimatedGas(Number(estimatedCost).toFixed(6));
+        }
+      } catch (error) {
+        console.error('Gas estimation failed:', error);
+      } finally {
+        setLoadingGas(false);
+      }
+    };
+    
+    if (provider && wlfiAmount) {
+      estimateGas();
+    }
+  }, [provider, wlfiAmount, usd1Amount, usdValue]);
   
   const totalShares = Number(shares);
   const depositValue = Number(usdValue);

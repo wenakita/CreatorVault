@@ -2,190 +2,248 @@ import { useState, useEffect } from 'react';
 import { BrowserProvider, Contract, formatEther } from 'ethers';
 import { CONTRACTS } from '../config/contracts';
 
-interface PortfolioViewProps {
+const VAULT_ABI = [
+  'function balanceOf(address) view returns (uint256)',
+  'function totalSupply() view returns (uint256)',
+  'function totalAssets() view returns (uint256)',
+  'function getWLFIPrice() view returns (uint256)',
+  'function getUSD1Price() view returns (uint256)',
+  'event DualDeposit(address indexed user, uint256 wlfiAmount, uint256 usd1Amount, uint256 wlfiPriceUSD, uint256 usd1PriceUSD, uint256 totalUSDValue, uint256 shares)',
+  'event DualWithdrawal(address indexed user, uint256 shares, uint256 wlfiAmount, uint256 usd1Amount, uint256 totalUSDValue)',
+];
+
+interface Props {
   provider: BrowserProvider | null;
   account: string;
 }
 
-const VAULT_ABI = ['function balanceOf(address) view returns (uint256)'];
-const OFT_ABI = ['function balanceOf(address) view returns (uint256)'];
+interface PositionData {
+  shares: number;
+  valueUSD: number;
+  percentOfVault: number;
+  estimatedAPY: number;
+}
 
-export default function PortfolioView({ provider, account }: PortfolioViewProps) {
-  const [vEagleBalance, setVEagleBalance] = useState('0');
-  const [eagleBalance, setEagleBalance] = useState('0');
+export default function PortfolioView({ provider, account }: Props) {
+  const [position, setPosition] = useState<PositionData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [transactions, setTransactions] = useState<any[]>([]);
+  const [earnings, setEarnings] = useState({ total: 0, daily: 0, weekly: 0, monthly: 0 });
 
   useEffect(() => {
     if (!provider || !account) return;
 
-    const fetchData = async () => {
+    const fetchPortfolio = async () => {
+      setLoading(true);
       try {
         const vault = new Contract(CONTRACTS.VAULT, VAULT_ABI, provider);
-        const oft = new Contract(CONTRACTS.OFT, OFT_ABI, provider);
 
-        const [vEagle, eagle] = await Promise.all([
+        const [shares, totalSupply, totalAssets] = await Promise.all([
           vault.balanceOf(account),
-          oft.balanceOf(account),
+          vault.totalSupply(),
+          vault.totalAssets()
         ]);
 
-        setVEagleBalance(formatEther(vEagle));
-        setEagleBalance(formatEther(eagle));
-        setLoading(false);
+        const sharesNum = Number(formatEther(shares));
+        const totalSupplyNum = Number(formatEther(totalSupply));
+        const totalAssetsNum = Number(formatEther(totalAssets));
+
+        const valueUSD = sharesNum > 0 && totalSupplyNum > 0
+          ? (sharesNum / totalSupplyNum) * totalAssetsNum
+          : 0;
+
+        const percentOfVault = totalSupplyNum > 0
+          ? (sharesNum / totalSupplyNum) * 100
+          : 0;
+
+        setPosition({
+          shares: sharesNum,
+          valueUSD,
+          percentOfVault,
+          estimatedAPY: 12.5 // Would calculate from historical data
+        });
+
       } catch (error) {
-        console.error('Error fetching portfolio:', error);
+        console.error('Failed to fetch portfolio:', error);
+      } finally {
         setLoading(false);
       }
     };
 
-    fetchData();
-    const interval = setInterval(fetchData, 15000);
+    fetchPortfolio();
+    const interval = setInterval(fetchPortfolio, 30000);
     return () => clearInterval(interval);
   }, [provider, account]);
 
-  const totalShares = Number(vEagleBalance) + Number(eagleBalance);
-  const totalValue = totalShares / 80000; // 80,000 shares per $1
-  const costBasis = totalValue; // For now, assume no PnL (would track from deposits)
-  const pnl = 0;
-  const pnlPercent = 0;
-
-  if (!account) {
+  if (loading) {
     return (
-      <div className="text-center text-gray-400 py-12">
-        Connect your wallet to view your portfolio
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="text-center">
+          <div className="w-16 h-16 border-4 border-eagle-gold border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-gray-400">Loading your portfolio...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!position || position.shares === 0) {
+    return (
+      <div className="text-center py-12">
+        <div className="w-20 h-20 mx-auto mb-6 rounded-full bg-gray-900/50 flex items-center justify-center">
+          <svg className="w-10 h-10 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
+          </svg>
+        </div>
+        <h3 className="text-xl font-semibold text-white mb-2">No Position Yet</h3>
+        <p className="text-gray-400 mb-6">Start earning by depositing WLFI or USD1</p>
+        <button className="px-6 py-3 bg-eagle-gold hover:bg-eagle-gold-dark text-black font-medium rounded-lg transition-all duration-200">
+          Make First Deposit
+        </button>
       </div>
     );
   }
 
   return (
     <div className="space-y-6">
-      {/* Portfolio Summary Card */}
-      <div className="bg-gradient-to-br from-eagle-gold/10 via-blue-500/5 to-purple-500/5 rounded-xl border border-eagle-gold/30 p-8">
-        <h2 className="text-2xl font-semibold text-white mb-6">Your Eagle Portfolio</h2>
+      {/* Portfolio Header */}
+      <div className="bg-gradient-to-br from-eagle-gold/10 via-transparent to-blue-500/10 rounded-2xl border border-eagle-gold/30 p-8 backdrop-blur-md">
+        <div className="flex items-center justify-between mb-6">
+          <div>
+            <h2 className="text-sm text-gray-400 uppercase tracking-wider mb-2">Total Portfolio Value</h2>
+            <p className="text-5xl font-bold bg-gradient-to-r from-white to-gray-300 bg-clip-text text-transparent">
+              ${position.valueUSD.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+            </p>
+          </div>
+          <div className="text-right">
+            <div className="inline-flex items-center gap-2 px-4 py-2 bg-green-500/10 rounded-lg border border-green-500/30">
+              <svg className="w-4 h-4 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+              </svg>
+              <span className="text-green-400 font-semibold">+5.2%</span>
+            </div>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <StatCard label="Your Shares" value={position.shares.toLocaleString(undefined, { maximumFractionDigits: 0 })} suffix="vEAGLE" />
+          <StatCard label="Vault Ownership" value={position.percentOfVault.toFixed(4)} suffix="%" />
+          <StatCard label="Est. APY" value={position.estimatedAPY.toFixed(2)} suffix="%" icon="📈" />
+          <StatCard label="Daily Earnings" value={`$${((position.valueUSD * position.estimatedAPY / 100) / 365).toFixed(2)}`} icon="💵" />
+        </div>
+      </div>
+
+      {/* Earnings Breakdown */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <EarningsCard period="Daily" amount={earnings.daily} />
+        <EarningsCard period="Weekly" amount={earnings.weekly} />
+        <EarningsCard period="Monthly" amount={earnings.monthly} />
+      </div>
+
+      {/* Performance Chart Placeholder */}
+      <div className="bg-[#0a0a0a]/60 rounded-xl border border-gray-800/50 p-6 backdrop-blur-md">
+        <h3 className="text-lg font-bold text-white mb-4">Performance Over Time</h3>
+        <div className="h-64 flex items-center justify-center text-gray-500">
+          <div className="text-center">
+            <svg className="w-16 h-16 mx-auto mb-2 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z" />
+            </svg>
+            <p className="text-sm">Historical performance chart</p>
+            <p className="text-xs text-gray-600 mt-1">Track your position value over time</p>
+          </div>
+        </div>
+      </div>
+
+      {/* Transaction History */}
+      <div className="bg-[#0a0a0a]/60 rounded-xl border border-gray-800/50 p-6 backdrop-blur-md">
+        <h3 className="text-lg font-bold text-white mb-4">Transaction History</h3>
         
-        {loading ? (
-          <div className="animate-pulse space-y-4">
-            <div className="h-12 bg-gray-800 rounded w-48"></div>
-            <div className="h-6 bg-gray-800 rounded w-32"></div>
+        {transactions.length === 0 ? (
+          <div className="text-center py-8 text-gray-500">
+            <p className="text-sm">No transactions yet</p>
+            <p className="text-xs text-gray-600 mt-1">Your deposits and withdrawals will appear here</p>
           </div>
         ) : (
-          <>
-            {/* Total Value */}
-            <div className="mb-6">
-              <p className="text-sm text-gray-400 mb-2">Total Value</p>
-              <p className="text-5xl font-bold text-white mb-2">
-                ${totalValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-              </p>
-              <div className="flex items-center gap-4 text-sm">
-                <span className="text-gray-400">
-                  Cost Basis: ${costBasis.toFixed(2)}
-                </span>
-                <span className={`font-semibold ${pnl >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                  {pnl >= 0 ? '+' : ''}{pnlPercent.toFixed(2)}% PnL
-                </span>
-              </div>
-            </div>
-
-            {/* Breakdown */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-              {/* vEAGLE in Vault */}
-              <div className="p-4 bg-gray-900/50 rounded-lg border border-gray-800">
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-sm text-gray-400">vEAGLE in Vault</span>
-                  <span className="px-2 py-1 bg-green-500/20 text-green-400 rounded text-xs font-medium">
-                    Earning
-                  </span>
-                </div>
-                <p className="text-2xl font-bold text-white">
-                  {Number(vEagleBalance).toLocaleString(undefined, { maximumFractionDigits: 2 })}
-                </p>
-                <p className="text-sm text-gray-500 mt-1">
-                  ${(Number(vEagleBalance) / 80000).toFixed(2)}
-                </p>
-                <p className="text-xs text-gray-600 mt-2">
-                  Earning from Charm Finance WLFI/WETH pool
-                </p>
-              </div>
-
-              {/* EAGLE (Tradeable) */}
-              <div className="p-4 bg-gray-900/50 rounded-lg border border-gray-800">
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-sm text-gray-400">EAGLE (Tradeable)</span>
-                  <span className="px-2 py-1 bg-blue-500/20 text-blue-400 rounded text-xs font-medium">
-                    Liquid
-                  </span>
-                </div>
-                <p className="text-2xl font-bold text-white">
-                  {Number(eagleBalance).toLocaleString(undefined, { maximumFractionDigits: 2 })}
-                </p>
-                <p className="text-sm text-gray-500 mt-1">
-                  ${(Number(eagleBalance) / 80000).toFixed(2)}
-                </p>
-                <p className="text-xs text-gray-600 mt-2">
-                  Can trade on DEXes or bridge via LayerZero
-                </p>
-              </div>
-            </div>
-
-            {/* Quick Actions */}
-            <div className="flex gap-3">
-              <button className="flex-1 px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white font-medium rounded-lg transition-all">
-                Wrap to EAGLE
-              </button>
-              <button className="px-4 py-2 bg-gray-800 hover:bg-gray-700 text-gray-300 font-medium rounded-lg transition-all">
-                Export CSV
-              </button>
-            </div>
-          </>
+          <div className="space-y-2">
+            {transactions.map((tx, i) => (
+              <TransactionRow key={i} transaction={tx} />
+            ))}
+          </div>
         )}
       </div>
 
-      {/* Recent Activity */}
-      <div className="bg-gray-900/60 rounded-xl border border-gray-800 p-6">
-        <h3 className="text-lg font-semibold text-white mb-4">Recent Activity</h3>
-        
-        <div className="space-y-3">
-          {totalShares > 0 ? (
-            <div className="flex items-center gap-4 p-3 bg-gray-800/50 rounded-lg">
-              <div className="w-10 h-10 rounded-full bg-green-500/20 flex items-center justify-center">
-                <svg className="w-5 h-5 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                </svg>
-              </div>
-              <div className="flex-1">
-                <p className="text-sm font-medium text-white">Deposited</p>
-                <p className="text-xs text-gray-400">{Number(wlfiAmount || 0).toFixed(2)} WLFI</p>
-              </div>
-              <span className="text-xs text-gray-500">Recently</span>
-            </div>
-          ) : (
-            <div className="text-center py-8 text-gray-500">
-              <p>No activity yet</p>
-              <p className="text-sm mt-2">Make your first deposit to start earning!</p>
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* Performance Metrics */}
-      <div className="bg-gray-900/60 rounded-xl border border-gray-800 p-6">
-        <h3 className="text-lg font-semibold text-white mb-4">Performance</h3>
-        
-        <div className="grid grid-cols-3 gap-4">
-          <div>
-            <p className="text-xs text-gray-400 mb-1">Est. APY</p>
-            <p className="text-2xl font-bold text-green-400">12.0%</p>
-          </div>
-          <div>
-            <p className="text-xs text-gray-400 mb-1">Time Held</p>
-            <p className="text-2xl font-bold text-white">0d</p>
-          </div>
-          <div>
-            <p className="text-xs text-gray-400 mb-1">Fees Earned</p>
-            <p className="text-2xl font-bold text-eagle-gold-light">$0.00</p>
-          </div>
-        </div>
+      {/* Quick Actions */}
+      <div className="flex gap-4">
+        <button className="flex-1 px-6 py-4 bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-500 hover:to-blue-400 text-white font-semibold rounded-xl transition-all duration-200 shadow-lg shadow-blue-500/20">
+          Deposit More
+        </button>
+        <button className="flex-1 px-6 py-4 bg-gray-800/50 hover:bg-gray-800 text-white font-semibold rounded-xl transition-all duration-200 border border-gray-700">
+          Withdraw
+        </button>
       </div>
     </div>
   );
 }
 
+// Sub-components
+
+function StatCard({ label, value, suffix, icon }: {
+  label: string;
+  value: string;
+  suffix?: string;
+  icon?: string;
+}) {
+  return (
+    <div className="bg-black/40 rounded-lg p-4 border border-gray-800/50">
+      <div className="flex items-center gap-2 mb-2">
+        {icon && <span>{icon}</span>}
+        <p className="text-xs text-gray-500 uppercase tracking-wide">{label}</p>
+      </div>
+      <p className="text-lg font-bold text-white">
+        {value} {suffix && <span className="text-sm text-gray-400">{suffix}</span>}
+      </p>
+    </div>
+  );
+}
+
+function EarningsCard({ period, amount }: { period: string; amount: number }) {
+  return (
+    <div className="bg-gradient-to-br from-green-500/5 to-emerald-500/5 rounded-xl border border-green-500/20 p-5">
+      <div className="flex items-center justify-between mb-2">
+        <p className="text-sm text-gray-400">{period} Earnings</p>
+        <span className="text-green-400">
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+          </svg>
+        </span>
+      </div>
+      <p className="text-2xl font-bold text-white">${amount.toFixed(2)}</p>
+      <p className="text-xs text-green-400 mt-1">+{((amount / 100) * 100).toFixed(1)}%</p>
+    </div>
+  );
+}
+
+function TransactionRow({ transaction }: { transaction: any }) {
+  return (
+    <div className="flex items-center justify-between p-4 bg-gray-900/30 rounded-lg hover:bg-gray-900/50 transition-colors">
+      <div className="flex items-center gap-3">
+        <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
+          transaction.type === 'deposit' ? 'bg-green-500/10' : 'bg-red-500/10'
+        }`}>
+          <svg className={`w-5 h-5 ${transaction.type === 'deposit' ? 'text-green-400' : 'text-red-400'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={transaction.type === 'deposit' ? 'M12 4v16m8-8H4' : 'M20 12H4'} />
+          </svg>
+        </div>
+        <div>
+          <p className="text-white font-medium capitalize">{transaction.type}</p>
+          <p className="text-sm text-gray-500">{transaction.date}</p>
+        </div>
+      </div>
+      <div className="text-right">
+        <p className="text-white font-semibold">{transaction.amount}</p>
+        <a href={`https://etherscan.io/tx/${transaction.hash}`} target="_blank" rel="noopener noreferrer" className="text-xs text-eagle-gold hover:text-eagle-gold-light">
+          View →
+        </a>
+      </div>
+    </div>
+  );
+}

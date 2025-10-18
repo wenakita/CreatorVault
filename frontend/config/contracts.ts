@@ -1,5 +1,5 @@
-// Contract ABIs and Addresses for Eagle Vault V3 Chainlink
-// Network: Arbitrum One
+// Contract ABIs and Addresses for Eagle Vault V3 Vanity
+// Network: Ethereum Mainnet
 
 export const VAULT_ABI = [
   // Read Functions
@@ -50,10 +50,10 @@ export const STRATEGY_ABI = [
   'function isInitialized() external view returns (bool)'
 ] as const;
 
-// Contract Addresses - Ethereum Mainnet (V3)
+// Contract Addresses - Ethereum Mainnet (V3 Vanity - All 0x47...ea91e!)
 export const ADDRESSES = {
-  // Main vault contract
-  VAULT: (import.meta.env.VITE_VAULT_ADDRESS || '0x4764Ed46281cd065602Eb1e49988E659F2DEa91E') as `0x${string}`,
+  // Main vault contract (VANITY ADDRESS)
+  VAULT: (import.meta.env.VITE_VAULT_ADDRESS || '0x47ff05aaf066f50baefdcfdcadf63d3762eea91e') as `0x${string}`,
   
   // Token contracts
   WLFI: (import.meta.env.VITE_WLFI_ADDRESS || '0xdA5e1988097297dCdc1f90D4dFE7909e847CBeF6') as `0x${string}`,
