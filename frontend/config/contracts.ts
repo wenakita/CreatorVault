@@ -103,22 +103,37 @@ export const TOKENS = {
     symbol: 'WLFI',
     name: 'World Liberty Financial Token',
     decimals: 18,
-    logo: '💎',
+    logo: 'https://tomato-abundant-urial-204.mypinata.cloud/ipfs/bafkreifvnbzrefx4pdd6mr653dmrgkz2bdcamrwdsl334f7ed75miosaxu',
   },
   USD1: {
     address: ADDRESSES.USD1,
     symbol: 'USD1',
     name: 'USD1 Stablecoin',
     decimals: 18,
-    logo: '💵',
+    logo: 'https://tomato-abundant-urial-204.mypinata.cloud/ipfs/bafkreic74no55hhm544qjraibffhrb4h7zldae5sfsyipvu6dvfyqubppy',
+  },
+  ETH: {
+    address: '0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2',
+    symbol: 'ETH',
+    name: 'Ethereum',
+    decimals: 18,
+    logo: 'https://tomato-abundant-urial-204.mypinata.cloud/ipfs/bafkreiagnmvgbx3g7prmcg57pu3safks7ut6j3okopfmji7h5pndz2zeqy',
   },
   EAGLE: {
     address: ADDRESSES.VAULT,
     symbol: 'EAGLE',
     name: 'Eagle Vault Shares',
     decimals: 18,
-    logo: '🦅',
+    logo: 'https://tomato-abundant-urial-204.mypinata.cloud/ipfs/bafybeigzyatm2pgrkqbnskyvflnagtqli6rgh7wv7t2znaywkm2pixmkxy',
   },
+} as const;
+
+// Protocol Logos
+export const PROTOCOL_LOGOS = {
+  UNISWAP: 'https://tomato-abundant-urial-204.mypinata.cloud/ipfs/bafkreichw4b4wxvinfu4dmkloxajj4mm7672k6q3nyqzvdnvogvlbbycfq',
+  CHARM: 'https://tomato-abundant-urial-204.mypinata.cloud/ipfs/bafkreid3difftzksqy3xlummzzobhk674ece35d7drmgo3ftt7wrix6dwu',
+  LAYERZERO: 'https://tomato-abundant-urial-204.mypinata.cloud/ipfs/bafkreidp4x62pp27pf6cdtddvas7e3d2cshozgzi3yhmr2whhcefo5anly',
+  LAYERZERO_EMBLEM: 'https://tomato-abundant-urial-204.mypinata.cloud/ipfs/bafkreihml3nahd2duwdjg2ltoeixax2xdj2ldp5unnrjwntyicar74nwra',
 } as const;
 
 // Explorer URLs
