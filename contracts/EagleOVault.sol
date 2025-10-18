@@ -319,17 +319,13 @@ contract EagleOVault is ERC4626, Ownable, ReentrancyGuard {
         
         uint256 rawPrice = (numerator * 1e18) / denominator;
         // rawPrice = token1/token0 = WLFI/USD1 (with native decimals)
-        // rawPrice ≈ 7.8356e18 means 7.8356 WLFI (18 dec) per 1 USD1 (6 dec)
+        // Both WLFI and USD1 are 18 decimals, so no adjustment needed
+        // rawPrice ≈ 7.8356e18 means 7.8356 WLFI per 1 USD1
         
-        // Adjust for decimal difference: USD1=6dec, WLFI=18dec
-        // Need to multiply by 1e(6-18) = 1e-12
-        uint256 wlfiPerUsd1 = rawPrice / 1e12;
-        // wlfiPerUsd1 ≈ 7.8356e6 = 7.8356 (normalized)
-        
-        // Invert to get USD1 per WLFI
+        // Invert to get USD1 per WLFI (price of 1 WLFI in USD1 terms)
         // If 7.8356 WLFI = 1 USD1, then 1 WLFI = 1/7.8356 USD1 = 0.1276 USD1
-        price = (1e18 * 1e18) / wlfiPerUsd1;
-        // price = 1e36 / 7.8356e6 = 0.1276e18 ✅
+        price = (1e18 * 1e18) / rawPrice;
+        // price = 1e36 / 7.8356e18 = 0.1276e18 ✅
         
         if (price == 0) price = 1e15; // Minimum $0.001
     }
@@ -366,14 +362,12 @@ contract EagleOVault is ERC4626, Ownable, ReentrancyGuard {
             ratio = (1e36) / denomRatio; // Invert
         }
         
-        // Adjust for USD1 (6 decimals) vs WLFI (18 decimals)
-        // Pool price is in token1/token0 terms with native decimal representation
-        // We need to normalize: multiply by 1e(decimals0 - decimals1) = 1e(6-18) = 1e-12
-        price = ratio / 1e12;
+        // Both USD1 and WLFI are 18 decimals, so no decimal adjustment needed
+        // ratio is already in the correct format (WLFI per USD1)
         
-        // Invert to get USD1 per WLFI (since we want WLFI price in USD)
-        if (price > 0) {
-            price = 1e36 / price;
+        // Invert to get USD1 per WLFI (since we want WLFI price in USD1 terms)
+        if (ratio > 0) {
+            price = (1e18 * 1e18) / ratio;
         } else {
             price = 1e18; // Default to $1 if calculation fails
         }

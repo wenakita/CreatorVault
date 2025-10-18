@@ -57,7 +57,7 @@ export const ADDRESSES = {
   
   // Token contracts
   WLFI: (import.meta.env.VITE_WLFI_ADDRESS || '0x4780940f87d2Ce81d9dBAE8cC79B2239366e4747') as `0x${string}`,
-  USD1: (import.meta.env.VITE_USD1_ADDRESS || '0x8C815948C41D2A87413E796281A91bE91C4a94aB') as `0x${string}`,
+  USD1: (import.meta.env.VITE_USD1_ADDRESS || '0x8d0D000Ee44948FC98c9B98A4FA4921476f08B0d') as `0x${string}`,
   
   // Oracle contracts
   USD1_PRICE_FEED: (import.meta.env.VITE_USD1_PRICE_FEED || '0xF0d9bb015Cd7BfAb877B7156146dc09Bf461370d') as `0x${string}`,
