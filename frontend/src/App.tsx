@@ -45,33 +45,6 @@ function App() {
           Back
         </button>
 
-        {/* Protocol Badges - Above Hero */}
-        <div className="flex flex-wrap items-center justify-center gap-3 text-sm text-gray-400 mb-4">
-          <span>Powered by</span>
-          <img 
-            src="https://tomato-abundant-urial-204.mypinata.cloud/ipfs/bafkreichw4b4wxvinfu4dmkloxajj4mm7672k6q3nyqzvdnvogvlbbycfq" 
-            alt="Uniswap"
-            className="h-4 w-4 inline"
-          />
-          <span className="text-gray-300">Uniswap</span>
-          <span className="mx-1">•</span>
-          <span>Managed by</span>
-          <img 
-            src="https://tomato-abundant-urial-204.mypinata.cloud/ipfs/bafkreid3difftzksqy3xlummzzobhk674ece35d7drmgo3ftt7wrix6dwu" 
-            alt="Charm"
-            className="h-4 w-4 inline"
-          />
-          <span className="text-gray-300">Charm</span>
-          <span className="mx-1">•</span>
-          <span>via</span>
-          <img 
-            src="https://tomato-abundant-urial-204.mypinata.cloud/ipfs/bafkreihml3nahd2duwdjg2ltoeixax2xdj2ldp5unnrjwntyicar74nwra" 
-            alt="LayerZero"
-            className="h-4 w-4 inline"
-          />
-          <span className="text-gray-300">LayerZero V2</span>
-        </div>
-
         {/* Vault Overview Card */}
         <VaultOverview provider={provider} account={account} />
 
@@ -195,6 +168,33 @@ function App() {
 
       {/* Footer */}
       <footer className="mt-16 py-8 text-center border-t border-gray-800">
+        {/* Protocol Attribution */}
+        <div className="flex flex-wrap items-center justify-center gap-2 text-sm text-gray-400 mb-4">
+          <span>Powered by</span>
+          <img 
+            src="https://tomato-abundant-urial-204.mypinata.cloud/ipfs/bafkreichw4b4wxvinfu4dmkloxajj4mm7672k6q3nyqzvdnvogvlbbycfq" 
+            alt="Uniswap"
+            className="h-4 w-4 inline"
+          />
+          <span className="text-gray-300">Uniswap</span>
+          <span className="mx-1">•</span>
+          <span>Managed by</span>
+          <img 
+            src="https://tomato-abundant-urial-204.mypinata.cloud/ipfs/bafkreid3difftzksqy3xlummzzobhk674ece35d7drmgo3ftt7wrix6dwu" 
+            alt="Charm"
+            className="h-4 w-4 inline"
+          />
+          <span className="text-gray-300">Charm</span>
+          <span className="mx-1">•</span>
+          <span>via</span>
+          <img 
+            src="https://tomato-abundant-urial-204.mypinata.cloud/ipfs/bafkreihml3nahd2duwdjg2ltoeixax2xdj2ldp5unnrjwntyicar74nwra" 
+            alt="LayerZero"
+            className="h-4 w-4 inline"
+          />
+          <span className="text-gray-300">LayerZero V2</span>
+        </div>
+
         <p className="text-gray-500 mb-3">Eagle Vault © 2025 | Built on Ethereum</p>
         
         {/* Links */}
