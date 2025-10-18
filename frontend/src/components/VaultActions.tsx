@@ -303,7 +303,7 @@ export default function VaultActions({ provider, account, onConnect, onToast }: 
             <button
               onClick={handleDeposit}
               disabled={loading || !wlfiAmount || !usd1Amount}
-              className="w-full px-6 py-3 bg-eagle-gold hover:bg-eagle-gold-dark disabled:bg-gray-700 disabled:text-gray-500 disabled:cursor-not-allowed text-black font-semibold rounded-lg transition-all duration-200 hover:shadow-lg hover:shadow-eagle-gold/20"
+              className="w-full px-6 py-3 bg-blue-600 hover:bg-blue-500 disabled:bg-gray-700 disabled:text-gray-500 disabled:cursor-not-allowed text-white font-semibold rounded-lg transition-all duration-200 hover:shadow-lg hover:shadow-blue-500/20"
             >
               {loading ? 'Depositing...' : 'Deposit and Stake'}
             </button>
@@ -338,7 +338,7 @@ export default function VaultActions({ provider, account, onConnect, onToast }: 
             <button
               onClick={handleWithdraw}
               disabled={loading || !withdrawAmount}
-              className="w-full px-6 py-3 bg-red-600/80 hover:bg-red-600 disabled:bg-gray-700 disabled:text-gray-500 disabled:cursor-not-allowed text-white font-semibold rounded-lg transition-all duration-200"
+              className="w-full px-6 py-3 bg-blue-600 hover:bg-blue-500 disabled:bg-gray-700 disabled:text-gray-500 disabled:cursor-not-allowed text-white font-semibold rounded-lg transition-all duration-200 hover:shadow-lg hover:shadow-blue-500/20"
             >
               {loading ? 'Withdrawing...' : 'Claim + Exit'}
             </button>

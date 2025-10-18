@@ -1,6 +1,6 @@
-// Deployed contract addresses on Ethereum (V3 - October 18, 2025) - ALL VANITY 0x47...ea91e!
+// Deployed contract addresses on Ethereum (V4 - October 18, 2025) - ALL VANITY 0x47...ea91e!
 export const CONTRACTS = {
-  VAULT: '0x4764Ed46281cd065602Eb1e49988E659F2DEa91E',       // V3 - Correct USD1 (18 decimals)
+  VAULT: '0x47d0fbac25e77d8feb820ffdf3e7f464770ea91e',       // V4 - Correct 80,000 multiplier!
   OFT: '0x477d42841dC5A7cCBc2f72f4448f5eF6B61eA91E',         // V3 - Vanity!
   WRAPPER: '0x47BB9a08bA46ea94146Aff6c88b316A5315Ea91e',     // V3 - Vanity!
   STRATEGY: '0x47A2B9199dd3feDe5AC83bcbEC224D9aD73Ea91E',    // V3 - Vanity!

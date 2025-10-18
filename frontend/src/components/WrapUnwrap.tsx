@@ -217,7 +217,7 @@ export default function WrapUnwrap({ provider, account, onToast }: Props) {
                 <button
                   onClick={handleWrap}
                   disabled={loading || !wrapAmount || Number(wrapAmount) <= 0}
-                  className="w-full px-6 py-3 bg-indigo hover:bg-indigo/90 disabled:bg-gray-700 disabled:text-gray-500 disabled:cursor-not-allowed text-white font-semibold rounded-lg transition-all duration-200"
+                  className="w-full px-6 py-3 bg-blue-600 hover:bg-blue-500 disabled:bg-gray-700 disabled:text-gray-500 disabled:cursor-not-allowed text-white font-semibold rounded-lg transition-all duration-200 hover:shadow-lg hover:shadow-blue-500/20"
                 >
                   {loading ? 'Wrapping...' : 'Wrap to EAGLE'}
                 </button>
@@ -278,7 +278,7 @@ export default function WrapUnwrap({ provider, account, onToast }: Props) {
                 <button
                   onClick={handleUnwrap}
                   disabled={loading || !unwrapAmount || Number(unwrapAmount) <= 0}
-                  className="w-full px-6 py-3 bg-purple hover:bg-purple/90 disabled:bg-gray-700 disabled:text-gray-500 disabled:cursor-not-allowed text-white font-semibold rounded-lg transition-all duration-200"
+                  className="w-full px-6 py-3 bg-blue-600 hover:bg-blue-500 disabled:bg-gray-700 disabled:text-gray-500 disabled:cursor-not-allowed text-white font-semibold rounded-lg transition-all duration-200 hover:shadow-lg hover:shadow-blue-500/20"
                 >
                   {loading ? 'Unwrapping...' : 'Unwrap to vEAGLE'}
                 </button>

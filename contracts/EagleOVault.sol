@@ -876,7 +876,7 @@ contract EagleOVault is ERC4626, Ownable, ReentrancyGuard {
     {
         usdValue = calculateUSDValue(wlfiAmount, usd1Amount);
         shares = totalSupply() == 0 ? 
-                 usdValue * 10000 : 
+                 usdValue * 80000 : 
                  (usdValue * totalSupply()) / totalAssets();
     }
 }
