@@ -261,13 +261,21 @@ export default function VaultActions({ provider, account, onConnect, onToast }: 
                 </span>
               </div>
               
-              <input
-                type="number"
-                value={usd1Amount}
-                onChange={(e) => setUsd1Amount(e.target.value)}
-                placeholder="0"
-                className="w-full bg-gray-900/50 border border-gray-700 rounded-lg px-4 py-3 text-white text-lg focus:outline-none focus:border-eagle-gold/50 focus:ring-1 focus:ring-eagle-gold/50 transition-all"
-              />
+              <div className="relative">
+                <input
+                  type="number"
+                  value={usd1Amount}
+                  onChange={(e) => setUsd1Amount(e.target.value)}
+                  placeholder="0"
+                  className="w-full bg-gray-900/50 border border-gray-700 rounded-lg px-4 py-3 text-white text-lg focus:outline-none focus:border-eagle-gold/50 focus:ring-1 focus:ring-eagle-gold/50 transition-all"
+                />
+                <button 
+                  onClick={() => setUsd1Amount(usd1Balance)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 px-3 py-1.5 bg-gray-800 hover:bg-gray-700 rounded text-sm text-gray-300 font-medium transition-colors"
+                >
+                  Max
+                </button>
+              </div>
               <p className="text-xs text-gray-500 mt-1">USD1 stablecoin amount</p>
             </div>
 
@@ -288,7 +296,6 @@ export default function VaultActions({ provider, account, onConnect, onToast }: 
                 </div>
                 <div className="flex justify-between text-xs mt-1">
                   <span className="text-gray-500">Based on live oracle prices</span>
-                  <span className="text-gray-500">80,000 shares per $1</span>
                 </div>
               </div>
             )}
