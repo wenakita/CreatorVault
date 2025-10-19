@@ -100,7 +100,7 @@ export const VANITY_CONFIG = {
   targetSuffix: 'EA91E',
   
   // CREATE2 factory for deterministic addresses
-  create2Factory: '0xAA28020DDA6b954D16208eccF873D79AC6533833',  // Correct CREATE2 factory
+  create2Factory: '0x4e59b44847b379578588920cA78FbF26c0B4956C',  // Arachnid's public factory (omnichain!)
   
   // Expected vanity addresses (will be generated)
   expectedAddresses: {

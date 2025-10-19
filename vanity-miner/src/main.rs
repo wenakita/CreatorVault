@@ -32,8 +32,8 @@ fn compute_create2_address(
 fn main() {
     println!("=== Rust Vanity Address Miner (Ultra Fast!) ===\n");
     
-    // Use the factory from .env (CREATE2_FACTORY_ADDRESS)
-    let factory: [u8; 20] = hex::decode("AA28020DDA6b954D16208eccF873D79AC6533833")
+    // Arachnid's Deterministic Deployment Proxy (public, on 100+ chains!)
+    let factory: [u8; 20] = hex::decode("4e59b44847b379578588920cA78FbF26c0B4956C")
         .unwrap()
         .try_into()
         .unwrap();
