@@ -38,8 +38,8 @@ fn main() {
         .try_into()
         .unwrap();
     
-    // EagleShareOFT bytecode hash
-    let init_code_hash: [u8; 32] = hex::decode("485cabb7310f9eceaa728d3e0ca2149c40cd40421cabc8ce913c986fe644e654")
+    // EagleOVault bytecode hash (OPTIMIZED with simplified TWAP)
+    let init_code_hash: [u8; 32] = hex::decode("6214db0c6c3b3cb4816911dca3f3aabe56e153a9965d7b774b6cd6ebe6459ad1")
         .unwrap()
         .try_into()
         .unwrap();
