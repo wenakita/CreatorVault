@@ -38,8 +38,8 @@ fn main() {
         .try_into()
         .unwrap();
     
-    // Latest vault bytecode hash from current compilation
-    let init_code_hash: [u8; 32] = hex::decode("7eef73c0fb8d9c002cf1ec3630884beb7744f4794be2278d46d463432571faa1")
+    // CharmStrategyUSD1 bytecode hash
+    let init_code_hash: [u8; 32] = hex::decode("8101727fe44a3d58351388dd8574ac9e1119786435dc4bb54b1e078a86cab0fc")
         .unwrap()
         .try_into()
         .unwrap();

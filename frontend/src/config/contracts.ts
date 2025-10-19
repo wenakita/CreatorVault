@@ -1,9 +1,9 @@
 // Deployed contract addresses on Ethereum (PRODUCTION - October 18, 2025)
 export const CONTRACTS = {
-  VAULT: '0x47b625c800609d4f283c9978a672e2c0510ea91e',       // EagleOVault VANITY (0x47...ea91e) - Omnichain!
+  VAULT: '0x47b625c800609d4f283c9978a672e2c0510ea91e',       // EagleOVault VANITY (0x47...ea91e)
   OFT: '0x477d42841dC5A7cCBc2f72f4448f5eF6B61eA91E',         // EagleShareOFT
-  WRAPPER: '0x47d5768f68fb10e1d068673fde07b8a0cabea91e',     // EagleVaultWrapper
-  STRATEGY: '0x7DE0041De797c9b95E45DF27492f6021aCF691A0',    // CharmStrategyUSD1 (Simplified!)
+  WRAPPER: '0x47d5768f68fb10e1d068673fde07b8a0cabea91e',     // EagleVaultWrapper (old vault)
+  STRATEGY: '0x47eb9d83ad8474be4fc72fa75138a2df4a0ea91e',    // CharmStrategyUSD1 VANITY (0x47...ea91e)
   CHARM_VAULT: '0x22828Dbf15f5FBa2394Ba7Cf8fA9A96BdB444B71', // Charm USD1/WLFI Vault
   
   // Token addresses (REAL tokens!)
