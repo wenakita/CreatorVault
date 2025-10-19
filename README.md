@@ -87,7 +87,7 @@ The deployment system supports vanity addresses with the pattern `0x47...EA91E`:
 export const VANITY_CONFIG = {
   targetPrefix: '47',
   targetSuffix: 'EA91E',
-  create2Factory: '0x695d6B3628B4701E7eAfC0bc511CbAF23f6003eE'
+  create2Factory: ''
 }
 ```
 

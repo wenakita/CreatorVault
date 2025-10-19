@@ -100,7 +100,7 @@ export const VANITY_CONFIG = {
   targetSuffix: 'EA91E',
   
   // CREATE2 factory for deterministic addresses
-  create2Factory: '0x695d6B3628B4701E7eAfC0bc511CbAF23f6003eE',
+  create2Factory: '0xAA28020DDA6b954D16208eccF873D79AC6533833',  // Correct CREATE2 factory
   
   // Expected vanity addresses (will be generated)
   expectedAddresses: {

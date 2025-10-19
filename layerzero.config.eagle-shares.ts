@@ -13,7 +13,7 @@ const config = {
     {
       eid: EndpointId.SONIC_V2_MAINNET,
       contractName: 'EagleShareOFTSimple',
-      address: '0x695d6B3628B4701E7eAfC0bc511CbAF23f6003eE',
+      address: '0xAA28020DDA6b954D16208eccF873D79AC6533833',  // Correct CREATE2 factory
     },
   ],
   connections: [
