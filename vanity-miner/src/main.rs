@@ -38,8 +38,8 @@ fn main() {
         .try_into()
         .unwrap();
     
-    // CharmStrategyUSD1 bytecode hash
-    let init_code_hash: [u8; 32] = hex::decode("8101727fe44a3d58351388dd8574ac9e1119786435dc4bb54b1e078a86cab0fc")
+    // EagleVaultWrapper bytecode hash
+    let init_code_hash: [u8; 32] = hex::decode("636f1a2996f4afbbcdadd097a0e61ae05968fe76f6d1044e32e451a2e46303aa")
         .unwrap()
         .try_into()
         .unwrap();
