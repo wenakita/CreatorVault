@@ -84,10 +84,10 @@ export default function StrategyBreakdown({ provider }: Props) {
                 alt="WETH"
                 className="h-5 w-5"
               />
-              <span className="text-sm font-medium text-gray-200">WETH</span>
+              <span className="text-sm font-medium text-gray-200">USD1</span>
               <span className="mx-2 text-gray-600">|</span>
               <span className="px-2 py-0.5 bg-blue-500/30 text-blue-300 rounded text-xs font-semibold">
-                1%
+                1% Fee Tier
               </span>
             </div>
           </div>
@@ -231,7 +231,7 @@ export default function StrategyBreakdown({ provider }: Props) {
                 1%
               </span>
             </div>
-            <p className="text-sm text-gray-400">WETH / WLFI Uniswap V3 Pool</p>
+            <p className="text-sm text-gray-400">Uniswap V3 WLFI / USD1 LP - 1% Fee Tier</p>
           </div>
 
           {/* Management Info */}
