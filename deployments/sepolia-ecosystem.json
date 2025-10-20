@@ -1,0 +1,39 @@
+{
+  "network": "sepolia",
+  "chainId": 11155111,
+  "timestamp": "2025-10-20T22:30:00Z",
+  "deployer": "0x7310Dd6EF89b7f829839F140C6840bc929ba2031",
+  "contracts": {
+    "wlfi": "0xF9A2bAC758176a0f35143cBE104EFb3E83D32a47",
+    "usd1": "0xD0EabF364CCbB5A0c1B97C3C148952C037C86e97",
+    "usd1PriceFeed": "0x75D2ee6cBdA57717f60808BB9443929241ef97F0",
+    "pool": "0x79758f7FeffdE46854dB6e4ba5C5F02d5B7DD28B",
+    "registry": "0xEeB3e7d832FCd602123E05FA27697B27948280Ae",
+    "oft": "0x775A6804aCbe265C0e4e017f7eFa797b1c38a750",
+    "vault": "0x0794BdB848Fa3108E63BedcEc00902f538730cC8",
+    "wrapper": "0xc8b5f3C62199e275522EC3a95e50fCc5697a4424"
+  },
+  "configuration": {
+    "layerZeroEndpoint": "0x6EDCE65403992e310A62460808c4b910D972f10f",
+    "layerZeroEid": 40161,
+    "uniswapRouter": "0x3bFA4769FB09eefC5a80d6E87c3B9C650f7Ae48E",
+    "feesEnabled": false,
+    "vaultBridgeSet": true,
+    "wlfiBalance": "100000",
+    "usd1Balance": "100000"
+  },
+  "verified": {
+    "oftBridgeConnected": true,
+    "vaultConnected": true,
+    "wrapperConnected": true
+  },
+  "etherscan": {
+    "wlfi": "https://sepolia.etherscan.io/address/0xF9A2bAC758176a0f35143cBE104EFb3E83D32a47",
+    "usd1": "https://sepolia.etherscan.io/address/0xD0EabF364CCbB5A0c1B97C3C148952C037C86e97",
+    "registry": "https://sepolia.etherscan.io/address/0xEeB3e7d832FCd602123E05FA27697B27948280Ae",
+    "oft": "https://sepolia.etherscan.io/address/0x775A6804aCbe265C0e4e017f7eFa797b1c38a750",
+    "vault": "https://sepolia.etherscan.io/address/0x0794BdB848Fa3108E63BedcEc00902f538730cC8",
+    "wrapper": "https://sepolia.etherscan.io/address/0xc8b5f3C62199e275522EC3a95e50fCc5697a4424"
+  }
+}
+
