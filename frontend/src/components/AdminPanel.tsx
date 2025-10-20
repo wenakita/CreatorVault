@@ -45,7 +45,7 @@ export default function AdminPanel({ onClose, provider }: AdminPanelProps) {
   const [result, setResult] = useState<string>('');
 
   const VAULT_ADDRESS = import.meta.env.VITE_VAULT_ADDRESS || '0x32a2544De7a644833fE7659dF95e5bC16E698d99';
-  const STRATEGY_ADDRESS = import.meta.env.VITE_STRATEGY_ADDRESS || '0x8d32D6aEd976dC80880f3eF708ecB2169FEe26a8';
+  const STRATEGY_ADDRESS = import.meta.env.VITE_STRATEGY_ADDRESS || '0xd286Fdb2D3De4aBf44649649D79D5965bD266df4';
 
   const deployToCharm = async () => {
     if (!provider) return;
