@@ -7,6 +7,8 @@ import StrategyBreakdown from './components/StrategyBreakdown';
 import VaultActions from './components/VaultActions';
 import WrapUnwrap from './components/WrapUnwrap';
 import Toast from './components/Toast';
+import AdminPanel from './components/AdminPanel';
+import { useSecretCode } from './hooks/useSecretCode';
 
 function App() {
   const [account, setAccount] = useState<string>('');
@@ -15,6 +17,9 @@ function App() {
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'info'; txHash?: string } | null>(null);
   const [wrongNetwork, setWrongNetwork] = useState(false);
   const [currentChainId, setCurrentChainId] = useState<number | null>(null);
+  
+  // Secret admin panel
+  const { isUnlocked, lock } = useSecretCode();
 
   // Check network and connection on load
   useEffect(() => {
@@ -302,6 +307,14 @@ function App() {
             type={toast.type}
             txHash={toast.txHash}
             onClose={() => setToast(null)}
+          />
+        )}
+
+        {/* Secret Admin Panel (↑ ↑ ↓ ↓ A to unlock) */}
+        {isUnlocked && (
+          <AdminPanel 
+            onClose={lock}
+            provider={provider}
           />
         )}
     </div>

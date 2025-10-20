@@ -1,0 +1,188 @@
+import { useState } from 'react';
+import { BrowserProvider } from 'ethers';
+import { ethers } from 'ethers';
+
+interface AdminPanelProps {
+  onClose: () => void;
+  provider: BrowserProvider | null;
+}
+
+export default function AdminPanel({ onClose, provider }: AdminPanelProps) {
+  const [loading, setLoading] = useState(false);
+  const [result, setResult] = useState<string>('');
+
+  const VAULT_ADDRESS = import.meta.env.VITE_VAULT_ADDRESS || '0x32a2544De7a644833fE7659dF95e5bC16E698d99';
+  const STRATEGY_ADDRESS = import.meta.env.VITE_STRATEGY_ADDRESS || '0x8d32D6aEd976dC80880f3eF708ecB2169FEe26a8';
+
+  const deployToCharm = async () => {
+    if (!provider) return;
+    
+    setLoading(true);
+    setResult('');
+    
+    try {
+      const signer = await provider.getSigner();
+      const vault = new ethers.Contract(
+        VAULT_ADDRESS,
+        ['function forceDeployToStrategies() external'],
+        signer
+      );
+
+      const tx = await vault.forceDeployToStrategies({
+        gasLimit: 1000000
+      });
+
+      setResult(`Transaction sent: ${tx.hash}`);
+      
+      await tx.wait();
+      setResult(`✅ Deployed to Charm! TX: ${tx.hash}`);
+    } catch (error: any) {
+      setResult(`❌ Error: ${error.message}`);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const lowerThreshold = async () => {
+    if (!provider) return;
+    
+    setLoading(true);
+    setResult('');
+    
+    try {
+      const signer = await provider.getSigner();
+      const vault = new ethers.Contract(
+        VAULT_ADDRESS,
+        ['function setDeploymentParams(uint256 threshold, uint256 interval) external'],
+        signer
+      );
+
+      const tx = await vault.setDeploymentParams(
+        ethers.parseEther('10'),  // $10 threshold
+        300  // 5 minutes
+      );
+
+      setResult(`Transaction sent: ${tx.hash}`);
+      await tx.wait();
+      setResult(`✅ Threshold set to $10! TX: ${tx.hash}`);
+    } catch (error: any) {
+      setResult(`❌ Error: ${error.message}`);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-[99999] flex items-center justify-center p-4 bg-black/95 backdrop-blur-lg animate-in fade-in duration-300">
+      <div className="bg-gradient-to-br from-gray-900 via-black to-gray-900 rounded-2xl border-2 border-eagle-gold/30 p-8 max-w-2xl w-full shadow-2xl shadow-eagle-gold/20 animate-in slide-in-from-bottom-4 duration-300">
+        {/* Header */}
+        <div className="flex items-center justify-between mb-8">
+          <div className="flex items-center gap-3">
+            <div className="w-12 h-12 bg-gradient-to-br from-eagle-gold to-yellow-600 rounded-xl flex items-center justify-center">
+              <svg className="w-7 h-7 text-black" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+              </svg>
+            </div>
+            <div>
+              <h2 className="text-2xl font-bold bg-gradient-to-r from-eagle-gold via-yellow-400 to-eagle-gold bg-clip-text text-transparent">
+                Admin Panel
+              </h2>
+              <p className="text-xs text-gray-500">🦅 Eagle Eyes Only</p>
+            </div>
+          </div>
+          <button 
+            onClick={onClose}
+            className="w-10 h-10 flex items-center justify-center rounded-full bg-gray-800/50 hover:bg-gray-700 text-gray-400 hover:text-white transition-all duration-200"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+
+        {/* Contract Info */}
+        <div className="mb-6 p-4 bg-black/40 rounded-xl border border-gray-800/50">
+          <p className="text-xs text-gray-500 mb-2">Contract Addresses</p>
+          <div className="space-y-1 font-mono text-xs">
+            <div className="flex justify-between">
+              <span className="text-gray-400">Vault:</span>
+              <span className="text-white">{VAULT_ADDRESS.slice(0, 10)}...{VAULT_ADDRESS.slice(-8)}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-gray-400">Strategy:</span>
+              <span className="text-white">{STRATEGY_ADDRESS.slice(0, 10)}...{STRATEGY_ADDRESS.slice(-8)}</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Admin Actions */}
+        <div className="space-y-4 mb-6">
+          <h3 className="text-sm font-semibold text-gray-400 uppercase tracking-wider">Admin Actions</h3>
+          
+          {/* Deploy to Charm */}
+          <button
+            onClick={deployToCharm}
+            disabled={loading || !provider}
+            className="w-full group relative overflow-hidden px-6 py-4 bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-500 hover:to-blue-400 disabled:from-gray-700 disabled:to-gray-700 text-white font-semibold rounded-xl transition-all duration-200 shadow-lg shadow-blue-500/20 hover:shadow-xl hover:shadow-blue-500/30 disabled:shadow-none"
+          >
+            <div className="relative flex items-center justify-center gap-2">
+              {loading ? (
+                <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+              ) : (
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                </svg>
+              )}
+              <span>Deploy to Charm Finance</span>
+            </div>
+          </button>
+
+          {/* Lower Threshold */}
+          <button
+            onClick={lowerThreshold}
+            disabled={loading || !provider}
+            className="w-full group relative overflow-hidden px-6 py-4 bg-gradient-to-r from-purple-600 to-purple-500 hover:from-purple-500 hover:to-purple-400 disabled:from-gray-700 disabled:to-gray-700 text-white font-semibold rounded-xl transition-all duration-200 shadow-lg shadow-purple-500/20 hover:shadow-xl hover:shadow-purple-500/30 disabled:shadow-none"
+          >
+            <div className="relative flex items-center justify-center gap-2">
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" />
+              </svg>
+              <span>Set Threshold to $10</span>
+            </div>
+          </button>
+        </div>
+
+        {/* Result Display */}
+        {result && (
+          <div className={`p-4 rounded-xl border ${
+            result.includes('✅') 
+              ? 'bg-green-500/10 border-green-500/30 text-green-400' 
+              : result.includes('❌')
+              ? 'bg-red-500/10 border-red-500/30 text-red-400'
+              : 'bg-blue-500/10 border-blue-500/30 text-blue-400'
+          }`}>
+            <p className="text-sm font-mono break-all">{result}</p>
+            {result.includes('0x') && (
+              <a 
+                href={`https://etherscan.io/tx/${result.match(/0x[a-fA-F0-9]{64}/)?.[0]}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-xs underline mt-2 inline-block hover:text-white transition-colors"
+              >
+                View on Etherscan →
+              </a>
+            )}
+          </div>
+        )}
+
+        {/* Secret Code Hint */}
+        <div className="mt-6 pt-6 border-t border-gray-800/50">
+          <p className="text-center text-xs text-gray-600">
+            Secret code: <span className="font-mono text-gray-500">↑ ↑ ↓ ↓ A</span>
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
