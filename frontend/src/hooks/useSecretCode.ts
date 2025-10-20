@@ -1,26 +1,38 @@
 import { useEffect, useState } from 'react';
 
 /**
- * Hook to detect secret key combination
- * Combo: ↑ ↑ ↓ ↓ A (Arrow keys + A key)
+ * Hook to detect Konami code
+ * Combo: ↑ ↑ ↓ ↓ ← → ← → B A
  */
 export function useSecretCode() {
   const [isUnlocked, setIsUnlocked] = useState(false);
   const [sequence, setSequence] = useState<string[]>([]);
 
   useEffect(() => {
-    const secretCode = ['ArrowUp', 'ArrowUp', 'ArrowDown', 'ArrowDown', 'KeyA'];
+    // Classic Konami code
+    const konamiCode = [
+      'ArrowUp', 
+      'ArrowUp', 
+      'ArrowDown', 
+      'ArrowDown', 
+      'ArrowLeft', 
+      'ArrowRight', 
+      'ArrowLeft', 
+      'ArrowRight', 
+      'KeyB', 
+      'KeyA'
+    ];
     
     const handleKeyPress = (e: KeyboardEvent) => {
-      // Update sequence
-      const newSequence = [...sequence, e.code].slice(-5); // Keep last 5 keys
+      // Update sequence (keep last 10 keys to match Konami code length)
+      const newSequence = [...sequence, e.code].slice(-10);
       setSequence(newSequence);
 
       // Check if it matches
-      if (JSON.stringify(newSequence) === JSON.stringify(secretCode)) {
+      if (JSON.stringify(newSequence) === JSON.stringify(konamiCode)) {
         setIsUnlocked(true);
         // Play success sound or show notification
-        console.log('🦅 Admin panel unlocked!');
+        console.log('🦅 Konami code unlocked! Admin panel activated!');
       }
     };
 
