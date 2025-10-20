@@ -40,19 +40,20 @@ import { IStrategy } from "../interfaces/IStrategy.sol";
  */
 
 interface ICharmVault {
+    // Charm AlphaProVault deposit function (from docs)
     function deposit(
         uint256 amount0Desired,  // USD1
         uint256 amount1Desired,  // WLFI
         uint256 amount0Min,
         uint256 amount1Min,
-        address recipient
-    ) external returns (uint256 shares, uint256 amount0Used, uint256 amount1Used);
+        address to
+    ) external returns (uint256 shares, uint256 amount0, uint256 amount1);
     
     function withdraw(
         uint256 shares,
         uint256 amount0Min,
         uint256 amount1Min,
-        address recipient
+        address to
     ) external returns (uint256 amount0, uint256 amount1);
     
     function getTotalAmounts() external view returns (uint256 total0, uint256 total1);
@@ -285,30 +286,32 @@ contract CharmStrategyUSD1 is IStrategy, ReentrancyGuard, Ownable {
         
         // Note: Approvals are handled by initializeApprovals() - max approvals set once
         
-        // Deposit to Charm - it will use optimal ratio based on current pool state
+        // Deposit to Charm - it returns shares and actual amounts used
         uint256 amount0Used;
         uint256 amount1Used;
         (shares, amount0Used, amount1Used) = charmVault.deposit(
             finalUsd1,
             finalWlfi,
-            0,  // Let Charm decide optimal amounts (slippage handled by Charm)
-            0,
+            0,  // amount0Min
+            0,  // amount1Min
             address(this)
         );
         
         // Return any unused tokens to vault
-        uint256 unusedUsd1 = finalUsd1 - amount0Used;
-        uint256 unusedWlfi = finalWlfi - amount1Used;
-        
-        if (unusedUsd1 > 0) {
-            USD1.safeTransfer(EAGLE_VAULT, unusedUsd1);
-        }
-        if (unusedWlfi > 0) {
-            WLFI.safeTransfer(EAGLE_VAULT, unusedWlfi);
-        }
-        
-        if (unusedUsd1 > 0 || unusedWlfi > 0) {
-            emit UnusedTokensReturned(unusedUsd1, unusedWlfi);
+        {
+            uint256 leftoverUsd1 = USD1.balanceOf(address(this));
+            uint256 leftoverWlfi = WLFI.balanceOf(address(this));
+            
+            if (leftoverUsd1 > 0) {
+                USD1.safeTransfer(EAGLE_VAULT, leftoverUsd1);
+            }
+            if (leftoverWlfi > 0) {
+                WLFI.safeTransfer(EAGLE_VAULT, leftoverWlfi);
+            }
+            
+            if (leftoverUsd1 > 0 || leftoverWlfi > 0) {
+                emit UnusedTokensReturned(leftoverUsd1, leftoverWlfi);
+            }
         }
         
         emit StrategyDeposit(amount0Used, amount1Used, shares);
