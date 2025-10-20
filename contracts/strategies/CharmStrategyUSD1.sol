@@ -208,20 +208,34 @@ contract CharmStrategyUSD1 is IStrategy, ReentrancyGuard, Ownable {
         nonReentrant
         returns (uint256 shares) 
     {
-        if (wlfiAmount == 0 && usd1Amount == 0) return 0;
         if (address(charmVault) == address(0)) revert NotInitialized();
         
-        // Transfer tokens from vault
+        // Check current balance BEFORE attempting transfer
+        uint256 balanceBefore = WLFI.balanceOf(address(this));
+        
+        // Try to pull tokens from vault (backward compatible)
+        // If vault already transferred, this will just be a no-op or small amount
         if (wlfiAmount > 0) {
-            WLFI.safeTransferFrom(EAGLE_VAULT, address(this), wlfiAmount);
+            try WLFI.transferFrom(EAGLE_VAULT, address(this), wlfiAmount) {
+                // Transfer succeeded
+            } catch {
+                // Transfer failed - vault might have already sent tokens
+            }
         }
         if (usd1Amount > 0) {
-            USD1.safeTransferFrom(EAGLE_VAULT, address(this), usd1Amount);
+            try USD1.transferFrom(EAGLE_VAULT, address(this), usd1Amount) {
+                // Transfer succeeded
+            } catch {
+                // Transfer failed - vault might have already sent tokens
+            }
         }
         
-        // IMPORTANT: Check TOTAL tokens available (new + any idle from previous)
+        // Check TOTAL tokens available (handles both PUSH and PULL patterns)
         uint256 totalWlfi = WLFI.balanceOf(address(this));
         uint256 totalUsd1 = USD1.balanceOf(address(this));
+        
+        // Return early if we got nothing
+        if (totalWlfi == 0 && totalUsd1 == 0) return 0;
         
         // STEP 1: Get Charm's EXACT ratio to match
         (uint256 charmUsd1, uint256 charmWlfi) = charmVault.getTotalAmounts();

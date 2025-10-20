@@ -549,13 +549,20 @@ contract EagleOVault is ERC4626, Ownable, ReentrancyGuard {
                 if (strategyUsd1 > usd1Balance) strategyUsd1 = usd1Balance;
                 
                 if (strategyWlfi > 0 || strategyUsd1 > 0) {
-                    // Call strategy.deposit() - it will pull tokens via transferFrom
-                    // (Approvals must be pre-set using approveTokensToStrategy)
-                    IStrategy(strategy).deposit(strategyWlfi, strategyUsd1);
+                    // PUSH tokens to strategy first (cleaner than transferFrom)
+                    if (strategyWlfi > 0) {
+                        WLFI_TOKEN.safeTransfer(strategy, strategyWlfi);
+                    }
+                    if (strategyUsd1 > 0) {
+                        USD1_TOKEN.safeTransfer(strategy, strategyUsd1);
+                    }
                     
-                    // Update tracking AFTER successful deposit
+                    // Update tracking AFTER successful transfer
                     wlfiBalance -= strategyWlfi;
                     usd1Balance -= strategyUsd1;
+                    
+                    // Call strategy.deposit() - it uses tokens already in its balance
+                    IStrategy(strategy).deposit(strategyWlfi, strategyUsd1);
                     
                     emit StrategyDeployed(strategy, strategyWlfi, strategyUsd1);
                 }
