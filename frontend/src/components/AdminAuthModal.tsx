@@ -57,95 +57,73 @@ export default function AdminAuthModal({ onClose, onAuthenticated, provider }: A
   }, [isAuthenticated, onAuthenticated]);
 
   return createPortal(
-    <div className="fixed inset-0 z-[99999] flex items-center justify-center p-4 bg-black/95 backdrop-blur-lg animate-in fade-in duration-300">
-      <div className="bg-gradient-to-br from-gray-900 via-black to-gray-900 rounded-2xl border-2 border-eagle-gold/30 p-10 max-w-lg w-full shadow-2xl shadow-eagle-gold/20 animate-in slide-in-from-bottom-4 duration-300">
-        {/* Close Button */}
+    <div className="fixed inset-0 z-[99999] bg-[#0a0a0a]/95 backdrop-blur-sm flex items-center justify-center p-6">
+      <div className="bg-[#0a0a0a]/60 backdrop-blur-lg border border-eagle-gold/30 rounded-3xl p-10 max-w-lg w-full relative">
+        
+        {/* Close button */}
         <button
           onClick={onClose}
           className="absolute top-6 right-6 text-gray-400 hover:text-white transition-colors text-2xl leading-none"
+          title="Close"
         >
           ×
         </button>
-
-        {/* Header */}
+        
         <div className="text-center mb-8">
-          <div className="w-20 h-20 mx-auto mb-4 bg-gradient-to-br from-eagle-gold to-yellow-600 rounded-2xl flex items-center justify-center">
-            <svg className="w-12 h-12 text-black" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-            </svg>
-          </div>
-          <h2 className="text-3xl font-bold bg-gradient-to-r from-eagle-gold via-yellow-400 to-eagle-gold bg-clip-text text-transparent mb-2">
-            Admin Access
-          </h2>
-          <p className="text-gray-400">Choose your authentication method</p>
+          <h2 className="text-3xl font-bold text-white mb-3">🔐 Admin Access</h2>
+          <p className="text-gray-400">Authentication required to continue</p>
         </div>
 
-        {/* Option 1: Google OAuth */}
+        {/* Google Auth Option */}
         <div className="mb-6">
-          <p className="text-sm text-gray-500 text-center mb-4">
-            <span className="inline-flex items-center justify-center w-6 h-6 bg-blue-500/20 text-blue-400 rounded-full text-xs font-bold mr-2">1</span>
-            Google Authentication
-          </p>
+          <p className="text-sm text-gray-500 text-center mb-4">Option 1: Google Authentication</p>
           <div className="flex justify-center">
             <GoogleAuthLogin />
           </div>
-          <p className="text-xs text-gray-500 text-center mt-2">
-            Only <span className="text-eagle-gold">@47eagle.com</span> accounts
-          </p>
+          <p className="text-xs text-gray-500 text-center mt-2">Only @47eagle.com accounts</p>
         </div>
 
         {/* Divider */}
-        <div className="relative my-8">
+        <div className="relative my-6">
           <div className="absolute inset-0 flex items-center">
-            <div className="w-full border-t border-gray-800"></div>
+            <div className="w-full border-t border-white/10"></div>
           </div>
           <div className="relative flex justify-center text-xs uppercase">
-            <span className="bg-black px-3 text-gray-500">OR</span>
+            <span className="bg-[#0a0a0a] px-2 text-gray-500">OR</span>
           </div>
         </div>
 
-        {/* Option 2: Wallet Authorization */}
+        {/* Wallet Auth Status */}
         <div className="mb-6">
-          <p className="text-sm text-gray-500 text-center mb-4">
-            <span className="inline-flex items-center justify-center w-6 h-6 bg-purple-500/20 text-purple-400 rounded-full text-xs font-bold mr-2">2</span>
-            Authorized Wallet
-          </p>
+          <p className="text-sm text-gray-500 text-center mb-4">Option 2: Authorized Wallet</p>
           {currentAddress ? (
-            <div className={`p-5 rounded-xl border transition-all duration-300 ${
-              isWalletAuthorized 
-                ? 'bg-green-500/10 border-green-500/30' 
-                : 'bg-red-500/10 border-red-500/30'
-            }`}>
-              <div className="flex items-center justify-between mb-3">
+            <div className="bg-gray-900/50 p-4 rounded-xl border border-gray-700">
+              <div className="flex items-center justify-between">
                 <div>
                   <p className="text-xs text-gray-500 mb-1">Connected Wallet</p>
-                  <p className="text-sm font-mono text-white">{currentAddress.slice(0, 10)}...{currentAddress.slice(-8)}</p>
+                  <p className="text-sm font-mono text-white">{currentAddress.slice(0, 6)}...{currentAddress.slice(-4)}</p>
                 </div>
-                <div className={`w-4 h-4 rounded-full ${
-                  isWalletAuthorized ? 'bg-green-400 animate-pulse' : 'bg-red-400'
-                }`}></div>
+                <div className={`w-3 h-3 rounded-full ${isWalletAuthorized ? 'bg-green-400' : 'bg-red-400'}`}></div>
               </div>
-              <p className={`text-sm font-semibold ${isWalletAuthorized ? 'text-green-400' : 'text-red-400'}`}>
-                {isWalletAuthorized ? '✓ Authorized - Opening admin panel...' : '✗ Not authorized for admin access'}
+              <p className={`text-xs mt-2 ${isWalletAuthorized ? 'text-green-400' : 'text-red-400'}`}>
+                {isWalletAuthorized ? '✓ Authorized' : '✗ Not authorized'}
               </p>
             </div>
           ) : (
-            <div className="bg-gray-900/50 p-5 rounded-xl border border-gray-700 text-center">
-              <svg className="w-8 h-8 text-gray-600 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
-              </svg>
+            <div className="bg-gray-900/50 p-4 rounded-xl border border-gray-700 text-center">
               <p className="text-sm text-gray-400">No wallet connected</p>
-              <p className="text-xs text-gray-500 mt-1">Connect an authorized wallet</p>
+              <p className="text-xs text-gray-500 mt-1">Connect an authorized wallet to access</p>
             </div>
           )}
         </div>
 
-        {/* Secret Code Easter Egg */}
-        <div className="mt-8 pt-6 border-t border-gray-800/50">
-          <p className="text-center text-xs text-gray-600">
-            <span className="inline-block">🦅 Secret code unlocked:</span>
-            <span className="ml-2 font-mono text-eagle-gold/50">↑ ↑ ↓ ↓ A</span>
-          </p>
+        <div className="mt-8 pt-6 border-t border-white/10">
+          <button
+            onClick={onClose}
+            className="w-full px-6 py-3 bg-gray-800 hover:bg-gray-700 rounded-xl text-gray-400 hover:text-white transition-colors text-sm"
+          >
+            ← Back
+          </button>
         </div>
       </div>
     </div>,
