@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { BrowserProvider } from 'ethers';
 
 interface TransactionSimulatorProps {
@@ -83,7 +84,8 @@ export default function TransactionSimulator({
   // Gas cost in USD
   const gasCostUSD = Number(estimatedGas) * ethPrice;
 
-  return (
+  // Render in a portal to ensure it overlays everything
+  return createPortal(
     <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/90 backdrop-blur-md animate-in fade-in duration-200">
       <div className="bg-gradient-to-b from-gray-900 to-black rounded-2xl border border-eagle-gold/20 p-8 max-w-lg w-full shadow-2xl shadow-black/50 animate-in slide-in-from-bottom-4 duration-300">
         {/* Header */}
@@ -236,7 +238,8 @@ export default function TransactionSimulator({
           Your transaction will be sent to the blockchain. Always verify amounts before confirming.
         </p>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }
 
