@@ -359,11 +359,8 @@ contract EagleOVault is ERC4626, Ownable, ReentrancyGuard {
         // Mint shares
         _mint(receiver, shares);
         
-        // Deploy to strategies if threshold met
-        if (_shouldDeployToStrategies()) {
-            _deployToStrategies(wlfiBalance, usd1Balance);
-            lastDeployment = block.timestamp;
-        }
+        // Auto-deploy removed - use manual deployment for better control
+        // Owner calls forceDeployToStrategies() when ready
         
         emit DualDeposit(
             msg.sender,
@@ -405,10 +402,7 @@ contract EagleOVault is ERC4626, Ownable, ReentrancyGuard {
         
         _mint(receiver, shares);
         
-        if (_shouldDeployToStrategies()) {
-            _deployToStrategies(wlfiBalance, usd1Balance);
-            lastDeployment = block.timestamp;
-        }
+        // Auto-deploy removed - manual only
         
         emit Deposit(msg.sender, receiver, assets, shares);
     }
@@ -555,13 +549,13 @@ contract EagleOVault is ERC4626, Ownable, ReentrancyGuard {
                 if (strategyUsd1 > usd1Balance) strategyUsd1 = usd1Balance;
                 
                 if (strategyWlfi > 0 || strategyUsd1 > 0) {
+                    // Call strategy.deposit() - it will pull tokens via transferFrom
+                    // (Approvals must be pre-set using approveTokensToStrategy)
+                    IStrategy(strategy).deposit(strategyWlfi, strategyUsd1);
+                    
+                    // Update tracking AFTER successful deposit
                     wlfiBalance -= strategyWlfi;
                     usd1Balance -= strategyUsd1;
-                    
-                    // Skip approval - owner must pre-approve using approveTokensToStrategy()
-                    // This avoids SafeERC20 issues with contract-to-contract approvals
-                    
-                    IStrategy(strategy).deposit(strategyWlfi, strategyUsd1);
                     
                     emit StrategyDeployed(strategy, strategyWlfi, strategyUsd1);
                 }
