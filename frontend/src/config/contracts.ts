@@ -1,9 +1,9 @@
-// Deployed contract addresses on Ethereum (PRODUCTION - October 18, 2025)
+// Deployed contract addresses on Ethereum (PRODUCTION - January 2025)
 export const CONTRACTS = {
-  VAULT: '0x7D3F0f409CbF111005F8FcDDd2AEe34c7Ec33c11',       // EagleOVault (FIXED! Correct order) ✅
+  VAULT: '0x244b73dC14C01c350C04EAd7e1D8C3FeFeA6AF58',       // EagleOVault (Latest deployment) ✅
   OFT: '0x477d42841dC5A7cCBc2f72f4448f5eF6B61eA91E',         // EagleShareOFT ✅
   WRAPPER: '0x470520e3f88922c4e912cfc0379e05da000ea91e',     // EagleVaultWrapper (deploy pending)
-  STRATEGY: '0x751578461F84289A2b12FCA1950Dc514c904745f',    // CharmStrategyUSD1 (Vault-matched!) ✅
+  STRATEGY: '0x2bF32B2F5F077c7126f8F0289d05352F321f1D67',    // CharmStrategyUSD1 (Matched to vault) ✅
   CHARM_VAULT: '0x22828Dbf15f5FBa2394Ba7Cf8fA9A96BdB444B71', // Charm USD1/WLFI Vault
   
   // Token addresses (REAL tokens!)
@@ -13,12 +13,3 @@ export const CONTRACTS = {
 } as const;
 
 export const CHAIN_ID = 1; // Ethereum mainnet
-
-// Old deployment (first version)
-export const CONTRACTS_V1 = {
-  VAULT: '0xf7eDdA9959249D96773BB2858bE1011C7E424855',
-  OFT: '0x05D8Fe8B549bC8F45615FDAc1BF77eE7F4033569',
-  WRAPPER: '0xA3d9e8f0de77241267A9d162c535C2A69385792A',
-  STRATEGY: '0xd548CbC1D0A8723838993a763f1ca20533ed0c12',
-} as const;
-
