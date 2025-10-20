@@ -8,7 +8,9 @@ import VaultActions from './components/VaultActions';
 import WrapUnwrap from './components/WrapUnwrap';
 import Toast from './components/Toast';
 import AdminPanel from './components/AdminPanel';
+import AdminAuthModal from './components/AdminAuthModal';
 import { useSecretCode } from './hooks/useSecretCode';
+import { AuthProvider } from './lib/GoogleAuth';
 
 function App() {
   const [account, setAccount] = useState<string>('');
@@ -18,8 +20,18 @@ function App() {
   const [wrongNetwork, setWrongNetwork] = useState(false);
   const [currentChainId, setCurrentChainId] = useState<number | null>(null);
   
-  // Secret admin panel
+  // Secret admin access
   const { isUnlocked, lock } = useSecretCode();
+  const [showAuthModal, setShowAuthModal] = useState(false);
+  const [showAdminPanel, setShowAdminPanel] = useState(false);
+
+  // When secret code is entered, show auth modal
+  useEffect(() => {
+    if (isUnlocked) {
+      setShowAuthModal(true);
+      lock(); // Reset the code
+    }
+  }, [isUnlocked, lock]);
 
   // Check network and connection on load
   useEffect(() => {
@@ -107,6 +119,7 @@ function App() {
   };
 
   return (
+    <AuthProvider>
     <div className="min-h-screen bg-gradient-to-b from-[#0a0a0a] to-[#171717]">
       {/* BIG WARNING IF WRONG NETWORK */}
       {wrongNetwork && account && (
@@ -310,14 +323,27 @@ function App() {
           />
         )}
 
-        {/* Secret Admin Panel (↑ ↑ ↓ ↓ A to unlock) */}
-        {isUnlocked && (
+        {/* Secret Admin Auth Modal (↑ ↑ ↓ ↓ A to unlock) */}
+        {showAuthModal && (
+          <AdminAuthModal 
+            onClose={() => setShowAuthModal(false)}
+            onAuthenticated={() => {
+              setShowAuthModal(false);
+              setShowAdminPanel(true);
+            }}
+            provider={provider}
+          />
+        )}
+
+        {/* Admin Panel (shown after authentication) */}
+        {showAdminPanel && (
           <AdminPanel 
-            onClose={lock}
+            onClose={() => setShowAdminPanel(false)}
             provider={provider}
           />
         )}
     </div>
+    </AuthProvider>
   );
 }
 
