@@ -58,9 +58,10 @@ const config: HardhatUserConfig = {
     },
     // TESTNETS
     sepolia: {
-      url: process.env.RPC_URL_SEPOLIA || 'https://sepolia-rpc.publicnode.com',
+      url: process.env.RPC_URL_SEPOLIA || process.env.SEPOLIA_RPC_URL || 'https://ethereum-sepolia-rpc.publicnode.com',
       accounts,
       chainId: 11155111,
+      timeout: 60000,
     },
     'bsc-testnet': {
       url: process.env.RPC_URL_BSC_TESTNET || 'https://bsc-testnet-rpc.publicnode.com',

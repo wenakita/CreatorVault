@@ -24,6 +24,7 @@ async function main() {
   
   // Sepolia configuration
   const SEPOLIA_CHAIN_ID = 11155111;
+  const SEPOLIA_CHAIN_ID_UINT16 = 13991; // 11155111 % 65536 (uint16 truncation)
   const SEPOLIA_LZ_ENDPOINT = "0x6EDCE65403992e310A62460808c4b910D972f10f";
   const SEPOLIA_LZ_EID = 40161;
   const WETH_SEPOLIA = "0xfFf9976782d46CC05630D1f6eBAb18b2324d6B14";
@@ -49,7 +50,7 @@ async function main() {
   
   console.log("  → Registering Sepolia chain...");
   await (await registry.registerChain(
-    11155111,
+    SEPOLIA_CHAIN_ID_UINT16,
     "Sepolia",
     WETH_SEPOLIA,
     "WETH",
@@ -58,7 +59,7 @@ async function main() {
   
   console.log("  → Setting LayerZero endpoint...");
   await (await registry.setLayerZeroEndpoint(
-    11155111,
+    SEPOLIA_CHAIN_ID_UINT16,
     SEPOLIA_LZ_ENDPOINT
   )).wait();
   
@@ -71,11 +72,12 @@ async function main() {
   console.log("✅ Registry configured");
   
   // Verify
-  const endpoint = await registry.getLayerZeroEndpoint(11155111);
+  const endpoint = await registry.getLayerZeroEndpoint(SEPOLIA_CHAIN_ID_UINT16);
   const eid = await registry.getEidForChainId(SEPOLIA_CHAIN_ID);
   console.log("\n🔍 Verification:");
   console.log("  Endpoint:", endpoint);
   console.log("  EID:", eid.toString());
+  console.log("  Using uint16 chain ID:", SEPOLIA_CHAIN_ID_UINT16, "for registry (actual:", SEPOLIA_CHAIN_ID, ")");
   
   // ========================================
   // STEP 2: Deploy EagleShareOFT
