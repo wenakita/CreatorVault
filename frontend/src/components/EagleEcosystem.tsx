@@ -35,9 +35,6 @@ export default function EagleEcosystem({ provider, account, onToast, VaultCompon
 
   return (
     <div className="h-[calc(100vh-64px-80px)] overflow-hidden relative">
-      {/* Gradient Background - Yellow at top (LP), Black at bottom (Vault) */}
-      <div className="absolute inset-0 bg-gradient-to-b from-yellow-500/10 via-amber-600/5 to-[#0a0a0a] pointer-events-none"></div>
-      
       {/* Animated Container */}
       <motion.div
         className="absolute w-full"
@@ -52,6 +49,8 @@ export default function EagleEcosystem({ provider, account, onToast, VaultCompon
           duration: 0.8
         }}
       >
+        {/* Continuous Gradient Background - Spans all 3 floors */}
+        <div className="absolute inset-0 w-full h-[300vh] bg-gradient-to-b from-yellow-500/15 via-amber-600/8 via-[#0a0a0a] to-[#0a0a0a] pointer-events-none"></div>
         {/* Top Floor - EAGLE/ETH LP */}
         <div className="h-[calc(100vh-64px-80px)] overflow-hidden" id="lp-floor">
           <motion.div

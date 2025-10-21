@@ -8,7 +8,7 @@ interface Props {
 
 export default function EagleLP({ onNavigateDown }: Props) {
   return (
-    <div className="h-full bg-gradient-to-b from-[#0a0a0a] via-[#0d0d0d] to-[#0a0a0a] overflow-y-auto">
+    <div className="h-full bg-transparent overflow-y-auto">
       <div className="container mx-auto px-6 py-12 max-w-7xl">
         {/* Back Button */}
         <button 
