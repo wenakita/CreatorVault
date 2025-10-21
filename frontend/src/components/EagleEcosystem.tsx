@@ -85,11 +85,12 @@ export default function EagleEcosystem({ provider, account, onToast, VaultCompon
         {/* Basement - Vault */}
         <div className="h-[calc(100vh-64px-80px)]" id="vault-floor">
           <motion.div
+            key={currentFloor === 'vault' ? 'vault-active' : 'vault-inactive'}
             animate={{
               opacity: isTransitioning && currentFloor !== 'vault' ? 0.5 : 1,
               scale: isTransitioning && currentFloor !== 'vault' ? 0.98 : 1
             }}
-            className="h-full overflow-y-scroll"
+            className="h-full overflow-y-auto overflow-x-hidden"
             style={{ WebkitOverflowScrolling: 'touch' }}
           >
             <VaultComponent 
