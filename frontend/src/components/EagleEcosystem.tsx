@@ -89,7 +89,8 @@ export default function EagleEcosystem({ provider, account, onToast, VaultCompon
               opacity: isTransitioning && currentFloor !== 'vault' ? 0.5 : 1,
               scale: isTransitioning && currentFloor !== 'vault' ? 0.98 : 1
             }}
-            className="h-full overflow-y-auto"
+            className="h-full overflow-y-scroll"
+            style={{ WebkitOverflowScrolling: 'touch' }}
           >
             <VaultComponent 
               provider={provider}
