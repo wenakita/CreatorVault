@@ -1,11 +1,9 @@
 import { useState, useEffect } from 'react';
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { BrowserRouter, useNavigate, useLocation, Routes, Route } from 'react-router-dom';
 import { BrowserProvider } from 'ethers';
 import { motion, AnimatePresence } from 'framer-motion';
 import ModernHeader from './components/ModernHeader';
-import EagleHome from './pages/Home';
-import VaultPage from './pages/Vault';
-import LPPage from './pages/LP';
+import EagleEcosystemWithRoutes from './components/EagleEcosystemWithRoutes';
 
 interface Toast {
   id: number;
@@ -14,7 +12,7 @@ interface Toast {
   txHash?: string;
 }
 
-export default function App() {
+function AppContent() {
   const [account, setAccount] = useState<string>('');
   const [provider, setProvider] = useState<BrowserProvider | null>(null);
   const [toasts, setToasts] = useState<Toast[]>([]);
@@ -87,103 +85,109 @@ export default function App() {
   };
 
   return (
-    <BrowserRouter>
-      <div className="h-screen flex flex-col bg-gradient-to-b from-yellow-500/15 via-amber-600/8 to-[#0a0a0a]">
-        {/* Fixed Header */}
-        <div className="relative z-20">
-          <ModernHeader 
-            account={account}
-            onConnect={connectWallet}
-            provider={provider}
-          />
-        </div>
+    <div className="h-screen flex flex-col bg-gradient-to-b from-yellow-500/15 via-amber-600/8 to-[#0a0a0a]">
+      {/* Fixed Header */}
+      <div className="relative z-20">
+        <ModernHeader 
+          account={account}
+          onConnect={connectWallet}
+          provider={provider}
+        />
+      </div>
 
-        {/* Main Content - Routes */}
-        <div className="relative z-10 flex-1 overflow-hidden">
-          <Routes>
-            <Route path="/" element={<EagleHome provider={provider} />} />
-            <Route path="/vault" element={<VaultPage provider={provider} account={account} onToast={showToast} />} />
-            <Route path="/lp" element={<LPPage provider={provider} />} />
-          </Routes>
-        </div>
+      {/* Main Content - 3-Floor Navigation */}
+      <div className="relative z-10 flex-1 overflow-hidden">
+        <EagleEcosystemWithRoutes 
+          provider={provider}
+          account={account}
+          onToast={showToast}
+        />
+      </div>
 
-        {/* Fixed Footer */}
-        <footer className="relative z-20 border-t border-white/10 bg-[#0a0a0a]/80 backdrop-blur-xl">
-          <div className="container mx-auto px-6 py-5">
-            <div className="flex flex-col md:flex-row justify-between items-center gap-4">
-              <div className="flex items-center gap-3">
-                <img 
-                  src="https://tomato-abundant-urial-204.mypinata.cloud/ipfs/bafybeigzyatm2pgrkqbnskyvflnagtqli6rgh7wv7t2znaywkm2pixmkxy" 
-                  alt="Eagle" 
-                  className="w-7 h-7"
-                />
-                <span className="text-sm text-gray-400">
-                  © 2025 Eagle Vault. All rights reserved.
+      {/* Fixed Footer */}
+      <footer className="relative z-20 border-t border-white/10 bg-[#0a0a0a]/80 backdrop-blur-xl">
+        <div className="container mx-auto px-6 py-5">
+          <div className="flex flex-col md:flex-row justify-between items-center gap-4">
+            <div className="flex items-center gap-3">
+              <img 
+                src="https://tomato-abundant-urial-204.mypinata.cloud/ipfs/bafybeigzyatm2pgrkqbnskyvflnagtqli6rgh7wv7t2znaywkm2pixmkxy" 
+                alt="Eagle" 
+                className="w-7 h-7"
+              />
+              <span className="text-sm text-gray-400">
+                © 2025 Eagle Vault. All rights reserved.
                 </span>
             </div>
 
-              <div className="flex items-center gap-6">
-                <a 
-                  href="https://docs.47eagle.com" 
-                  target="_blank" 
-                  rel="noopener noreferrer"
-                  className="text-sm text-gray-400 hover:text-yellow-500 transition-colors"
-                >
-                  Docs
-                </a>
-                <a 
-                  href="https://x.com/teameagle47" 
-                  target="_blank" 
-                  rel="noopener noreferrer"
-                  className="text-sm text-gray-400 hover:text-yellow-500 transition-colors"
-                >
-                  Twitter
-                </a>
-                <a 
-                  href="https://t.me/Eagle_community_47" 
-                  target="_blank" 
-                  rel="noopener noreferrer"
-                  className="text-sm text-gray-400 hover:text-yellow-500 transition-colors"
-                >
-                  Telegram
-                </a>
-              </div>
-            </div>
-          </div>
-        </footer>
-
-        {/* Toast Notifications */}
-        <div className="fixed bottom-24 right-6 z-50 space-y-3">
-          <AnimatePresence>
-            {toasts.map(toast => (
-              <motion.div
-                key={toast.id}
-                initial={{ opacity: 0, x: 100 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: 100 }}
-                className={`
-                  px-6 py-4 rounded-xl shadow-2xl backdrop-blur-xl border
-                  ${toast.type === 'success' ? 'bg-emerald-500/20 border-emerald-500/50' : ''}
-                  ${toast.type === 'error' ? 'bg-red-500/20 border-red-500/50' : ''}
-                  ${toast.type === 'info' ? 'bg-blue-500/20 border-blue-500/50' : ''}
-                `}
-              >
-                <p className="text-sm font-medium text-white">{toast.message}</p>
-                {toast.txHash && (
-                  <a
-                    href={`https://etherscan.io/tx/${toast.txHash}`}
+            <div className="flex items-center gap-6">
+              <a 
+                href="https://docs.47eagle.com" 
                           target="_blank"
                           rel="noopener noreferrer"
-                    className="text-xs text-blue-400 hover:text-blue-300 mt-1 inline-block"
-                  >
-                    View on Etherscan →
-                  </a>
-                )}
-              </motion.div>
-            ))}
-          </AnimatePresence>
-        </div>
+                className="text-sm text-gray-400 hover:text-yellow-500 transition-colors"
+                        >
+                Docs
+                        </a>
+                        <a 
+                href="https://x.com/teameagle47" 
+                          target="_blank"
+                          rel="noopener noreferrer"
+                className="text-sm text-gray-400 hover:text-yellow-500 transition-colors"
+              >
+                Twitter
+              </a>
+              <a 
+                href="https://t.me/Eagle_community_47" 
+                              target="_blank"
+                              rel="noopener noreferrer"
+                className="text-sm text-gray-400 hover:text-yellow-500 transition-colors"
+              >
+                Telegram
+              </a>
             </div>
+          </div>
+        </div>
+      </footer>
+
+      {/* Toast Notifications */}
+      <div className="fixed bottom-24 right-6 z-50 space-y-3">
+        <AnimatePresence>
+          {toasts.map(toast => (
+            <motion.div
+              key={toast.id}
+              initial={{ opacity: 0, x: 100 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: 100 }}
+              className={`
+                px-6 py-4 rounded-xl shadow-2xl backdrop-blur-xl border
+                ${toast.type === 'success' ? 'bg-emerald-500/20 border-emerald-500/50' : ''}
+                ${toast.type === 'error' ? 'bg-red-500/20 border-red-500/50' : ''}
+                ${toast.type === 'info' ? 'bg-blue-500/20 border-blue-500/50' : ''}
+              `}
+            >
+              <p className="text-sm font-medium text-white">{toast.message}</p>
+              {toast.txHash && (
+                <a
+                  href={`https://etherscan.io/tx/${toast.txHash}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-xs text-blue-400 hover:text-blue-300 mt-1 inline-block"
+                >
+                  View on Etherscan →
+                </a>
+              )}
+            </motion.div>
+          ))}
+        </AnimatePresence>
+      </div>
+    </div>
+  );
+}
+
+export default function App() {
+  return (
+    <BrowserRouter>
+      <AppContent />
     </BrowserRouter>
   );
 }
