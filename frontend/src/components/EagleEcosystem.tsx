@@ -28,7 +28,15 @@ export default function EagleEcosystem({ provider, account, onToast, VaultCompon
   const navigateToFloor = (floor: Floor) => {
     setIsTransitioning(true);
     setCurrentFloor(floor);
-    setTimeout(() => setIsTransitioning(false), 800);
+    
+    // Reset scroll position for the destination floor
+    setTimeout(() => {
+      const floorElement = document.getElementById(`${floor}-floor`);
+      if (floorElement) {
+        floorElement.scrollTop = 0;
+      }
+      setIsTransitioning(false);
+    }, 400);
   };
 
   const currentOffset = floorOffsets[currentFloor];
