@@ -203,6 +203,42 @@ export default function VaultView({ provider, account, onToast, onNavigateUp }: 
     setTimeout(() => setRefreshing(false), 500);
   }, [fetchData]);
 
+  const handleSyncBalances = useCallback(async () => {
+    if (!provider || !account) {
+      onToast({ message: 'Connect wallet first', type: 'error' });
+      return;
+    }
+
+    try {
+      const signer = await provider.getSigner();
+      const vault = new Contract(
+        CONTRACTS.VAULT,
+        ['function syncBalances()'],
+        signer
+      );
+
+      onToast({ message: 'Syncing vault balances...', type: 'info' });
+      const tx = await vault.syncBalances();
+      await tx.wait();
+      
+      onToast({ message: '✅ Balances synced! Refreshing data...', type: 'success', txHash: tx.hash });
+      
+      // Refresh data after sync
+      setTimeout(() => {
+        fetchData();
+      }, 2000);
+    } catch (error: any) {
+      console.error('Sync error:', error);
+      let msg = 'Sync failed';
+      if (error.message?.includes('onlyManager')) {
+        msg = 'Only the vault manager can sync balances';
+      } else if (error.message) {
+        msg = error.message.slice(0, 100);
+      }
+      onToast({ message: msg, type: 'error' });
+    }
+  }, [provider, account, onToast, fetchData]);
+
   useEffect(() => {
     fetchData();
     const interval = setInterval(fetchData, 15000);
@@ -560,6 +596,13 @@ export default function VaultView({ provider, account, onToast, onNavigateUp }: 
             <p className="text-sm text-gray-500">{CONTRACTS.VAULT}</p>
           </div>
           <div className="flex gap-2">
+            <button
+              onClick={handleSyncBalances}
+              className="px-3 py-1.5 bg-yellow-500/20 hover:bg-yellow-500/30 border border-yellow-500/30 rounded-lg transition-colors text-xs font-semibold text-yellow-400"
+              title="Sync vault balance tracking (Manager only)"
+            >
+              Sync Vault
+            </button>
             <button
               onClick={handleRefresh}
               disabled={refreshing}
