@@ -141,7 +141,7 @@ export default function EagleHomeContent({ onNavigateUp, onNavigateDown, provide
                 initial={{ opacity: 0, x: -20 }}
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ delay: 0.3 }}
-                className="group relative text-left"
+                className="group relative text-left cursor-pointer"
               >
                 <div className="absolute -inset-0.5 bg-gradient-to-r from-blue-500 to-purple-600 rounded-3xl opacity-50 group-hover:opacity-75 blur-xl transition duration-300"></div>
                 <div className="relative bg-gradient-to-br from-[#1a1a1a] to-[#0f0f0f] border-2 border-blue-500/30 group-hover:border-blue-500/50 rounded-3xl p-8 transition-all duration-300">
@@ -216,7 +216,7 @@ export default function EagleHomeContent({ onNavigateUp, onNavigateDown, provide
                 initial={{ opacity: 0, x: 20 }}
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ delay: 0.4 }}
-                className="group relative text-left"
+                className="group relative text-left cursor-pointer"
               >
                 <div className="absolute -inset-0.5 bg-gradient-to-r from-yellow-500 to-amber-600 rounded-3xl opacity-50 group-hover:opacity-75 blur-xl transition duration-300"></div>
                 <div className="relative bg-gradient-to-br from-[#1a1a1a] to-[#0f0f0f] border-2 border-yellow-500/30 group-hover:border-yellow-500/50 rounded-3xl p-8 transition-all duration-300">
