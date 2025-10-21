@@ -45,6 +45,15 @@ export default function EagleEcosystemWithRoutes({ provider, account, onToast }:
       'vault': '/vault',
     };
     
+    // Scroll floor to top immediately
+    const floorEl = document.getElementById(`${floor}-floor`);
+    if (floorEl) {
+      const scrollEl = floorEl.querySelector('.overflow-y-auto') as HTMLElement;
+      if (scrollEl) {
+        scrollEl.scrollTop = 0;
+      }
+    }
+    
     // Navigate after animation completes
     setTimeout(() => {
       navigate(floorToRoute[floor]);
