@@ -175,13 +175,13 @@ export default function VaultView({ provider, account, onToast, onNavigateUp }: 
 
   return (
     <div className="h-full bg-[#0a0a0a] overflow-y-auto">
-      <div className="container mx-auto px-8 py-6 pb-20 max-w-6xl">
+      <div className="container mx-auto px-8 pt-2 pb-24 max-w-6xl">
         {/* Back Button */}
         <motion.button 
           onClick={onNavigateUp}
           initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
-          className="flex items-center gap-2 text-gray-500 hover:text-gray-300 mb-6 transition-colors"
+          className="flex items-center gap-2 text-gray-500 hover:text-gray-300 mb-4 transition-colors"
         >
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 10l7-7m0 0l7 7m-7-7v18" />
@@ -191,66 +191,66 @@ export default function VaultView({ provider, account, onToast, onNavigateUp }: 
 
         {/* Header */}
         <motion.div 
-          className="text-center mb-6"
+          className="text-center mb-4"
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
         >
           <img 
             src="https://tomato-abundant-urial-204.mypinata.cloud/ipfs/bafybeigzyatm2pgrkqbnskyvflnagtqli6rgh7wv7t2znaywkm2pixmkxy" 
             alt="vEAGLE"
-            className="w-14 h-14 mx-auto mb-3"
+            className="w-12 h-12 mx-auto mb-2"
           />
-          <h1 className="text-3xl font-bold text-white mb-2">Eagle vEAGLE Vault</h1>
-          <p className="text-gray-500 text-sm">
+          <h1 className="text-2xl font-bold text-white mb-1">Eagle vEAGLE Vault</h1>
+          <p className="text-gray-500 text-xs">
             {CONTRACTS.VAULT.slice(0, 6)}...{CONTRACTS.VAULT.slice(-4)} • Ethereum
           </p>
         </motion.div>
 
         {/* Network Badges */}
         <motion.div 
-          className="flex justify-center gap-3 mb-6"
+          className="flex justify-center gap-2 mb-4"
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.1 }}
         >
-          <div className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg px-4 py-2">
-            <span className="text-sm text-gray-400">vEAGLE</span>
+          <div className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg px-3 py-1.5">
+            <span className="text-xs text-gray-400">vEAGLE</span>
           </div>
-          <div className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg px-4 py-2">
-            <span className="text-sm text-gray-400">Ethereum</span>
+          <div className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg px-3 py-1.5">
+            <span className="text-xs text-gray-400">Ethereum</span>
           </div>
         </motion.div>
 
         {/* Stats Row */}
         <motion.div 
-          className="grid grid-cols-4 gap-4 mb-8"
+          className="grid grid-cols-4 gap-3 mb-6"
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.2 }}
         >
-          <div className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg p-4 text-center">
+          <div className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg p-3 text-center">
             <div className="text-xs text-gray-500 mb-1">Total Deposited</div>
-            <div className="text-2xl font-bold text-white">${tvl.toFixed(2)}</div>
+            <div className="text-xl font-bold text-white">${tvl.toFixed(2)}</div>
           </div>
           
-          <div className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg p-4 text-center">
+          <div className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg p-3 text-center">
             <div className="text-xs text-gray-500 mb-1">Historical APY</div>
-            <div className="text-2xl font-bold text-white">22.25%</div>
+            <div className="text-xl font-bold text-white">22.25%</div>
           </div>
           
-          <div className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg p-4 text-center">
+          <div className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg p-3 text-center">
             <div className="text-xs text-gray-500 mb-1">Your Position</div>
-            <div className="text-2xl font-bold text-white">{userVaultValue.toFixed(2)}</div>
+            <div className="text-xl font-bold text-white">{userVaultValue.toFixed(2)}</div>
           </div>
 
-          <div className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg p-4 text-center">
+          <div className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg p-3 text-center">
             <div className="text-xs text-gray-500 mb-1">Max Supply</div>
-            <div className="text-2xl font-bold text-white">50M</div>
+            <div className="text-xl font-bold text-white">50M</div>
           </div>
         </motion.div>
 
         {/* Main Grid - Info Left (larger), Deposit/Withdraw Right (smaller) */}
-        <div className="grid lg:grid-cols-3 gap-8">
+        <div className="grid lg:grid-cols-3 gap-6">
           {/* Left - Info Sidebar (2/3 width) */}
           <motion.div 
             className="lg:col-span-2 bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg"
