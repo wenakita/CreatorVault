@@ -378,23 +378,30 @@ export default function VaultView({ provider, account, onToast, onNavigateUp }: 
       console.log('You will get:', expectedWlfi.toFixed(2), 'WLFI +', expectedUsd1.toFixed(2), 'USD1');
       console.log('Vault needs to have:', expectedWlfi.toFixed(2), 'WLFI +', expectedUsd1.toFixed(2), 'USD1');
       
-      // Check if vault has enough
-      if (vaultWlfi < expectedWlfi || vaultUsd1 < expectedUsd1) {
-        const limitingToken = vaultUsd1 < expectedUsd1 ? 'USD1' : 'WLFI';
+      // Check if vault has enough (with 0.1% tolerance for floating point errors)
+      const tolerance = 1.001; // 0.1% tolerance
+      const hasEnoughWlfi = vaultWlfi >= (expectedWlfi / tolerance);
+      const hasEnoughUsd1 = vaultUsd1 >= (expectedUsd1 / tolerance);
+      
+      console.log('Has enough WLFI?', hasEnoughWlfi, `(${vaultWlfi.toFixed(2)} >= ${(expectedWlfi / tolerance).toFixed(2)})`);
+      console.log('Has enough USD1?', hasEnoughUsd1, `(${vaultUsd1.toFixed(2)} >= ${(expectedUsd1 / tolerance).toFixed(2)})`);
+      
+      if (!hasEnoughWlfi || !hasEnoughUsd1) {
+        const limitingToken = !hasEnoughUsd1 ? 'USD1' : 'WLFI';
         const available = limitingToken === 'USD1' ? vaultUsd1 : vaultWlfi;
         const needed = limitingToken === 'USD1' ? expectedUsd1 : expectedWlfi;
         
         // Calculate actual max based on limiting token
         const maxByToken = limitingToken === 'USD1' 
-          ? (vaultUsd1 / expectedUsd1) * withdrawNum
-          : (vaultWlfi / expectedWlfi) * withdrawNum;
+          ? (vaultUsd1 / (expectedUsd1 / withdrawNum)) 
+          : (vaultWlfi / (expectedWlfi / withdrawNum));
         
         console.log(`❌ BLOCKED: Not enough ${limitingToken}`);
         console.log(`Available: ${available.toFixed(2)}, Needed: ${needed.toFixed(2)}`);
         console.log(`Real maximum: ${maxByToken.toFixed(4)} vEAGLE`);
         
         onToast({ 
-          message: `Vault only has ${available.toFixed(2)} ${limitingToken}. Maximum withdrawal: ${maxByToken.toFixed(4)} vEAGLE. Auto-filled.`, 
+          message: `Vault only has ${available.toFixed(2)} ${limitingToken} (needs ${needed.toFixed(2)}). Maximum: ${maxByToken.toFixed(4)} vEAGLE. Auto-filled.`, 
           type: 'error' 
         });
         setLoading(false);
@@ -402,7 +409,7 @@ export default function VaultView({ provider, account, onToast, onNavigateUp }: 
         return;
       }
 
-      console.log('✅ Vault has enough tokens, proceeding');
+      console.log('✅ Vault has enough tokens (within tolerance), proceeding!');
 
       // Proceed with withdrawal
       onToast({ message: 'Withdrawing from vault...', type: 'info' });
