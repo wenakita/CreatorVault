@@ -42,31 +42,31 @@ export default function EagleHomeContent({ onNavigateUp, onNavigateDown, provide
 
   return (
     <div className="h-full flex flex-col">
-      <div className="flex-1 overflow-y-auto px-6 py-8 max-w-7xl mx-auto w-full">
+      <div className="flex-1 overflow-y-auto px-6 py-4 max-w-7xl mx-auto w-full">
         {/* Header */}
           <motion.div
-            className="text-center mb-8"
+            className="text-center mb-6"
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
           >
-            <div className="inline-flex items-center justify-center mb-6">
+            <div className="inline-flex items-center justify-center mb-4">
               <div className="relative">
                 <div className="absolute inset-0 bg-gradient-to-r from-yellow-500/20 to-amber-600/20 blur-2xl rounded-full"></div>
                 <img 
                   src="https://tomato-abundant-urial-204.mypinata.cloud/ipfs/bafybeigzyatm2pgrkqbnskyvflnagtqli6rgh7wv7t2znaywkm2pixmkxy" 
                   alt="Eagle"
-                  className="relative w-24 h-24"
+                  className="relative w-20 h-20"
                 />
               </div>
             </div>
             
-            <h1 className="text-6xl md:text-7xl font-bold mb-3">
+            <h1 className="text-5xl md:text-6xl font-bold mb-2">
               <span className="bg-gradient-to-r from-yellow-400 via-yellow-500 to-amber-600 bg-clip-text text-transparent">
                 EAGLE
               </span>
             </h1>
             
-            <p className="text-xl text-gray-400 mb-2">Multi-Chain Yield Aggregator Ecosystem</p>
+            <p className="text-lg text-gray-400 mb-2">Multi-Chain Yield Aggregator Ecosystem</p>
             
             <div className="flex items-center justify-center gap-2 text-sm text-gray-500">
               <div className="flex items-center gap-1.5">
@@ -87,51 +87,48 @@ export default function EagleHomeContent({ onNavigateUp, onNavigateDown, provide
 
           {/* Stats Bar */}
           <motion.div 
-            className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-12 max-w-4xl mx-auto"
+            className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-6 max-w-4xl mx-auto"
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.1 }}
           >
             <div className="relative group">
               <div className="absolute -inset-0.5 bg-gradient-to-r from-yellow-500 to-amber-600 rounded-2xl opacity-20 group-hover:opacity-30 blur transition duration-300"></div>
-              <div className="relative bg-[#1a1a1a] border border-[#2a2a2a] rounded-2xl p-6 text-center">
-                <div className="text-xs font-medium text-gray-500 mb-2 uppercase tracking-wider">Total Value Locked</div>
-                <div className="text-3xl font-bold text-white mb-1">${stats.tvl}</div>
-                <div className="text-xs text-gray-600">Across all strategies</div>
+              <div className="relative bg-[#1a1a1a] border border-[#2a2a2a] rounded-2xl p-4 text-center">
+                <div className="text-xs font-medium text-gray-500 mb-1 uppercase tracking-wider">Total Value Locked</div>
+                <div className="text-2xl font-bold text-white">${stats.tvl}</div>
               </div>
             </div>
 
             <div className="relative group">
               <div className="absolute -inset-0.5 bg-gradient-to-r from-yellow-500 to-amber-600 rounded-2xl opacity-20 group-hover:opacity-30 blur transition duration-300"></div>
-              <div className="relative bg-[#1a1a1a] border border-[#2a2a2a] rounded-2xl p-6 text-center">
-                <div className="text-xs font-medium text-gray-500 mb-2 uppercase tracking-wider">Token Holders</div>
-                <div className="text-3xl font-bold text-white mb-1">{stats.holders}</div>
-                <div className="text-xs text-gray-600">vEAGLE holders</div>
+              <div className="relative bg-[#1a1a1a] border border-[#2a2a2a] rounded-2xl p-4 text-center">
+                <div className="text-xs font-medium text-gray-500 mb-1 uppercase tracking-wider">Token Holders</div>
+                <div className="text-2xl font-bold text-white">{stats.holders}</div>
               </div>
             </div>
 
             <div className="relative group">
               <div className="absolute -inset-0.5 bg-gradient-to-r from-emerald-500 to-teal-600 rounded-2xl opacity-20 group-hover:opacity-30 blur transition duration-300"></div>
-              <div className="relative bg-[#1a1a1a] border border-[#2a2a2a] rounded-2xl p-6 text-center">
-                <div className="text-xs font-medium text-gray-500 mb-2 uppercase tracking-wider">Average APY</div>
-                <div className="text-3xl font-bold bg-gradient-to-r from-emerald-400 to-teal-500 bg-clip-text text-transparent mb-1">
+              <div className="relative bg-[#1a1a1a] border border-[#2a2a2a] rounded-2xl p-4 text-center">
+                <div className="text-xs font-medium text-gray-500 mb-1 uppercase tracking-wider">Average APY</div>
+                <div className="text-2xl font-bold bg-gradient-to-r from-emerald-400 to-teal-500 bg-clip-text text-transparent">
                   {stats.apy}%
                 </div>
-                <div className="text-xs text-gray-600">Historical returns</div>
               </div>
             </div>
           </motion.div>
 
           {/* Products Section */}
-          <div className="mb-12">
+          <div className="mb-6">
             <motion.div
-              className="text-center mb-8"
+              className="text-center mb-6"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ delay: 0.2 }}
             >
-              <h2 className="text-2xl font-bold text-white mb-2">Our Products</h2>
-              <p className="text-gray-500">Choose how you want to earn with Eagle</p>
+              <h2 className="text-xl font-bold text-white mb-1">Our Products</h2>
+              <p className="text-sm text-gray-500">Choose how you want to earn with Eagle</p>
             </motion.div>
 
             <div className="grid lg:grid-cols-2 gap-6 max-w-6xl mx-auto">
@@ -144,7 +141,7 @@ export default function EagleHomeContent({ onNavigateUp, onNavigateDown, provide
                 className="group relative text-left cursor-pointer"
               >
                 <div className="absolute -inset-0.5 bg-gradient-to-r from-blue-500 to-purple-600 rounded-3xl opacity-50 group-hover:opacity-75 blur-xl transition duration-300"></div>
-                <div className="relative bg-gradient-to-br from-[#1a1a1a] to-[#0f0f0f] border-2 border-blue-500/30 group-hover:border-blue-500/50 rounded-3xl p-8 transition-all duration-300">
+                <div className="relative bg-gradient-to-br from-[#1a1a1a] to-[#0f0f0f] border-2 border-blue-500/30 group-hover:border-blue-500/50 rounded-3xl p-6 transition-all duration-300">
                   
                   {/* Header */}
                   <div className="flex items-start justify-between mb-6">
@@ -168,12 +165,12 @@ export default function EagleHomeContent({ onNavigateUp, onNavigateDown, provide
                   </div>
 
                   {/* Description */}
-                  <p className="text-gray-400 text-sm mb-6 leading-relaxed">
+                  <p className="text-gray-400 text-sm mb-4 leading-relaxed">
                     Provide liquidity to the EAGLE/ETH pair on Uniswap V3. Earn trading fees from every swap plus additional rewards.
                   </p>
 
                   {/* Features */}
-                  <div className="grid grid-cols-2 gap-3 mb-6">
+                  <div className="grid grid-cols-2 gap-3 mb-4">
                     <div className="bg-black/30 rounded-xl p-4 border border-white/5">
                       <div className="text-xs text-gray-500 mb-1">Protocol</div>
                       <div className="text-sm font-semibold text-white">Uniswap V3</div>
@@ -219,7 +216,7 @@ export default function EagleHomeContent({ onNavigateUp, onNavigateDown, provide
                 className="group relative text-left cursor-pointer"
               >
                 <div className="absolute -inset-0.5 bg-gradient-to-r from-yellow-500 to-amber-600 rounded-3xl opacity-50 group-hover:opacity-75 blur-xl transition duration-300"></div>
-                <div className="relative bg-gradient-to-br from-[#1a1a1a] to-[#0f0f0f] border-2 border-yellow-500/30 group-hover:border-yellow-500/50 rounded-3xl p-8 transition-all duration-300">
+                <div className="relative bg-gradient-to-br from-[#1a1a1a] to-[#0f0f0f] border-2 border-yellow-500/30 group-hover:border-yellow-500/50 rounded-3xl p-6 transition-all duration-300">
                   
                   {/* Header */}
                   <div className="flex items-start justify-between mb-6">
@@ -289,7 +286,7 @@ export default function EagleHomeContent({ onNavigateUp, onNavigateDown, provide
 
           {/* Bottom Info */}
           <motion.div
-            className="text-center space-y-4"
+            className="text-center space-y-2 mt-4"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 0.6 }}
