@@ -371,7 +371,7 @@ contract EagleOVault is ERC4626, Ownable, ReentrancyGuard {
      * @notice Get total supply accounting for locked shares
      * @dev Locked shares reduce circulating supply (increases PPS)
      */
-    function totalSupply() public view override returns (uint256) {
+    function totalSupply() public view override(ERC20, IERC20) returns (uint256) {
         return super.totalSupply() - (totalLockedShares - unlockedShares());
     }
 
