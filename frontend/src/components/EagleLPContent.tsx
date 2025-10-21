@@ -1,6 +1,6 @@
-import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { BrowserProvider } from 'ethers';
+import { ICONS } from '../config/icons';
 
 interface Props {
   onNavigateDown?: () => void;
@@ -14,7 +14,7 @@ export default function EagleLPContent({ onNavigateDown }: Props) {
         {/* Back Button */}
         <button 
           onClick={onNavigateDown}
-          className="flex items-center gap-2 text-gray-400 hover:text-yellow-500 mb-8 transition-colors group inline-flex"
+          className="inline-flex items-center gap-2 text-gray-400 hover:text-yellow-500 mb-8 transition-colors group"
         >
           <svg className="w-5 h-5 group-hover:translate-y-0.5 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 14l-7 7m0 0l-7-7m7 7V3" />
@@ -31,13 +31,13 @@ export default function EagleLPContent({ onNavigateDown }: Props) {
           <div className="flex items-center gap-4 mb-6">
             <div className="flex items-center gap-3">
               <img 
-                src="https://tomato-abundant-urial-204.mypinata.cloud/ipfs/bafybeigzyatm2pgrkqbnskyvflnagtqli6rgh7wv7t2znaywkm2pixmkxy" 
+                src={ICONS.EAGLE}
                 alt="Eagle"
                 className="w-16 h-16"
               />
               <span className="text-4xl font-bold text-white">+</span>
               <img 
-                src="https://tomato-abundant-urial-204.mypinata.cloud/ipfs/bafkreiagnmvgbx3g7prmcg57pu3safks7ut6j3okopfmji7h5pndz2zeqy" 
+                src={ICONS.ETHEREUM}
                 alt="ETH"
                 className="w-16 h-16 rounded-full"
               />

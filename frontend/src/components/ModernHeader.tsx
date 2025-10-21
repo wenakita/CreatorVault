@@ -4,6 +4,7 @@ import { Contract, formatEther } from 'ethers';
 import { useAccount } from 'wagmi';
 import { useEthersProvider } from '../hooks/useEthersProvider';
 import { CONTRACTS } from '../config/contracts';
+import { ICONS } from '../config/icons';
 
 const VAULT_ABI = ['function getWLFIPrice() view returns (uint256)', 'function getUSD1Price() view returns (uint256)'];
 
@@ -43,7 +44,7 @@ export default function ModernHeader() {
           {/* Logo & Title */}
           <div className="flex items-center gap-4">
             <img 
-              src="https://tomato-abundant-urial-204.mypinata.cloud/ipfs/bafybeigzyatm2pgrkqbnskyvflnagtqli6rgh7wv7t2znaywkm2pixmkxy" 
+              src={ICONS.EAGLE} 
               alt="Eagle Vault"
               className="w-10 h-10"
             />
@@ -57,7 +58,7 @@ export default function ModernHeader() {
           <div className="hidden lg:flex items-center gap-4">
             <div className="flex items-center gap-2 px-4 py-2 bg-white/5 rounded-lg border border-white/10">
               <img 
-                src="https://tomato-abundant-urial-204.mypinata.cloud/ipfs/bafkreifvnbzrefx4pdd6mr653dmrgkz2bdcamrwdsl334f7ed75miosaxu" 
+                src={ICONS.WLFI} 
                 alt="WLFI"
                 className="w-5 h-5"
               />
@@ -65,7 +66,7 @@ export default function ModernHeader() {
             </div>
             <div className="flex items-center gap-2 px-4 py-2 bg-white/5 rounded-lg border border-white/10">
               <img 
-                src="https://tomato-abundant-urial-204.mypinata.cloud/ipfs/bafkreic74no55hhm544qjraibffhrb4h7zldae5sfsyipvu6dvfyqubppy" 
+                src={ICONS.USD1} 
                 alt="USD1"
                 className="w-5 h-5"
               />

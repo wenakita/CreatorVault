@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { BrowserProvider, Contract, formatEther } from 'ethers';
 import { motion } from 'framer-motion';
 import { CONTRACTS } from '../config/contracts';
+import { ICONS } from '../config/icons';
 
 const VAULT_ABI = [
   'function totalAssets() view returns (uint256)',
@@ -41,94 +42,137 @@ export default function EagleHomeContent({ onNavigateUp, onNavigateDown, provide
   }, [provider]);
 
   return (
-    <div className="h-full flex items-center justify-center px-6 bg-[#0a0a0a]">
-      <div className="max-w-5xl mx-auto w-full">
-        {/* Hero */}
+    <div className="h-full flex items-center justify-center px-6 bg-[#0a0a0a] relative overflow-hidden">
+      {/* Background gradient effects */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[400px] bg-yellow-500/5 rounded-full blur-3xl"></div>
+      </div>
+
+      <div className="max-w-4xl mx-auto w-full relative z-10">
+        {/* Hero Section */}
         <motion.div
-          className="text-center mb-8"
+          className="text-center mb-10"
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
         >
           <img 
-            src="https://tomato-abundant-urial-204.mypinata.cloud/ipfs/bafybeigzyatm2pgrkqbnskyvflnagtqli6rgh7wv7t2znaywkm2pixmkxy" 
+            src={ICONS.EAGLE}
             alt="Eagle"
-            className="w-20 h-20 mx-auto mb-4"
+            className="w-16 h-16 mx-auto mb-5 opacity-90"
           />
           
-          <h1 className="text-6xl font-bold mb-3">
-            <span className="bg-gradient-to-r from-yellow-400 to-amber-600 bg-clip-text text-transparent">
+          <h1 className="text-7xl font-bold mb-3 tracking-tight">
+            <span className="bg-gradient-to-r from-yellow-400 via-yellow-500 to-amber-600 bg-clip-text text-transparent">
               EAGLE
             </span>
           </h1>
           
-          <p className="text-lg text-gray-400 mb-6">Multi-Chain Yield Aggregator</p>
+          <p className="text-base text-gray-400 mb-8">Multi-Chain Yield Aggregator</p>
 
-          {/* Stats */}
-          <div className="grid grid-cols-3 gap-4 max-w-3xl mx-auto mb-8">
-            <div className="bg-white/5 border border-white/10 rounded-xl p-4">
-              <div className="text-xs text-gray-500 mb-1">TVL</div>
+          {/* Stats Row */}
+          <div className="flex items-center justify-center gap-6 mb-10">
+            <div className="bg-white/5 border border-white/10 rounded-lg px-6 py-3 min-w-[140px]">
               <div className="text-2xl font-bold text-white">${stats.tvl}</div>
             </div>
-            <div className="bg-white/5 border border-white/10 rounded-xl p-4">
-              <div className="text-xs text-gray-500 mb-1">Holders</div>
+            <div className="bg-white/5 border border-white/10 rounded-lg px-6 py-3 min-w-[140px]">
               <div className="text-2xl font-bold text-white">{stats.holders}</div>
             </div>
-            <div className="bg-white/5 border border-white/10 rounded-xl p-4">
-              <div className="text-xs text-gray-500 mb-1">APY</div>
+            <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-lg px-6 py-3 min-w-[140px]">
               <div className="text-2xl font-bold text-yellow-500">{stats.apy}%</div>
             </div>
           </div>
         </motion.div>
 
-        {/* Navigation Links - Minimalistic */}
+        {/* Main Navigation Cards */}
         <motion.div 
-          className="grid grid-cols-2 gap-4 max-w-2xl mx-auto"
+          className="grid grid-cols-2 gap-6 mb-8"
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.2 }}
+          transition={{ delay: 0.15 }}
         >
+          {/* LP Card */}
           <button
             onClick={onNavigateUp}
-            className="group bg-white/5 hover:bg-white/10 border border-white/10 hover:border-blue-500/50 rounded-xl p-6 transition-all text-left"
+            className="group relative bg-gradient-to-br from-white/5 to-white/[0.02] hover:from-white/10 hover:to-white/5 border border-white/10 hover:border-white/20 rounded-2xl p-8 transition-all duration-300 text-left overflow-hidden"
           >
-            <div className="flex items-center justify-between mb-3">
-              <h3 className="text-lg font-bold text-white">EAGLE/ETH LP</h3>
-              <svg className="w-5 h-5 text-blue-400 group-hover:-translate-y-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 10l7-7m0 0l7 7m-7-7v18" />
-              </svg>
+            {/* Hover gradient effect */}
+            <div className="absolute inset-0 bg-gradient-to-br from-blue-500/0 to-purple-500/0 group-hover:from-blue-500/5 group-hover:to-purple-500/5 transition-all duration-300"></div>
+            
+            <div className="relative z-10">
+              <div className="flex items-start justify-between mb-4">
+                <h3 className="text-xl font-bold text-white">EAGLE/ETH LP</h3>
+                <svg className="w-5 h-5 text-gray-400 group-hover:text-blue-400 group-hover:-translate-y-1 transition-all" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 10l7-7m0 0l7 7m-7-7v18" />
+                </svg>
+              </div>
+              <p className="text-sm text-gray-400 mb-4">Provide liquidity, earn fees</p>
+              <div className="inline-block px-3 py-1 bg-orange-500/10 border border-orange-500/20 rounded-lg">
+                <span className="text-xs text-orange-400 font-medium">Coming Soon</span>
+              </div>
             </div>
-            <p className="text-sm text-gray-400 mb-3">Provide liquidity, earn fees</p>
-            <div className="text-xs text-orange-400">Coming Soon</div>
           </button>
 
+          {/* Vault Card */}
           <button
             onClick={onNavigateDown}
-            className="group bg-white/5 hover:bg-white/10 border border-white/10 hover:border-yellow-500/50 rounded-xl p-6 transition-all text-left"
+            className="group relative bg-gradient-to-br from-white/5 to-white/[0.02] hover:from-white/10 hover:to-white/5 border border-white/10 hover:border-yellow-500/30 rounded-2xl p-8 transition-all duration-300 text-left overflow-hidden"
           >
-            <div className="flex items-center justify-between mb-3">
-              <h3 className="text-lg font-bold text-white">Vault Engine</h3>
-              <svg className="w-5 h-5 text-yellow-400 group-hover:translate-y-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 14l-7 7m0 0l-7-7m7 7V3" />
-              </svg>
-            </div>
-            <p className="text-sm text-gray-400 mb-3">Deposit & earn yield</p>
-            <div className="flex items-center gap-2 text-xs">
-              <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse"></div>
-              <span className="text-emerald-400">Active • ${stats.tvl} TVL</span>
+            {/* Hover gradient effect */}
+            <div className="absolute inset-0 bg-gradient-to-br from-yellow-500/0 to-amber-500/0 group-hover:from-yellow-500/5 group-hover:to-amber-500/5 transition-all duration-300"></div>
+            
+            <div className="relative z-10">
+              <div className="flex items-start justify-between mb-4">
+                <h3 className="text-xl font-bold text-white">Vault Engine</h3>
+                <svg className="w-5 h-5 text-gray-400 group-hover:text-yellow-400 group-hover:translate-y-1 transition-all" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 14l-7 7m0 0l-7-7m7 7V3" />
+                </svg>
+              </div>
+              <p className="text-sm text-gray-400 mb-4">Deposit & earn yield</p>
+              <div className="flex items-center gap-2">
+                <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse"></div>
+                <span className="text-xs text-emerald-400 font-medium">APR: ~86-97%</span>
+              </div>
             </div>
           </button>
         </motion.div>
 
-        {/* Links */}
+        {/* Bottom Navigation */}
         <motion.div
-          className="text-center mt-8 flex items-center justify-center gap-6 text-sm text-gray-500"
+          className="flex items-center justify-center gap-8 text-sm"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
-          transition={{ delay: 0.4 }}
+          transition={{ delay: 0.3 }}
         >
-          <a href="https://docs.47eagle.com" target="_blank" rel="noopener noreferrer" className="hover:text-yellow-500">Docs</a>
-          <a href="https://t.me/Eagle_community_47" target="_blank" rel="noopener noreferrer" className="hover:text-yellow-500">Community</a>
-          <a href="https://x.com/teameagle47" target="_blank" rel="noopener noreferrer" className="hover:text-yellow-500">Twitter</a>
+          <a 
+            href="https://docs.47eagle.com" 
+            target="_blank" 
+            rel="noopener noreferrer" 
+            className="text-gray-500 hover:text-yellow-500 transition-colors"
+          >
+            Docs
+          </a>
+          <a 
+            href="#" 
+            className="text-gray-500 hover:text-yellow-500 transition-colors"
+          >
+            Summary
+          </a>
+          <a 
+            href="https://x.com/teameagle47" 
+            target="_blank" 
+            rel="noopener noreferrer" 
+            className="text-gray-500 hover:text-yellow-500 transition-colors"
+          >
+            Twitter
+          </a>
+          <a 
+            href="https://t.me/Eagle_community_47" 
+            target="_blank" 
+            rel="noopener noreferrer" 
+            className="text-gray-500 hover:text-yellow-500 transition-colors"
+          >
+            Telegram
+          </a>
         </motion.div>
       </div>
     </div>

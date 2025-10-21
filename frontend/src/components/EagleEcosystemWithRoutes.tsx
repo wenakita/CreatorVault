@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { BrowserProvider } from 'ethers';
@@ -64,10 +64,11 @@ export default function EagleEcosystemWithRoutes({ provider, account, onToast }:
   const currentOffset = floorOffsets[currentFloor];
 
   return (
-    <div className="h-full overflow-hidden relative">
-      {/* Animated Container */}
+    <div className="h-full overflow-hidden relative bg-[#0a0a0a]">
+      {/* Animated Container - Each floor is 100vh */}
       <motion.div
-        className="absolute w-full h-[300vh]"
+        className="absolute w-full"
+        style={{ height: '300vh' }}
         animate={{ 
           y: `${-currentOffset}vh` 
         }}
@@ -80,12 +81,12 @@ export default function EagleEcosystemWithRoutes({ provider, account, onToast }:
         }}
       >
         {/* Top Floor - EAGLE/ETH LP */}
-        <div className="h-[calc(100vh-64px-80px)] overflow-hidden relative bg-[#0a0a0a]" id="lp-floor">
+        <div className="h-screen overflow-hidden relative bg-[#0a0a0a]" id="lp-floor">
           <motion.div
             animate={{
               opacity: isTransitioning && currentFloor !== 'lp' ? 0.5 : 1,
             }}
-            className="h-full overflow-y-auto"
+            className="h-full overflow-y-auto overflow-x-hidden"
           >
             <EagleLPContent 
               onNavigateDown={() => navigateToFloor('home')}
@@ -95,12 +96,12 @@ export default function EagleEcosystemWithRoutes({ provider, account, onToast }:
         </div>
 
         {/* Main Floor - Home */}
-        <div className="h-[calc(100vh-64px-80px)] overflow-hidden relative bg-[#0a0a0a]" id="home-floor">
+        <div className="h-screen overflow-hidden relative bg-[#0a0a0a]" id="home-floor">
           <motion.div
             animate={{
               opacity: isTransitioning && currentFloor !== 'home' ? 0.5 : 1,
             }}
-            className="h-full"
+            className="h-full overflow-hidden"
           >
             <EagleHomeContent 
               onNavigateUp={() => navigateToFloor('lp')}
@@ -111,21 +112,20 @@ export default function EagleEcosystemWithRoutes({ provider, account, onToast }:
         </div>
 
         {/* Basement - Vault */}
-        <div className="h-[calc(100vh-64px-80px)] relative" id="vault-floor">
-          <div className="h-full overflow-y-auto overflow-x-hidden">
-            <motion.div
-              animate={{
-                opacity: isTransitioning && currentFloor !== 'vault' ? 0.5 : 1,
-              }}
-            >
-              <VaultView 
-                provider={provider}
-                account={account}
-                onToast={onToast}
-                onNavigateUp={() => navigateToFloor('home')}
-              />
-            </motion.div>
-          </div>
+        <div className="h-screen overflow-hidden relative bg-[#0a0a0a]" id="vault-floor">
+          <motion.div
+            animate={{
+              opacity: isTransitioning && currentFloor !== 'vault' ? 0.5 : 1,
+            }}
+            className="h-full overflow-y-auto overflow-x-hidden"
+          >
+            <VaultView 
+              provider={provider}
+              account={account}
+              onToast={onToast}
+              onNavigateUp={() => navigateToFloor('home')}
+            />
+          </motion.div>
         </div>
       </motion.div>
 

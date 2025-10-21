@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion';
-import type { Floor } from './EagleEcosystem';
+import type { Floor } from './EagleEcosystemWithRoutes';
 
 interface Props {
   current: Floor;

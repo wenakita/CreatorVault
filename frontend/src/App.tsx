@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react';
-import { BrowserRouter, useNavigate, useLocation, Routes, Route } from 'react-router-dom';
+import { BrowserRouter } from 'react-router-dom';
 import { BrowserProvider } from 'ethers';
 import { motion, AnimatePresence } from 'framer-motion';
 import ModernHeader from './components/ModernHeader';
 import EagleEcosystemWithRoutes from './components/EagleEcosystemWithRoutes';
+import { ICONS } from './config/icons';
 
 interface Toast {
   id: number;
@@ -18,6 +19,21 @@ function AppContent() {
   const [toasts, setToasts] = useState<Toast[]>([]);
 
   useEffect(() => {
+    const checkConnection = async () => {
+      if (window.ethereum) {
+        try {
+          const accounts = await window.ethereum.request({ method: 'eth_accounts' });
+          if (accounts.length > 0) {
+            const provider = new BrowserProvider(window.ethereum);
+            setProvider(provider);
+            setAccount(accounts[0]);
+          }
+        } catch (error) {
+          console.error('Error checking connection:', error);
+        }
+      }
+    };
+
     checkConnection();
 
     if (window.ethereum) {
@@ -43,56 +59,19 @@ function AppContent() {
     };
   }, []);
 
-  const checkConnection = async () => {
-    if (window.ethereum) {
-      try {
-        const accounts = await window.ethereum.request({ method: 'eth_accounts' });
-        if (accounts.length > 0) {
-          const provider = new BrowserProvider(window.ethereum);
-          setProvider(provider);
-          setAccount(accounts[0]);
-        }
-      } catch (error) {
-        console.error('Error checking connection:', error);
-      }
-    }
-  };
-
-  const connectWallet = async () => {
-    if (!window.ethereum) {
-      showToast('Please install MetaMask', 'error');
-      return;
-    }
-
-    try {
-      const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
-      const provider = new BrowserProvider(window.ethereum);
-      setProvider(provider);
-      setAccount(accounts[0]);
-      showToast('Wallet connected', 'success');
-    } catch (error: any) {
-      console.error('Connection error:', error);
-      showToast(error.message || 'Failed to connect wallet', 'error');
-    }
-  };
-
-  const showToast = (message: string, type: 'success' | 'error' | 'info', txHash?: string) => {
+  const showToast = (toast: { message: string; type: 'success' | 'error' | 'info'; txHash?: string }) => {
     const id = Date.now();
-    setToasts(prev => [...prev, { id, message, type, txHash }]);
+    setToasts(prev => [...prev, { id, ...toast }]);
     setTimeout(() => {
       setToasts(prev => prev.filter(t => t.id !== id));
     }, 5000);
   };
 
   return (
-    <div className="h-screen flex flex-col bg-gradient-to-b from-yellow-500/15 via-amber-600/8 to-[#0a0a0a]">
+    <div className="h-screen flex flex-col bg-[#0a0a0a]">
       {/* Fixed Header */}
-      <div className="relative z-20">
-        <ModernHeader 
-          account={account}
-          onConnect={connectWallet}
-          provider={provider}
-        />
+      <div className="relative z-20 flex-shrink-0">
+        <ModernHeader />
       </div>
 
       {/* Main Content - 3-Floor Navigation */}
@@ -105,42 +84,42 @@ function AppContent() {
       </div>
 
       {/* Fixed Footer */}
-      <footer className="relative z-20 border-t border-white/10 bg-[#0a0a0a]/80 backdrop-blur-xl">
-        <div className="container mx-auto px-6 py-5">
-          <div className="flex flex-col md:flex-row justify-between items-center gap-4">
+      <footer className="relative z-20 flex-shrink-0 border-t border-white/10 bg-[#0a0a0a]/95 backdrop-blur-xl">
+        <div className="container mx-auto px-6 py-4">
+          <div className="flex flex-col md:flex-row justify-between items-center gap-3">
             <div className="flex items-center gap-3">
               <img 
-                src="https://tomato-abundant-urial-204.mypinata.cloud/ipfs/bafybeigzyatm2pgrkqbnskyvflnagtqli6rgh7wv7t2znaywkm2pixmkxy" 
+                src={ICONS.EAGLE} 
                 alt="Eagle" 
-                className="w-7 h-7"
+                className="w-6 h-6"
               />
-              <span className="text-sm text-gray-400">
+              <span className="text-xs text-gray-500">
                 © 2025 Eagle Vault. All rights reserved.
-                </span>
+              </span>
             </div>
 
             <div className="flex items-center gap-6">
               <a 
                 href="https://docs.47eagle.com" 
-                          target="_blank"
-                          rel="noopener noreferrer"
-                className="text-sm text-gray-400 hover:text-yellow-500 transition-colors"
-                        >
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-xs text-gray-500 hover:text-yellow-500 transition-colors"
+              >
                 Docs
-                        </a>
-                        <a 
+              </a>
+              <a 
                 href="https://x.com/teameagle47" 
-                          target="_blank"
-                          rel="noopener noreferrer"
-                className="text-sm text-gray-400 hover:text-yellow-500 transition-colors"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-xs text-gray-500 hover:text-yellow-500 transition-colors"
               >
                 Twitter
               </a>
               <a 
                 href="https://t.me/Eagle_community_47" 
-                              target="_blank"
-                              rel="noopener noreferrer"
-                className="text-sm text-gray-400 hover:text-yellow-500 transition-colors"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-xs text-gray-500 hover:text-yellow-500 transition-colors"
               >
                 Telegram
               </a>
@@ -186,7 +165,12 @@ function AppContent() {
 
 export default function App() {
   return (
-    <BrowserRouter>
+    <BrowserRouter
+      future={{
+        v7_startTransition: true,
+        v7_relativeSplatPath: true,
+      }}
+    >
       <AppContent />
     </BrowserRouter>
   );
