@@ -211,9 +211,6 @@ contract CharmStrategyUSD1 is IStrategy, ReentrancyGuard, Ownable {
     {
         if (address(charmVault) == address(0)) revert NotInitialized();
         
-        // Check current balance BEFORE attempting transfer
-        uint256 balanceBefore = WLFI.balanceOf(address(this));
-        
         // Try to pull tokens from vault (backward compatible)
         // If vault already transferred, this will just be a no-op or small amount
         if (wlfiAmount > 0) {
@@ -314,20 +311,23 @@ contract CharmStrategyUSD1 is IStrategy, ReentrancyGuard, Ownable {
             }
         }
         
-        emit StrategyDeposit(amount0Used, amount1Used, shares);
+        // Emit in correct order: (WLFI, USD1, shares)
+        // Charm returns (shares, amount0=USD1, amount1=WLFI)
+        emit StrategyDeposit(amount1Used, amount0Used, shares);
     }
     
     /**
      * @notice Withdraw from Charm vault
      * @param value USD value to withdraw (simplified - treats USD1 and WLFI as equal value)
-     * @return usd1Amount USD1 withdrawn
-     * @return wlfiAmount WLFI withdrawn
+     * @return wlfiAmount WLFI withdrawn (FIRST - matches IStrategy interface)
+     * @return usd1Amount USD1 withdrawn (SECOND - matches IStrategy interface)
+     * @dev Returns (WLFI, USD1) to match IStrategy interface - CRITICAL ORDER!
      */
     function withdraw(uint256 value) 
         external 
         onlyVault
         nonReentrant
-        returns (uint256 usd1Amount, uint256 wlfiAmount) 
+        returns (uint256 wlfiAmount, uint256 usd1Amount) 
     {
         if (value == 0) return (0, 0);
         if (address(charmVault) == address(0)) return (0, 0);
@@ -336,8 +336,8 @@ contract CharmStrategyUSD1 is IStrategy, ReentrancyGuard, Ownable {
         if (ourShares == 0) return (0, 0);
         
         // Calculate shares to withdraw
-        (uint256 totalUsd1, uint256 totalWlfi) = getTotalAmounts();
-        uint256 totalValue = totalUsd1 + totalWlfi; // Simplified: assume 1 USD1 ≈ 1 WLFI value
+        (uint256 totalWlfi, uint256 totalUsd1) = getTotalAmounts();
+        uint256 totalValue = totalWlfi + totalUsd1; // Simplified: assume 1 USD1 ≈ 1 WLFI value
         
         uint256 sharesToWithdraw;
         if (value >= totalValue) {
@@ -351,6 +351,7 @@ contract CharmStrategyUSD1 is IStrategy, ReentrancyGuard, Ownable {
         uint256 expectedWlfi = (totalWlfi * sharesToWithdraw) / ourShares;
         
         // Withdraw from Charm
+        // Charm returns (amount0, amount1) where token0=USD1, token1=WLFI
         (usd1Amount, wlfiAmount) = charmVault.withdraw(
             sharesToWithdraw,
             (expectedUsd1 * (10000 - maxSlippage)) / 10000,
@@ -358,7 +359,8 @@ contract CharmStrategyUSD1 is IStrategy, ReentrancyGuard, Ownable {
             EAGLE_VAULT // Send directly back to vault
         );
         
-        emit StrategyWithdraw(sharesToWithdraw, usd1Amount, wlfiAmount);
+        // Emit in correct order (shares, wlfi, usd1)
+        emit StrategyWithdraw(sharesToWithdraw, wlfiAmount, usd1Amount);
     }
     
     /**
@@ -367,10 +369,11 @@ contract CharmStrategyUSD1 is IStrategy, ReentrancyGuard, Ownable {
     function rebalance() external onlyVault {
         if (address(charmVault) == address(0)) return;
         
-        (uint256 totalUsd1, uint256 totalWlfi) = getTotalAmounts();
+        (uint256 totalWlfi, uint256 totalUsd1) = getTotalAmounts();
         lastRebalance = block.timestamp;
         
-        emit StrategyRebalanced(totalUsd1, totalWlfi);
+        // Emit in correct order (WLFI, USD1)
+        emit StrategyRebalanced(totalWlfi, totalUsd1);
     }
 
     // =================================
@@ -431,8 +434,9 @@ contract CharmStrategyUSD1 is IStrategy, ReentrancyGuard, Ownable {
     
     /**
      * @notice Get total amounts managed by strategy (proportional to our shares)
+     * @dev Returns (WLFI, USD1) to match IStrategy interface - CRITICAL ORDER!
      */
-    function getTotalAmounts() public view returns (uint256 usd1Amount, uint256 wlfiAmount) {
+    function getTotalAmounts() public view returns (uint256 wlfiAmount, uint256 usd1Amount) {
         if (!active || address(charmVault) == address(0)) {
             return (0, 0);
         }
@@ -448,8 +452,9 @@ contract CharmStrategyUSD1 is IStrategy, ReentrancyGuard, Ownable {
         if (totalShares == 0) return (0, 0);
         
         // Calculate our proportional share
-        usd1Amount = (totalUsd1 * ourShares) / totalShares;
+        // ⚠️ CRITICAL: Return order must match IStrategy interface (WLFI first, USD1 second)
         wlfiAmount = (totalWlfi * ourShares) / totalShares;
+        usd1Amount = (totalUsd1 * ourShares) / totalShares;
     }
     
     /**
