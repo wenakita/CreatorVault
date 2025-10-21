@@ -764,6 +764,35 @@ contract EagleOVault is ERC4626, Ownable, ReentrancyGuard {
         if (to == address(0)) revert ZeroAddress();
         IERC20(token).safeTransfer(to, amount);
     }
+    
+    /**
+     * @notice Emergency withdraw - Owner can pull WLFI/USD1 if vault is stuck
+     * @dev Use with extreme caution - bypasses normal accounting
+     * @dev Should only be used if syncBalances() doesn't fix the issue
+     */
+    function emergencyWithdrawTokens(
+        uint256 wlfiAmount,
+        uint256 usd1Amount,
+        address to
+    ) external onlyOwner {
+        if (to == address(0)) revert ZeroAddress();
+        
+        // Transfer actual tokens (not using cached balances)
+        if (wlfiAmount > 0) {
+            WLFI_TOKEN.safeTransfer(to, wlfiAmount);
+        }
+        if (usd1Amount > 0) {
+            USD1_TOKEN.safeTransfer(to, usd1Amount);
+        }
+        
+        // Sync balances after emergency withdraw
+        wlfiBalance = WLFI_TOKEN.balanceOf(address(this));
+        usd1Balance = USD1_TOKEN.balanceOf(address(this));
+        
+        emit EmergencyWithdraw(to, wlfiAmount, usd1Amount);
+    }
+    
+    event EmergencyWithdraw(address indexed to, uint256 wlfiAmount, uint256 usd1Amount);
 
     // =================================
     // VIEW FUNCTIONS
