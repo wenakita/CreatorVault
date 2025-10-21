@@ -23,7 +23,7 @@ import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
  * 
  * @dev FEE STRUCTURE:
  *      - Buy/Sell fees configurable separately (default: 0%)
- *      - Two recipients: Treasury (70%), Vault Injection (30%)
+ *      - Two recipients: Treasury (50%), Vault Injection (50%)
  *      - Fees only apply to DEX swaps, not regular transfers
  *      - V3-compatible dual-mode processing
  * 

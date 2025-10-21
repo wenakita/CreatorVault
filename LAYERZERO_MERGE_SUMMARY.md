@@ -300,8 +300,8 @@ forge test --match-path "test/layerzero/*"
    await shareOFT.setSwapFeeConfig(
      100,   // 1% buy fee
      200,   // 2% sell fee
-     7000,  // 70% to treasury
-     3000,  // 30% to vault
+     5000,  // 50% to treasury
+     5000,  // 50% to vault
      TREASURY_ADDRESS,
      VAULT_ADDRESS,
      true   // enabled
