@@ -35,9 +35,9 @@ export default function AssetAllocationSunburst({
     // Clear previous
     d3.select(svgRef.current).selectAll('*').remove();
 
-    const width = 500;
+    const width = 400;
     const height = 400;
-    const radius = Math.min(width, height) / 2;
+    const radius = Math.min(width, height) / 2 - 20;
 
     // Hierarchical data structure with Eagle Finance theme colors
     const data: HierarchyNode = {
@@ -160,9 +160,9 @@ export default function AssetAllocationSunburst({
   }, [vaultWLFI, vaultUSD1, strategyWLFI, strategyUSD1, grandTotal, selectedPath]);
 
   return (
-    <div className="bg-gradient-to-br from-white/5 to-transparent border border-white/10 rounded-xl p-6 mb-8">
-      <div className="flex items-center justify-between mb-4">
-        <h3 className="text-white font-semibold">Asset Allocation</h3>
+    <div className="bg-gradient-to-br from-white/5 to-transparent border border-white/10 rounded-xl p-8 mb-8">
+      <div className="flex items-center justify-between mb-6">
+        <h3 className="text-white font-semibold text-lg">Asset Allocation</h3>
         {selectedPath && (
           <button
             onClick={() => setSelectedPath(null)}
@@ -173,9 +173,9 @@ export default function AssetAllocationSunburst({
         )}
       </div>
       
-      <div className="flex items-center gap-6">
+      <div className="flex items-center justify-center gap-8 max-w-4xl mx-auto">
         {/* D3 Sunburst Chart */}
-        <div className="flex-1">
+        <div className="flex-shrink-0">
           <svg ref={svgRef}></svg>
           <div 
             id="tooltip" 
@@ -190,7 +190,7 @@ export default function AssetAllocationSunburst({
         </div>
 
         {/* Interactive Legend */}
-        <div className="space-y-4">
+        <div className="space-y-4 flex-shrink-0">
           <div 
             className={`cursor-pointer p-3 rounded-lg transition-all border ${
               selectedPath?.includes('Vault') 
