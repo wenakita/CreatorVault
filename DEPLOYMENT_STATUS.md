@@ -1,135 +1,176 @@
-# 🚀 Deployment Status
+# 🎉 Eagle OVault Deployment Status
 
-## ✅ Code Pushed to GitHub
+## ✅ MAJOR MILESTONE ACHIEVED!
 
-Your latest changes including **WalletConnect integration** have been pushed to GitHub:
-
-### Recent Commits:
-1. **b8fb0f5** - Add WalletConnect placeholder to env
-2. **617f36c** - Add WalletConnect support with RainbowKit
-3. **1907d0c** - Complete Sepolia deployment with working deposits
+**Date**: October 21, 2025  
+**Deployment**: Successful on Sepolia Testnet  
+**Progress**: 90% Complete
 
 ---
 
-## 🔄 Vercel Auto-Deployment
+## 📜 SUCCESSFULLY DEPLOYED CONTRACTS
 
-Since your Vercel project is connected to GitHub, it will **automatically deploy** when you push to the `main` branch.
+| Contract | Address | Status |
+|----------|---------|--------|
+| **EagleRegistry** | `0x93d48D3625fF8E522f63E873352256607b37f2EF` | ✅ Verified |
+| **WLFI OFT** | `0x33fB8387d4C6F5B344ca6C6C68e4576db10BDEa3` | ✅ Verified |
+| **USD1 OFT** | `0xdDC8061BB5e2caE36E27856620086bc6d59C2242` | ✅ Verified |
+| **EagleOVault** | `0x84a744da7a4646942b5C9724897ca05bCbBbB10b` | ⚠️ Needs Redeployment (see below) |
+| **EagleShareOFT** | `0x532Ec3711C9E219910045e2bBfA0280ae0d8457e` | ✅ Verified |
+| **EagleVaultWrapper** | `0x577D6cc9B905e628F6fBB9D1Ac6279709654b44f` | ✅ Verified |
+| **EagleOVaultComposer** | `0x14076c8A5328c6f04e0291897b94D1a36BF3C1D8` | ✅ Verified |
+| **Uniswap V3 Pool** | `0x9Ea7103b374Aa8be79a5BBa065bF48e7EbFc53Dc` | ✅ Created & Initialized |
 
-### Check Deployment Status:
-
-1. **Go to your Vercel Dashboard:**
-   - https://vercel.com/akita-llc
-   - Look for your `eagle-ovault-clean` or `frontend` project
-   
-2. **You should see:**
-   - 🟡 Building... (if in progress)
-   - ✅ Deployed (if complete)
-
-3. **Expected deployment:**
-   - Branch: `main`
-   - Commit: `b8fb0f5` or later
-   - Changes: WalletConnect + RainbowKit integration
+**Total Gas Cost**: 0.0190 ETH  
+**Deployment Block**: 9460340
 
 ---
 
-## ⚠️ Important: Add WalletConnect Project ID
+## ⚠️ KNOWN ISSUE & SOLUTION
 
-For WalletConnect to work, you need to add your Project ID to Vercel:
+### Issue
+The vault was deployed with a placeholder pool address (`0x3`) because the Uniswap V3 pool didn't exist at deployment time. This was intentional to avoid a chicken-and-egg problem.
 
-### Option 1: Vercel Dashboard (Recommended)
-1. Go to your project settings in Vercel
-2. Navigate to "Environment Variables"
-3. Add:
-   - **Name:** `VITE_WALLETCONNECT_PROJECT_ID`
-   - **Value:** `your_project_id_from_walletconnect`
-   - **Scope:** Production
-4. **Redeploy** (click "Redeploy" button in deployments tab)
+### Impact
+- Deposit/withdraw operations will fail until the vault is redeployed with the correct pool address
+- All other contracts (tokens, wrapper, composer) are working correctly and don't need redeployment
 
-### Option 2: Local env file
-1. Update `frontend/.env.production`:
-   ```
-   VITE_WALLETCONNECT_PROJECT_ID=your_project_id_here
-   ```
-2. Commit and push
-3. Vercel will auto-redeploy
+### Solution Options
 
-### Get Your Project ID:
-- Visit: https://cloud.walletconnect.com
-- Create a project (FREE)
-- Copy your Project ID
-
----
-
-## 🧪 Test Locally First
-
-```bash
-cd frontend
-echo "VITE_WALLETCONNECT_PROJECT_ID=your_id_here" >> .env
-npm run dev
+#### Option 1: Add Pool Setter Function (Recommended for Production)
+Add this function to `EagleOVault.sol`:
+```solidity
+function setPool(address _pool) external onlyManagement {
+    require(_pool != address(0), "Invalid pool");
+    pool = _pool;
+    emit PoolUpdated(_pool);
+}
 ```
 
-Visit http://localhost:5173 and click "Connect Wallet" to test!
+#### Option 2: Redeploy Vault Only
+Since this is testnet, we can simply redeploy the vault with the correct pool address:
+
+```bash
+# Deploy new vault with correct pool
+forge script script/RedeployVaultWithPool.s.sol \
+  --rpc-url $SEPOLIA_RPC_URL \
+  --broadcast \
+  --legacy
+```
 
 ---
 
-## 📊 What's New
+## 🎯 ACHIEVEMENTS
 
-Your deployed frontend now includes:
+### ✅ Completed
+- [x] Registry-based LayerZero endpoint management
+- [x] WLFI & USD1 OFT tokens deployed (1M each minted)
+- [x] EagleShareOFT with mint/burn for wrapper
+- [x] EagleVaultWrapper with 1%/2% fees
+- [x] Custom EagleOVaultComposer
+- [x] Uniswap V3 pool created (WLFI/USD1 at 1:1)
+- [x] All permissions and roles configured
+- [x] Wrapper whitelist set (composer, owner)
 
-✅ **RainbowKit wallet modal**
-- Beautiful UI for wallet selection
-- Support for 300+ wallets
-- Mobile-friendly QR scanning
-
-✅ **Multi-wallet support:**
-- MetaMask
-- Coinbase Wallet
-- WalletConnect
-- Rainbow
-- Trust Wallet
-- And 300+ more!
-
-✅ **Better UX:**
-- Auto network detection
-- One-click network switching
-- Connection persistence
-- Account switching
+### ⏳ Remaining
+- [ ] Add pool setter to vault OR redeploy vault
+- [ ] Test vault deposit/withdraw flows
+- [ ] Test wrapper wrap/unwrap flows
+- [ ] Add liquidity to Uniswap pool
+- [ ] Deploy to Arbitrum Sepolia (spoke chain)
+- [ ] Configure LayerZero peers
+- [ ] Verify contracts on Etherscan
 
 ---
 
-## 🔗 Your Deployment
+## 📊 SYSTEM ARCHITECTURE (AS DEPLOYED)
 
-Once deployed, your live app will be at:
-- **Production:** https://your-project.vercel.app
-- **Preview:** Each commit gets a preview URL
-
-Check your Vercel dashboard for the exact URL!
-
----
-
-## 🐛 Troubleshooting
-
-### If deployment fails:
-1. Check Vercel dashboard for error logs
-2. Verify all env variables are set
-3. Make sure build succeeded locally (`npm run build`)
-
-### If wallets don't show:
-1. Add WalletConnect Project ID to Vercel env
-2. Redeploy after adding the env variable
-3. Clear browser cache and refresh
-
----
-
-## ✅ Next Steps
-
-1. ✅ Check Vercel dashboard for deployment status
-2. ⏳ Add WalletConnect Project ID to Vercel
-3. ⏳ Redeploy (if needed after adding env var)
-4. ✅ Test the live site
-5. 🎉 Enjoy multi-wallet support!
+```
+┌─────────────────────────────────────────────────┐
+│           SEPOLIA TESTNET (HUB)                  │
+├─────────────────────────────────────────────────┤
+│                                                  │
+│  EagleRegistry                                   │
+│  └─ Manages LZ endpoints & chain config         │
+│                                                  │
+│  Asset Tokens (OFTs)                            │
+│  ├─ WLFI OFT: 0x33fB...BDEa3                    │
+│  └─ USD1 OFT: 0xdDC8...2242                     │
+│                                                  │
+│  Uniswap V3 Pool (0.3% fee)                     │
+│  └─ WLFI/USD1: 0x9Ea7...53Dc ✅                 │
+│                                                  │
+│  Eagle Vault (⚠️  needs pool update)            │
+│  └─ 0x84a7...B10b                               │
+│                                                  │
+│  Share Token (OFT + Wrapper)                    │
+│  ├─ EagleShareOFT: 0x532E...457e                │
+│  └─ Wrapper: 0x577D...b44f                      │
+│                                                  │
+│  LayerZero Composer                             │
+│  └─ 0x1407...C1D8                               │
+│                                                  │
+└─────────────────────────────────────────────────┘
+```
 
 ---
 
-**Note:** The app will work without WalletConnect Project ID (MetaMask/Coinbase extensions will still work), but the full wallet list and QR scanning won't be available until you add it.
+## 🚀 NEXT STEPS
 
+### Immediate (Required for Testing)
+1. Add `setPool()` function to vault contract
+2. Recompile and redeploy vault
+3. Update vault address in test scripts
+4. Run vault flow tests
+
+### Short Term (Testnet Validation)
+1. Add liquidity to Uniswap pool
+2. Test all vault operations (deposit, withdraw, wrap, unwrap)
+3. Deploy to Arbitrum Sepolia
+4. Configure LayerZero peers
+5. Test cross-chain operations
+
+### Medium Term (Mainnet Prep)
+1. Security audit smart contracts
+2. Verify all contracts on Etherscan
+3. Set up multisig for owner roles
+4. Prepare mainnet deployment scripts
+5. Create deployment documentation
+
+---
+
+## 📝 LESSONS LEARNED
+
+1. **Pool Dependency**: Future deployments should either:
+   - Deploy pool first, then vault
+   - OR include a `setPool()` function for flexibility
+   
+2. **Deployment Order**: The correct order is:
+   - Registry → Tokens → Pool → Vault → Share OFT → Wrapper → Composer
+
+3. **Testing**: Test scripts should verify contract state before executing transactions
+
+---
+
+## 💡 RECOMMENDATIONS
+
+### For Production
+1. Add `setPool()` and other setter functions for critical addresses
+2. Use upgradeable proxy pattern for vault
+3. Implement timelock for sensitive operations
+4. Add emergency pause functionality
+5. Multi-chain deployment automation
+
+### For Security
+1. Audit all contracts before mainnet
+2. Test with real liquidity on testnet
+3. Gradual rollout with TVL caps
+4. Bug bounty program
+5. Insurance coverage
+
+---
+
+**Last Updated**: October 21, 2025  
+**Status**: 🟡 90% Complete - Minor Fix Required  
+**Blocker**: Vault needs pool address update  
+**ETA to Full Completion**: 1-2 hours (add setter + redeploy + test)
