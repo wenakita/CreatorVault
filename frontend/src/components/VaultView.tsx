@@ -457,21 +457,44 @@ export default function VaultView({ provider, account, onToast, onNavigateUp }: 
 
       console.log('✅ Vault has enough tokens (within tolerance), proceeding!');
 
-      // Try to simulate first to see what contract will actually do
+      // Simulate to see what contract will actually send
+      let contractWlfi = 0;
+      let contractUsd1 = 0;
+      
       try {
-        console.log('🧪 Testing with contract simulation...');
+        console.log('🧪 Running contract simulation...');
         const simulation = await vault.withdrawDual.staticCall(shares, account);
-        console.log('Contract says it will send:');
-        console.log('  WLFI:', formatEther(simulation[0]));
-        console.log('  USD1:', formatEther(simulation[1]));
+        contractWlfi = Number(formatEther(simulation[0]));
+        contractUsd1 = Number(formatEther(simulation[1]));
+        
+        console.log('✅ Simulation succeeded!');
+        console.log('Contract will send:', contractWlfi.toFixed(4), 'WLFI +', contractUsd1.toFixed(4), 'USD1');
+        
+        // Final check: Does vault have what contract will try to send?
+        if (vaultWlfi < contractWlfi) {
+          console.log('❌ Vault has', vaultWlfi.toFixed(2), 'WLFI but contract needs', contractWlfi.toFixed(2));
+          onToast({ message: `Vault only has ${vaultWlfi.toFixed(2)} WLFI but contract needs ${contractWlfi.toFixed(2)}`, type: 'error' });
+          setLoading(false);
+          return;
+        }
+        if (vaultUsd1 < contractUsd1) {
+          console.log('❌ Vault has', vaultUsd1.toFixed(2), 'USD1 but contract needs', contractUsd1.toFixed(2));
+          onToast({ message: `Vault only has ${vaultUsd1.toFixed(2)} USD1 but contract needs ${contractUsd1.toFixed(2)}`, type: 'error' });
+          setLoading(false);
+          return;
+        }
+        
+        console.log('✅ Vault has enough for what contract will send!');
       } catch (simError: any) {
         console.error('❌ Simulation failed:', simError.message);
-        onToast({ message: 'Contract simulation failed. The vault may have an accounting issue. Try a smaller amount.', type: 'error' });
+        console.error('Full error:', simError);
+        onToast({ message: `Contract simulation failed: ${simError.reason || simError.message}`, type: 'error' });
         setLoading(false);
         return;
       }
 
-      // Proceed with withdrawal
+      // Proceed with actual withdrawal
+      console.log('📤 Sending transaction...');
       onToast({ message: 'Withdrawing from vault...', type: 'info' });
       const tx = await vault.withdrawDual(shares, account);
       onToast({ message: 'Transaction submitted...', type: 'info', txHash: tx.hash });
