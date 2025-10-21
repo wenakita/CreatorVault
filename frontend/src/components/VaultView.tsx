@@ -591,23 +591,37 @@ export default function VaultView({ provider, account, onToast, onNavigateUp }: 
                         into Eagle's auto-compounding vault and start earning yield immediately.
                       </p>
 
-                      <h3 className="text-white font-semibold mb-3">Vault Fees</h3>
-                      <div className="space-y-2 text-sm">
-                        <div className="flex justify-between">
-                          <span className="text-gray-500">Deposit fee</span>
-                          <span className="text-white">1%</span>
+                      <h3 className="text-white font-semibold mb-3">Fee Structure</h3>
+                      <div className="space-y-3 text-sm">
+                        <div>
+                          <div className="flex justify-between mb-1">
+                            <span className="text-gray-400">Deposit Fee</span>
+                            <span className="text-white font-semibold">1%</span>
+                          </div>
+                          <p className="text-xs text-gray-600">One-time fee on deposits</p>
                         </div>
-                        <div className="flex justify-between">
-                          <span className="text-gray-500">Withdrawal fee</span>
-                          <span className="text-white">2%</span>
+                        
+                        <div>
+                          <div className="flex justify-between mb-1">
+                            <span className="text-gray-400">Withdrawal Fee</span>
+                            <span className="text-white font-semibold">2%</span>
+                          </div>
+                          <p className="text-xs text-gray-600">One-time fee on withdrawals</p>
                         </div>
-                        <div className="flex justify-between">
-                          <span className="text-gray-500">Performance fee</span>
-                          <span className="text-white">4.7%</span>
-                        </div>
-                        <div className="flex justify-between text-xs pt-2 border-t border-white/10 mt-2">
-                          <span className="text-gray-600">Of which to Charm Finance</span>
-                          <span className="text-gray-400">1%</span>
+                        
+                        <div className="pt-2 border-t border-white/10">
+                          <div className="flex justify-between mb-1">
+                            <span className="text-gray-400">Performance Fee</span>
+                            <span className="text-white font-semibold">4.7%</span>
+                          </div>
+                          <p className="text-xs text-gray-600">
+                            Charged on profits earned only
+                          </p>
+                          <p className="text-xs text-gray-600 mt-1">
+                            • 3.7% to Eagle Vault
+                            <br />
+                            • 1% to Charm Finance (from Charm-generated fees)
+                          </p>
                         </div>
                       </div>
                     </div>
