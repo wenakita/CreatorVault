@@ -41,7 +41,7 @@ export default function EagleHomeContent({ onNavigateUp, onNavigateDown, provide
   }, [provider]);
 
   return (
-    <div className="h-full flex items-center justify-center px-6">
+    <div className="h-full flex items-center justify-center px-6 bg-[#0a0a0a]">
       <div className="max-w-5xl mx-auto w-full">
         {/* Hero */}
         <motion.div
