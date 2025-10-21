@@ -287,22 +287,86 @@ export default function VaultView({ provider, account, onToast, onNavigateUp }: 
       return;
     }
 
+    const withdrawNum = Number(withdrawAmount);
+    if (withdrawNum > Number(data.userBalance)) {
+      onToast({ message: 'Insufficient vEAGLE balance', type: 'error' });
+      return;
+    }
+
     setLoading(true);
     try {
       const signer = await provider.getSigner();
       const vault = new Contract(CONTRACTS.VAULT, VAULT_ABI, signer);
+      const wlfi = new Contract(CONTRACTS.WLFI, ERC20_ABI, provider);
+      const usd1 = new Contract(CONTRACTS.USD1, ERC20_ABI, provider);
 
       const shares = parseEther(withdrawAmount);
+      
+      // PRE-FLIGHT CHECK: Verify vault has enough tokens
+      onToast({ message: 'Checking vault liquidity...', type: 'info' });
+      
+      const [maxRedeem, vaultWlfiBal, vaultUsd1Bal] = await Promise.all([
+        vault.maxRedeem(account),
+        wlfi.balanceOf(CONTRACTS.VAULT),
+        usd1.balanceOf(CONTRACTS.VAULT),
+      ]);
+
+      const maxRedeemNum = Number(formatEther(maxRedeem));
+      const vaultWlfi = Number(formatEther(vaultWlfiBal));
+      const vaultUsd1 = Number(formatEther(vaultUsd1Bal));
+
+      // Check max redeemable
+      if (maxRedeemNum < withdrawNum) {
+        onToast({ 
+          message: `Maximum withdrawal: ${maxRedeemNum.toFixed(4)} vEAGLE. Most assets are in Charm Finance earning yield. Click the Max button to auto-fill.`, 
+          type: 'error' 
+        });
+        setLoading(false);
+        setWithdrawAmount(maxRedeemNum.toFixed(4));
+        return;
+      }
+
+      // Check if vault has enough of each token
+      const expectedWlfi = Number(data.vaultLiquidWLFI) * (withdrawNum / Number(data.userBalance));
+      const expectedUsd1 = Number(data.vaultLiquidUSD1) * (withdrawNum / Number(data.userBalance));
+
+      if (vaultWlfi < expectedWlfi || vaultUsd1 < expectedUsd1) {
+        const limitingToken = vaultUsd1 < expectedUsd1 ? 'USD1' : 'WLFI';
+        const availableToken = limitingToken === 'USD1' ? vaultUsd1 : vaultWlfi;
+        const neededToken = limitingToken === 'USD1' ? expectedUsd1 : expectedWlfi;
+        
+        onToast({ 
+          message: `Vault has ${availableToken.toFixed(2)} ${limitingToken} but needs ${neededToken.toFixed(2)} for this withdrawal. Maximum: ${maxRedeemNum.toFixed(4)} vEAGLE. Auto-filled for you.`, 
+          type: 'error' 
+        });
+        setLoading(false);
+        setWithdrawAmount(maxRedeemNum.toFixed(4));
+        return;
+      }
+
+      // Proceed with withdrawal
+      onToast({ message: 'Withdrawing from vault...', type: 'info' });
       const tx = await vault.withdrawDual(shares, account);
-      onToast({ message: 'Withdrawing...', type: 'info', txHash: tx.hash });
+      onToast({ message: 'Transaction submitted...', type: 'info', txHash: tx.hash });
 
       await tx.wait();
       onToast({ message: '✅ Withdrawal successful!', type: 'success', txHash: tx.hash });
 
       setWithdrawAmount('');
+      setTimeout(() => window.location.reload(), 2000);
     } catch (error: any) {
       console.error('Withdraw error:', error);
-      onToast({ message: error.message || 'Withdrawal failed', type: 'error' });
+      let errorMessage = 'Withdrawal failed';
+      
+      if (error.code === 'ACTION_REJECTED' || error.code === 4001) {
+        errorMessage = 'Transaction rejected by user';
+      } else if (error.message?.includes('transfer amount exceeds balance')) {
+        errorMessage = 'Vault has insufficient tokens. Most assets are earning in Charm Finance. Use the Max button to withdraw available amount.';
+      } else if (error.message) {
+        errorMessage = error.message.slice(0, 150);
+      }
+      
+      onToast({ message: errorMessage, type: 'error' });
     } finally {
       setLoading(false);
     }
