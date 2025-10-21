@@ -315,10 +315,19 @@ export default function VaultView({ provider, account, onToast, onNavigateUp }: 
       const vaultWlfi = Number(formatEther(vaultWlfiBal));
       const vaultUsd1 = Number(formatEther(vaultUsd1Bal));
 
-      // Check max redeemable
-      if (maxRedeemNum < withdrawNum) {
+      console.log('=== WITHDRAWAL CHECK ===');
+      console.log('Requested vEAGLE:', withdrawNum.toFixed(4));
+      console.log('Max Redeemable:', maxRedeemNum.toFixed(4));
+      console.log('Vault WLFI:', vaultWlfi.toFixed(2));
+      console.log('Vault USD1:', vaultUsd1.toFixed(2));
+      console.log('Your vEAGLE Balance:', Number(data.userBalance).toFixed(4));
+      console.log('Max Redeemable (data):', data.maxRedeemable);
+
+      // ALWAYS use maxRedeem - it knows the actual limit
+      if (withdrawNum > maxRedeemNum) {
+        console.log('❌ Requested exceeds maxRedeem');
         onToast({ 
-          message: `Maximum withdrawal: ${maxRedeemNum.toFixed(4)} vEAGLE. Most assets are in Charm Finance earning yield. Click the Max button to auto-fill.`, 
+          message: `Maximum withdrawal: ${maxRedeemNum.toFixed(4)} vEAGLE (vault limited by token balances). Auto-filled for you.`, 
           type: 'error' 
         });
         setLoading(false);
@@ -326,23 +335,7 @@ export default function VaultView({ provider, account, onToast, onNavigateUp }: 
         return;
       }
 
-      // Check if vault has enough of each token
-      const expectedWlfi = Number(data.vaultLiquidWLFI) * (withdrawNum / Number(data.userBalance));
-      const expectedUsd1 = Number(data.vaultLiquidUSD1) * (withdrawNum / Number(data.userBalance));
-
-      if (vaultWlfi < expectedWlfi || vaultUsd1 < expectedUsd1) {
-        const limitingToken = vaultUsd1 < expectedUsd1 ? 'USD1' : 'WLFI';
-        const availableToken = limitingToken === 'USD1' ? vaultUsd1 : vaultWlfi;
-        const neededToken = limitingToken === 'USD1' ? expectedUsd1 : expectedWlfi;
-        
-        onToast({ 
-          message: `Vault has ${availableToken.toFixed(2)} ${limitingToken} but needs ${neededToken.toFixed(2)} for this withdrawal. Maximum: ${maxRedeemNum.toFixed(4)} vEAGLE. Auto-filled for you.`, 
-          type: 'error' 
-        });
-        setLoading(false);
-        setWithdrawAmount(maxRedeemNum.toFixed(4));
-        return;
-      }
+      console.log('✅ Pre-flight check passed');
 
       // Proceed with withdrawal
       onToast({ message: 'Withdrawing from vault...', type: 'info' });
