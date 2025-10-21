@@ -36,9 +36,11 @@ export default function EagleLPContent({ onNavigateDown }: Props) {
                 className="w-16 h-16"
               />
               <span className="text-4xl font-bold text-white">+</span>
-              <div className="w-16 h-16 bg-gradient-to-br from-blue-400 to-purple-600 rounded-full flex items-center justify-center text-2xl font-bold text-white">
-                Ξ
-              </div>
+              <img 
+                src="https://tomato-abundant-urial-204.mypinata.cloud/ipfs/bafkreiagnmvgbx3g7prmcg57pu3safks7ut6j3okopfmji7h5pndz2zeqy" 
+                alt="ETH"
+                className="w-16 h-16 rounded-full"
+              />
             </div>
           </div>
           
