@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { BrowserProvider, Contract, formatEther, parseEther } from 'ethers';
 import { motion } from 'framer-motion';
 import { CONTRACTS } from '../config/contracts';
@@ -23,10 +24,10 @@ interface Props {
   provider: BrowserProvider | null;
   account: string;
   onToast: (toast: { message: string; type: 'success' | 'error' | 'info'; txHash?: string }) => void;
-  onNavigateUp: () => void;
+  onNavigateUp?: () => void;
 }
 
-export default function VaultView({ provider, account, onToast, onNavigateUp }: Props) {
+export default function VaultView({ provider, account, onToast }: Props) {
   const [activeTab, setActiveTab] = useState<'deposit' | 'withdraw'>('deposit');
   const [infoTab, setInfoTab] = useState<'about' | 'strategies' | 'info'>('about');
   const [wlfiAmount, setWlfiAmount] = useState('');
@@ -183,15 +184,15 @@ export default function VaultView({ provider, account, onToast, onNavigateUp }: 
     <>
       <div className="max-w-6xl mx-auto px-6 py-6">
         {/* Back Button */}
-        <button 
-          onClick={onNavigateUp}
-          className="flex items-center gap-2 text-gray-500 hover:text-gray-300 mb-6 transition-colors text-sm"
+        <Link 
+          to="/"
+          className="flex items-center gap-2 text-gray-500 hover:text-gray-300 mb-6 transition-colors text-sm inline-flex"
         >
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
           </svg>
           Back to vaults
-        </button>
+        </Link>
 
         {/* Header */}
         <div className="flex items-center gap-4 mb-6">

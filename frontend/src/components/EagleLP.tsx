@@ -1,25 +1,26 @@
+import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { BrowserProvider } from 'ethers';
 
 interface Props {
-  onNavigateDown: () => void;
+  onNavigateDown?: () => void;
   provider: BrowserProvider | null;
 }
 
-export default function EagleLP({ onNavigateDown }: Props) {
+export default function EagleLP({}: Props) {
   return (
     <div className="h-full bg-transparent overflow-y-auto">
       <div className="container mx-auto px-6 py-12 max-w-7xl">
         {/* Back Button */}
-        <button 
-          onClick={onNavigateDown}
-          className="flex items-center gap-2 text-gray-400 hover:text-yellow-500 mb-8 transition-colors group"
+        <Link 
+          to="/"
+          className="flex items-center gap-2 text-gray-400 hover:text-yellow-500 mb-8 transition-colors group inline-flex"
         >
-          <svg className="w-5 h-5 group-hover:translate-y-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 14l-7 7m0 0l-7-7m7 7V3" />
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
           </svg>
-          <span className="text-sm font-medium">Back to Main Floor</span>
-        </button>
+          <span className="text-sm font-medium">Back to Home</span>
+        </Link>
 
         {/* Header */}
         <motion.div 
