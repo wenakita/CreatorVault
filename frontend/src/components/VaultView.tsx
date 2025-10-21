@@ -401,7 +401,7 @@ export default function VaultView({ provider, account, onToast, onNavigateUp }: 
         {/* Header */}
         <div className="flex items-center gap-4 mb-6">
           <img 
-            src="https://tomato-abundant-urial-204.mypinata.cloud/ipfs/bafybeigzyatm2pgrkqbnskyvflnagtqli6rgh7wv7t2znaywkm2pixmkxy" 
+            src={ICONS.EAGLE}
             alt="vEAGLE"
             className="w-16 h-16 rounded-2xl"
           />
@@ -410,11 +410,97 @@ export default function VaultView({ provider, account, onToast, onNavigateUp }: 
             <p className="text-sm text-gray-500">{CONTRACTS.VAULT}</p>
           </div>
           <div className="flex gap-2">
+            <button
+              onClick={handleRefresh}
+              disabled={refreshing}
+              className="px-3 py-1.5 bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg transition-colors disabled:opacity-50"
+              title="Refresh balances"
+            >
+              <svg 
+                className={`w-4 h-4 text-gray-400 ${refreshing ? 'animate-spin' : ''}`}
+                fill="none" 
+                stroke="currentColor" 
+                viewBox="0 0 24 24"
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+              </svg>
+            </button>
             <div className="px-3 py-1.5 bg-white/5 border border-white/10 rounded-lg">
               <span className="text-xs text-gray-400">vEAGLE</span>
             </div>
             <div className="px-3 py-1.5 bg-white/5 border border-white/10 rounded-lg">
               <span className="text-xs text-gray-400">Ethereum</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Asset Deployment Overview - NEW */}
+        <div className="bg-gradient-to-br from-white/5 to-transparent border border-white/10 rounded-xl p-6 mb-8">
+          <h3 className="text-white font-semibold mb-4">Asset Deployment</h3>
+          
+          <div className="grid grid-cols-2 gap-6 mb-6">
+            {/* Vault Reserves */}
+            <div className="bg-black/20 border border-white/5 rounded-lg p-4">
+              <div className="flex items-center gap-2 mb-3">
+                <div className="w-3 h-3 bg-emerald-500 rounded-full"></div>
+                <span className="text-sm font-semibold text-white">Vault Reserves</span>
+              </div>
+              <div className="space-y-2 text-sm">
+                <div className="flex justify-between">
+                  <span className="text-gray-400">WLFI</span>
+                  <span className="text-white font-mono">{Number(data.vaultLiquidWLFI).toFixed(2)}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-400">USD1</span>
+                  <span className="text-white font-mono">{Number(data.vaultLiquidUSD1).toFixed(2)}</span>
+                </div>
+                <div className="flex justify-between pt-2 border-t border-white/10">
+                  <span className="text-gray-500">Total</span>
+                  <span className="text-white font-semibold">{data.liquidTotal}</span>
+                </div>
+              </div>
+              <p className="text-xs text-gray-600 mt-3">Available for withdrawals</p>
+            </div>
+
+            {/* Strategy Deployments */}
+            <div className="bg-black/20 border border-white/5 rounded-lg p-4">
+              <div className="flex items-center gap-2 mb-3">
+                <div className="w-3 h-3 bg-blue-500 rounded-full"></div>
+                <span className="text-sm font-semibold text-white">Charm Finance</span>
+              </div>
+              <div className="space-y-2 text-sm">
+                <div className="flex justify-between">
+                  <span className="text-gray-400">WLFI</span>
+                  <span className="text-white font-mono">{Number(data.strategyWLFI).toFixed(2)}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-400">USD1</span>
+                  <span className="text-white font-mono">{Number(data.strategyUSD1).toFixed(2)}</span>
+                </div>
+                <div className="flex justify-between pt-2 border-t border-white/10">
+                  <span className="text-gray-500">Total</span>
+                  <span className="text-white font-semibold">{data.strategyTotal}</span>
+                </div>
+              </div>
+              <p className="text-xs text-gray-600 mt-3">Earning yield in Uniswap V3</p>
+            </div>
+          </div>
+
+          {/* Visual Bar */}
+          <div className="bg-black/40 rounded-lg p-3">
+            <div className="flex gap-0.5 h-2 rounded-full overflow-hidden bg-black/60 mb-2">
+              <div 
+                className="bg-gradient-to-r from-emerald-500 to-emerald-400 transition-all duration-500"
+                style={{ width: `${calculatedMetrics.liquidPercent}%` }}
+              ></div>
+              <div 
+                className="bg-gradient-to-r from-blue-500 to-blue-400 transition-all duration-500"
+                style={{ width: `${calculatedMetrics.deployedPercent}%` }}
+              ></div>
+            </div>
+            <div className="flex justify-between text-xs">
+              <span className="text-emerald-400">{calculatedMetrics.liquidPercent}% in Vault</span>
+              <span className="text-blue-400">{calculatedMetrics.deployedPercent}% in Strategies</span>
             </div>
           </div>
         </div>
