@@ -35,6 +35,9 @@ export default function EagleEcosystem({ provider, account, onToast, VaultCompon
 
   return (
     <div className="h-[calc(100vh-64px-80px)] overflow-hidden relative">
+      {/* Gradient Background - Yellow at top (LP), Black at bottom (Vault) */}
+      <div className="absolute inset-0 bg-gradient-to-b from-yellow-500/10 via-amber-600/5 to-[#0a0a0a] pointer-events-none"></div>
+      
       {/* Animated Container */}
       <motion.div
         className="absolute w-full"
@@ -100,14 +103,12 @@ export default function EagleEcosystem({ provider, account, onToast, VaultCompon
         </div>
       </motion.div>
 
-      {/* Floor Indicator (Elevator) - Hide on vault floor */}
-      {currentFloor !== 'vault' && (
-        <FloorIndicator 
-          current={currentFloor}
-          onChange={navigateToFloor}
-          isTransitioning={isTransitioning}
-        />
-      )}
+      {/* Floor Indicator (Elevator) - Always visible */}
+      <FloorIndicator 
+        current={currentFloor}
+        onChange={navigateToFloor}
+        isTransitioning={isTransitioning}
+      />
     </div>
   );
 }
