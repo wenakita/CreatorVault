@@ -23,9 +23,9 @@ interface IUniswapV3Pool {
  * @dev Run after main deployment is complete
  */
 contract PostDeployment1_CreatePool is Script {
-    // Deployed contract addresses (from SEPOLIA_DEPLOYMENT.md)
-    address constant WLFI = 0xba9B60A00fD10323Abbdc1044627B54D3ebF470e;
-    address constant USD1 = 0x93d48D3625fF8E522f63E873352256607b37f2EF;
+    // Deployed contract addresses (from SEPOLIA_LIVE_DEPLOYMENT.md)
+    address constant WLFI = 0xebe5AA10eF54aE257B3ced8e229ed4f7a12eC693;
+    address constant USD1 = 0x68cF24743CA335ae3c2e21c2538F4E929224F096;
     
     // Uniswap V3 on Sepolia
     address constant UNISWAP_V3_FACTORY = 0x0227628f3F023bb0B980b67D528571c95c6DaC1c;

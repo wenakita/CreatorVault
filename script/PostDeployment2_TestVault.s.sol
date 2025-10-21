@@ -12,12 +12,12 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
  * @dev Run after pool creation is complete
  */
 contract PostDeployment2_TestVault is Script {
-    // Deployed contract addresses
-    address constant WLFI = 0xba9B60A00fD10323Abbdc1044627B54D3ebF470e;
-    address constant USD1 = 0x93d48D3625fF8E522f63E873352256607b37f2EF;
-    address payable constant VAULT = payable(0x8901c6Dc36D9d023B33883cA028A45Db82047537);
-    address constant SHARE_OFT = 0xbeA4D2841e1892a8186853A818F5db43D2C5071E;
-    address constant WRAPPER = 0x84a744da7a4646942b5C9724897ca05bCbBbB10b;
+    // Deployed contract addresses (from SEPOLIA_LIVE_DEPLOYMENT.md)
+    address constant WLFI = 0xebe5AA10eF54aE257B3ced8e229ed4f7a12eC693;
+    address constant USD1 = 0x68cF24743CA335ae3c2e21c2538F4E929224F096;
+    address payable constant VAULT = payable(0xdDC8061BB5e2caE36E27856620086bc6d59C2242);
+    address constant SHARE_OFT = 0x87B831E8e1b09B35c888595cBae81CeA0d6bB260;
+    address constant WRAPPER = 0xA205ebeB4a3E0bb70D87c206eD0e9aA88561415a;
     
     // Test amounts
     uint256 constant DEPOSIT_WLFI = 1000 ether;

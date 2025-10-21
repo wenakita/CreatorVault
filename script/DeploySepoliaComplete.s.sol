@@ -338,26 +338,8 @@ contract DeploySepoliaComplete is Script {
         console.log("");
         console.log("SAVE THESE ADDRESSES!");
         console.log("=================================================");
-        
-        // Save to file
-        _saveDeployment();
-    }
-    
-    function _saveDeployment() internal {
-        string memory json = "deployment";
-        
-        vm.serializeAddress(json, "deployer", deployer);
-        vm.serializeAddress(json, "owner", owner);
-        vm.serializeAddress(json, "wlfiOFT", address(wlfiOFT));
-        vm.serializeAddress(json, "usd1OFT", address(usd1OFT));
-        vm.serializeAddress(json, "vault", address(vault));
-        vm.serializeAddress(json, "shareOFT", address(shareOFT));
-        vm.serializeAddress(json, "wrapper", address(wrapper));
-        string memory finalJson = vm.serializeAddress(json, "composer", address(composer));
-        
-        vm.writeJson(finalJson, "./deployments/sepolia-complete.json");
         console.log("");
-        console.log("Deployment saved to: deployments/sepolia-complete.json");
+        console.log("Deployment complete! Addresses saved in SEPOLIA_LIVE_DEPLOYMENT.md");
     }
 }
 
