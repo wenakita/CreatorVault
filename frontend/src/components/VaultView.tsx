@@ -180,7 +180,7 @@ export default function VaultView({ provider, account, onToast, onNavigateUp }: 
   };
 
   return (
-    <div className="min-h-full bg-[#0a0a0a]">
+    <div>
       <div className="max-w-6xl mx-auto px-6 py-6">
         {/* Back Button */}
         <button 
