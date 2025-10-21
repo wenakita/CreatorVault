@@ -27,7 +27,7 @@ interface Props {
   onNavigateUp?: () => void;
 }
 
-export default function VaultView({ provider, account, onToast }: Props) {
+export default function VaultView({ provider, account, onToast, onNavigateUp }: Props) {
   const [activeTab, setActiveTab] = useState<'deposit' | 'withdraw'>('deposit');
   const [infoTab, setInfoTab] = useState<'about' | 'strategies' | 'info'>('about');
   const [wlfiAmount, setWlfiAmount] = useState('');
