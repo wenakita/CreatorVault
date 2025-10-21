@@ -46,18 +46,6 @@ export default function VaultView({ provider, account, onToast, onNavigateUp }: 
     totalSupply: '0',
   });
 
-  // Scroll to top when component mounts
-  useEffect(() => {
-    // Scroll both window and the vault container
-    window.scrollTo(0, 0);
-    const vaultFloor = document.getElementById('vault-floor');
-    if (vaultFloor) {
-      const scrollContainer = vaultFloor.querySelector('.overflow-y-auto');
-      if (scrollContainer) {
-        scrollContainer.scrollTop = 0;
-      }
-    }
-  }, []);
 
   // Fetch balances
   useEffect(() => {
@@ -187,8 +175,8 @@ export default function VaultView({ provider, account, onToast, onNavigateUp }: 
     : 1;
 
   return (
-    <div className="h-full bg-[#0a0a0a]">
-      <div className="container mx-auto px-8 pt-4 pb-24 max-w-6xl">
+    <div className="bg-[#0a0a0a]">
+      <div className="container mx-auto px-8 py-6 pb-24 max-w-6xl">
         {/* Back Button */}
         <motion.button 
           onClick={onNavigateUp}

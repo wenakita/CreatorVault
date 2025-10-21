@@ -28,18 +28,6 @@ export default function EagleEcosystem({ provider, account, onToast, VaultCompon
   const navigateToFloor = (floor: Floor) => {
     setIsTransitioning(true);
     setCurrentFloor(floor);
-    
-    // Scroll to top of the floor container after transition starts
-    setTimeout(() => {
-      const floorContainer = document.getElementById(`${floor}-floor`);
-      if (floorContainer) {
-        const scrollContainer = floorContainer.querySelector('.overflow-y-auto');
-        if (scrollContainer) {
-          scrollContainer.scrollTop = 0;
-        }
-      }
-    }, 100);
-    
     setTimeout(() => setIsTransitioning(false), 800);
   };
 
@@ -95,24 +83,20 @@ export default function EagleEcosystem({ provider, account, onToast, VaultCompon
         </div>
 
         {/* Basement - Vault */}
-        <div className="h-[calc(100vh-64px-80px)]" id="vault-floor">
-          <div className="h-full overflow-y-auto overflow-x-hidden" style={{ WebkitOverflowScrolling: 'touch' }}>
-            <motion.div
-              key={currentFloor}
-              animate={{
-                opacity: isTransitioning && currentFloor !== 'vault' ? 0.5 : 1,
-                scale: isTransitioning && currentFloor !== 'vault' ? 0.98 : 1
-              }}
-              className="min-h-full"
-            >
-              <VaultComponent 
-                provider={provider}
-                account={account}
-                onToast={onToast}
-                onNavigateUp={() => navigateToFloor('home')}
-              />
-            </motion.div>
-          </div>
+        <div className="h-[calc(100vh-64px-80px)] overflow-y-auto overflow-x-hidden" id="vault-floor" style={{ WebkitOverflowScrolling: 'touch' }}>
+          <motion.div
+            animate={{
+              opacity: isTransitioning && currentFloor !== 'vault' ? 0.5 : 1,
+              scale: isTransitioning && currentFloor !== 'vault' ? 0.98 : 1
+            }}
+          >
+            <VaultComponent 
+              provider={provider}
+              account={account}
+              onToast={onToast}
+              onNavigateUp={() => navigateToFloor('home')}
+            />
+          </motion.div>
         </div>
       </motion.div>
 
