@@ -108,11 +108,40 @@ export default function AssetAllocationSunburst({
     feMerge.append('feMergeNode').attr('in', 'coloredBlur');
     feMerge.append('feMergeNode').attr('in', 'SourceGraphic');
 
-    // Create arcs with modern styling
+    // Determine what to show based on zoom state
+    const visibleNodes = zoomedNode 
+      ? root.descendants().filter(d => {
+          // When zoomed, show the zoomed node and its children
+          return d === zoomedNode || d.parent === zoomedNode;
+        })
+      : root.descendants().filter(d => d.depth > 0);
+
+    // Create arcs with smooth transitions
     const paths = svg.selectAll('path')
-      .data(root.descendants().filter(d => d.depth > 0))
-      .join('path')
-      .attr('d', arc as any)
+      .data(visibleNodes, (d: any) => d.data.name)
+      .join(
+        enter => enter.append('path')
+          .attr('d', arc as any)
+          .attr('opacity', 0)
+          .call(enter => enter.transition()
+            .duration(600)
+            .ease(d3.easeCubicOut)
+            .attr('opacity', 0.85)
+          ),
+        update => update
+          .call(update => update.transition()
+            .duration(600)
+            .ease(d3.easeCubicOut)
+            .attr('d', arc as any)
+          ),
+        exit => exit
+          .call(exit => exit.transition()
+            .duration(400)
+            .ease(d3.easeCubicIn)
+            .attr('opacity', 0)
+            .remove()
+          )
+      )
       .attr('fill', d => {
         // Add subtle gradient based on depth
         const baseColor = d.data.color || '#666';
@@ -177,7 +206,17 @@ export default function AssetAllocationSunburst({
       })
       .on('click', function(event, d) {
         event.stopPropagation();
-        setSelectedPath(selectedPath === d.data.name ? null : d.data.name);
+        
+        // Toggle zoom on click
+        if (zoomedNode && zoomedNode.data.name === d.data.name) {
+          // Zoom out
+          setZoomedNode(null);
+          setSelectedPath(null);
+        } else {
+          // Zoom in
+          setZoomedNode(d);
+          setSelectedPath(d.data.name);
+        }
       });
 
     // Add elegant center text with gradient
@@ -208,7 +247,7 @@ export default function AssetAllocationSunburst({
       .style('letter-spacing', '1.5px')
       .text('Total Tokens');
 
-  }, [vaultWLFI, vaultUSD1, strategyWLFI, strategyUSD1, grandTotal, selectedPath]);
+  }, [vaultWLFI, vaultUSD1, strategyWLFI, strategyUSD1, grandTotal, selectedPath, zoomedNode]);
 
   return (
     <div className="relative bg-gradient-to-br from-white/[0.07] via-white/[0.03] to-transparent border border-white/10 rounded-2xl p-8 mb-8 overflow-hidden">
@@ -221,16 +260,19 @@ export default function AssetAllocationSunburst({
             <h3 className="text-white font-bold text-xl mb-1">Asset Allocation</h3>
             <p className="text-sm text-gray-500">Real-time token distribution</p>
           </div>
-          {selectedPath && (
+          {zoomedNode && (
             <button
-              onClick={() => setSelectedPath(null)}
-              className="px-4 py-2 bg-gradient-to-r from-yellow-500/20 to-amber-500/20 hover:from-yellow-500/30 hover:to-amber-500/30 text-yellow-400 text-sm font-semibold rounded-xl transition-all shadow-lg"
+              onClick={() => {
+                setZoomedNode(null);
+                setSelectedPath(null);
+              }}
+              className="px-4 py-2 bg-gradient-to-r from-yellow-500/20 to-amber-500/20 hover:from-yellow-500/30 hover:to-amber-500/30 text-yellow-400 text-sm font-semibold rounded-xl transition-all shadow-lg animate-fadeIn"
             >
               <span className="flex items-center gap-2">
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM13 10H7" />
                 </svg>
-                Reset
+                Zoom Out
               </span>
             </button>
           )}
@@ -325,16 +367,19 @@ export default function AssetAllocationSunburst({
             </div>
           </div>
 
-          {selectedPath && (
+          {zoomedNode && (
             <div className="p-4 bg-gradient-to-r from-yellow-500/10 to-amber-500/10 border border-yellow-500/30 rounded-xl shadow-lg animate-fadeIn">
               <div className="flex items-center gap-2 mb-2">
-                <div className="w-2 h-2 bg-yellow-500 rounded-full animate-pulse"></div>
+                <svg className="w-4 h-4 text-yellow-500 animate-pulse" fill="currentColor" viewBox="0 0 20 20">
+                  <path d="M10 12a2 2 0 100-4 2 2 0 000 4z"/>
+                  <path fillRule="evenodd" d="M.458 10C1.732 5.943 5.522 3 10 3s8.268 2.943 9.542 7c-1.274 4.057-5.064 7-9.542 7S1.732 14.057.458 10zM14 10a4 4 0 11-8 0 4 4 0 018 0z" clipRule="evenodd"/>
+                </svg>
                 <div className="text-sm text-yellow-400 font-bold">
-                  {selectedPath}
+                  Viewing: {zoomedNode.data.name}
                 </div>
               </div>
               <p className="text-xs text-gray-400">
-                Click again to deselect, or click another section to compare
+                Click "Zoom Out" or click the section again to return
               </p>
             </div>
           )}
