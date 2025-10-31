@@ -64,7 +64,7 @@ export default function ModernHeader() {
   }, [provider]);
 
   return (
-    <header className="sticky top-0 z-50 bg-neo-bg-light dark:bg-neo-bg-dark backdrop-blur-xl border-b border-gray-300 dark:border-gray-700 shadow-neo-pressed dark:shadow-neo-pressed-dark transition-colors duration-300">
+    <header className="sticky top-0 z-50 bg-neo-bg-light dark:bg-neo-bg-dark border-b border-gray-300 dark:border-gray-700 shadow-neo-pressed dark:shadow-neo-pressed-dark transition-colors duration-300">
       <div className="container mx-auto px-6 py-4">
         <div className="flex items-center justify-between">
           {/* Logo & Title */}
