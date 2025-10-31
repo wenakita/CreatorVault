@@ -596,7 +596,13 @@ export default function VaultView({ provider, account, onToast, onNavigateUp }: 
             className="w-16 h-16 rounded-2xl"
           />
           <div className="flex-1">
-            <h1 className="text-3xl font-bold text-gray-900 mb-1">Eagle Vault</h1>
+            <div className="flex items-center gap-3 mb-2">
+              <h1 className="text-3xl font-bold text-gray-900">Eagle Vault</h1>
+              <div className="flex items-center gap-2">
+                <img src={ICONS.WLFI} alt="WLFI" className="w-8 h-8 rounded-full border-2 border-white shadow-lg" />
+                <img src={ICONS.USD1} alt="USD1" className="w-8 h-8 rounded-full border-2 border-white shadow-lg" />
+              </div>
+            </div>
             <p className="text-sm text-gray-600 font-mono">{CONTRACTS.VAULT}</p>
           </div>
           <div className="flex items-center gap-2">
@@ -799,9 +805,8 @@ export default function VaultView({ provider, account, onToast, onNavigateUp }: 
               <div className="px-6 pt-6 pb-3 border-b border-gray-200/50">
                 <NeoTabs
                   tabs={[
-                    { id: 'about', label: 'About' },
+                    { id: 'about', label: 'Vault' },
                     { id: 'strategies', label: 'Strategies' },
-                    { id: 'info', label: 'Info' },
                   ]}
                   defaultTab={infoTab}
                   onChange={(tabId) => setInfoTab(tabId as 'about' | 'strategies' | 'info')}
@@ -812,54 +817,102 @@ export default function VaultView({ provider, account, onToast, onNavigateUp }: 
               <div className="p-8">
                 {infoTab === 'about' && (
                   <div className="space-y-8">
-                    {/* Description */}
-                    <div className="text-center">
-                      <p className="text-gray-700 text-base leading-relaxed max-w-xl mx-auto">
-                        Auto-compounding vault for{' '}
-                        <a 
-                          href="https://worldlibertyfinancial.com/" 
-                          target="_blank" 
-                          rel="noopener noreferrer" 
-                          className="text-yellow-600 hover:text-yellow-700 font-semibold transition-colors"
-                        >
+                    {/* Vault Description */}
+                    <div className="text-center max-w-2xl mx-auto">
+                      <h3 className="text-gray-900 font-semibold text-lg mb-3">ERC-4626 Tokenized Vault</h3>
+                      <p className="text-gray-600 leading-relaxed">
+                        A standardized vault accepting{' '}
+                        <a href="https://worldlibertyfinancial.com/" target="_blank" rel="noopener noreferrer" className="text-yellow-600 hover:text-yellow-700 font-semibold">
                           WLFI
                         </a>
                         {' '}and{' '}
-                        <a 
-                          href="https://worldlibertyfinancial.com/usd1" 
-                          target="_blank" 
-                          rel="noopener noreferrer" 
-                          className="text-yellow-600 hover:text-yellow-700 font-semibold transition-colors"
-                        >
+                        <a href="https://worldlibertyfinancial.com/usd1" target="_blank" rel="noopener noreferrer" className="text-yellow-600 hover:text-yellow-700 font-semibold">
                           USD1
                         </a>
+                        , issuing vEAGLE shares that represent proportional ownership and automatically compound yields.
                       </p>
                     </div>
 
-                    {/* Fee Cards - Refined */}
-                    <div className="grid grid-cols-3 gap-4 max-w-2xl mx-auto">
-                      {/* Deposit */}
-                      <div className="bg-gradient-to-br from-white/60 to-white/40 backdrop-blur-sm shadow-neo-inset rounded-xl p-5 border border-gray-200/50 hover:shadow-neo-hover transition-all">
-                        <div className="text-xs text-gray-600 font-medium mb-2">Deposit</div>
-                        <div className="text-2xl font-bold text-gray-900">1%</div>
+                    {/* Fee Structure */}
+                    <div className="max-w-2xl mx-auto">
+                      <h4 className="text-gray-900 font-semibold mb-4 text-center">Fee Structure</h4>
+                      <div className="grid grid-cols-3 gap-4">
+                        <div className="bg-gradient-to-br from-white/60 to-white/40 backdrop-blur-sm shadow-neo-inset rounded-xl p-5 border border-gray-200/50 hover:shadow-neo-hover transition-all">
+                          <div className="text-xs text-gray-600 font-medium mb-2">Deposit</div>
+                          <div className="text-2xl font-bold text-gray-900">1%</div>
+                        </div>
+                        <div className="bg-gradient-to-br from-white/60 to-white/40 backdrop-blur-sm shadow-neo-inset rounded-xl p-5 border border-gray-200/50 hover:shadow-neo-hover transition-all">
+                          <div className="text-xs text-gray-600 font-medium mb-2">Withdrawal</div>
+                          <div className="text-2xl font-bold text-gray-900">2%</div>
+                        </div>
+                        <div className="bg-gradient-to-br from-yellow-50 to-yellow-100/80 shadow-neo-inset rounded-xl p-5 border-2 border-yellow-400/70 hover:shadow-neo-hover transition-all">
+                          <div className="text-xs text-gray-700 font-medium mb-2">Performance</div>
+                          <div className="text-2xl font-bold text-yellow-700">4.7%</div>
+                          <div className="text-xs text-gray-600 mt-2">On profits only</div>
+                        </div>
                       </div>
+                    </div>
 
-                      {/* Withdrawal */}
-                      <div className="bg-gradient-to-br from-white/60 to-white/40 backdrop-blur-sm shadow-neo-inset rounded-xl p-5 border border-gray-200/50 hover:shadow-neo-hover transition-all">
-                        <div className="text-xs text-gray-600 font-medium mb-2">Withdrawal</div>
-                        <div className="text-2xl font-bold text-gray-900">2%</div>
+                    {/* Vault Assets */}
+                    <div className="max-w-xl mx-auto">
+                      <h4 className="text-gray-900 font-semibold mb-4 text-center">Accepted Assets</h4>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="bg-gradient-to-br from-white/50 to-white/30 backdrop-blur-sm shadow-neo-inset rounded-xl p-6 border border-gray-200/50 text-center">
+                          <img src={ICONS.WLFI} alt="WLFI" className="w-16 h-16 rounded-full mx-auto mb-3 border-2 border-white shadow-lg" />
+                          <div className="text-gray-900 font-semibold text-lg">WLFI</div>
+                          <div className="text-sm text-yellow-600 font-medium">${data.wlfiPrice}</div>
+                          <div className="text-xs text-gray-500 mt-1">World Liberty Financial</div>
+                        </div>
+                        <div className="bg-gradient-to-br from-white/50 to-white/30 backdrop-blur-sm shadow-neo-inset rounded-xl p-6 border border-gray-200/50 text-center">
+                          <img src={ICONS.USD1} alt="USD1" className="w-16 h-16 rounded-full mx-auto mb-3 border-2 border-white shadow-lg" />
+                          <div className="text-gray-900 font-semibold text-lg">USD1</div>
+                          <div className="text-sm text-yellow-600 font-medium">${data.usd1Price}</div>
+                          <div className="text-xs text-gray-500 mt-1">Stablecoin</div>
+                        </div>
                       </div>
+                    </div>
 
-                      {/* Performance */}
-                      <div className="bg-gradient-to-br from-yellow-50 to-yellow-100/80 shadow-neo-inset rounded-xl p-5 border-2 border-yellow-400/70 hover:shadow-neo-hover transition-all">
-                        <div className="text-xs text-gray-700 font-medium mb-2">Performance</div>
-                        <div className="text-2xl font-bold text-yellow-700">4.7%</div>
-                        <div className="text-xs text-gray-600 mt-2">On profits only</div>
+                    {/* Smart Contracts */}
+                    <div className="max-w-2xl mx-auto">
+                      <h4 className="text-gray-900 font-semibold mb-4 text-center">Smart Contracts</h4>
+                      <div className="bg-gradient-to-br from-white/50 to-white/30 backdrop-blur-sm shadow-neo-inset rounded-xl p-6 border border-gray-200/50 space-y-3">
+                        <a 
+                          href={`https://etherscan.io/address/${CONTRACTS.VAULT}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex justify-between items-center group"
+                        >
+                          <span className="text-gray-700 text-sm">ERC-4626 Vault</span>
+                          <div className="flex items-center gap-2 text-yellow-600 hover:text-yellow-700 transition-colors">
+                            <code className="text-xs font-mono">
+                              {CONTRACTS.VAULT.slice(0, 6)}...{CONTRACTS.VAULT.slice(-4)}
+                            </code>
+                            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                            </svg>
+                          </div>
+                        </a>
+                        <a 
+                          href={`https://etherscan.io/address/${CONTRACTS.STRATEGY}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex justify-between items-center group"
+                        >
+                          <span className="text-gray-700 text-sm">Strategy Contract</span>
+                          <div className="flex items-center gap-2 text-yellow-600 hover:text-yellow-700 transition-colors">
+                            <code className="text-xs font-mono">
+                              {CONTRACTS.STRATEGY.slice(0, 6)}...{CONTRACTS.STRATEGY.slice(-4)}
+                            </code>
+                            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                            </svg>
+                          </div>
+                        </a>
                       </div>
                     </div>
 
                     {/* Tech Stack */}
-                    <div className="flex items-center justify-center gap-4 flex-wrap mt-8">
+                    <div className="flex items-center justify-center gap-4 flex-wrap pt-4 border-t border-gray-200/50">
                       <UniswapBadge />
                       <CharmBadge />
                       <LayerZeroBadge />
@@ -947,69 +1000,6 @@ export default function VaultView({ provider, account, onToast, onNavigateUp }: 
                         )}
                       </div>
                     ))}
-                  </div>
-                )}
-
-                {infoTab === 'info' && (
-                  <div className="max-w-2xl mx-auto space-y-6">
-                    {/* Contracts Card */}
-                    <div className="bg-gradient-to-br from-white/50 to-white/30 backdrop-blur-sm shadow-neo-inset rounded-2xl p-6 border border-gray-200/50">
-                      <h4 className="text-gray-900 font-semibold mb-4 text-sm uppercase tracking-wide">Smart Contracts</h4>
-                      <div className="space-y-3">
-                        <a 
-                          href={`https://etherscan.io/address/${CONTRACTS.VAULT}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="flex justify-between items-center group"
-                        >
-                          <span className="text-gray-700 text-sm">Vault</span>
-                          <div className="flex items-center gap-2 text-yellow-600 hover:text-yellow-700 transition-colors">
-                            <code className="text-xs font-mono">
-                              {CONTRACTS.VAULT.slice(0, 6)}...{CONTRACTS.VAULT.slice(-4)}
-                            </code>
-                            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-                            </svg>
-                          </div>
-                        </a>
-                        <a 
-                          href={`https://etherscan.io/address/${CONTRACTS.STRATEGY}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="flex justify-between items-center group"
-                        >
-                          <span className="text-gray-700 text-sm">Strategy</span>
-                          <div className="flex items-center gap-2 text-yellow-600 hover:text-yellow-700 transition-colors">
-                            <code className="text-xs font-mono">
-                              {CONTRACTS.STRATEGY.slice(0, 6)}...{CONTRACTS.STRATEGY.slice(-4)}
-                            </code>
-                            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-                            </svg>
-                          </div>
-                        </a>
-                      </div>
-                    </div>
-
-                    {/* Assets Card */}
-                    <div className="bg-gradient-to-br from-white/50 to-white/30 backdrop-blur-sm shadow-neo-inset rounded-2xl p-6 border border-gray-200/50">
-                      <h4 className="text-gray-900 font-semibold mb-4 text-sm uppercase tracking-wide">Vault Assets</h4>
-                      <div className="grid grid-cols-2 gap-4">
-                        {/* WLFI */}
-                        <div className="flex flex-col items-center text-center">
-                          <img src={ICONS.WLFI} alt="WLFI" className="w-12 h-12 rounded-full mb-2" />
-                          <div className="text-gray-900 font-semibold">WLFI</div>
-                          <div className="text-sm text-yellow-600 font-medium">${data.wlfiPrice}</div>
-                        </div>
-
-                        {/* USD1 */}
-                        <div className="flex flex-col items-center text-center">
-                          <img src={ICONS.USD1} alt="USD1" className="w-12 h-12 rounded-full mb-2" />
-                          <div className="text-gray-900 font-semibold">USD1</div>
-                          <div className="text-sm text-yellow-600 font-medium">${data.usd1Price}</div>
-                        </div>
-                      </div>
-                    </div>
                   </div>
                 )}
               </div>
