@@ -58,9 +58,9 @@ export function ProductionStatusBadge() {
   // Simple fallback for debugging
   if (loading || !status) {
     return (
-      <div className="inline-flex items-center gap-2 px-4 py-2 bg-yellow-100 border-2 border-yellow-500 rounded-full">
+      <div className="inline-flex items-center gap-2 px-4 py-2 bg-yellow-100 dark:bg-yellow-900/30 border-2 border-yellow-500 dark:border-yellow-600 rounded-full">
         <div className="w-3 h-3 bg-yellow-500 rounded-full animate-pulse"></div>
-        <span className="text-xs font-bold text-yellow-900">CHECKING STATUS...</span>
+        <span className="text-xs font-bold text-yellow-900 dark:text-yellow-400">CHECKING STATUS...</span>
       </div>
     );
   }
@@ -69,9 +69,9 @@ export function ProductionStatusBadge() {
   const isDegraded = status.healthy > 0 && status.healthy < status.total;
 
   // Simplified version for visibility
-  const bgColor = isHealthy ? 'bg-green-100 border-green-500' : isDegraded ? 'bg-yellow-100 border-yellow-500' : 'bg-red-100 border-red-500';
+  const bgColor = isHealthy ? 'bg-green-100 dark:bg-green-900/30 border-green-500 dark:border-green-600' : isDegraded ? 'bg-yellow-100 dark:bg-yellow-900/30 border-yellow-500 dark:border-yellow-600' : 'bg-red-100 dark:bg-red-900/30 border-red-500 dark:border-red-600';
   const dotColor = isHealthy ? 'bg-green-500' : isDegraded ? 'bg-yellow-500' : 'bg-red-500';
-  const textColor = isHealthy ? 'text-green-900' : isDegraded ? 'text-yellow-900' : 'text-red-900';
+  const textColor = isHealthy ? 'text-green-900 dark:text-green-400' : isDegraded ? 'text-yellow-900 dark:text-yellow-400' : 'text-red-900 dark:text-red-400';
 
   return (
     <Link
