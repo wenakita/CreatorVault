@@ -1284,19 +1284,11 @@ export default function VaultView({ provider, account, onToast, onNavigateUp }: 
           </div>
         </div>
 
-        {/* Tech Stack - Powered By */}
-        <div className="mt-8 mb-4">
-          <NeoCard>
-            <div className="px-6 py-4">
-              <div className="flex items-center justify-center gap-3 text-sm flex-wrap">
-                <UniswapBadge />
-                <span className="text-gray-400">•</span>
-                <CharmBadge />
-                <span className="text-gray-400">•</span>
-                <LayerZeroBadge />
-              </div>
-            </div>
-          </NeoCard>
+        {/* Tech Stack - Separate Subtle Badges */}
+        <div className="mt-8 mb-4 flex items-center justify-center gap-4 flex-wrap">
+          <UniswapBadge />
+          <CharmBadge />
+          <LayerZeroBadge />
         </div>
       </div>
     </div>
