@@ -32,7 +32,7 @@ export const NeoTabs = ({ tabs, defaultTab, onChange }: NeoTabsProps) => {
             whileTap={{ scale: 0.98 }}
             className={`
               px-6 py-2 rounded-full font-medium transition-all duration-300
-              relative flex-1
+              relative flex-1 overflow-hidden
               ${isActive 
                 ? 'text-gray-900 dark:text-gray-100' 
                 : 'text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200'
@@ -43,8 +43,14 @@ export const NeoTabs = ({ tabs, defaultTab, onChange }: NeoTabsProps) => {
             {isActive && (
               <motion.div
                 layoutId="activeTab"
-                className="absolute inset-0 rounded-full bg-white dark:bg-gray-700 shadow-neo-raised dark:shadow-neo-raised-dark -z-0"
-                transition={{ type: 'spring', stiffness: 500, damping: 30 }}
+                className="absolute inset-0 rounded-full bg-white dark:bg-gray-700 shadow-neo-raised dark:shadow-neo-raised-dark"
+                style={{ zIndex: 0 }}
+                transition={{ 
+                  type: 'spring', 
+                  stiffness: 500, 
+                  damping: 30,
+                  duration: 0.3
+                }}
               />
             )}
             <span className="relative z-10">{tab.label}</span>
