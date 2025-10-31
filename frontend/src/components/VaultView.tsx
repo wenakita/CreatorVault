@@ -23,7 +23,7 @@ function StrategyRow({ strategy, wlfiPrice }: { strategy: any; wlfiPrice?: strin
         onClick={() => setIsExpanded(!isExpanded)}
         className="w-full px-6 py-4 hover:bg-white/30 transition-all"
       >
-        <div className="grid grid-cols-[auto_auto_1fr_auto] gap-4 items-center">
+        <div className="grid grid-cols-[auto_auto_1fr_auto_auto] gap-4 items-center">
           {/* Column 1: Strategy Badge */}
           <div className="px-3 py-1 bg-yellow-100 border border-yellow-400 rounded-lg w-[90px] text-center">
             <span className="text-xs font-semibold text-yellow-700">Strategy {strategy.id}</span>
@@ -48,7 +48,14 @@ function StrategyRow({ strategy, wlfiPrice }: { strategy: any; wlfiPrice?: strin
             <p className="text-xs text-gray-500">{strategy.protocol}</p>
           </div>
           
-          {/* Column 4: Expand Arrow */}
+          {/* Column 4: Allocation Badge */}
+          {strategy.allocation && (
+            <div className="px-3 py-1 bg-gradient-to-r from-yellow-50 to-yellow-100 border border-yellow-400 rounded-lg min-w-[70px] text-center">
+              <span className="text-sm font-bold text-yellow-700">{strategy.allocation}</span>
+            </div>
+          )}
+          
+          {/* Column 5: Expand Arrow */}
           <svg 
             className={`w-5 h-5 text-gray-600 transition-transform ${isExpanded ? 'rotate-180' : ''}`}
             fill="none" 
@@ -103,12 +110,6 @@ function StrategyRow({ strategy, wlfiPrice }: { strategy: any; wlfiPrice?: strin
                   <div>
                     <div className="text-xs text-gray-500 mb-1">Fee Tier</div>
                     <div className="text-gray-900 font-medium">{strategy.feeTier}</div>
-                  </div>
-                )}
-                {strategy.allocation && (
-                  <div>
-                    <div className="text-xs text-gray-500 mb-1">Allocation</div>
-                    <div className="text-yellow-600 font-semibold">{strategy.allocation}</div>
                   </div>
                 )}
               </div>
@@ -1068,28 +1069,32 @@ export default function VaultView({ provider, account, onToast, onNavigateUp }: 
                           name: 'Strategy 2',
                           protocol: 'TBD',
                           description: 'Additional yield strategy coming soon. Protocol and implementation details to be announced.',
-                          status: 'coming-soon'
+                          status: 'coming-soon',
+                          allocation: '0%'
                         },
                         {
                           id: 3,
                           name: 'Strategy 3',
                           protocol: 'TBD',
                           description: 'Additional yield strategy coming soon. Protocol and implementation details to be announced.',
-                          status: 'coming-soon'
+                          status: 'coming-soon',
+                          allocation: '0%'
                         },
                         {
                           id: 4,
                           name: 'Strategy 4',
                           protocol: 'TBD',
                           description: 'Additional yield strategy coming soon. Protocol and implementation details to be announced.',
-                          status: 'coming-soon'
+                          status: 'coming-soon',
+                          allocation: '0%'
                         },
                         {
                           id: 5,
                           name: 'Strategy 5',
                           protocol: 'TBD',
                           description: 'Additional yield strategy coming soon. Protocol and implementation details to be announced.',
-                          status: 'coming-soon'
+                          status: 'coming-soon',
+                          allocation: '0%'
                         }
                       ].map((strategy) => (
                         <StrategyRow key={strategy.id} strategy={strategy} wlfiPrice={data.wlfiPrice} />
