@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react';
-import { BrowserRouter } from 'react-router-dom';
+import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { BrowserProvider } from 'ethers';
 import { motion, AnimatePresence } from 'framer-motion';
 import ModernHeader from './components/ModernHeader';
 import EagleEcosystemWithRoutes from './components/EagleEcosystemWithRoutes';
+import { Showcase } from './pages/Showcase';
 import { ICONS } from './config/icons';
 
 interface Toast {
@@ -68,7 +69,7 @@ function AppContent() {
   };
 
   return (
-    <div className="h-screen flex flex-col bg-[#0a0a0a]">
+    <div className="h-screen flex flex-col bg-neo-bg-light dark:bg-neo-bg-dark transition-colors duration-300">
       {/* Fixed Header */}
       <div className="relative z-20 flex-shrink-0">
         <ModernHeader />
@@ -84,7 +85,7 @@ function AppContent() {
       </div>
 
       {/* Fixed Footer */}
-      <footer className="relative z-20 flex-shrink-0 border-t border-white/10 bg-[#0a0a0a]/95 backdrop-blur-xl">
+      <footer className="relative z-20 flex-shrink-0 border-t border-gray-300 dark:border-gray-700 bg-neo-bg-light/95 dark:bg-neo-bg-dark/95 backdrop-blur-xl shadow-neo-pressed dark:shadow-neo-pressed-dark transition-colors duration-300">
         <div className="container mx-auto px-6 py-4">
           <div className="flex flex-col md:flex-row justify-between items-center gap-3">
             <div className="flex items-center gap-3">
@@ -93,7 +94,7 @@ function AppContent() {
                 alt="Eagle" 
                 className="w-6 h-6"
               />
-              <span className="text-xs text-gray-500">
+              <span className="text-xs text-gray-600 dark:text-gray-400 font-medium">
                 © 2025 Eagle Vault. All rights reserved.
               </span>
             </div>
@@ -103,7 +104,7 @@ function AppContent() {
                 href="https://docs.47eagle.com" 
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-xs text-gray-500 hover:text-yellow-500 transition-colors"
+                className="text-xs text-gray-600 dark:text-gray-400 hover:text-eagle-gold dark:hover:text-eagle-gold-light transition-colors font-medium"
               >
                 Docs
               </a>
@@ -111,7 +112,7 @@ function AppContent() {
                 href="https://x.com/teameagle47" 
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-xs text-gray-500 hover:text-yellow-500 transition-colors"
+                className="text-xs text-gray-600 dark:text-gray-400 hover:text-eagle-gold dark:hover:text-eagle-gold-light transition-colors font-medium"
               >
                 Twitter
               </a>
@@ -119,7 +120,7 @@ function AppContent() {
                 href="https://t.me/Eagle_community_47" 
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-xs text-gray-500 hover:text-yellow-500 transition-colors"
+                className="text-xs text-gray-600 dark:text-gray-400 hover:text-eagle-gold dark:hover:text-eagle-gold-light transition-colors font-medium"
               >
                 Telegram
               </a>
@@ -171,7 +172,10 @@ export default function App() {
         v7_relativeSplatPath: true,
       }}
     >
-      <AppContent />
+      <Routes>
+        <Route path="/showcase" element={<Showcase />} />
+        <Route path="/*" element={<AppContent />} />
+      </Routes>
     </BrowserRouter>
   );
 }
