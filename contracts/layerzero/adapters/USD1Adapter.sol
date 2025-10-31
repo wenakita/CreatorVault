@@ -3,84 +3,112 @@ pragma solidity ^0.8.22;
 
 import { OFTAdapter } from "@layerzerolabs/oft-evm/contracts/OFTAdapter.sol";
 import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
-import { IERC20Metadata } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
+
+interface IChainRegistry {
+    function getLayerZeroEndpoint(uint16 _chainId) external view returns (address);
+    function getCurrentChainId() external view returns (uint16);
+}
 
 /**
  * @title USD1Adapter
- * @notice LayerZero OFT Adapter for existing USD1 token
- * @dev Wraps the existing USD1 ERC20 token for cross-chain transfers
+ * @notice LayerZero OFT Adapter for native USD1 token on hub chains
  * 
- * Use this if USD1 already exists as an ERC20 token.
- * If USD1 doesn't exist yet, use USD1AssetOFT instead.
+ * @dev Deploy this on chains where USD1 already exists as a native ERC20
+ *      (e.g., Ethereum mainnet, BNB Chain)
  * 
- * Deploy on hub chain (Ethereum) to enable cross-chain USD1 transfers.
+ * ARCHITECTURE:
+ * - Wraps existing USD1 ERC20 token
+ * - Locks tokens when bridging OUT
+ * - Unlocks tokens when bridging IN
+ * - Never changes native token supply
+ * - Backed 1:1 by real USD1 tokens
+ * - Uses EagleRegistry for LayerZero endpoint configuration ✅
+ * 
+ * PAIRING:
+ * - Pairs with USD1AssetOFT on spoke chains (Arbitrum, Base, etc.)
+ * - Spoke chains mint/burn synthetic USD1
+ * - Hub chains lock/unlock native USD1
+ * 
+ * USAGE:
+ * 1. User approves native USD1 to this adapter
+ * 2. User calls send() to bridge to another chain
+ * 3. Adapter locks native USD1
+ * 4. LayerZero sends message to destination
+ * 5. Destination OFT mints synthetic USD1
+ * 
+ * FEES: 
+ * - NO fees on USD1 (as per architecture)
+ * - Only LayerZero messaging fees apply
+ * 
+ * STABLECOIN:
+ * - USD1 is a stablecoin (pegged to $1 USD)
+ * - Free transfers encourage adoption
+ * - Used as medium of exchange
+ * 
+ * REGISTRY:
+ * - Uses EagleRegistry for centralized endpoint management
+ * - No hardcoded addresses
+ * - Easy to update if endpoints change
  */
 contract USD1Adapter is OFTAdapter {
+    /// @notice EagleRegistry for LayerZero endpoint lookup
+    IChainRegistry public immutable registry;
+    
     /**
-     * @notice Creates a new OFT adapter for existing USD1 tokens
-     * @dev Wraps an existing USD1 ERC20 token for cross-chain functionality
-     * @param _usd1Token The existing USD1 ERC20 token contract address
-     * @param _lzEndpoint The LayerZero endpoint for this chain
-     * @param _delegate The account with administrative privileges
+     * @notice Constructor for USD1 Adapter with EagleRegistry
+     * @param _token Address of native USD1 ERC20 token
+     * @param _registry Address of EagleRegistry contract
+     * @param _delegate Admin address (can configure peers, etc.)
      */
     constructor(
-        address _usd1Token,
-        address _lzEndpoint,
+        address _token,
+        address _registry,
         address _delegate
-    ) OFTAdapter(_usd1Token, _lzEndpoint, _delegate) Ownable(_delegate) {
-        // Validate addresses
-        require(_usd1Token != address(0), "USD1Adapter: USD1 token cannot be zero address");
-        require(_lzEndpoint != address(0), "USD1Adapter: endpoint cannot be zero address");
-        require(_delegate != address(0), "USD1Adapter: delegate cannot be zero address");
+    ) OFTAdapter(
+        _token,
+        _getEndpointFromRegistry(_registry),
+        _delegate
+    ) Ownable(_delegate) {
+        require(_token != address(0), "USD1Adapter: token cannot be zero");
+        require(_registry != address(0), "USD1Adapter: registry cannot be zero");
+        require(_delegate != address(0), "USD1Adapter: delegate cannot be zero");
         
-        // Additional validation - ensure it's actually an ERC20 token
-        require(_isContract(_usd1Token), "USD1Adapter: USD1 token must be a contract");
+        registry = IChainRegistry(_registry);
     }
     
     /**
-     * @notice Get the underlying USD1 token address
-     * @return The address of the existing USD1 ERC20 contract
+     * @notice Get LayerZero endpoint from registry
+     * @param _registry Registry address
+     * @return LayerZero endpoint address for current chain
      */
-    function usd1Token() external view returns (address) {
-        return address(innerToken);
+    function _getEndpointFromRegistry(address _registry) private view returns (address) {
+        IChainRegistry reg = IChainRegistry(_registry);
+        uint16 chainId = reg.getCurrentChainId();
+        address endpoint = reg.getLayerZeroEndpoint(chainId);
+        require(endpoint != address(0), "USD1Adapter: endpoint not configured in registry");
+        return endpoint;
     }
     
     /**
-     * @notice Get token information
-     * @return name Token name from underlying USD1 contract
-     * @return symbol Token symbol from underlying USD1 contract  
-     * @return decimals Token decimals from underlying USD1 contract
+     * @notice Get the name of this adapter (for identification)
      */
-    function tokenInfo() external view returns (string memory name, string memory symbol, uint8 decimals) {
-        // Try to get metadata, fall back to defaults if not available
-        try IERC20Metadata(address(innerToken)).name() returns (string memory _name) {
-            name = _name;
-        } catch {
-            name = "USD1";
-        }
-        
-        try IERC20Metadata(address(innerToken)).symbol() returns (string memory _symbol) {
-            symbol = _symbol;
-        } catch {
-            symbol = "USD1";
-        }
-        
-        try IERC20Metadata(address(innerToken)).decimals() returns (uint8 _decimals) {
-            decimals = _decimals;
-        } catch {
-            decimals = 18;
-        }
+    function adapterName() external pure returns (string memory) {
+        return "USD1 LayerZero Adapter";
     }
     
     /**
-     * @dev Internal function to check if address is a contract
+     * @notice Get the version of this adapter
      */
-    function _isContract(address account) internal view returns (bool) {
-        uint256 size;
-        assembly {
-            size := extcodesize(account)
-        }
-        return size > 0;
+    function adapterVersion() external pure returns (string memory) {
+        return "1.1.0"; // Updated to use registry
+    }
+    
+    /**
+     * @notice Get LayerZero endpoint address
+     * @return Current LayerZero endpoint
+     */
+    function getEndpoint() external view returns (address) {
+        uint16 chainId = registry.getCurrentChainId();
+        return registry.getLayerZeroEndpoint(chainId);
     }
 }
-

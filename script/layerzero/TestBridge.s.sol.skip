@@ -1,0 +1,168 @@
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.22;
+
+import "forge-std/Script.sol";
+
+/**
+ * @title TestBridge
+ * @notice Test cross-chain token bridging via LayerZero
+ * 
+ * @dev Usage:
+ *      # Bridge EAGLE from Arbitrum to Base
+ *      NETWORK=arbitrum TOKEN=EAGLE AMOUNT=1000000000000000000 forge script script/layerzero/TestBridge.s.sol \
+ *        --rpc-url $ARBITRUM_RPC_URL \
+ *        --broadcast
+ * 
+ *      # Bridge WLFI from Base to Arbitrum
+ *      NETWORK=base TOKEN=WLFI AMOUNT=1000000000000000000 forge script script/layerzero/TestBridge.s.sol \
+ *        --rpc-url $BASE_RPC_URL \
+ *        --broadcast
+ */
+contract TestBridge is Script {
+    
+    // LayerZero Endpoint IDs
+    uint32 constant ARBITRUM_EID = 30110;
+    uint32 constant BASE_EID = 30184;
+    
+    function run() public {
+        uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
+        address deployer = vm.addr(deployerPrivateKey);
+        
+        string memory network = vm.envOr("NETWORK", string("arbitrum"));
+        string memory tokenName = vm.envOr("TOKEN", string("EAGLE"));
+        uint256 amount = vm.envOr("AMOUNT", uint256(1 ether)); // Default: 1 token
+        
+        address tokenAddress;
+        uint32 destinationEid;
+        string memory destinationChain;
+        
+        // Get token address based on network and token name
+        if (keccak256(bytes(network)) == keccak256(bytes("arbitrum"))) {
+            if (keccak256(bytes(tokenName)) == keccak256(bytes("EAGLE"))) {
+                tokenAddress = vm.envAddress("EAGLE_ARBITRUM");
+            } else if (keccak256(bytes(tokenName)) == keccak256(bytes("WLFI"))) {
+                tokenAddress = vm.envAddress("WLFI_ARBITRUM");
+            } else if (keccak256(bytes(tokenName)) == keccak256(bytes("USD1"))) {
+                tokenAddress = vm.envAddress("USD1_ARBITRUM");
+            } else {
+                revert("Unknown token");
+            }
+            destinationEid = BASE_EID;
+            destinationChain = "Base";
+        } else if (keccak256(bytes(network)) == keccak256(bytes("base"))) {
+            if (keccak256(bytes(tokenName)) == keccak256(bytes("EAGLE"))) {
+                tokenAddress = vm.envAddress("EAGLE_BASE");
+            } else if (keccak256(bytes(tokenName)) == keccak256(bytes("WLFI"))) {
+                tokenAddress = vm.envAddress("WLFI_BASE");
+            } else if (keccak256(bytes(tokenName)) == keccak256(bytes("USD1"))) {
+                tokenAddress = vm.envAddress("USD1_BASE");
+            } else {
+                revert("Unknown token");
+            }
+            destinationEid = ARBITRUM_EID;
+            destinationChain = "Arbitrum";
+        } else {
+            revert("Unsupported network");
+        }
+        
+        vm.startBroadcast(deployerPrivateKey);
+        
+        console.log("==============================================");
+        console.log("TESTING LAYERZERO BRIDGE");
+        console.log("==============================================");
+        console.log("");
+        console.log("Source Chain:", network);
+        console.log("Destination Chain:", destinationChain);
+        console.log("Token:", tokenName);
+        console.log("Token Address:", tokenAddress);
+        console.log("Amount:", amount);
+        console.log("Sender:", deployer);
+        console.log("");
+        
+        // Check balance before
+        (bool success1, bytes memory balanceData) = tokenAddress.staticcall(
+            abi.encodeWithSignature("balanceOf(address)", deployer)
+        );
+        require(success1, "Balance check failed");
+        uint256 balanceBefore = abi.decode(balanceData, (uint256));
+        
+        console.log("Balance before:", balanceBefore);
+        
+        if (balanceBefore < amount) {
+            console.log("ERROR: Insufficient balance!");
+            console.log("You need to mint tokens first");
+            vm.stopBroadcast();
+            return;
+        }
+        
+        // Prepare send parameters
+        bytes32 recipient = bytes32(uint256(uint160(deployer)));
+        
+        // Quote the fee
+        console.log("");
+        console.log("Quoting LayerZero fee...");
+        
+        bytes memory options = hex"00030100110100000000000000000000000000030d40"; // Default options
+        
+        (bool success2, bytes memory quoteData) = tokenAddress.staticcall(
+            abi.encodeWithSignature(
+                "quoteSend((uint32,bytes32,uint256,uint256,bytes,bytes,bytes),bool)",
+                (destinationEid, recipient, amount, amount, options, "", ""),
+                false
+            )
+        );
+        
+        if (!success2) {
+            console.log("ERROR: Quote failed");
+            console.log("This might mean peers are not configured correctly");
+            vm.stopBroadcast();
+            return;
+        }
+        
+        (uint256 nativeFee,) = abi.decode(quoteData, (uint256, uint256));
+        console.log("  LayerZero Fee:", nativeFee, "wei");
+        console.log("  LayerZero Fee:", nativeFee / 1e18, "ETH");
+        console.log("");
+        
+        // Send tokens
+        console.log("Sending tokens via LayerZero...");
+        
+        (bool success3, bytes memory sendData) = tokenAddress.call{value: nativeFee}(
+            abi.encodeWithSignature(
+                "send((uint32,bytes32,uint256,uint256,bytes,bytes,bytes),address)",
+                (destinationEid, recipient, amount, amount, options, "", ""),
+                deployer
+            )
+        );
+        
+        if (success3) {
+            console.log("  Bridge transaction submitted!");
+            
+            // Decode receipt
+            // Note: receipt format varies, this is a simplified version
+            console.log("");
+            console.log("Transaction Details:");
+            console.log("  Sent from:", network);
+            console.log("  Sent to:", destinationChain);
+            console.log("  Amount:", amount);
+            console.log("  Recipient:", deployer);
+        } else {
+            console.log("  ERROR: Bridge failed");
+            console.log("  Reason: Transaction reverted");
+        }
+        
+        vm.stopBroadcast();
+        
+        console.log("");
+        console.log("==============================================");
+        console.log("BRIDGE TEST COMPLETE!");
+        console.log("==============================================");
+        console.log("");
+        console.log("Next Steps:");
+        console.log("1. Wait 5-10 minutes for LayerZero to relay the message");
+        console.log("2. Check your balance on", destinationChain);
+        console.log("3. Track the message at: https://layerzeroscan.com");
+        console.log("");
+    }
+}
+

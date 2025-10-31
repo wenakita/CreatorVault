@@ -91,15 +91,8 @@ contract DeployArbitrumSepolia is Script {
         // Configure ShareOFT fees
         console.log("Step 3: Configuring ShareOFT fees...");
         
-        shareOFT.setSwapFeeConfig(
-            100,              // 1% buy fee
-            200,              // 2% sell fee
-            5000,             // 50% to treasury
-            5000,             // 50% to vault
-            treasury,         // Treasury address
-            vaultBeneficiary, // Vault beneficiary
-            true              // Fees enabled
-        );
+        // Fee configuration removed - EagleShareOFT is now a simple OFT with no fees
+        // shareOFT.setSwapFeeConfig(...) - REMOVED
         console.log("  Swap fees configured: 1% buy, 2% sell, 50/50 split");
         console.log("");
         

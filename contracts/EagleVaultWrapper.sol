@@ -31,6 +31,8 @@ interface IMintableBurnableOFT {
  *      - unwrap(): Burn OFT, release vault shares (1:1)
  *      - Maintains perfect 1:1 peg
  *      - No fees on wrapping/unwrapping
+ * 
+ * https://keybase.io/47eagle
  */
 contract EagleVaultWrapper is Ownable, ReentrancyGuard {
     using SafeERC20 for IERC20;

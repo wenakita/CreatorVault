@@ -117,7 +117,8 @@ export default function EagleEcosystemWithRoutes({ provider, account, onToast }:
             animate={{
               opacity: isTransitioning && currentFloor !== 'vault' ? 0.5 : 1,
             }}
-            className="h-full overflow-y-auto overflow-x-hidden"
+            className="h-full overflow-y-auto overflow-x-hidden scroll-smooth"
+            style={{ scrollbarGutter: 'stable' }}
           >
             <VaultView 
               provider={provider}

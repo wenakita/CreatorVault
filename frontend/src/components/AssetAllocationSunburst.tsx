@@ -241,18 +241,18 @@ export default function AssetAllocationSunburst({
   }, [vaultWLFI, vaultUSD1, strategyWLFI, strategyUSD1, grandTotal, selectedPath, animationKey]);
 
   return (
-    <div className="relative bg-gradient-to-br from-white/[0.07] via-white/[0.03] to-transparent border border-white/10 rounded-2xl p-8 mb-8 overflow-hidden">
+    <div className="relative bg-neo-bg shadow-neo-raised rounded-2xl p-8 mb-8 overflow-hidden border border-gray-300/30">
       {/* Subtle animated background gradient */}
       <div className="absolute top-0 right-0 w-64 h-64 bg-gradient-to-br from-yellow-500/5 to-transparent rounded-full blur-3xl animate-pulse"></div>
       
       <div className="relative">
         <div className="flex items-center justify-between mb-6">
           <div>
-            <h3 className="text-white font-bold text-xl mb-1">Asset Allocation</h3>
-            <p className="text-sm text-gray-500">Real-time token distribution</p>
+            <h3 className="text-gray-900 font-bold text-xl mb-1">Asset Allocation</h3>
+            <p className="text-sm text-gray-600">Real-time token distribution</p>
           </div>
           {selectedPath && (
-            <div className="px-4 py-2 bg-gradient-to-r from-yellow-500/20 to-amber-500/20 text-yellow-400 text-sm font-semibold rounded-xl shadow-lg animate-fadeIn">
+            <div className="px-4 py-2 bg-yellow-100 shadow-neo-inset text-yellow-700 text-sm font-semibold rounded-xl">
               <span className="flex items-center gap-2">
                 <svg className="w-4 h-4 animate-pulse" fill="currentColor" viewBox="0 0 20 20">
                   <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd"/>
@@ -280,90 +280,90 @@ export default function AssetAllocationSunburst({
           />
         </div>
 
-        {/* Elegant Interactive Legend */}
+        {/* Neumorphic Interactive Legend */}
         <div className="space-y-3 flex-shrink-0">
           <div 
-            className={`cursor-pointer p-4 rounded-xl transition-all duration-300 border ${
+            className={`cursor-pointer p-4 rounded-xl transition-all duration-300 ${
               selectedPath?.includes('Vault') 
-                ? 'bg-gradient-to-br from-yellow-500/20 to-amber-500/10 border-yellow-500/50 shadow-xl' 
-                : 'bg-black/20 border-white/5 hover:bg-black/30 hover:border-yellow-500/30 hover:shadow-lg'
+                ? 'bg-yellow-100 shadow-neo-inset border-2 border-yellow-400' 
+                : 'bg-neo-bg shadow-neo-raised border border-gray-300/50 hover:shadow-neo-hover'
             }`}
             onClick={() => setSelectedPath(selectedPath?.includes('Vault') ? null : 'Vault Reserves')}
           >
-            <div className="text-xs text-gray-500 uppercase tracking-wider mb-2">Vault Reserves</div>
+            <div className="text-xs text-gray-600 uppercase tracking-wider mb-2 font-semibold">Vault Reserves</div>
             <div className="space-y-2">
               <div className="flex items-center justify-between gap-2">
                 <div className="flex items-center gap-2">
-                  <div className="w-3 h-3 rounded-full" style={{ backgroundColor: '#f6d55c' }}></div>
-                  <span className="text-sm text-gray-300">WLFI</span>
+                  <div className="w-3 h-3 rounded-full shadow-neo-inset" style={{ backgroundColor: '#f6d55c' }}></div>
+                  <span className="text-sm text-gray-700 font-medium">WLFI</span>
                 </div>
-                <span className="text-sm font-mono text-white">{vaultWLFI.toFixed(2)}</span>
+                <span className="text-sm font-mono text-gray-900 font-semibold">{vaultWLFI.toFixed(2)}</span>
               </div>
               <div className="flex items-center justify-between gap-2">
                 <div className="flex items-center gap-2">
-                  <div className="w-3 h-3 rounded-full" style={{ backgroundColor: '#b8941f' }}></div>
-                  <span className="text-sm text-gray-300">USD1</span>
+                  <div className="w-3 h-3 rounded-full shadow-neo-inset" style={{ backgroundColor: '#b8941f' }}></div>
+                  <span className="text-sm text-gray-700 font-medium">USD1</span>
                 </div>
-                <span className="text-sm font-mono text-white">{vaultUSD1.toFixed(2)}</span>
+                <span className="text-sm font-mono text-gray-900 font-semibold">{vaultUSD1.toFixed(2)}</span>
               </div>
             </div>
-            <div className="text-xs text-yellow-500 mt-2 font-semibold">
-              {grandTotal > 0 ? ((totalVault / grandTotal) * 100).toFixed(1) : '0'}% • Available now
+            <div className="text-xs text-yellow-700 mt-2 font-semibold">
+              {grandTotal > 0 ? ((totalVault / grandTotal) * 100).toFixed(1) : '0.0'}% • Available now
             </div>
           </div>
           
           <div 
-            className={`cursor-pointer p-4 rounded-xl transition-all duration-300 border ${
+            className={`cursor-pointer p-4 rounded-xl transition-all duration-300 ${
               selectedPath?.includes('Strategy') 
-                ? 'bg-gradient-to-br from-indigo-500/20 to-blue-500/10 border-indigo-500/50 shadow-xl' 
-                : 'bg-black/20 border-white/5 hover:bg-black/30 hover:border-indigo-500/30 hover:shadow-lg'
+                ? 'bg-indigo-100 shadow-neo-inset border-2 border-indigo-400' 
+                : 'bg-neo-bg shadow-neo-raised border border-gray-300/50 hover:shadow-neo-hover'
             }`}
             onClick={() => setSelectedPath(selectedPath?.includes('Strategy') ? null : 'Charm Strategy')}
           >
-            <div className="text-xs text-gray-500 uppercase tracking-wider mb-2">Charm Strategy</div>
+            <div className="text-xs text-gray-600 uppercase tracking-wider mb-2 font-semibold">Charm Strategy</div>
             <div className="space-y-2">
               <div className="flex items-center justify-between gap-2">
                 <div className="flex items-center gap-2">
-                  <div className="w-3 h-3 rounded-full bg-indigo-400"></div>
-                  <span className="text-sm text-gray-300">WLFI</span>
+                  <div className="w-3 h-3 rounded-full shadow-neo-inset bg-indigo-400"></div>
+                  <span className="text-sm text-gray-700 font-medium">WLFI</span>
                 </div>
-                <span className="text-sm font-mono text-white">{strategyWLFI.toFixed(2)}</span>
+                <span className="text-sm font-mono text-gray-900 font-semibold">{strategyWLFI.toFixed(2)}</span>
               </div>
               <div className="flex items-center justify-between gap-2">
                 <div className="flex items-center gap-2">
-                  <div className="w-3 h-3 rounded-full bg-indigo-700"></div>
-                  <span className="text-sm text-gray-300">USD1</span>
+                  <div className="w-3 h-3 rounded-full shadow-neo-inset bg-indigo-700"></div>
+                  <span className="text-sm text-gray-700 font-medium">USD1</span>
                 </div>
-                <span className="text-sm font-mono text-white">{strategyUSD1.toFixed(2)}</span>
+                <span className="text-sm font-mono text-gray-900 font-semibold">{strategyUSD1.toFixed(2)}</span>
               </div>
             </div>
-            <div className="text-xs text-gray-600 mt-2">
-              {grandTotal > 0 ? ((totalStrategy / grandTotal) * 100).toFixed(1) : '0'}% • Earning yield
+            <div className="text-xs text-indigo-700 mt-2 font-semibold">
+              {grandTotal > 0 ? ((totalStrategy / grandTotal) * 100).toFixed(1) : '100.0'}% • Earning yield
             </div>
           </div>
 
-          <div className="pt-4 border-t border-white/10 mt-4">
-            <div className="bg-gradient-to-br from-yellow-500/10 to-transparent rounded-lg p-4">
-              <div className="text-xs text-gray-500 uppercase tracking-wider mb-1">Total Assets</div>
-              <div className="text-3xl font-bold bg-gradient-to-r from-yellow-500 to-amber-500 bg-clip-text text-transparent">
+          <div className="pt-4 border-t border-gray-300 mt-4">
+            <div className="bg-neo-bg shadow-neo-inset rounded-xl p-4">
+              <div className="text-xs text-gray-600 uppercase tracking-wider mb-1 font-semibold">Total Assets</div>
+              <div className="text-3xl font-bold text-yellow-600">
                 {grandTotal.toFixed(2)}
               </div>
-              <div className="text-xs text-gray-600 mt-1">WLFI + USD1</div>
+              <div className="text-xs text-gray-700 mt-1 font-medium">WLFI + USD1</div>
             </div>
           </div>
 
           {selectedPath && (
-            <div className="p-4 bg-gradient-to-r from-yellow-500/10 to-amber-500/10 border border-yellow-500/30 rounded-xl shadow-lg animate-fadeIn">
+            <div className="p-4 bg-yellow-50 shadow-neo-inset border border-yellow-400 rounded-xl animate-fadeIn">
               <div className="flex items-center gap-2 mb-2">
-                <svg className="w-4 h-4 text-yellow-500 animate-pulse" fill="currentColor" viewBox="0 0 20 20">
+                <svg className="w-4 h-4 text-yellow-600 animate-pulse" fill="currentColor" viewBox="0 0 20 20">
                   <path d="M10 12a2 2 0 100-4 2 2 0 000 4z"/>
                   <path fillRule="evenodd" d="M.458 10C1.732 5.943 5.522 3 10 3s8.268 2.943 9.542 7c-1.274 4.057-5.064 7-9.542 7S1.732 14.057.458 10zM14 10a4 4 0 11-8 0 4 4 0 018 0z" clipRule="evenodd"/>
                 </svg>
-                <div className="text-sm text-yellow-400 font-bold">
+                <div className="text-sm text-yellow-700 font-bold">
                   Viewing: {selectedPath}
                 </div>
               </div>
-              <p className="text-xs text-gray-400">
+              <p className="text-xs text-gray-600">
                 Click any section to animate and update view
               </p>
             </div>

@@ -63,6 +63,10 @@ interface ICharmVault {
     function token1() external view returns (address);
 }
 
+interface IEagleOVault {
+    function wlfiPerUsd1() external view returns (uint256);
+}
+
 contract CharmStrategyUSD1 is IStrategy, ReentrancyGuard, Ownable {
     using SafeERC20 for IERC20;
 
@@ -242,7 +246,7 @@ contract CharmStrategyUSD1 is IStrategy, ReentrancyGuard, Ownable {
         uint256 finalWlfi;
         
         if (charmUsd1 > 0 && charmWlfi > 0) {
-            // STEP 2: Calculate EXACT USD1 needed for our WLFI
+            // STEP 2: Match Charm's TOKEN QUANTITY ratio
             // If Charm has 1000 USD1 : 5000 WLFI ratio (1:5)
             // For our 100 WLFI, we need: 100 * 1000 / 5000 = 20 USD1
             uint256 usd1Needed = (totalWlfi * charmUsd1) / charmWlfi;
@@ -257,13 +261,19 @@ contract CharmStrategyUSD1 is IStrategy, ReentrancyGuard, Ownable {
                 if (excessUsd1 > 0) {
                     uint256 moreWlfi = _swapUsd1ToWlfi(excessUsd1);
                     finalWlfi += moreWlfi;
-                    // FIX: Use remaining USD1 balance after swap, don't recalculate
                     finalUsd1 = USD1.balanceOf(address(this));
                 }
             } else {
                 // Not enough USD1 - swap some WLFI → USD1
                 uint256 usd1Shortfall = usd1Needed - totalUsd1;
-                uint256 wlfiToSwap = (usd1Shortfall * charmWlfi) / charmUsd1;
+                
+                // FIX: Use oracle price from vault to determine swap amount
+                // Get WLFI per USD1 from vault's oracle
+                uint256 wlfiPer1Usd1 = IEagleOVault(EAGLE_VAULT).wlfiPerUsd1();
+                
+                // Calculate WLFI to swap based on MARKET PRICE (not Charm's ratio)
+                // To get X USD1, we need: X * wlfiPer1Usd1 WLFI
+                uint256 wlfiToSwap = (usd1Shortfall * wlfiPer1Usd1) / 1e18;
                 
                 if (wlfiToSwap < totalWlfi) {
                     uint256 moreUsd1 = _swapWlfiToUsd1(wlfiToSwap);

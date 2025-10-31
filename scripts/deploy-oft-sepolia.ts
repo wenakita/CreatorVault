@@ -14,7 +14,8 @@ async function main() {
   
   // IMPORTANT: Update this address after deploying the registry
   const REGISTRY_ADDRESS = process.env.SEPOLIA_REGISTRY_ADDRESS || "";
-  
+  const SEPOLIA_LZ_ENDPOINT = "0x6EDCE65403992e310A62460808c4b910D972f10f"; // Sepolia LayerZero endpoint
+
   if (!REGISTRY_ADDRESS) {
     console.error("\n❌ ERROR: SEPOLIA_REGISTRY_ADDRESS not set!");
     console.log("\nPlease set the registry address:");
@@ -68,10 +69,8 @@ async function main() {
   const oft = await EagleShareOFT.deploy(
     "Eagle Vault Shares",           // name
     "EAGLE",                         // symbol
-    ethers.ZeroAddress,              // _lzEndpoint (not used in registry mode)
-    REGISTRY_ADDRESS,                // _registry
-    deployer.address,                // _delegate (owner)
-    feeConfig                        // fee config
+    SEPOLIA_LZ_ENDPOINT,             // _lzEndpoint
+    deployer.address                 // _delegate (owner)
   );
   
   await oft.waitForDeployment();

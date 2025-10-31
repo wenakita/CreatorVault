@@ -1,0 +1,88 @@
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.20;
+
+import "forge-std/Script.sol";
+import "../contracts/EagleOVault.sol";
+
+contract DeployFreshVault is Script {
+    // Token addresses
+    address constant WLFI = 0xdA5e1988097297dCdc1f90D4dFE7909e847CBeF6;
+    address constant USD1 = 0x8d0D000Ee44948FC98c9B98A4FA4921476f08B0d;
+    
+    // Pool and router addresses
+    address constant WLFI_USD1_POOL = 0x4637ea6ecf7e16c99e67e941ab4d7d52eac7c73d;
+    address constant UNISWAP_ROUTER = 0xE592427A0AEce92De3Edee1F18E0157C05861564;
+    
+    // Owner/admin
+    address constant OWNER = 0x7310Dd6EF89b7f829839F140C6840bc929ba2031;
+    
+    // Fixed strategy (already deployed)
+    address constant FIXED_STRATEGY = 0xceCf4A0d1Ea9B5FB12db0540066D1e6E05BCa91D;
+
+    function run() external {
+        uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
+        
+        vm.startBroadcast(deployerPrivateKey);
+
+        console.log("===========================================================");
+        console.log("  DEPLOYING FRESH EAGLE VAULT");
+        console.log("===========================================================");
+        console.log("");
+        
+        console.log("Constructor Parameters:");
+        console.log("  WLFI:            ", WLFI);
+        console.log("  USD1:            ", USD1);
+        console.log("  WLFI/USD1 Pool:  ", WLFI_USD1_POOL);
+        console.log("  Uniswap Router:  ", UNISWAP_ROUTER);
+        console.log("  Owner:           ", OWNER);
+        console.log("");
+
+        // Deploy the vault
+        EagleOVault vault = new EagleOVault(
+            WLFI,
+            USD1,
+            WLFI_USD1_POOL,
+            UNISWAP_ROUTER,
+            OWNER
+        );
+
+        console.log("SUCCESS: EagleOVault deployed at:", address(vault));
+        console.log("");
+        
+        console.log("===========================================================");
+        console.log("  CONFIGURING VAULT");
+        console.log("===========================================================");
+        console.log("");
+        
+        // Add the fixed strategy
+        console.log("Adding strategy:", FIXED_STRATEGY);
+        vault.addStrategy(FIXED_STRATEGY);
+        console.log("SUCCESS: Strategy added");
+        console.log("");
+        
+        // Set deposit limit (let's start with 10,000 WLFI)
+        uint256 depositLimit = 10000 * 1e18;
+        console.log("Setting deposit limit: 10,000 WLFI");
+        vault.setDepositLimit(depositLimit);
+        console.log("SUCCESS: Deposit limit set");
+        console.log("");
+        
+        console.log("===========================================================");
+        console.log("");
+        console.log("DEPLOYMENT COMPLETE!");
+        console.log("");
+        console.log("New Vault:        ", address(vault));
+        console.log("Strategy:         ", FIXED_STRATEGY);
+        console.log("Deposit Limit:    10,000 WLFI");
+        console.log("");
+        console.log("NEXT STEPS:");
+        console.log("  1. Update strategy's vault address (if needed)");
+        console.log("  2. Test deposit with small amount");
+        console.log("  3. Verify correct behavior");
+        console.log("");
+        console.log("===========================================================");
+
+        vm.stopBroadcast();
+    }
+}
+

@@ -15,6 +15,8 @@ import "./interfaces/IChainRegistry.sol";
  * - Chain configuration storage
  * - EID (Endpoint ID) mapping
  * - Multi-chain state management
+ * 
+ * https://keybase.io/47eagle
  */
 contract EagleRegistry is IChainRegistry, Ownable {
     

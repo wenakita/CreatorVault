@@ -159,10 +159,8 @@ async function main() {
   const oft = await EagleShareOFT.deploy(
     "Eagle Vault Shares",
     "EAGLE",
-    ethers.ZeroAddress,
-    registryAddress,
-    deployer.address,
-    feeConfig
+    SEPOLIA_LZ_ENDPOINT,
+    deployer.address
   );
   await oft.waitForDeployment();
   const oftAddress = await oft.getAddress();

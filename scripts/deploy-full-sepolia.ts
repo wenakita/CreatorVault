@@ -102,12 +102,10 @@ async function main() {
   const EagleShareOFT = await ethers.getContractFactory("EagleShareOFT");
   
   const oft = await EagleShareOFT.deploy(
-    "Eagle Vault Shares",
-    "EAGLE",
-    ethers.ZeroAddress,  // Not used in registry mode
-    registryAddress,
-    deployer.address,
-    feeConfig
+    "Eagle Vault Shares",           // name
+    "EAGLE",                         // symbol
+    SEPOLIA_LZ_ENDPOINT,             // _lzEndpoint
+    deployer.address                 // _delegate (owner)
   );
   
   await oft.waitForDeployment();

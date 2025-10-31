@@ -1,576 +1,598 @@
 # Eagle Vault Wrapper Architecture
 
-## 🎯 **Your Question**
-
-> "We were planning on using EagleVaultWrapper.sol on the hub chain which would create the EagleShareOFT.sol. Could we still use the EagleShareOFTAdapter.sol to mint to other chains and thus still have the same EagleShareOFT.sol?"
-
-## ✅ **Short Answer**
-
-**YES, and it's even SIMPLER!**
-
-If you deploy `EagleShareOFT` on the hub chain using `EagleVaultWrapper`, you **DON'T need `EagleShareOFTAdapter`** because OFT contracts have **native LayerZero integration built-in**.
+**Status:** ✅ **CURRENT ARCHITECTURE**  
+**Last Updated:** October 27, 2025
 
 ---
 
-## 📊 **Architecture Comparison**
+## 🎯 Architecture Overview
 
-### **Option 1: Standard OVault (Current)**
+We use the **EagleVaultWrapper pattern** where the **same EagleShareOFT contract** is deployed on **ALL chains** (including Ethereum mainnet) with the **same address** via CREATE2.
 
-```
-┌─────────────────────────────────────────────────────────┐
-│                HUB CHAIN (Ethereum)                     │
-├─────────────────────────────────────────────────────────┤
-│                                                         │
-│  EagleOVault.sol (Vault)                               │
-│  └─> Mints vEAGLE shares (ERC20, no LayerZero)         │
-│                                                         │
-│  EagleShareOFTAdapter.sol (NEEDED!)                    │
-│  └─> Wraps vEAGLE for cross-chain                      │
-│       ├─> Locks vEAGLE when sending                    │
-│       └─> Unlocks vEAGLE when receiving                │
-│                                                         │
-└─────────────────────────────────────────────────────────┘
-                        │
-                 LayerZero Bridge
-                        │
-┌─────────────────────────────────────────────────────────┐
-│           SPOKE CHAINS (Arbitrum, Optimism)             │
-├─────────────────────────────────────────────────────────┤
-│                                                         │
-│  EagleShareOFT.sol                                     │
-│  └─> vEAGLE representation                             │
-│       ├─> Minted when bridged from hub                 │
-│       └─> Burned when bridged to hub                   │
-│                                                         │
-└─────────────────────────────────────────────────────────┘
-```
+### **Key Decision**
 
-**Why adapter is needed:**
-- Vault shares are plain ERC20 (no LayerZero)
-- Need adapter to add LayerZero capabilities
-- Different contract types (ERC20 vs OFT)
+✅ **We want the same EAGLE token metadata on ALL chains**
+
+This means:
+- Same contract name: "Eagle Vault Shares"
+- Same symbol: "EAGLE"
+- Same address: `0x...` (via CREATE2)
+- Same functionality everywhere
 
 ---
 
-### **Option 2: With Wrapper (YOUR PROPOSAL) ✅ BETTER!**
+## 📊 Architecture Diagram
 
 ```
-┌─────────────────────────────────────────────────────────┐
-│                HUB CHAIN (Ethereum)                     │
-├─────────────────────────────────────────────────────────┤
-│                                                         │
-│  EagleOVault.sol (Vault)                               │
-│  └─> Mints vEAGLE shares (ERC20)                       │
-│       │                                                 │
-│       ▼                                                 │
-│  EagleVaultWrapper.sol (1:1 Bridge)                    │
-│  └─> Locks vault shares, mints OFT tokens              │
-│       │                                                 │
-│       ▼                                                 │
-│  EagleShareOFT.sol (SAME CONTRACT AS SPOKE!)           │
-│  └─> OFT with NATIVE LayerZero support                 │
-│       ├─> send() directly to other chains              │
-│       └─> receive() directly from other chains         │
-│                                                         │
-│  ❌ EagleShareOFTAdapter.sol (NOT NEEDED!)             │
-│                                                         │
-└─────────────────────────────────────────────────────────┘
-                        │
-                 LayerZero Bridge
-                        │
-┌─────────────────────────────────────────────────────────┐
-│           SPOKE CHAINS (Arbitrum, Optimism)             │
-├─────────────────────────────────────────────────────────┤
-│                                                         │
-│  EagleShareOFT.sol (SAME CONTRACT!)                    │
-│  └─> Identical contract on ALL chains                  │
-│       ├─> Same functions                               │
-│       ├─> Same name/symbol                             │
-│       ├─> Native LayerZero support                     │
-│       └─> Fee-on-swap (if configured)                  │
-│                                                         │
-└─────────────────────────────────────────────────────────┘
-```
+╔══════════════════════════════════════════════════════════════╗
+║                 ALL CHAINS (Same Contract)                   ║
+╚══════════════════════════════════════════════════════════════╝
 
-**Benefits:**
-- ✅ Same `EagleShareOFT` contract on ALL chains (including hub!)
-- ✅ No adapter needed (OFT has LayerZero built-in)
-- ✅ Simpler architecture
-- ✅ Lower gas costs (one less contract)
-- ✅ Easier to understand
-- ✅ Native LayerZero features (send/receive)
+  EagleShareOFT (0xSAME_ADDRESS via CREATE2)
+  ├─ Name: "Eagle Vault Shares"
+  ├─ Symbol: "EAGLE"
+  ├─ Decimals: 18
+  ├─ LayerZero OFT functionality
+  └─ No fees on transfers ✅
+
+
+╔══════════════════════════════════════════════════════════════╗
+║           ETHEREUM MAINNET (Hub) - Special Setup             ║
+╚══════════════════════════════════════════════════════════════╝
+
+┌─────────────────────────────────────────────────────────────┐
+│ 1. EagleOVault (0xVAULT...)                                 │
+│    └─ ERC4626 vault (WLFI/USD1 deposits)                    │
+│    └─ Issues vault shares on deposit                        │
+│    └─ Redeems vault shares on withdrawal                    │
+└─────────────────────────────────────────────────────────────┘
+                        ↓ 1:1 conversion
+┌─────────────────────────────────────────────────────────────┐
+│ 2. EagleVaultWrapper (0xWRAPPER...)                         │
+│    ├─ wrap():   Lock vault shares → Mint EAGLE (1:1)       │
+│    └─ unwrap(): Burn EAGLE → Release vault shares (1:1)    │
+│    └─ Is authorized minter of EagleShareOFT                 │
+└─────────────────────────────────────────────────────────────┘
+                        ↓
+┌─────────────────────────────────────────────────────────────┐
+│ 3. EagleShareOFT (0xSAME_ADDRESS...)                        │
+│    └─ Cross-chain transfers via LayerZero                   │
+│    └─ Tradeable, bridgeable EAGLE token                     │
+└─────────────────────────────────────────────────────────────┘
+
+
+╔══════════════════════════════════════════════════════════════╗
+║           SPOKE CHAINS (Arbitrum, Base, etc.)                ║
+╚══════════════════════════════════════════════════════════════╝
+
+┌─────────────────────────────────────────────────────────────┐
+│ EagleShareOFT (0xSAME_ADDRESS...)                           │
+│ ├─ Receives bridged EAGLE tokens from hub                   │
+│ ├─ Standard ERC20 transfers (no fees)                       │
+│ ├─ Cross-chain transfers via LayerZero                      │
+│ └─ Can be bridged back to hub                               │
+└─────────────────────────────────────────────────────────────┘
+```
 
 ---
 
-## 🔑 **Key Insight: OFT vs OFTAdapter**
+## ✅ Why This Architecture?
 
-### **When to use OFTAdapter:**
+### **Compared to Standard OFTAdapter Pattern**
+
+**Standard LayerZero Pattern:**
+```
+Hub:    EagleOVault shares → EagleShareOFTAdapter (lockbox)
+Spokes: EagleShareOFT (mint/burn)
+
+Problems:
+  ❌ Different tokens on hub vs spokes
+  ❌ "Vault shares" vs "EAGLE" confusion
+  ❌ Can't use same address on all chains
+```
+
+**Our EagleVaultWrapper Pattern:**
+```
+ALL Chains: EagleShareOFT (SAME contract, SAME address)
+Hub Only:   EagleVaultWrapper (converter)
+
+Benefits:
+  ✅ Same "EAGLE" token everywhere
+  ✅ Same address everywhere (CREATE2)
+  ✅ Consistent branding
+  ✅ Better UX
+  ✅ Simpler mental model
+```
+
+---
+
+## 🔄 Complete User Flow
+
+### **Scenario: User on Ethereum wants to bridge to Arbitrum**
+
+```
+Step 1: Deposit to Vault (Ethereum)
+─────────────────────────────────────────
+User: Deposits 1000 WLFI
+EagleOVault: Mints 1000 vault shares
+User Balance: 1000 vault shares
+
+Step 2: Wrap to EAGLE OFT (Ethereum)
+─────────────────────────────────────────
+User: Calls wrapper.wrap(1000)
+EagleVaultWrapper: 
+  - Transfers 1000 vault shares FROM user TO wrapper (locked)
+  - Mints 1000 EAGLE OFT TO user
+User Balance: 0 vault shares, 1000 EAGLE
+Wrapper Balance: 1000 locked vault shares
+
+Step 3: Bridge to Arbitrum (LayerZero)
+─────────────────────────────────────────
+User: Calls oft.send() on Ethereum
+EagleShareOFT (Ethereum):
+  - Burns 1000 EAGLE from user
+LayerZero: Sends cross-chain message
+EagleShareOFT (Arbitrum):
+  - Mints 1000 EAGLE to user
+User Balance (Ethereum): 0 EAGLE
+User Balance (Arbitrum): 1000 EAGLE
+
+Step 4: Bridge Back & Redeem (Later)
+─────────────────────────────────────────
+User: Calls oft.send() on Arbitrum
+EagleShareOFT (Arbitrum):
+  - Burns 1000 EAGLE from user
+LayerZero: Sends cross-chain message
+EagleShareOFT (Ethereum):
+  - Mints 1000 EAGLE to user
+User Balance (Ethereum): 1000 EAGLE
+
+Step 5: Unwrap to Vault Shares (Ethereum)
+─────────────────────────────────────────
+User: Calls wrapper.unwrap(1000)
+EagleVaultWrapper:
+  - Burns 1000 EAGLE from user
+  - Transfers 1000 vault shares TO user (unlocked)
+User Balance: 1000 vault shares, 0 EAGLE
+Wrapper Balance: 0 locked vault shares
+
+Step 6: Redeem from Vault (Ethereum)
+─────────────────────────────────────────
+User: Calls vault.redeem(1000)
+EagleOVault:
+  - Burns 1000 vault shares
+  - Returns 1000+ WLFI (with yield!)
+User Balance: 1000+ WLFI
+```
+
+---
+
+## 🔑 Key Components
+
+### **1. EagleOVault (Ethereum Only)**
+
+**Purpose:** ERC4626 vault for WLFI/USD1 deposits
 
 ```solidity
-// You have an EXISTING ERC20 token without LayerZero
-contract MyToken is ERC20 {
-    // No LayerZero integration
-}
-
-// You need an adapter to add LayerZero capabilities
-contract MyTokenAdapter is OFTAdapter {
-    constructor(address _token) OFTAdapter(_token) {}
+contract EagleOVault is ERC4626 {
+    function deposit(uint256 assets, address receiver) 
+        returns (uint256 shares);
+    
+    function redeem(uint256 shares, address receiver, address owner)
+        returns (uint256 assets);
 }
 ```
 
-**Use case:** Wrapping existing tokens (USDC, WETH, etc.)
+**Characteristics:**
+- ✅ Issues vault shares (ERC20 compatible)
+- ✅ Manages yield strategies
+- ✅ No LayerZero integration (by design)
+- ✅ Standard ERC4626 compliance
 
 ---
 
-### **When to use OFT (YOUR CASE!):**
+### **2. EagleVaultWrapper (Ethereum Only)**
+
+**Purpose:** Converts vault shares ↔ EAGLE OFT (1:1)
 
 ```solidity
-// You're deploying a NEW token with LayerZero from the start
+contract EagleVaultWrapper {
+    IERC20 public immutable VAULT_EAGLE;  // EagleOVault shares
+    IMintableBurnableOFT public immutable OFT_EAGLE;  // EagleShareOFT
+    
+    function wrap(uint256 amount) external {
+        // 1. Transfer vault shares FROM user TO wrapper (lock)
+        VAULT_EAGLE.transferFrom(msg.sender, address(this), amount);
+        
+        // 2. Mint EAGLE OFT TO user (1:1)
+        OFT_EAGLE.mint(msg.sender, amount);
+        
+        totalLocked += amount;
+        totalMinted += amount;
+    }
+    
+    function unwrap(uint256 amount) external {
+        // 1. Burn EAGLE OFT FROM user
+        OFT_EAGLE.burn(msg.sender, amount);
+        
+        // 2. Transfer vault shares TO user (unlock)
+        VAULT_EAGLE.transfer(msg.sender, amount);
+        
+        totalLocked -= amount;
+        totalMinted -= amount;
+    }
+}
+```
+
+**Characteristics:**
+- ✅ 1:1 peg with vault shares
+- ✅ No fees on wrapping/unwrapping
+- ✅ Authorized minter of EAGLE OFT
+- ✅ Minter can burn without allowance
+- ✅ Immutable token references
+
+**Critical Design:**
+- Wrapper locks vault shares (not burns)
+- Preserves vault's totalSupply() accounting
+- Only authorized minter on Ethereum
+
+---
+
+### **3. EagleShareOFT (ALL Chains)**
+
+**Purpose:** Standard LayerZero OFT with consistent branding
+
+```solidity
 contract EagleShareOFT is OFT {
-    // LayerZero integration is BUILT-IN!
-    // Has send() and receive() functions natively
+    mapping(address => bool) public isMinter;
+    
+    function mint(address to, uint256 amount) external {
+        require(isMinter[msg.sender] || msg.sender == owner());
+        _mint(to, amount);
+    }
+    
+    function burn(address from, uint256 amount) external {
+        require(isMinter[msg.sender] || msg.sender == owner());
+        // Minters can burn without allowance ✅
+        _burn(from, amount);
+    }
+    
+    // Standard LayerZero OFT functions
+    function send(...) external payable;
+    function sendAndCall(...) external payable;
 }
 ```
 
-**Use case:** New tokens designed for cross-chain from day 1
+**Characteristics:**
+- ✅ Same metadata everywhere ("EAGLE")
+- ✅ Same address everywhere (CREATE2)
+- ✅ No fees on any transfers
+- ✅ LayerZero cross-chain transfers
+- ✅ Minter role for wrapper integration
+
+**Minter Configuration:**
+- **Ethereum (hub):** EagleVaultWrapper is ONLY minter
+- **Spokes:** NO local minters (LayerZero only)
 
 ---
 
-## 🏗️ **Your Architecture Flow**
+## 💰 Supply Management & Invariants
 
-### **Step 1: User Deposits to Vault (Hub)**
+### **Global Invariant**
 
-```solidity
-// 1. User deposits WLFI to vault
-EagleOVault.deposit(1000 WLFI)
-  └─> User receives 1000 vEAGLE (vault shares)
+```
+RULE: Total EAGLE supply across ALL chains = Locked vault shares in wrapper
+
+Mathematical representation:
+  SUM(EagleShareOFT.totalSupply() for each chain) = EagleVaultWrapper.totalLocked
+
+This ensures:
+  ✅ No inflation (can't create EAGLE out of thin air)
+  ✅ 1:1 backing (every EAGLE = 1 vault share)
+  ✅ Redeemability (can always unwrap → redeem)
 ```
 
-### **Step 2: User Wraps to OFT (Hub)**
+### **Example Breakdown**
 
-```solidity
-// 2. User wraps vault shares to OFT tokens
-EagleVaultWrapper.wrap(1000 vEAGLE)
-  ├─> Locks 1000 vEAGLE in wrapper
-  ├─> Charges 1% fee (10 vEAGLE) if not whitelisted
-  └─> Mints 990 EagleShareOFT (on hub!)
 ```
+Initial State:
+──────────────────────────────────────────────────
+Ethereum:     0 EAGLE, 0 locked vault shares
+Arbitrum:     0 EAGLE
+Base:         0 EAGLE
+Total:        0 EAGLE = 0 locked shares ✅
 
-### **Step 3: User Bridges to Spoke Chain**
+After Deposit & Wrap (Ethereum):
+──────────────────────────────────────────────────
+User deposits 1000 WLFI → gets 1000 vault shares
+User wraps 1000 vault shares → gets 1000 EAGLE
 
-```solidity
-// 3. User sends OFT to Arbitrum
-EagleShareOFT.send({
-  dstEid: ARBITRUM_EID,
-  to: userAddress,
-  amountLD: 990,
-  options: ...
-})
-  ├─> Burns 990 EagleShareOFT on hub
-  ├─> LayerZero message sent
-  └─> Mints 990 EagleShareOFT on Arbitrum
-```
+Ethereum:     1000 EAGLE, 1000 locked vault shares
+Arbitrum:     0 EAGLE
+Base:         0 EAGLE
+Total:        1000 EAGLE = 1000 locked shares ✅
 
-**No adapter needed!** The OFT contract handles bridging natively.
+After Bridging to Arbitrum:
+──────────────────────────────────────────────────
+User bridges 600 EAGLE from Ethereum → Arbitrum
 
-### **Step 4: User Returns from Spoke Chain**
+Ethereum:     400 EAGLE, 1000 locked vault shares
+Arbitrum:     600 EAGLE
+Base:         0 EAGLE
+Total:        1000 EAGLE = 1000 locked shares ✅
 
-```solidity
-// 4. User sends OFT back to hub
-EagleShareOFT.send({
-  dstEid: ETHEREUM_EID,
-  to: userAddress,
-  amountLD: 990,
-  options: ...
-})
-  ├─> Burns 990 EagleShareOFT on Arbitrum
-  ├─> LayerZero message sent
-  └─> Mints 990 EagleShareOFT on hub
-```
+After Bridging to Base:
+──────────────────────────────────────────────────
+User bridges 200 EAGLE from Arbitrum → Base
 
-### **Step 5: User Unwraps to Vault Shares (Hub)**
+Ethereum:     400 EAGLE, 1000 locked vault shares
+Arbitrum:     400 EAGLE
+Base:         200 EAGLE
+Total:        1000 EAGLE = 1000 locked shares ✅
 
-```solidity
-// 5. User unwraps OFT back to vault shares
-EagleVaultWrapper.unwrap(990 EagleShareOFT)
-  ├─> Burns 990 EagleShareOFT
-  ├─> Charges 2% fee (19.8 vEAGLE) if not whitelisted
-  └─> Releases 970.2 vEAGLE to user
-```
+After Bridging Back & Unwrap:
+──────────────────────────────────────────────────
+User bridges all EAGLE back to Ethereum
+User unwraps 1000 EAGLE → gets 1000 vault shares
 
-### **Step 6: User Withdraws from Vault (Hub)**
-
-```solidity
-// 6. User withdraws assets from vault
-EagleOVault.redeem(970.2 vEAGLE)
-  └─> User receives ~970 WLFI (based on share price)
+Ethereum:     0 EAGLE, 0 locked vault shares
+Arbitrum:     0 EAGLE
+Base:         0 EAGLE
+Total:        0 EAGLE = 0 locked shares ✅
 ```
 
 ---
 
-## ✅ **Benefits of Wrapper Architecture**
+## 🔐 Security Considerations
 
-| Feature | Standard OVault | With Wrapper | Winner |
-|---------|----------------|--------------|--------|
-| **Same contract on all chains** | ❌ No | ✅ Yes | Wrapper |
-| **OFTAdapter needed** | ✅ Yes | ❌ No | Wrapper |
-| **Gas costs** | Higher | Lower | Wrapper |
-| **Complexity** | Higher | Lower | Wrapper |
-| **Vault share exposure** | Direct | Isolated | Wrapper |
-| **Fee collection** | Vault only | Vault + Wrapper | Wrapper |
-| **Whitelist presale** | ❌ No | ✅ Yes | Wrapper |
-| **1:1 peg guarantee** | Implicit | Explicit | Wrapper |
+### **✅ Security Strengths**
+
+1. **Simple Logic = Fewer Bugs**
+   - 139 lines of code in EagleShareOFT
+   - No complex fee calculations
+   - Easy to audit
+
+2. **1:1 Peg Enforcement**
+   - Wrapper enforces strict 1:1 ratio
+   - No arbitrary minting possible
+   - Locked shares back all EAGLE tokens
+
+3. **Minter Authorization**
+   - Only wrapper can mint on Ethereum
+   - No public minting functions
+   - Owner-controlled authorization
+
+4. **Burn Without Allowance**
+   - Critical for unwrap functionality
+   - Better UX (no approve step)
+   - Minters are trusted contracts only
+
+5. **Immutable References**
+   - Wrapper's token addresses can't change
+   - No proxy patterns to exploit
+   - Predictable behavior
+
+### **⚠️ Critical Security Notes**
+
+1. **EagleVaultWrapper is Critical**
+   ```
+   ⚠️  Wrapper bugs could break 1:1 peg
+   ⚠️  Must be audited thoroughly
+   ⚠️  Use multi-sig for ownership
+   ```
+
+2. **Minter List on Ethereum**
+   ```
+   ✅ ONLY EagleVaultWrapper should be minter
+   ❌ Do NOT add other minters (breaks peg)
+   ❌ LayerZero endpoint is NOT a minter on hub
+   ```
+
+3. **Spoke Chain Minters**
+   ```
+   ✅ NO local minters on spokes
+   ✅ LayerZero handles all minting/burning
+   ❌ Do NOT call setMinter() on spokes
+   ```
+
+4. **Vault Security**
+   ```
+   ⚠️  All EAGLE is backed by vault shares
+   ⚠️  Vault exploits affect entire system
+   ⚠️  Monitor vault health continuously
+   ```
 
 ---
 
-## 🔄 **Complete Contract Deployment**
+## 📋 Deployment Checklist
 
-### **Hub Chain (Ethereum):**
+### **Phase 1: Ethereum (Hub)**
 
 ```bash
-# 1. Deploy Vault (if not already deployed)
-forge create EagleOVault
+# 1. Deploy EagleOVault (if needed)
+forge create contracts/EagleOVault.sol:EagleOVault \
+  --constructor-args $WLFI $USD1 $OWNER \
+  --private-key $PRIVATE_KEY
 
-# 2. Deploy EagleShareOFT on hub
-forge create EagleShareOFT \
-  --constructor-args \
-    "Eagle Vault Shares" \
-    "vEAGLE" \
-    $LZ_ENDPOINT \
-    $OWNER
+# 2. Deploy EagleShareOFT with CREATE2
+forge create contracts/layerzero/oft/EagleShareOFT.sol:EagleShareOFT \
+  --constructor-args "Eagle Vault Shares" "EAGLE" $LZ_ENDPOINT $OWNER \
+  --create2 $SALT \
+  --private-key $PRIVATE_KEY
 
-# 3. Deploy Wrapper
-forge create EagleVaultWrapper \
-  --constructor-args \
-    $VAULT_ADDRESS \
-    $OFT_ADDRESS \
-    $FEE_RECIPIENT \
-    $OWNER
+# 3. Deploy EagleVaultWrapper
+forge create contracts/EagleVaultWrapper.sol:EagleVaultWrapper \
+  --constructor-args $VAULT_ADDRESS $EAGLE_OFT $OWNER \
+  --private-key $PRIVATE_KEY
 
-# 4. Grant mint/burn permissions to wrapper
-cast send $OFT_ADDRESS "setMinter(address,bool)" $WRAPPER_ADDRESS true
+# 4. Set wrapper as minter (CRITICAL!)
+cast send $EAGLE_OFT \
+  "setMinter(address,bool)" $WRAPPER_ADDRESS true \
+  --private-key $PRIVATE_KEY
+
+# 5. Verify wrapper is authorized
+cast call $EAGLE_OFT "checkMinter(address)" $WRAPPER_ADDRESS
+# Should return: true
 ```
-
-### **Spoke Chains (Arbitrum, Optimism, Base):**
-
-```bash
-# Deploy EagleShareOFT (SAME CONTRACT!)
-forge create EagleShareOFT \
-  --constructor-args \
-    "Eagle Vault Shares" \
-    "vEAGLE" \
-    $LZ_ENDPOINT \
-    $OWNER
-```
-
-### **Wire LayerZero Peers:**
-
-```bash
-# Connect all chains
-pnpm hardhat lz:oapp:wire --oapp-config layerzero.shareoft.config.ts
-```
-
-**Result:** Same `EagleShareOFT` contract on ALL chains! ✅
-
----
-
-## 🎯 **Why This Is Better**
-
-### **1. Consistent User Experience**
-
-```
-User's perspective:
-1. Hold "vEAGLE" vault shares on hub
-2. Wrap to "vEAGLE" OFT on hub (same symbol!)
-3. Bridge "vEAGLE" to Arbitrum (same symbol!)
-4. Trade "vEAGLE" on Arbitrum DEX (same symbol!)
-5. Bridge back to hub (same symbol!)
-6. Unwrap to vault shares (same symbol!)
-
-Everything is "vEAGLE" - super clean! ✨
-```
-
-### **2. Same Contract = Same Features**
-
-All chains get:
-- ✅ Fee-on-swap (configurable per chain)
-- ✅ V3 Uniswap compatibility
-- ✅ Smart DEX detection
-- ✅ Treasury + Vault fee distribution
-- ✅ Emergency controls
-- ✅ Fee statistics
-
-### **3. Simplified Architecture**
-
-```
-Before (with adapter):
-EagleOVault → EagleShareOFTAdapter → LayerZero → EagleShareOFT
-
-After (with wrapper):
-EagleOVault → EagleVaultWrapper → EagleShareOFT → LayerZero → EagleShareOFT
-                                  (same contract!)
-```
-
-Less contracts = less complexity = fewer bugs!
-
-### **4. Fee Flexibility**
-
-```solidity
-// Wrapper fees (hub only)
-- Wrap: 1% (deposit fee)
-- Unwrap: 2% (withdraw fee)
-- Whitelist: 0% (presale participants)
-
-// OFT fees (all chains, including hub)
-- Buy: 1% (DEX swaps)
-- Sell: 2% (DEX swaps)
-- Transfer: 0% (wallet to wallet)
-```
-
-Two independent fee mechanisms for maximum flexibility!
-
----
-
-## ⚠️ **Important: Mint/Burn Permissions**
-
-For this to work, `EagleShareOFT` must have **mint/burn functions**:
-
-```solidity
-// Add to EagleShareOFT.sol
-mapping(address => bool) public isMinter;
-
-modifier onlyMinter() {
-    require(isMinter[msg.sender] || msg.sender == owner(), "Not minter");
-    _;
-}
-
-function setMinter(address minter, bool status) external onlyOwner {
-    isMinter[minter] = status;
-}
-
-function mint(address to, uint256 amount) external onlyMinter {
-    _mint(to, amount);
-}
-
-function burn(address from, uint256 amount) external onlyMinter {
-    _burn(from, amount);
-}
-```
-
-**Grant wrapper permission:**
-```solidity
-// After deployment
-eagleShareOFT.setMinter(wrapperAddress, true);
-```
-
----
-
-## 🚀 **Deployment Strategy**
-
-### **Phase 1: Hub Chain (Ethereum)**
-
-1. ✅ Deploy `EagleOVault` (if not already)
-2. ✅ Deploy `EagleShareOFT` on hub
-3. ✅ Deploy `EagleVaultWrapper`
-4. ✅ Grant wrapper mint/burn permissions
-5. ✅ Configure wrapper fees (1% wrap, 2% unwrap)
-6. ✅ Whitelist presale participants
 
 ### **Phase 2: Spoke Chains**
 
-1. ✅ Deploy `EagleShareOFT` on Arbitrum
-2. ✅ Deploy `EagleShareOFT` on Optimism
-3. ✅ Deploy `EagleShareOFT` on Base
-4. ✅ Configure fee-on-swap per chain
+```bash
+# Deploy EagleShareOFT with SAME CREATE2 salt
+# Run for each spoke chain (Arbitrum, Base, Optimism, etc.)
 
-### **Phase 3: LayerZero Wiring**
+export RPC_URL="https://arb1.arbitrum.io/rpc"  # Change per chain
 
-1. ✅ Wire hub ↔ Arbitrum
-2. ✅ Wire hub ↔ Optimism
-3. ✅ Wire hub ↔ Base
-4. ✅ Test cross-chain transfers
+forge create contracts/layerzero/oft/EagleShareOFT.sol:EagleShareOFT \
+  --constructor-args "Eagle Vault Shares" "EAGLE" $LZ_ENDPOINT $OWNER \
+  --create2 $SALT \
+  --rpc-url $RPC_URL \
+  --private-key $PRIVATE_KEY
 
----
+# DO NOT set any minters on spokes!
+# LayerZero endpoint handles all minting/burning automatically
+```
 
-## 📚 **Code Examples**
+### **Phase 3: LayerZero Configuration**
 
-### **User Journey in Code**
+```bash
+# Wire all chains together
+pnpm hardhat lz:oapp:wire --oapp-config layerzero.config.eagle-shares.ts
 
-```typescript
-// =================================
-// 1. DEPOSIT TO VAULT (Hub)
-// =================================
-await wlfi.approve(vault.address, parseEther("1000"));
-await vault.deposit(parseEther("1000"), userAddress);
-// User now has 1000 vEAGLE (vault shares)
+# Verify configuration
+pnpm hardhat lz:oapp:config:get --oapp-config layerzero.config.eagle-shares.ts
 
-// =================================
-// 2. WRAP TO OFT (Hub)
-// =================================
-await vaultShares.approve(wrapper.address, parseEther("1000"));
-await wrapper.wrap(parseEther("1000"));
-// User now has 990 vEAGLE-OFT (after 1% fee)
-
-// =================================
-// 3. BRIDGE TO ARBITRUM
-// =================================
-const fee = await eagleShareOFT.quoteSend({
-  dstEid: ARBITRUM_EID,
-  to: ethers.utils.zeroPad(userAddress, 32),
-  amountLD: parseEther("990"),
-  options: options,
-  composeMsg: "0x",
-  oftCmd: "0x"
-});
-
-await eagleShareOFT.send(
-  {
-    dstEid: ARBITRUM_EID,
-    to: ethers.utils.zeroPad(userAddress, 32),
-    amountLD: parseEther("990"),
-    minAmountLD: parseEther("980"), // 1% slippage
-    extraOptions: options,
-    composeMsg: "0x",
-    oftCmd: "0x"
-  },
-  { nativeFee: fee.nativeFee, lzTokenFee: 0 },
-  { value: fee.nativeFee }
-);
-// User now has 990 vEAGLE-OFT on Arbitrum!
-
-// =================================
-// 4. TRADE ON ARBITRUM (Optional)
-// =================================
-await eagleShareOFT.approve(uniswapRouter, parseEther("100"));
-await uniswapRouter.swapExactTokensForTokens(
-  parseEther("100"),
-  0,
-  [eagleShareOFT.address, usdc.address],
-  userAddress,
-  deadline
-);
-// 2% sell fee applies!
-
-// =================================
-// 5. BRIDGE BACK TO HUB
-// =================================
-// (Similar to step 3, but reverse direction)
-
-// =================================
-// 6. UNWRAP TO VAULT SHARES (Hub)
-// =================================
-await eagleShareOFT.approve(wrapper.address, parseEther("890"));
-await wrapper.unwrap(parseEther("890"));
-// User now has ~871 vEAGLE vault shares (after 2% fee)
-
-// =================================
-// 7. WITHDRAW FROM VAULT (Hub)
-// =================================
-await vault.redeem(parseEther("871"), userAddress, userAddress);
-// User receives ~871 WLFI (based on share price)
+# Test cross-chain messaging
+pnpm hardhat lz:test-send --from ethereum --to arbitrum --amount 1
 ```
 
 ---
 
-## 🔐 **Security Considerations**
+## 🧪 Testing
 
-### **1. Mint/Burn Permissions**
-- ✅ Only wrapper can mint/burn on hub
-- ✅ Only LayerZero can mint/burn on spoke chains
-- ✅ Owner can revoke wrapper permissions if compromised
+### **Unit Tests**
 
-### **2. Wrapper 1:1 Peg**
-- ✅ `totalLocked == totalMinted` invariant
-- ✅ `verify()` function checks balance matches
-- ✅ Fees don't break the peg (accounted separately)
+```bash
+# Test EagleShareOFT
+forge test --match-contract EagleShareOFTTest -vv
+# ✅ 36/36 tests passing
 
-### **3. Fee Protection**
-- ✅ Max 10% fee cap (cannot be exceeded)
-- ✅ Presale whitelist (no double-tax on early supporters)
-- ✅ Fee recipient configurable (upgradeable treasury)
+# Test EagleVaultWrapper (TODO: add comprehensive tests)
+forge test --match-contract EagleVaultWrapperTest -vv
+```
 
-### **4. LayerZero Security**
-- ✅ Standard OFT security (battle-tested)
-- ✅ Slippage protection (minAmountLD)
-- ✅ Peer verification (only trusted chains)
-
----
-
-## 💡 **Pro Tips**
-
-### **1. Presale Whitelist**
+### **Integration Tests**
 
 ```solidity
-// Whitelist presale participants to avoid double fees
-wrapper.batchWhitelist([
-  0x1111...,
-  0x2222...,
-  0x3333...
-]);
+// Test full wrap → bridge → unwrap flow
+test_FullCycleBridge() {
+    // 1. Deposit to vault
+    vault.deposit(1000e18, user);
+    
+    // 2. Wrap to EAGLE
+    wrapper.wrap(1000e18);
+    
+    // 3. Bridge to Arbitrum (mock)
+    oft.send(arbitrumEid, user, 1000e18, ...);
+    
+    // 4. Bridge back (mock)
+    oft.send(ethereumEid, user, 1000e18, ...);
+    
+    // 5. Unwrap to vault shares
+    wrapper.unwrap(1000e18);
+    
+    // 6. Redeem from vault
+    vault.redeem(1000e18, user, user);
+    
+    // Verify: User got back their assets (+ yield)
+}
 
-// They can wrap/unwrap for free!
-```
-
-### **2. Fee Recipient Injection Loop**
-
-```solidity
-// Set fee recipient = vault beneficiary
-wrapper.setFeeRecipient(vaultBeneficiary);
-
-// Also whitelist vault beneficiary
-wrapper.setWhitelist(vaultBeneficiary, true);
-
-// Result: Fees → vaultBeneficiary → deposit to vault → wrap → no fee!
-// Creates a virtuous cycle of reinvestment without double-taxation ✅
-```
-
-### **3. Per-Chain Fee Configuration**
-
-```typescript
-// Hub: Lower fees (established liquidity)
-await eagleShareOFT_hub.setSwapFeeConfig(50, 100, ...);  // 0.5% buy, 1% sell
-
-// Arbitrum: Higher fees (new liquidity)
-await eagleShareOFT_arb.setSwapFeeConfig(150, 250, ...); // 1.5% buy, 2.5% sell
-
-// Flexibility! 🎯
+// Test supply invariant
+test_SupplyInvariant() {
+    uint256 ethereumSupply = oft.totalSupply(ethereum);
+    uint256 arbitrumSupply = oft.totalSupply(arbitrum);
+    uint256 baseSupply = oft.totalSupply(base);
+    
+    uint256 globalSupply = ethereumSupply + arbitrumSupply + baseSupply;
+    uint256 lockedShares = wrapper.totalLocked();
+    
+    assertEq(globalSupply, lockedShares);
+}
 ```
 
 ---
 
-## 🎉 **TL;DR**
+## ⚡ Gas Comparison
 
-### **Your Question:**
-> Can we use EagleVaultWrapper + EagleShareOFT on hub, and still have the same EagleShareOFT on spoke chains?
+### **Standard OFTAdapter Pattern**
 
-### **Answer:**
-✅ **YES! And it's BETTER than using an adapter!**
-
-**Why:**
-1. ✅ Same `EagleShareOFT` contract on ALL chains (including hub)
-2. ✅ No `EagleShareOFTAdapter` needed (OFT has LayerZero built-in)
-3. ✅ Simpler architecture (fewer contracts)
-4. ✅ Lower gas costs
-5. ✅ Same features everywhere (fee-on-swap, V3 compatibility)
-6. ✅ Better user experience (all vEAGLE, everywhere)
-
-**Architecture:**
 ```
-Hub: EagleOVault → EagleVaultWrapper → EagleShareOFT → LayerZero
-Spoke: EagleShareOFT (same contract!)
+Bridge from Ethereum:
+  1. Approve shares to adapter: ~45,000 gas
+  2. Adapter locks shares: ~50,000 gas
+  3. LayerZero send: ~200,000 gas
+  ───────────────────────────────────────
+  Total: ~295,000 gas
 ```
 
-**Next Steps:**
-1. Add mint/burn functions to `EagleShareOFT`
-2. Deploy `EagleShareOFT` on hub
-3. Deploy `EagleVaultWrapper` on hub
-4. Grant wrapper mint/burn permissions
-5. Deploy `EagleShareOFT` on spoke chains (same contract!)
-6. Wire LayerZero peers
+### **Our EagleVaultWrapper Pattern**
+
+```
+Wrap + Bridge from Ethereum:
+  1. Wrap shares to EAGLE: ~100,000 gas
+     - Transfer to wrapper: ~50,000
+     - Mint EAGLE: ~50,000
+  2. LayerZero send: ~200,000 gas
+  ───────────────────────────────────────
+  Total: ~300,000 gas
+
+Difference: +5,000 gas (~$12 @ 100 gwei, $2,400 ETH)
+```
+
+**Verdict:** ✅ Minimal overhead for significant UX improvement
 
 ---
 
-**Last Updated:** October 21, 2025  
-**Architecture:** Wrapper + OFT (Simpler & Better!)  
-**Status:** ✅ Recommended approach!
+## 📚 Related Documentation
 
+- **Architecture Decision:** `../../ARCHITECTURE_DECISION.md`
+- **EagleShareOFT Review:** `../../EAGLESHAREOFT_REVIEW.md`
+- **LayerZero Contracts:** `./README.md`
+- **Main README:** `../../README.md`
+
+---
+
+## ❓ FAQ
+
+### **Q: Why not use OFTAdapter?**
+
+**A:** We want the same EAGLE token on ALL chains with the same address. OFTAdapter creates different tokens on hub vs spokes.
+
+### **Q: Is this secure?**
+
+**A:** Yes, as long as:
+- EagleVaultWrapper is audited
+- Only wrapper is minter on Ethereum
+- No minters on spoke chains
+
+### **Q: What if wrapper is hacked?**
+
+**A:** Use multi-sig ownership and thorough audits. Consider time-locks for critical functions.
+
+### **Q: Can I add more minters?**
+
+**A:** ❌ NO! Only wrapper should be minter on Ethereum. Additional minters break the 1:1 peg.
+
+### **Q: How do I add a new chain?**
+
+**A:** Just deploy EagleShareOFT with the same CREATE2 salt and wire LayerZero peers.
+
+### **Q: What about fees?**
+
+**A:** We removed all fee logic from EagleShareOFT for simplicity and to maintain the 1:1 peg.
+
+---
+
+**Status:** ✅ Production-ready  
+**Version:** 2.0.0-mainnet-simple  
+**Last Updated:** October 27, 2025

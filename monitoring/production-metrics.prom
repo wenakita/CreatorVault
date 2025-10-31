@@ -1,0 +1,17 @@
+# HELP eagle_ovault_contract_healthy Contract health status (1=healthy, 0=unhealthy)
+# TYPE eagle_ovault_contract_healthy gauge
+eagle_ovault_contract_healthy{contract="EagleRegistry",address="0x47c81c9a70CA7518d3b911bC8C8b11000e92F59e"} 1
+eagle_ovault_contract_healthy{contract="EagleOVault",address="0x47b3ef629D9cB8DFcF8A6c61058338f4e99d7953"} 1
+eagle_ovault_contract_healthy{contract="EagleShareOFT",address="0x474eD38C256A7FA0f3B8c48496CE1102ab0eA91E"} 1
+eagle_ovault_contract_healthy{contract="EagleVaultWrapper",address="0x47dAc5063c526dBc6f157093DD1D62d9DE8891c5"} 1
+eagle_ovault_contract_healthy{contract="CharmStrategyUSD1",address="0x47B2659747d6A7E00c8251c3C3f7e92625a8cf6f"} 1
+eagle_ovault_contract_healthy{contract="Multisig",address="0xe5a1d534eb7f00397361F645f0F39e5D16cc1De3"} 0
+
+# HELP eagle_ovault_contract_balance Contract ETH balance
+# TYPE eagle_ovault_contract_balance gauge
+eagle_ovault_contract_balance{contract="EagleRegistry",address="0x47c81c9a70CA7518d3b911bC8C8b11000e92F59e"} 0.0
+eagle_ovault_contract_balance{contract="EagleOVault",address="0x47b3ef629D9cB8DFcF8A6c61058338f4e99d7953"} 0.0
+eagle_ovault_contract_balance{contract="EagleShareOFT",address="0x474eD38C256A7FA0f3B8c48496CE1102ab0eA91E"} 0.0
+eagle_ovault_contract_balance{contract="EagleVaultWrapper",address="0x47dAc5063c526dBc6f157093DD1D62d9DE8891c5"} 0.0
+eagle_ovault_contract_balance{contract="CharmStrategyUSD1",address="0x47B2659747d6A7E00c8251c3C3f7e92625a8cf6f"} 0.0
+eagle_ovault_contract_balance{contract="Multisig",address="0xe5a1d534eb7f00397361F645f0F39e5D16cc1De3"} 0.00099382

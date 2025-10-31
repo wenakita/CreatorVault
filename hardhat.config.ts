@@ -18,8 +18,9 @@ const config: HardhatUserConfig = {
         settings: {
           optimizer: {
             enabled: true,
-            runs: 200,
+            runs: 1, // Minimized for contract size (deployment optimization)
           },
+          viaIR: true, // Use intermediate representation for better optimization
         },
       },
     ],

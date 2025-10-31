@@ -1,6 +1,8 @@
 import { motion } from 'framer-motion';
 import { BrowserProvider } from 'ethers';
+import { ArrowDown } from 'lucide-react';
 import { ICONS } from '../config/icons';
+import { NeoButton, NeoStatCard, NeoCard, NeoTaskBadge } from './neumorphic';
 
 interface Props {
   onNavigateDown?: () => void;
@@ -9,18 +11,15 @@ interface Props {
 
 export default function EagleLPContent({ onNavigateDown }: Props) {
   return (
-    <div className="h-full overflow-y-auto bg-[#0a0a0a]">
+    <div className="h-full overflow-y-auto bg-neo-bg">
       <div className="container mx-auto px-6 py-12 max-w-7xl">
         {/* Back Button */}
-        <button 
+        <NeoButton
           onClick={onNavigateDown}
-          className="inline-flex items-center gap-2 text-gray-400 hover:text-yellow-500 mb-8 transition-colors group"
-        >
-          <svg className="w-5 h-5 group-hover:translate-y-0.5 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 14l-7 7m0 0l-7-7m7 7V3" />
-          </svg>
-          <span className="text-sm font-medium">Back to Home</span>
-        </button>
+          label="Back to Home"
+          icon={<ArrowDown className="w-4 h-4" />}
+          className="mb-8 !text-gray-700"
+        />
 
         {/* Header */}
         <motion.div 
@@ -35,7 +34,7 @@ export default function EagleLPContent({ onNavigateDown }: Props) {
                 alt="Eagle"
                 className="w-16 h-16"
               />
-              <span className="text-4xl font-bold text-white">+</span>
+              <span className="text-4xl font-bold text-gray-900">+</span>
               <img 
                 src={ICONS.ETHEREUM}
                 alt="ETH"
@@ -44,8 +43,8 @@ export default function EagleLPContent({ onNavigateDown }: Props) {
             </div>
           </div>
           
-          <h1 className="text-6xl font-bold text-white mb-4">EAGLE/ETH Liquidity Pool</h1>
-          <p className="text-xl text-gray-400">
+          <h1 className="text-6xl font-bold text-gray-900 mb-4">EAGLE/ETH Liquidity Pool</h1>
+          <p className="text-xl text-gray-600">
             Provide liquidity, earn trading fees, and support the Eagle ecosystem
           </p>
         </motion.div>
@@ -57,83 +56,128 @@ export default function EagleLPContent({ onNavigateDown }: Props) {
           animate={{ y: 0, opacity: 1 }}
           transition={{ delay: 0.2 }}
         >
-          <div className="bg-gradient-to-br from-white/5 to-white/[0.02] rounded-2xl border border-white/10 p-6">
-            <p className="text-sm text-gray-400 mb-2">Total Liquidity</p>
-            <p className="text-3xl font-bold text-white">$0</p>
-            <p className="text-sm text-gray-500 mt-1">Coming Soon</p>
-          </div>
-          
-          <div className="bg-gradient-to-br from-white/5 to-white/[0.02] rounded-2xl border border-white/10 p-6">
-            <p className="text-sm text-gray-400 mb-2">24h Volume</p>
-            <p className="text-3xl font-bold text-white">$0</p>
-            <p className="text-sm text-emerald-400 mt-1">---</p>
-          </div>
-          
-          <div className="bg-gradient-to-br from-yellow-500/10 to-amber-500/5 rounded-2xl border border-yellow-500/20 p-6">
-            <p className="text-sm text-gray-400 mb-2">APR</p>
-            <p className="text-3xl font-bold text-yellow-500">---%</p>
-            <p className="text-sm text-yellow-500/60 mt-1">Trading fees</p>
-          </div>
-          
-          <div className="bg-gradient-to-br from-white/5 to-white/[0.02] rounded-2xl border border-white/10 p-6">
-            <p className="text-sm text-gray-400 mb-2">Your Liquidity</p>
-            <p className="text-3xl font-bold text-white">$0.00</p>
-            <p className="text-sm text-gray-500 mt-1">Connect wallet</p>
-          </div>
+          <NeoStatCard
+            label="Total Liquidity"
+            value="$0"
+            subtitle="Coming Soon"
+          />
+          <NeoStatCard
+            label="24h Volume"
+            value="$0"
+            subtitle="---"
+          />
+          <NeoStatCard
+            label="APR"
+            value="---%"
+            subtitle="Trading fees"
+            highlighted
+          />
+          <NeoStatCard
+            label="Your Liquidity"
+            value="$0.00"
+            subtitle="Connect wallet"
+          />
         </motion.div>
 
         {/* Coming Soon Card */}
         <motion.div 
-          className="bg-gradient-to-br from-blue-500/10 to-purple-500/10 rounded-2xl border-2 border-blue-500/30 p-12 text-center"
           initial={{ scale: 0.95, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
           transition={{ delay: 0.4 }}
         >
-          <div className="max-w-2xl mx-auto">
-            <div className="w-20 h-20 mx-auto mb-6 bg-blue-500/20 rounded-full flex items-center justify-center">
-              <svg className="w-10 h-10 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-              </svg>
-            </div>
-            
-            <h2 className="text-4xl font-bold text-white mb-4">
-              EAGLE/ETH Pool Coming Soon
-            </h2>
-            
-            <p className="text-xl text-gray-400 mb-8">
-              We're launching the EAGLE/ETH liquidity pool on Uniswap V3. Provide liquidity, earn trading fees, 
-              and help build the Eagle ecosystem.
-            </p>
-            
-            <div className="grid grid-cols-3 gap-6 max-w-xl mx-auto">
-              <div className="bg-white/5 rounded-xl p-6 border border-white/10">
-                <p className="text-sm text-gray-400 mb-2">Pool Type</p>
-                <p className="text-lg font-semibold text-white">Uniswap V3</p>
-              </div>
-              <div className="bg-white/5 rounded-xl p-6 border border-white/10">
-                <p className="text-sm text-gray-400 mb-2">Fee Tier</p>
-                <p className="text-lg font-semibold text-white">1%</p>
-              </div>
-              <div className="bg-white/5 rounded-xl p-6 border border-white/10">
-                <p className="text-sm text-gray-400 mb-2">Network</p>
-                <p className="text-lg font-semibold text-white">Ethereum</p>
-              </div>
+          <NeoCard className="p-12 text-center relative overflow-hidden">
+            {/* Background decoration */}
+            <div className="absolute inset-0 overflow-hidden pointer-events-none">
+              <div className="absolute top-0 right-0 w-64 h-64 bg-blue-400/10 rounded-full blur-3xl"></div>
+              <div className="absolute bottom-0 left-0 w-64 h-64 bg-purple-400/10 rounded-full blur-3xl"></div>
             </div>
 
-            <div className="mt-8">
-              <a 
-                href="https://t.me/Eagle_community_47" 
-                target="_blank" 
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-2 px-8 py-4 bg-blue-500 hover:bg-blue-600 text-white font-semibold rounded-xl transition-all"
+            <div className="max-w-2xl mx-auto relative z-10">
+              <motion.div 
+                className="w-20 h-20 mx-auto mb-6 bg-gradient-to-br from-blue-400 to-blue-500 rounded-full shadow-neo-raised flex items-center justify-center"
+                animate={{ 
+                  scale: [1, 1.05, 1],
+                  rotate: [0, 5, -5, 0]
+                }}
+                transition={{ 
+                  duration: 3, 
+                  repeat: Infinity,
+                  ease: "easeInOut"
+                }}
               >
-                <span>Join Telegram for Updates</span>
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                <svg className="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
                 </svg>
-              </a>
+              </motion.div>
+              
+              <h2 className="text-4xl font-bold text-gray-900 mb-4">
+                EAGLE/ETH Pool Coming Soon
+              </h2>
+              
+              <p className="text-xl text-gray-700 mb-8 leading-relaxed">
+                We're launching the EAGLE/ETH liquidity pool on Uniswap V3. Provide liquidity, earn trading fees, 
+                and help build the Eagle ecosystem.
+              </p>
+              
+              <div className="grid grid-cols-3 gap-4 max-w-xl mx-auto mb-10">
+                <motion.div
+                  whileHover={{ scale: 1.05, y: -2 }}
+                  transition={{ type: "spring", stiffness: 400, damping: 17 }}
+                >
+                  <NeoTaskBadge
+                    primaryLabel="Pool Type"
+                    secondaryLabel="Uniswap V3"
+                    secondaryColor="blue"
+                    className="justify-center"
+                  />
+                </motion.div>
+                <motion.div
+                  whileHover={{ scale: 1.05, y: -2 }}
+                  transition={{ type: "spring", stiffness: 400, damping: 17 }}
+                >
+                  <NeoTaskBadge
+                    primaryLabel="Fee Tier"
+                    secondaryLabel="1%"
+                    secondaryColor="orange"
+                    className="justify-center"
+                  />
+                </motion.div>
+                <motion.div
+                  whileHover={{ scale: 1.05, y: -2 }}
+                  transition={{ type: "spring", stiffness: 400, damping: 17 }}
+                >
+                  <NeoTaskBadge
+                    primaryLabel="Network"
+                    secondaryLabel="Ethereum"
+                    secondaryColor="green"
+                    className="justify-center"
+                  />
+                </motion.div>
+              </div>
+
+              <motion.div 
+                className="mt-8"
+                whileHover={{ scale: 1.02 }}
+                transition={{ type: "spring", stiffness: 400, damping: 17 }}
+              >
+                <a 
+                  href="https://t.me/Eagle_community_47" 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                >
+                  <NeoButton
+                    label="Join Telegram for Updates"
+                    icon={
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                      </svg>
+                    }
+                    className="!px-8 !py-4 !bg-gradient-to-r !from-blue-500 !to-blue-600 !text-white !shadow-lg hover:!shadow-xl"
+                  />
+                </a>
+              </motion.div>
             </div>
-          </div>
+          </NeoCard>
         </motion.div>
       </div>
     </div>

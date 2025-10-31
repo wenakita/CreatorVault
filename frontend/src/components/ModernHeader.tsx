@@ -2,16 +2,18 @@ import { ConnectButton } from '@rainbow-me/rainbowkit';
 import { useState, useEffect } from 'react';
 import { Contract, formatEther } from 'ethers';
 import { useAccount } from 'wagmi';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useEthersProvider } from '../hooks/useEthersProvider';
 import { CONTRACTS } from '../config/contracts';
 import { ICONS } from '../config/icons';
+import { NeoStatusIndicator } from './neumorphic';
 
 const VAULT_ABI = ['function getWLFIPrice() view returns (uint256)', 'function getUSD1Price() view returns (uint256)'];
 
 export default function ModernHeader() {
-  const [wlfiPrice, setWlfiPrice] = useState<string>('0.132');
-  const [usd1Price, setUsd1Price] = useState<string>('1.000');
-  const { isConnected } = useAccount();
+  const [wlfiPrice, setWlfiPrice] = useState<string>('--');
+  const [usd1Price, setUsd1Price] = useState<string>('--');
+  const [priceChanged, setPriceChanged] = useState<'wlfi' | 'usd1' | null>(null);
   const provider = useEthersProvider();
 
   useEffect(() => {
@@ -23,10 +25,33 @@ export default function ModernHeader() {
           vault.getWLFIPrice(),
           vault.getUSD1Price()
         ]);
-        setWlfiPrice(Number(formatEther(wlfi)).toFixed(3));
-        setUsd1Price(Number(formatEther(usd1)).toFixed(3));
+        
+        // Format prices properly - WLFI might be a small number, USD1 should be ~1
+        const wlfiNum = Number(formatEther(wlfi));
+        const usd1Num = Number(formatEther(usd1));
+        
+        const newWlfiPrice = wlfiNum < 0.01 ? wlfiNum.toFixed(4) : wlfiNum.toFixed(3);
+        const newUsd1Price = usd1Num.toFixed(3);
+        
+        // Trigger animation on price change
+        setWlfiPrice((prev) => {
+          if (prev !== '--' && prev !== newWlfiPrice) {
+            setPriceChanged('wlfi');
+            setTimeout(() => setPriceChanged(null), 2000);
+          }
+          return newWlfiPrice;
+        });
+        
+        setUsd1Price((prev) => {
+          if (prev !== '--' && prev !== newUsd1Price) {
+            setPriceChanged('usd1');
+            setTimeout(() => setPriceChanged(null), 2000);
+          }
+          return newUsd1Price;
+        });
       } catch (error) {
         console.error('Error fetching prices:', error);
+        // Keep showing last known prices on error
       }
     };
 
@@ -38,44 +63,85 @@ export default function ModernHeader() {
   }, [provider]);
 
   return (
-    <header className="sticky top-0 z-50 bg-[#0a0a0a]/80 backdrop-blur-xl border-b border-white/5">
+    <header className="sticky top-0 z-50 bg-neo-bg/95 backdrop-blur-xl border-b border-gray-300 shadow-neo-pressed">
       <div className="container mx-auto px-6 py-4">
         <div className="flex items-center justify-between">
           {/* Logo & Title */}
           <div className="flex items-center gap-4">
             <img 
               src={ICONS.EAGLE} 
-              alt="Eagle Vault"
+              alt="47 Eagle"
               className="w-10 h-10"
             />
             <div>
-              <h1 className="text-xl font-semibold text-white">Eagle Vault</h1>
-              <p className="text-xs text-gray-500">Dual-Asset Yield Strategy</p>
+              <h1 className="text-xl font-semibold text-gray-900">47 Eagle</h1>
+              <p className="text-xs text-gray-600">Omnichain WLFI Yield Strategies</p>
             </div>
           </div>
 
-          {/* Center - Price Tickers */}
-          <div className="hidden lg:flex items-center gap-4">
-            <div className="flex items-center gap-2 px-4 py-2 bg-white/5 rounded-lg border border-white/10">
+          {/* Center - Price Tickers with Neumorphic Style */}
+          <div className="hidden lg:flex items-center gap-2">
+            <motion.div 
+              className="flex items-center gap-2 px-4 py-2 bg-neo-bg rounded-full shadow-neo-raised hover:shadow-neo-raised-hover transition-all duration-300"
+              whileHover={{ scale: 1.05, y: -1 }}
+              transition={{ type: "spring", stiffness: 400, damping: 17 }}
+              animate={priceChanged === 'wlfi' ? { scale: [1, 1.1, 1] } : {}}
+            >
               <img 
                 src={ICONS.WLFI} 
                 alt="WLFI"
                 className="w-5 h-5"
               />
-              <span className="text-sm font-mono text-gray-300">${wlfiPrice}</span>
-            </div>
-            <div className="flex items-center gap-2 px-4 py-2 bg-white/5 rounded-lg border border-white/10">
+              <AnimatePresence mode="wait">
+                <motion.span 
+                  key={wlfiPrice}
+                  initial={{ y: 10, opacity: 0 }}
+                  animate={{ y: 0, opacity: 1 }}
+                  exit={{ y: -10, opacity: 0 }}
+                  transition={{ duration: 0.2 }}
+                  className="text-sm font-mono text-gray-800 font-semibold min-w-[60px]"
+                >
+                  {wlfiPrice === '--' ? '--' : `$${wlfiPrice}`}
+                </motion.span>
+              </AnimatePresence>
+            </motion.div>
+            <motion.div 
+              className="flex items-center gap-2 px-4 py-2 bg-neo-bg rounded-full shadow-neo-raised hover:shadow-neo-raised-hover transition-all duration-300"
+              whileHover={{ scale: 1.05, y: -1 }}
+              transition={{ type: "spring", stiffness: 400, damping: 17 }}
+              animate={priceChanged === 'usd1' ? { scale: [1, 1.1, 1] } : {}}
+            >
               <img 
                 src={ICONS.USD1} 
                 alt="USD1"
                 className="w-5 h-5"
               />
-              <span className="text-sm font-mono text-gray-300">${usd1Price}</span>
-            </div>
-            <div className="flex items-center gap-2 px-4 py-2 bg-emerald-500/10 rounded-lg border border-emerald-500/20">
+              <AnimatePresence mode="wait">
+                <motion.span 
+                  key={usd1Price}
+                  initial={{ y: 10, opacity: 0 }}
+                  animate={{ y: 0, opacity: 1 }}
+                  exit={{ y: -10, opacity: 0 }}
+                  transition={{ duration: 0.2 }}
+                  className="text-sm font-mono text-gray-800 font-semibold min-w-[60px]"
+                >
+                  {usd1Price === '--' ? '--' : `$${usd1Price}`}
+                </motion.span>
+              </AnimatePresence>
+            </motion.div>
+            <motion.div
+              className="flex items-center gap-2 px-4 py-2 bg-emerald-50 rounded-full shadow-neo-raised border border-emerald-200"
+              whileHover={{ scale: 1.05, y: -1 }}
+              transition={{ type: "spring", stiffness: 400, damping: 17 }}
+            >
               <div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></div>
-              <span className="text-xs text-emerald-400">Ethereum</span>
-            </div>
+              <img 
+                src={ICONS.ETHEREUM}
+                alt="Ethereum"
+                className="w-5 h-5 rounded-full"
+              />
+              <span className="text-sm text-gray-800 font-semibold">Ethereum</span>
+            </motion.div>
           </div>
 
           {/* Connect Button */}

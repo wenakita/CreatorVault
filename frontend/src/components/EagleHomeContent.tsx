@@ -1,8 +1,10 @@
 import { useState, useEffect } from 'react';
 import { BrowserProvider, Contract, formatEther } from 'ethers';
 import { motion } from 'framer-motion';
+import { ArrowUp, ArrowDown } from 'lucide-react';
 import { CONTRACTS } from '../config/contracts';
 import { ICONS } from '../config/icons';
+import { NeoTaskBadge, NeoStatusIndicator } from './neumorphic';
 
 const VAULT_ABI = [
   'function totalAssets() view returns (uint256)',
@@ -42,7 +44,7 @@ export default function EagleHomeContent({ onNavigateUp, onNavigateDown, provide
   }, [provider]);
 
   return (
-    <div className="h-full flex items-center justify-center px-6 bg-[#0a0a0a] relative overflow-hidden">
+    <div className="h-full flex items-center justify-center px-6 bg-neo-bg relative overflow-hidden">
       {/* Background gradient effects */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[400px] bg-yellow-500/5 rounded-full blur-3xl"></div>
@@ -62,24 +64,42 @@ export default function EagleHomeContent({ onNavigateUp, onNavigateDown, provide
           />
           
           <h1 className="text-7xl font-bold mb-3 tracking-tight">
-            <span className="bg-gradient-to-r from-yellow-400 via-yellow-500 to-amber-600 bg-clip-text text-transparent">
+            <span className="bg-gradient-to-r from-yellow-500 via-yellow-600 to-amber-700 bg-clip-text text-transparent">
               EAGLE
             </span>
           </h1>
           
-          <p className="text-base text-gray-400 mb-8">Multi-Chain Yield Aggregator</p>
+          <p className="text-base text-gray-600 mb-8">Multi-Chain Yield Aggregator</p>
 
           {/* Stats Row */}
           <div className="flex items-center justify-center gap-6 mb-10">
-            <div className="bg-white/5 border border-white/10 rounded-lg px-6 py-3 min-w-[140px]">
-              <div className="text-2xl font-bold text-white">${stats.tvl}</div>
-            </div>
-            <div className="bg-white/5 border border-white/10 rounded-lg px-6 py-3 min-w-[140px]">
-              <div className="text-2xl font-bold text-white">{stats.holders}</div>
-            </div>
-            <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-lg px-6 py-3 min-w-[140px]">
-              <div className="text-2xl font-bold text-yellow-500">{stats.apy}%</div>
-            </div>
+            <motion.div 
+              whileHover={{ scale: 1.05, y: -2 }}
+              transition={{ type: "spring", stiffness: 400, damping: 17 }}
+              className="bg-neo-bg shadow-neo-raised hover:shadow-neo-raised-lift rounded-full px-8 py-4 min-w-[160px] text-center transition-all duration-300"
+            >
+              <div className="text-xs text-gray-600 font-medium uppercase tracking-wider mb-1">TVL</div>
+              <div className="text-2xl font-bold text-gray-900">${stats.tvl}</div>
+            </motion.div>
+            <motion.div 
+              whileHover={{ scale: 1.05, y: -2 }}
+              transition={{ type: "spring", stiffness: 400, damping: 17 }}
+              className="bg-neo-bg shadow-neo-raised hover:shadow-neo-raised-lift rounded-full px-8 py-4 min-w-[160px] text-center transition-all duration-300"
+            >
+              <div className="text-xs text-gray-600 font-medium uppercase tracking-wider mb-1">Holders</div>
+              <div className="text-2xl font-bold text-gray-900">{stats.holders}</div>
+            </motion.div>
+            <motion.div
+              whileHover={{ scale: 1.05, y: -2 }}
+              transition={{ type: "spring", stiffness: 400, damping: 17 }}
+            >
+              <NeoTaskBadge
+                primaryLabel={`${stats.apy}%`}
+                secondaryLabel="APY"
+                secondaryColor="orange"
+                className="min-w-[160px] justify-center shadow-neo-raised hover:shadow-neo-raised-lift transition-all duration-300"
+              />
+            </motion.div>
           </div>
         </motion.div>
 
@@ -91,88 +111,110 @@ export default function EagleHomeContent({ onNavigateUp, onNavigateDown, provide
           transition={{ delay: 0.15 }}
         >
           {/* LP Card */}
-          <button
+          <motion.div
+            whileHover={{ scale: 1.02, y: -4 }}
+            whileTap={{ scale: 0.98 }}
+            transition={{ type: "spring", stiffness: 400, damping: 17 }}
+            className="bg-neo-bg shadow-neo-raised hover:shadow-neo-raised-lift rounded-2xl p-8 transition-all duration-300 text-left cursor-pointer group relative overflow-hidden"
             onClick={onNavigateUp}
-            className="group relative bg-gradient-to-br from-white/5 to-white/[0.02] hover:from-white/10 hover:to-white/5 border border-white/10 hover:border-white/20 rounded-2xl p-8 transition-all duration-300 text-left overflow-hidden"
           >
-            {/* Hover gradient effect */}
-            <div className="absolute inset-0 bg-gradient-to-br from-blue-500/0 to-purple-500/0 group-hover:from-blue-500/5 group-hover:to-purple-500/5 transition-all duration-300"></div>
+            {/* Gradient accent */}
+            <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-blue-400 to-cyan-400 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
             
-            <div className="relative z-10">
-              <div className="flex items-start justify-between mb-4">
-                <h3 className="text-xl font-bold text-white">EAGLE/ETH LP</h3>
-                <svg className="w-5 h-5 text-gray-400 group-hover:text-blue-400 group-hover:-translate-y-1 transition-all" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 10l7-7m0 0l7 7m-7-7v18" />
-                </svg>
-              </div>
-              <p className="text-sm text-gray-400 mb-4">Provide liquidity, earn fees</p>
-              <div className="inline-block px-3 py-1 bg-orange-500/10 border border-orange-500/20 rounded-lg">
-                <span className="text-xs text-orange-400 font-medium">Coming Soon</span>
-              </div>
+            <div className="flex items-start justify-between mb-4">
+              <h3 className="text-xl font-bold text-gray-900 group-hover:text-blue-600 transition-colors">EAGLE/ETH LP</h3>
+              <motion.div
+                animate={{ y: [0, -4, 0] }}
+                transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
+              >
+                <ArrowUp className="w-5 h-5 text-gray-600 group-hover:text-blue-600 transition-colors" />
+              </motion.div>
             </div>
-          </button>
+            <p className="text-sm text-gray-700 mb-5 font-medium">Provide liquidity, earn fees</p>
+            <NeoTaskBadge
+              primaryLabel="Status"
+              secondaryLabel="Coming Soon"
+              secondaryColor="orange"
+            />
+          </motion.div>
 
           {/* Vault Card */}
-          <button
+          <motion.div
+            whileHover={{ scale: 1.02, y: -4 }}
+            whileTap={{ scale: 0.98 }}
+            transition={{ type: "spring", stiffness: 400, damping: 17 }}
+            className="bg-neo-bg shadow-neo-raised hover:shadow-neo-raised-lift rounded-2xl p-8 transition-all duration-300 text-left cursor-pointer group relative overflow-hidden"
             onClick={onNavigateDown}
-            className="group relative bg-gradient-to-br from-white/5 to-white/[0.02] hover:from-white/10 hover:to-white/5 border border-white/10 hover:border-yellow-500/30 rounded-2xl p-8 transition-all duration-300 text-left overflow-hidden"
           >
-            {/* Hover gradient effect */}
-            <div className="absolute inset-0 bg-gradient-to-br from-yellow-500/0 to-amber-500/0 group-hover:from-yellow-500/5 group-hover:to-amber-500/5 transition-all duration-300"></div>
+            {/* Gradient accent */}
+            <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-yellow-400 to-orange-400 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
             
-            <div className="relative z-10">
-              <div className="flex items-start justify-between mb-4">
-                <h3 className="text-xl font-bold text-white">Vault Engine</h3>
-                <svg className="w-5 h-5 text-gray-400 group-hover:text-yellow-400 group-hover:translate-y-1 transition-all" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 14l-7 7m0 0l-7-7m7 7V3" />
-                </svg>
-              </div>
-              <p className="text-sm text-gray-400 mb-4">Deposit & earn yield</p>
-              <div className="flex items-center gap-2">
-                <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse"></div>
-                <span className="text-xs text-emerald-400 font-medium">APR: ~86-97%</span>
-              </div>
+            <div className="flex items-start justify-between mb-4">
+              <h3 className="text-xl font-bold text-gray-900 group-hover:text-yellow-600 transition-colors">Vault Engine</h3>
+              <motion.div
+                animate={{ y: [0, 4, 0] }}
+                transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
+              >
+                <ArrowDown className="w-5 h-5 text-gray-600 group-hover:text-yellow-600 transition-colors" />
+              </motion.div>
             </div>
-          </button>
+            <p className="text-sm text-gray-700 mb-5 font-medium">Deposit & earn yield</p>
+            <div className="flex items-center gap-2">
+              <NeoStatusIndicator
+                status="Active"
+                subtitle="APR: ~86-97%"
+                active={true}
+                className="!px-4 !py-2 !rounded-full"
+              />
+            </div>
+          </motion.div>
         </motion.div>
 
         {/* Bottom Navigation */}
         <motion.div
-          className="flex items-center justify-center gap-8 text-sm"
+          className="flex items-center justify-center gap-4 text-sm"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 0.3 }}
         >
-          <a 
+          <motion.a 
             href="https://docs.47eagle.com" 
             target="_blank" 
             rel="noopener noreferrer" 
-            className="text-gray-500 hover:text-yellow-500 transition-colors"
+            whileHover={{ scale: 1.05, y: -2 }}
+            transition={{ type: "spring", stiffness: 400, damping: 17 }}
+            className="px-5 py-2.5 bg-neo-bg shadow-neo-raised hover:shadow-neo-raised-lift rounded-full text-gray-700 hover:text-yellow-700 transition-all font-medium"
           >
             Docs
-          </a>
-          <a 
+          </motion.a>
+          <motion.a 
             href="#" 
-            className="text-gray-500 hover:text-yellow-500 transition-colors"
+            whileHover={{ scale: 1.05, y: -2 }}
+            transition={{ type: "spring", stiffness: 400, damping: 17 }}
+            className="px-5 py-2.5 bg-neo-bg shadow-neo-raised hover:shadow-neo-raised-lift rounded-full text-gray-700 hover:text-yellow-700 transition-all font-medium"
           >
             Summary
-          </a>
-          <a 
+          </motion.a>
+          <motion.a 
             href="https://x.com/teameagle47" 
             target="_blank" 
             rel="noopener noreferrer" 
-            className="text-gray-500 hover:text-yellow-500 transition-colors"
+            whileHover={{ scale: 1.05, y: -2 }}
+            transition={{ type: "spring", stiffness: 400, damping: 17 }}
+            className="px-5 py-2.5 bg-neo-bg shadow-neo-raised hover:shadow-neo-raised-lift rounded-full text-gray-700 hover:text-yellow-700 transition-all font-medium"
           >
             Twitter
-          </a>
-          <a 
+          </motion.a>
+          <motion.a 
             href="https://t.me/Eagle_community_47" 
             target="_blank" 
             rel="noopener noreferrer" 
-            className="text-gray-500 hover:text-yellow-500 transition-colors"
+            whileHover={{ scale: 1.05, y: -2 }}
+            transition={{ type: "spring", stiffness: 400, damping: 17 }}
+            className="px-5 py-2.5 bg-neo-bg shadow-neo-raised hover:shadow-neo-raised-lift rounded-full text-gray-700 hover:text-yellow-700 transition-all font-medium"
           >
             Telegram
-          </a>
+          </motion.a>
         </motion.div>
       </div>
     </div>

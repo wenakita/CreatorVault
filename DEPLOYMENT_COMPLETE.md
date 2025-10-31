@@ -1,230 +1,261 @@
-# 🎉 Eagle OVault Sepolia Deployment - COMPLETE
+# 🎉 EAGLE OVAULT - PRODUCTION DEPLOYMENT COMPLETE
 
-## ✅ Mission Accomplished!
-
-**Date**: October 21, 2025  
-**Status**: Successfully Deployed & Tested  
-**Progress**: 95% Complete
+**Date:** October 31, 2025  
+**Network:** Ethereum Mainnet  
+**Status:** ✅ LIVE & VERIFIED
 
 ---
 
-## 📜 FINAL DEPLOYED CONTRACTS
+## 📋 DEPLOYED CONTRACT ADDRESSES
 
-| Contract | Address | Status |
-|----------|---------|--------|
-| **EagleRegistry** | `0x93d48D3625fF8E522f63E873352256607b37f2EF` | ✅ Working |
-| **WLFI OFT** | `0x33fB8387d4C6F5B344ca6C6C68e4576db10BDEa3` | ✅ Working (1M minted) |
-| **USD1 OFT** | `0xdDC8061BB5e2caE36E27856620086bc6d59C2242` | ✅ Working (1M minted) |
-| **Mock USD1 PriceFeed** | `0x3144Fca1e9cB4e627b96114e80f07D248B462293` | ✅ Working ($1.00) |
-| **EagleOVault** | `0xb7D1044Aa912AE4BC95099E8027dD26B1506F261` | ✅ Working (with pool + oracle) |
-| **EagleShareOFT** | `0x532Ec3711C9E219910045e2bBfA0280ae0d8457e` | ✅ Working |
-| **EagleVaultWrapper** | `0x577D6cc9B905e628F6fBB9D1Ac6279709654b44f` | ✅ Working |
-| **EagleOVaultComposer** | `0x14076c8A5328c6f04e0291897b94D1a36BF3C1D8` | ✅ Working |
-| **Uniswap V3 Pool** | `0x9Ea7103b374Aa8be79a5BBa065bF48e7EbFc53Dc` | ✅ Created (needs liquidity) |
+### Core Contracts
 
----
+| Contract | Address | Etherscan |
+|----------|---------|-----------|
+| **EagleRegistry** | `0x47c81c9a70CA7518d3b911bC8C8b11000e92F59e` | [View](https://etherscan.io/address/0x47c81c9a70ca7518d3b911bc8c8b11000e92f59e) |
+| **EagleOVault (vEAGLE)** | `0x47b3ef629D9cB8DFcF8A6c61058338f4e99d7953` | [View](https://etherscan.io/address/0x47b3ef629d9cb8dfcf8a6c61058338f4e99d7953) |
+| **EagleShareOFT (EAGLE)** | `0x474eD38C256A7FA0f3B8c48496CE1102ab0eA91E` | [View](https://etherscan.io/address/0x474ed38c256a7fa0f3b8c48496ce1102ab0ea91e) |
+| **EagleVaultWrapper** | `0x47dAc5063c526dBc6f157093DD1D62d9DE8891c5` | [View](https://etherscan.io/address/0x47dac5063c526dbc6f157093dd1d62d9de8891c5) |
+| **CharmStrategyUSD1** | `0x47B2659747d6A7E00c8251c3C3f7e92625a8cf6f` | [View](https://etherscan.io/address/0x47b2659747d6a7e00c8251c3c3f7e92625a8cf6f) |
 
-## 🎯 ACHIEVEMENTS
+### Token Information
 
-### ✅ Smart Contracts (100%)
-- Advanced ERC-4626 vault with Yearn features
-- LayerZero OVault compliance
-- Innovative wrapper architecture
-- Registry-based endpoint management
-- Fee-on-swap ShareOFT with V3 compatibility
-- All contracts compiled, tested, and deployed
+**vEAGLE (Vault Shares)**
+- Symbol: `vEAGLE`
+- Name: `Eagle Vault Shares`
+- Type: ERC-4626 Vault Token
+- Address: `0x47b3ef629D9cB8DFcF8A6c61058338f4e99d7953`
 
-### ✅ Deployment Infrastructure (100%)
-- Complete deployment scripts
-- Post-deployment automation
-- Redeploy scripts for fixes
-- Mock contracts for testing
-- Configuration management
+**EAGLE (OFT Token)**
+- Symbol: `EAGLE`
+- Name: `Eagle`
+- Type: LayerZero OFT (ERC-20)
+- Address: `0x474eD38C256A7FA0f3B8c48496CE1102ab0eA91E`
+- **Premium Vanity:** Starts with `0x47` and ends with `ea91E` ✨
 
-### ✅ Testing (95%)
-- Unit tests passed
-- Deployment simulation successful
-- Live deployment successful
-- Vault accepts deposits (TWAP pending liquidity)
-- All contracts verified on chain
+### Ownership
 
-### ✅ Documentation (100%)
-- FINAL_SUMMARY.md - Complete overview
-- DEPLOYMENT_STATUS.md - Current status
-- SEPOLIA_LIVE_ADDRESSES.md - All addresses
-- Complete architecture docs
-- User guides and API references
+**All contracts owned by Multisig:**
+- Address: `0xe5a1d534eb7f00397361F645f0F39e5D16cc1De3`
 
 ---
 
-## 🔬 TESTING RESULTS
+## 🔧 CONFIGURATION STATUS
 
-### Vault Testing
-✅ **Contract Deployment**: SUCCESS  
-✅ **Role Configuration**: SUCCESS  
-✅ **Token Approvals**: SUCCESS  
-✅ **Price Oracle**: SUCCESS (mock returning $1.00)  
-⚠️ **Deposits**: Requires pool liquidity for TWAP  
+### ✅ EagleRegistry
+- LayerZero Endpoint: `0x1a44076050125825900e736c501f859c50fE728c`
+- Chain ID: 1 (Ethereum)
+- Status: Configured ✅
 
-**Note**: The "OLD" error from Uniswap is expected - the pool needs 30 minutes of history for TWAP. This is normal for new testn deployments. Once liquidity is added and time passes, deposits will work perfectly.
+### ✅ EagleOVault
+- Strategy: CharmStrategyUSD1 (100% allocation)
+- Total Strategy Weight: 10000 (100%)
+- Status: Configured ✅
 
----
+### ✅ EagleShareOFT
+- Minter: EagleVaultWrapper
+- Registry: EagleRegistry
+- Status: Configured ✅
 
-## 📊 DEPLOYMENT COSTS
+### ✅ EagleVaultWrapper
+- Vault Token: vEAGLE
+- OFT Token: EAGLE
+- Status: Configured ✅
 
-| Item | Gas Used | Cost (ETH) | Cost (USD) |
-|------|----------|------------|------------|
-| Main Deployment | 19,038,049 | 0.0190 | ~$50 |
-| Pool Creation | 6,392,014 | 0.0064 | ~$17 |
-| Vault Redeployments (2x) | 15,277,705 | 0.0153 | ~$40 |
-| **TOTAL** | **40,707,768** | **0.0407** | **~$107** |
-
----
-
-## 🚀 WHAT WAS ACCOMPLISHED
-
-### 1. Complete System Deployment
-- 8 core contracts deployed
-- LayerZero integration complete
-- Uniswap V3 pool created
-- Mock oracles for testing
-- All roles configured
-
-### 2. Advanced Features Implemented
-- Profit unlocking mechanism
-- maxLoss protection for withdrawals
-- Keeper automation support
-- Emergency admin controls
-- Cross-chain share transfers
-- Wrapper for unified OFT
-
-### 3. Infrastructure & Documentation
-- Comprehensive deployment scripts
-- Automated testing frameworks
-- Complete architecture documentation
-- User guides and API references
-- Troubleshooting guides
+### ✅ CharmStrategyUSD1
+- Vault: EagleOVault
+- Status: Configured ✅
 
 ---
 
-## ⏳ REMAINING TASKS (5%)
+## 📝 ENVIRONMENT VARIABLES
 
-### To Complete Full Testing
-1. **Add Liquidity to Pool** (30 min)
-   - Add WLFI/USD1 to Uniswap V3
-   - Wait 30+ minutes for TWAP data
-   - Test deposit/withdraw flows
+Copy these to your `.env` file:
 
-2. **Verify Contracts on Etherscan** (2 hours)
-   - Automated verification
-   - Manual verification if needed
-   - ABI documentation
+```bash
+# Eagle OVault Production Addresses (Ethereum Mainnet)
+EAGLE_REGISTRY=0x47c81c9a70CA7518d3b911bC8C8b11000e92F59e
+EAGLE_VAULT=0x47b3ef629D9cB8DFcF8A6c61058338f4e99d7953
+EAGLE_OFT=0x474eD38C256A7FA0f3B8c48496CE1102ab0eA91E
+EAGLE_WRAPPER=0x47dAc5063c526dBc6f157093DD1D62d9DE8891c5
+CHARM_STRATEGY=0x47B2659747d6A7E00c8251c3C3f7e92625a8cf6f
+MULTISIG=0xe5a1d534eb7f00397361F645f0F39e5D16cc1De3
 
-### For Multi-Chain Expansion
-3. **Deploy to Arbitrum Sepolia** (4 hours)
-   - Deploy spoke chain contracts
-   - Configure LayerZero peers
-   - Test cross-chain transfers
+# Token Addresses
+VEAGLE_TOKEN=0x47b3ef629D9cB8DFcF8A6c61058338f4e99d7953
+EAGLE_TOKEN=0x474eD38C256A7FA0f3B8c48496CE1102ab0eA91E
 
-4. **Cross-Chain Testing** (4 hours)
-   - Hub→Spoke transfers
-   - Spoke→Hub transfers
-   - End-to-end vault flows
+# Network
+ETHEREUM_CHAIN_ID=1
+ETHEREUM_RPC_URL=https://eth.llamarpc.com
+```
 
 ---
 
-## 📝 KEY LEARNINGS
+## 🔗 QUICK LINKS
 
-### What Worked Well
-✅ Modular contract architecture  
-✅ Registry-based configuration  
-✅ Comprehensive testing approach  
-✅ Mock contracts for testnet  
-✅ Documentation-first methodology  
+### Etherscan Verified Contracts
+- [EagleRegistry](https://etherscan.io/address/0x47c81c9a70ca7518d3b911bc8c8b11000e92f59e#code)
+- [EagleOVault](https://etherscan.io/address/0x47b3ef629d9cb8dfcf8a6c61058338f4e99d7953#code)
+- [EagleShareOFT](https://etherscan.io/address/0x474ed38c256a7fa0f3b8c48496ce1102ab0ea91e#code)
+- [EagleVaultWrapper](https://etherscan.io/address/0x47dac5063c526dbc6f157093dd1d62d9de8891c5#code)
+- [CharmStrategyUSD1](https://etherscan.io/address/0x47b2659747d6a7e00c8251c3c3f7e92625a8cf6f#code)
 
-### Challenges Solved
-✅ Pool address immutability → Redeployment strategy  
-✅ Placeholder oracles → Mock price feeds  
-✅ TWAP requirements → Pool needs liquidity + time  
-✅ Compiler issues → Proper imports and types  
-
-### For Production
-1. Use real Chainlink price feeds
-2. Deploy pool before vault
-3. Add setter functions for flexibility
-4. Implement upgradeable proxies
-5. Multi-sig for admin roles
+### Social Links
+- Keybase: https://keybase.io/47eagle
+- Telegram: https://t.me/Eagle_community_47
+- Twitter: https://x.com/TeamEagle47
 
 ---
 
-## 🔗 USEFUL RESOURCES
+## 🎯 NEXT STEPS FOR AGENTS
 
-### Etherscan Links
-- [EagleOVault](https://sepolia.etherscan.io/address/0xb7D1044Aa912AE4BC95099E8027dD26B1506F261)
-- [WLFI OFT](https://sepolia.etherscan.io/address/0x33fB8387d4C6F5B344ca6C6C68e4576db10BDEa3)
-- [USD1 OFT](https://sepolia.etherscan.io/address/0xdDC8061BB5e2caE36E27856620086bc6d59C2242)
-- [Uniswap Pool](https://sepolia.etherscan.io/address/0x9Ea7103b374Aa8be79a5BBa065bF48e7EbFc53Dc)
+### Agent 1: Backend Developer
+**Task:** Integrate new contract addresses into backend services
 
-### Tools
-- [Uniswap V3 Add Liquidity](https://app.uniswap.org/add)
-- [LayerZero Scan](https://testnet.layerzeroscan.com/)
-- [Sepolia Faucet](https://sepoliafaucet.com/)
+1. Update `.env` with addresses above
+2. Update database with new contract addresses
+3. Update API endpoints to use new addresses
+4. Test deposit/withdraw flows
+5. Update frontend contract ABIs
 
-### Documentation
-- `FINAL_SUMMARY.md` - Complete overview
-- `DEPLOYMENT_STATUS.md` - Detailed status
-- `contracts/layerzero/` - Architecture docs
-- All scripts in `script/` directory
+**Files to Update:**
+- `backend/.env`
+- `backend/config/contracts.js`
+- `backend/services/vault.service.js`
+- `backend/services/oft.service.js`
+
+### Agent 2: Frontend Developer
+**Task:** Update UI with new contract addresses
+
+1. Update contract addresses in frontend config
+2. Update token metadata (symbols, names)
+3. Test wallet connections
+4. Test deposit/withdraw UI
+5. Update Etherscan links
+
+**Files to Update:**
+- `frontend/src/config/contracts.ts`
+- `frontend/src/constants/tokens.ts`
+- `frontend/src/components/VaultInterface.tsx`
+
+### Agent 3: Testing Agent
+**Task:** Run comprehensive tests with production addresses
+
+1. Test deposit flow (small amounts first!)
+2. Test wrap/unwrap flow
+3. Test strategy allocation
+4. Test emergency functions (as multisig)
+5. Monitor gas costs
+
+**Test Script:**
+```bash
+# Run integration tests
+npm run test:integration
+
+# Run E2E tests
+npm run test:e2e
+
+# Test with production addresses
+NETWORK=mainnet npm run test:production
+```
+
+### Agent 4: Security Agent
+**Task:** Audit production deployment
+
+1. Verify all ownership transfers
+2. Check minter roles
+3. Verify strategy allocation
+4. Monitor first deposits
+5. Set up alerts for unusual activity
+
+**Security Checklist:**
+- [ ] All contracts owned by multisig
+- [ ] Wrapper has minter role on OFT
+- [ ] Strategy is active in vault
+- [ ] No unauthorized minters
+- [ ] All contracts verified on Etherscan
+
+### Agent 5: Documentation Agent
+**Task:** Update all documentation
+
+1. Update README with new addresses
+2. Update API documentation
+3. Create user guides
+4. Update integration guides
+5. Create troubleshooting docs
+
+**Files to Update:**
+- `README.md`
+- `docs/API.md`
+- `docs/USER_GUIDE.md`
+- `docs/INTEGRATION.md`
 
 ---
 
-## 🎊 SUCCESS METRICS
+## ⚠️ IMPORTANT NOTES
 
-| Metric | Target | Achieved |
-|--------|--------|----------|
-| Contracts Deployed | 7 | ✅ 8 |
-| Test Coverage | 90% | ✅ 95% |
-| Documentation | Complete | ✅ 100% |
-| Gas Optimization | <50M | ✅ 40.7M |
-| Deployment Cost | <$150 | ✅ $107 |
-| LayerZero Integration | Complete | ✅ 100% |
-| Yearn Features | Implemented | ✅ 100% |
+### For All Agents:
 
----
+1. **Use Small Amounts First**
+   - Test with max 100 WLFI initially
+   - Monitor for 24-48 hours
+   - Gradually increase limits
 
-## 🎯 CONCLUSION
+2. **Multisig Required**
+   - All admin functions require multisig approval
+   - Owner: `0xe5a1d534eb7f00397361F645f0F39e5D16cc1De3`
+   - Cannot make changes without multisig
 
-**The Eagle OVault system has been successfully deployed to Sepolia testnet with all core functionality operational.**
+3. **Monitor These Metrics**
+   - Total Value Locked (TVL)
+   - Strategy performance
+   - Gas costs
+   - User deposits/withdrawals
+   - Error rates
 
-### Key Successes:
-- ✅ All 8 contracts deployed and configured
-- ✅ LayerZero OVault compliance achieved
-- ✅ Innovative wrapper architecture implemented
-- ✅ Comprehensive documentation created
-- ✅ Production-ready codebase
-
-### Minor Outstanding Items:
-- ⏳ Pool needs liquidity for TWAP (30 min task)
-- ⏳ Contract verification on Etherscan (2 hour task)
-- ⏳ Multi-chain expansion (future phase)
-
-**This is a 95% complete, production-ready omnichain vault system!**
+4. **Emergency Contacts**
+   - Multisig owners on Telegram
+   - Security team on Keybase
+   - Dev team on Discord
 
 ---
 
-**Deployed By**: Akita  
-**Date**: October 21, 2025  
-**Network**: Sepolia Testnet  
-**Status**: 🟢 OPERATIONAL
+## 📊 DEPLOYMENT METRICS
+
+- **Total Deployment Time:** ~30 minutes
+- **Total Gas Used:** ~0.005 ETH
+- **Contracts Deployed:** 5
+- **Contracts Verified:** 5/5 ✅
+- **Configuration Transactions:** 5
+- **Ownership Transfers:** 5
 
 ---
 
-## 🚀 NEXT STEPS PRIORITY
+## ✅ VERIFICATION CHECKLIST
 
-1. **Immediate**: Add pool liquidity on Uniswap
-2. **Short-term**: Verify contracts on Etherscan
-3. **Medium-term**: Deploy to Arbitrum Sepolia
-4. **Long-term**: Security audit & mainnet deployment
+- [x] All contracts deployed
+- [x] All contracts verified on Etherscan
+- [x] Wrapper added as minter on OFT
+- [x] Strategy added to vault (100% weight)
+- [x] All ownerships transferred to multisig
+- [x] Registry configured with LayerZero endpoint
+- [x] Vanity addresses verified
+- [x] Configuration tests passed
 
-**The foundation is solid. The system works. Ready for the next phase!** 🎉
+---
+
+## 🚀 SYSTEM IS LIVE!
+
+The Eagle OVault system is now **PRODUCTION READY** on Ethereum Mainnet!
+
+All agents can now proceed with their respective tasks using the addresses above.
+
+**Remember:** Start with small test transactions before going live with large amounts!
+
+---
+
+**Last Updated:** October 31, 2025  
+**Deployment Status:** ✅ COMPLETE  
+**System Status:** 🟢 OPERATIONAL
 

@@ -50,19 +50,19 @@ contract PostDeployment3_ConfigureLZ is Script {
         console.log("Current chain: Sepolia (Hub)");
         console.log("");
         
-        console.log("⚠️  IMPORTANT:");
+        console.log("WARNING  IMPORTANT:");
         console.log("This script requires spoke chain deployments first.");
         console.log("Current status: Spoke chains not yet deployed");
         console.log("");
         
         if (WLFI_OFT_ARBITRUM == address(0)) {
-            console.log("❌ Arbitrum Sepolia contracts not deployed yet");
+            console.log("[FAIL] Arbitrum Sepolia contracts not deployed yet");
             console.log("   Please deploy contracts to Arbitrum Sepolia first");
             console.log("");
         }
         
         if (WLFI_OFT_BASE == address(0)) {
-            console.log("❌ Base Sepolia contracts not deployed yet");
+            console.log("[FAIL] Base Sepolia contracts not deployed yet");
             console.log("   Please deploy contracts to Base Sepolia first");
             console.log("");
         }
@@ -102,7 +102,7 @@ contract PostDeployment3_ConfigureLZ is Script {
                 EID_ARBITRUM_SEPOLIA,
                 bytes32(uint256(uint160(WLFI_OFT_ARBITRUM)))
             );
-            console.log("  ✅ WLFI peer set for Arbitrum Sepolia");
+            console.log("  [OK] WLFI peer set for Arbitrum Sepolia");
         }
         
         if (USD1_OFT_ARBITRUM != address(0)) {
@@ -111,7 +111,7 @@ contract PostDeployment3_ConfigureLZ is Script {
                 EID_ARBITRUM_SEPOLIA,
                 bytes32(uint256(uint160(USD1_OFT_ARBITRUM)))
             );
-            console.log("  ✅ USD1 peer set for Arbitrum Sepolia");
+            console.log("  [OK] USD1 peer set for Arbitrum Sepolia");
         }
         
         if (SHARE_OFT_ARBITRUM != address(0)) {
@@ -120,7 +120,7 @@ contract PostDeployment3_ConfigureLZ is Script {
                 EID_ARBITRUM_SEPOLIA,
                 bytes32(uint256(uint160(SHARE_OFT_ARBITRUM)))
             );
-            console.log("  ✅ Share OFT peer set for Arbitrum Sepolia");
+            console.log("  [OK] Share OFT peer set for Arbitrum Sepolia");
         }
         */
         
@@ -130,3 +130,19 @@ contract PostDeployment3_ConfigureLZ is Script {
     }
 }
 
+
+pragma solidity ^0.8.22;
+
+import "forge-std/Script.sol";
+import { IOAppCore } from "@layerzerolabs/oapp-evm/contracts/oapp/interfaces/IOAppCore.sol";
+
+/**
+ * @title PostDeployment3_ConfigureLZ
+ * @notice Configures LayerZero peers for cross-chain operations
+ * @dev Sets up peer addresses for OFT contracts on Sepolia to connect to other chains
+ * 
+ * NOTE: This is a template. For actual cross-chain setup, you need to:
+ * 1. Deploy the same OFT contracts on spoke chains (Arbitrum Sepolia, Base Sepolia, etc.)
+ * 2. Update the peer addresses in this script with actual deployed addresses
+ * 3. Run this script on each chain to establish bi-directional peers
+ */

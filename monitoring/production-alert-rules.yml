@@ -1,0 +1,224 @@
+# Production Alert Rules for Eagle OVault
+# LIVE Ethereum Mainnet Deployment
+groups:
+  - name: eagle_ovault_production_critical
+    interval: 15s
+    rules:
+      # Production-specific critical alerts
+      
+      - alert: ProductionVaultBalanceDropped
+        expr: |
+          (eagle_ovault_contract_balance{contract="EagleOVault"} - 
+           eagle_ovault_contract_balance{contract="EagleOVault"} offset 1h) / 
+          eagle_ovault_contract_balance{contract="EagleOVault"} offset 1h < -0.15
+        for: 2m
+        labels:
+          severity: critical
+          component: vault
+          environment: production
+          contract_address: "0x47b3ef629D9cB8DFcF8A6c61058338f4e99d7953"
+        annotations:
+          summary: "PRODUCTION: Vault balance dropped significantly"
+          description: "Vault balance dropped by {{ $value | humanizePercentage }} in the last hour"
+          runbook: "https://docs.eagle-ovault.com/runbook/vault-balance-drop"
+          etherscan: "https://etherscan.io/address/0x47b3ef629D9cB8DFcF8A6c61058338f4e99d7953"
+
+      - alert: ProductionContractNotResponding
+        expr: eagle_ovault_contract_healthy{environment="production"} == 0
+        for: 3m
+        labels:
+          severity: critical
+          component: contract
+          environment: production
+        annotations:
+          summary: "PRODUCTION: Contract {{ $labels.contract }} not responding"
+          description: "Production contract at {{ $labels.address }} is not responding to calls"
+          action: "Investigate immediately - this is LIVE production"
+
+      - alert: ProductionMultisigBalanceLow
+        expr: eagle_ovault_contract_balance{contract="Multisig",address="0xe5a1d534eb7f00397361F645f0F39e5D16cc1De3"} < 0.05
+        for: 5m
+        labels:
+          severity: critical
+          component: multisig
+          environment: production
+        annotations:
+          summary: "PRODUCTION: Multisig balance critically low"
+          description: "Multisig has only {{ $value }} ETH remaining"
+          action: "Fund multisig immediately"
+
+      - alert: ProductionUnauthorizedOwnershipChange
+        expr: |
+          changes(eagle_ovault_owner{environment="production"}[5m]) > 0 and
+          eagle_ovault_owner != "0xe5a1d534eb7f00397361F645f0F39e5D16cc1De3"
+        for: 1m
+        labels:
+          severity: critical
+          component: security
+          environment: production
+        annotations:
+          summary: "🚨 PRODUCTION: Unauthorized ownership change detected"
+          description: "Owner changed to {{ $labels.new_owner }} - INVESTIGATE IMMEDIATELY"
+          action: "SECURITY INCIDENT - Follow incident response procedures"
+
+      - alert: ProductionLargeWithdrawal
+        expr: |
+          increase(eagle_ovault_withdrawal_amount{environment="production"}[5m]) > 100
+        for: 1m
+        labels:
+          severity: critical
+          component: security
+          environment: production
+        annotations:
+          summary: "PRODUCTION: Large withdrawal detected"
+          description: "Withdrawal of {{ $value }} tokens in last 5 minutes"
+          action: "Verify this is legitimate - check Etherscan"
+
+      - alert: ProductionStrategyFailure
+        expr: |
+          increase(eagle_ovault_strategy_rebalance_failures{environment="production"}[30m]) > 2
+        for: 5m
+        labels:
+          severity: critical
+          component: strategy
+          environment: production
+          strategy_address: "0x47B2659747d6A7E00c8251c3C3f7e92625a8cf6f"
+        annotations:
+          summary: "PRODUCTION: Strategy rebalance failures"
+          description: "{{ $value }} rebalance failures in last 30 minutes"
+          etherscan: "https://etherscan.io/address/0x47B2659747d6A7E00c8251c3C3f7e92625a8cf6f"
+
+  - name: eagle_ovault_production_warning
+    interval: 30s
+    rules:
+      # Production warnings
+      
+      - alert: ProductionHighGasCosts
+        expr: eagle_ovault_avg_gas_price_gwei{network="mainnet"} > 150
+        for: 10m
+        labels:
+          severity: warning
+          component: gas
+          environment: production
+        annotations:
+          summary: "PRODUCTION: High gas costs detected"
+          description: "Average gas price is {{ $value }} gwei"
+          action: "Consider delaying non-urgent transactions"
+
+      - alert: ProductionRPCLatencyHigh
+        expr: |
+          histogram_quantile(0.95, 
+            rate(eagle_ovault_rpc_duration_seconds_bucket{network="mainnet"}[5m])
+          ) > 3
+        for: 10m
+        labels:
+          severity: warning
+          component: rpc
+          environment: production
+        annotations:
+          summary: "PRODUCTION: RPC latency elevated"
+          description: "P95 RPC latency is {{ $value }}s"
+          action: "Consider switching to backup RPC"
+
+      - alert: ProductionVaultAPYLow
+        expr: eagle_ovault_strategy_apy_percent{environment="production"} < 2
+        for: 2h
+        labels:
+          severity: warning
+          component: strategy
+          environment: production
+        annotations:
+          summary: "PRODUCTION: Vault APY below threshold"
+          description: "Current APY is {{ $value }}%, below 2% threshold"
+          action: "Review strategy performance"
+
+      - alert: ProductionUnusualTransactionPattern
+        expr: |
+          rate(eagle_ovault_total_txs{environment="production"}[5m]) > 
+          3 * avg_over_time(rate(eagle_ovault_total_txs{environment="production"}[5m])[24h:5m])
+        for: 10m
+        labels:
+          severity: warning
+          component: security
+          environment: production
+        annotations:
+          summary: "PRODUCTION: Unusual transaction pattern"
+          description: "Transaction rate is 3x higher than normal"
+          action: "Monitor for potential attack"
+
+  - name: eagle_ovault_production_monitoring
+    interval: 60s
+    rules:
+      # Production monitoring health
+      
+      - alert: ProductionMonitoringDown
+        expr: up{job=~".*production.*"} == 0
+        for: 5m
+        labels:
+          severity: warning
+          component: monitoring
+          environment: production
+        annotations:
+          summary: "PRODUCTION: Monitoring service down"
+          description: "{{ $labels.job }} monitoring service is down"
+          action: "Restore monitoring immediately"
+
+      - alert: ProductionEtherscanAPIError
+        expr: rate(etherscan_api_errors{network="mainnet"}[5m]) > 0.1
+        for: 10m
+        labels:
+          severity: warning
+          component: external-api
+          environment: production
+        annotations:
+          summary: "PRODUCTION: Etherscan API errors"
+          description: "High error rate on Etherscan API"
+          action: "Check API key limits"
+
+  - name: eagle_ovault_production_business
+    interval: 300s
+    rules:
+      # Production business metrics
+      
+      - alert: ProductionNoDepositsExtended
+        expr: increase(eagle_ovault_deposits_total{environment="production"}[4h]) == 0
+        for: 1h
+        labels:
+          severity: info
+          component: business
+          environment: production
+        annotations:
+          summary: "PRODUCTION: No deposits in 4 hours"
+          description: "Consider investigating user experience"
+          action: "Review frontend and gas costs"
+
+      - alert: ProductionDailyVolumeDropped
+        expr: |
+          sum(increase(eagle_ovault_tx_volume_usd{environment="production"}[24h])) < 
+          0.3 * avg_over_time(sum(increase(eagle_ovault_tx_volume_usd{environment="production"}[24h]))[7d:24h])
+        for: 2h
+        labels:
+          severity: info
+          component: business
+          environment: production
+        annotations:
+          summary: "PRODUCTION: Daily volume significantly dropped"
+          description: "24h volume is 70% below 7-day average"
+          action: "Investigate market conditions"
+
+# Production-specific inhibition rules
+inhibit_rules:
+  # If vault balance dropped, don't alert on individual transaction issues
+  - source_match:
+      alertname: 'ProductionVaultBalanceDropped'
+    target_match_re:
+      alertname: '^Production.*Transaction.*'
+    equal: ['environment']
+
+  # If monitoring is down, suppress other alerts
+  - source_match:
+      alertname: 'ProductionMonitoringDown'
+    target_match:
+      environment: 'production'
+    equal: ['job']
+

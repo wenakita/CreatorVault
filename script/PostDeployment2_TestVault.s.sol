@@ -101,7 +101,7 @@ contract PostDeployment2_TestVault is Script {
         
         console.log("Test 4: Withdrawing 100 vEAGLE shares...");
         
-        EagleOVault(VAULT).withdrawDual(100 ether, deployer, 500);
+        EagleOVault(VAULT).withdraw(100 ether, deployer, deployer);
         
         console.log("  SUCCESS: Withdraw successful!");
         console.log("");

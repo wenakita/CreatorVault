@@ -1,0 +1,310 @@
+{
+  "dashboard": {
+    "title": "Eagle OVault - PRODUCTION (Ethereum Mainnet)",
+    "tags": ["production", "eagle", "ovault", "mainnet", "live"],
+    "timezone": "browser",
+    "schemaVersion": 38,
+    "version": 2,
+    "refresh": "30s",
+    "panels": [
+      {
+        "id": 1,
+        "title": "🦅 PRODUCTION STATUS",
+        "type": "stat",
+        "gridPos": {"h": 4, "w": 24, "x": 0, "y": 0},
+        "options": {
+          "colorMode": "background",
+          "graphMode": "none",
+          "textMode": "value_and_name"
+        },
+        "targets": [
+          {
+            "expr": "eagle_ovault_contract_healthy{environment=\"production\"}",
+            "legendFormat": "{{ contract }}"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "mappings": [
+              {"type": "value", "options": {"0": {"text": "DOWN", "color": "red"}}},
+              {"type": "value", "options": {"1": {"text": "LIVE", "color": "green"}}}
+            ],
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {"value": 0, "color": "red"},
+                {"value": 1, "color": "green"}
+              ]
+            }
+          }
+        }
+      },
+      {
+        "id": 2,
+        "title": "Vault TVL (PRODUCTION)",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "eagle_ovault_total_assets{contract=\"EagleOVault\",address=\"0x47b3ef629D9cB8DFcF8A6c61058338f4e99d7953\",environment=\"production\"}",
+            "legendFormat": "Total Assets"
+          }
+        ],
+        "gridPos": {"h": 6, "w": 6, "x": 0, "y": 4},
+        "fieldConfig": {
+          "defaults": {
+            "unit": "currencyUSD",
+            "color": {"mode": "thresholds"},
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {"value": 0, "color": "red"},
+                {"value": 10000, "color": "yellow"},
+                {"value": 100000, "color": "green"}
+              ]
+            }
+          }
+        },
+        "options": {
+          "colorMode": "value",
+          "graphMode": "area"
+        }
+      },
+      {
+        "id": 3,
+        "title": "Share Price",
+        "type": "gauge",
+        "targets": [
+          {
+            "expr": "(eagle_ovault_total_assets{address=\"0x47b3ef629D9cB8DFcF8A6c61058338f4e99d7953\"} / eagle_ovault_total_supply{address=\"0x47b3ef629D9cB8DFcF8A6c61058338f4e99d7953\"}) * 10000",
+            "legendFormat": "Share Price (bps)"
+          }
+        ],
+        "gridPos": {"h": 6, "w": 6, "x": 6, "y": 4},
+        "fieldConfig": {
+          "defaults": {
+            "unit": "short",
+            "min": 0,
+            "max": 20000,
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {"value": 0, "color": "red"},
+                {"value": 9500, "color": "yellow"},
+                {"value": 10000, "color": "green"}
+              ]
+            }
+          }
+        }
+      },
+      {
+        "id": 4,
+        "title": "Contract Balances (ETH)",
+        "type": "table",
+        "targets": [
+          {
+            "expr": "eagle_ovault_contract_balance{environment=\"production\"}",
+            "format": "table",
+            "instant": true
+          }
+        ],
+        "gridPos": {"h": 6, "w": 12, "x": 12, "y": 4},
+        "transformations": [
+          {
+            "id": "organize",
+            "options": {
+              "excludeByName": {},
+              "indexByName": {
+                "contract": 0,
+                "address": 1,
+                "Value": 2
+              }
+            }
+          }
+        ]
+      },
+      {
+        "id": 5,
+        "title": "Production Transactions (24h)",
+        "type": "timeseries",
+        "targets": [
+          {
+            "expr": "rate(eagle_ovault_total_txs{environment=\"production\",contract=\"EagleOVault\"}[5m])",
+            "legendFormat": "Transactions/sec"
+          }
+        ],
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 10},
+        "fieldConfig": {
+          "defaults": {
+            "custom": {
+              "drawStyle": "line",
+              "lineInterpolation": "smooth",
+              "fillOpacity": 20
+            },
+            "unit": "reqps"
+          }
+        }
+      },
+      {
+        "id": 6,
+        "title": "Success vs Failed Transactions",
+        "type": "timeseries",
+        "targets": [
+          {
+            "expr": "rate(eagle_ovault_total_txs{environment=\"production\"}[5m])",
+            "legendFormat": "Total"
+          },
+          {
+            "expr": "rate(eagle_ovault_failed_txs{environment=\"production\"}[5m])",
+            "legendFormat": "Failed"
+          }
+        ],
+        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 10},
+        "fieldConfig": {
+          "defaults": {
+            "custom": {
+              "drawStyle": "line",
+              "lineInterpolation": "smooth"
+            }
+          },
+          "overrides": [
+            {
+              "matcher": {"id": "byName", "options": "Failed"},
+              "properties": [{"id": "color", "value": {"fixedColor": "red", "mode": "fixed"}}]
+            }
+          ]
+        }
+      },
+      {
+        "id": 7,
+        "title": "Strategy Performance",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "eagle_ovault_strategy_apy_percent{environment=\"production\",address=\"0x47B2659747d6A7E00c8251c3C3f7e92625a8cf6f\"}",
+            "legendFormat": "APY"
+          }
+        ],
+        "gridPos": {"h": 6, "w": 6, "x": 0, "y": 18},
+        "fieldConfig": {
+          "defaults": {
+            "unit": "percent",
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {"value": 0, "color": "red"},
+                {"value": 5, "color": "yellow"},
+                {"value": 10, "color": "green"}
+              ]
+            }
+          }
+        },
+        "options": {
+          "colorMode": "value",
+          "graphMode": "area"
+        }
+      },
+      {
+        "id": 8,
+        "title": "Multisig Status",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "eagle_ovault_contract_balance{contract=\"Multisig\",address=\"0xe5a1d534eb7f00397361F645f0F39e5D16cc1De3\"}",
+            "legendFormat": "Balance (ETH)"
+          }
+        ],
+        "gridPos": {"h": 6, "w": 6, "x": 6, "y": 18},
+        "fieldConfig": {
+          "defaults": {
+            "unit": "eth",
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {"value": 0, "color": "red"},
+                {"value": 0.1, "color": "yellow"},
+                {"value": 0.5, "color": "green"}
+              ]
+            }
+          }
+        },
+        "options": {
+          "colorMode": "background"
+        }
+      },
+      {
+        "id": 9,
+        "title": "Gas Prices (Mainnet)",
+        "type": "timeseries",
+        "targets": [
+          {
+            "expr": "eagle_ovault_avg_gas_price_gwei{network=\"mainnet\"}",
+            "legendFormat": "Average Gas"
+          }
+        ],
+        "gridPos": {"h": 6, "w": 12, "x": 12, "y": 18},
+        "fieldConfig": {
+          "defaults": {
+            "unit": "none",
+            "custom": {
+              "drawStyle": "line",
+              "lineInterpolation": "smooth",
+              "fillOpacity": 10
+            }
+          }
+        }
+      },
+      {
+        "id": 10,
+        "title": "🔗 Quick Links - Production Contracts",
+        "type": "text",
+        "gridPos": {"h": 8, "w": 24, "x": 0, "y": 24},
+        "options": {
+          "mode": "markdown",
+          "content": "## Production Contract Links\n\n| Contract | Address | Etherscan |\n|----------|---------|----------|\n| EagleRegistry | `0x47c81c9a70CA7518d3b911bC8C8b11000e92F59e` | [View](https://etherscan.io/address/0x47c81c9a70ca7518d3b911bc8c8b11000e92f59e) |\n| **EagleOVault** | `0x47b3ef629D9cB8DFcF8A6c61058338f4e99d7953` | [View](https://etherscan.io/address/0x47b3ef629d9cb8dfcf8a6c61058338f4e99d7953) |\n| EagleShareOFT | `0x474eD38C256A7FA0f3B8c48496CE1102ab0eA91E` | [View](https://etherscan.io/address/0x474ed38c256a7fa0f3b8c48496ce1102ab0ea91e) |\n| EagleVaultWrapper | `0x47dAc5063c526dBc6f157093dd1D62d9DE8891c5` | [View](https://etherscan.io/address/0x47dac5063c526dbc6f157093dd1d62d9de8891c5) |\n| CharmStrategyUSD1 | `0x47B2659747d6A7E00c8251c3C3f7e92625a8cf6f` | [View](https://etherscan.io/address/0x47b2659747d6a7e00c8251c3c3f7e92625a8cf6f) |\n| **Multisig** | `0xe5a1d534eb7f00397361F645f0F39e5D16cc1De3` | [View](https://etherscan.io/address/0xe5a1d534eb7f00397361F645f0F39e5D16cc1De3) |\n\n⚠️ **PRODUCTION ENVIRONMENT** - All changes must go through multisig"
+        }
+      },
+      {
+        "id": 11,
+        "title": "Recent Events",
+        "type": "logs",
+        "targets": [
+          {
+            "expr": "{job=\"contract-events-production\"} |= \"0x47b3ef629D9cB8DFcF8A6c61058338f4e99d7953\"",
+            "refId": "A"
+          }
+        ],
+        "gridPos": {"h": 8, "w": 24, "x": 0, "y": 32}
+      }
+    ],
+    "templating": {
+      "list": [
+        {
+          "name": "contract",
+          "type": "query",
+          "query": "label_values(eagle_ovault_contract_balance{environment=\"production\"}, contract)",
+          "multi": false,
+          "includeAll": false
+        }
+      ]
+    },
+    "annotations": {
+      "list": [
+        {
+          "name": "Deployments",
+          "datasource": "Prometheus",
+          "expr": "eagle_ovault_deployment_event{environment=\"production\"}",
+          "tagKeys": "version",
+          "textFormat": "Production Deployment: {{ version }}"
+        },
+        {
+          "name": "Alerts",
+          "datasource": "Prometheus",
+          "expr": "ALERTS{environment=\"production\",alertstate=\"firing\"}",
+          "tagKeys": "alertname",
+          "textFormat": "{{ alertname }}"
+        }
+      ]
+    }
+  }
+}
+
