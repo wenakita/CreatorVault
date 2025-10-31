@@ -63,16 +63,9 @@ function StrategyRow({ strategy, wlfiPrice }: { strategy: any; wlfiPrice?: strin
       {/* Expanded Content */}
       {isExpanded && (
         <div className="px-6 pb-6 pt-2 border-t border-gray-200/50 animate-fadeIn">
-          {/* Tech Stack + 3D Visualization for Strategy 1 */}
+          {/* 3D Visualization for Strategy 1 */}
           {strategy.id === 1 && wlfiPrice && (
             <div className="mb-6">
-              {/* Tech Stack - Above 3D Viz */}
-              <div className="flex items-center justify-center gap-3 mb-4">
-                <UniswapBadge />
-                <CharmBadge />
-              </div>
-              
-              {/* 3D Visualization */}
               <ErrorBoundary fallback={
                 <div className="bg-orange-50 border border-orange-300 rounded-lg p-4 text-center">
                   <p className="text-xs text-orange-700">3D visualization unavailable</p>
