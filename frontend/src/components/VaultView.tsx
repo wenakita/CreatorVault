@@ -653,8 +653,17 @@ export default function VaultView({ provider, account, onToast, onNavigateUp }: 
         <div className="grid grid-cols-3 gap-4 mb-8">
           <NeoStatCard
             label="Total deposited"
-            value={Number(data.totalAssets).toLocaleString(undefined, { maximumFractionDigits: 2 })}
-            subtitle={`$${Number(data.totalAssets).toFixed(2)}`}
+            value={(() => {
+              const totalWLFI = Number(data.vaultLiquidWLFI) + Number(data.strategyWLFI);
+              const totalUSD1 = Number(data.vaultLiquidUSD1) + Number(data.strategyUSD1);
+              const totalUSD = (totalWLFI * Number(data.wlfiPrice)) + (totalUSD1 * Number(data.usd1Price));
+              return `$${totalUSD.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+            })()}
+            subtitle={(() => {
+              const totalWLFI = Number(data.vaultLiquidWLFI) + Number(data.strategyWLFI);
+              const totalUSD1 = Number(data.vaultLiquidUSD1) + Number(data.strategyUSD1);
+              return `${totalWLFI.toFixed(2)} WLFI + ${totalUSD1.toFixed(2)} USD1`;
+            })()}
           />
           <NeoStatCard
             label="Historical APY"
