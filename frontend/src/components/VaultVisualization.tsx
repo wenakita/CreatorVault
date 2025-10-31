@@ -3,6 +3,7 @@ import { Canvas } from "@react-three/fiber"
 import { OrbitControls, Text } from "@react-three/drei"
 import { useState, useEffect, useMemo } from "react"
 import { CONTRACTS } from '../config/contracts'
+import { UniswapBadge, CharmBadge } from './tech-stack'
 
 const WLFI_PRICE_USD = 0.127
 const CURRENT_TICK = Math.floor(Math.log(WLFI_PRICE_USD) / Math.log(1.0001))
@@ -229,19 +230,8 @@ export default function VaultVisualization({ currentPrice = WLFI_PRICE_USD }: Va
               <p className="text-xs text-gray-500">Total weight distribution across all price ranges</p>
             </div>
             <div className="flex items-center gap-2">
-              {!loading && revertData && (
-                <div className="px-3 py-1.5 bg-blue-500/10 border border-blue-500/30 rounded-lg">
-                  <div className="text-xs font-semibold text-blue-400">
-                    APR: {revertData.avgAPR ? revertData.avgAPR.toFixed(1) : '0'}% (7d avg) • TVL: ${revertData.latest?.tvl_usd.toFixed(0)}
-                  </div>
-                </div>
-              )}
-              {!loading && charmData && (
-                <div className="flex items-center gap-2 px-3 py-1.5 bg-emerald-500/10 border border-emerald-500/30 rounded-lg">
-                  <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse"></div>
-                  <span className="text-xs text-emerald-400 font-semibold">Live Data</span>
-                </div>
-              )}
+              <UniswapBadge />
+              <CharmBadge />
             </div>
           </div>
         </div>
