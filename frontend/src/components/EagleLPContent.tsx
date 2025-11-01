@@ -11,14 +11,14 @@ interface Props {
 
 export default function EagleLPContent({ onNavigateDown }: Props) {
   return (
-    <div className="h-full overflow-y-auto bg-neo-bg">
+    <div className="h-full overflow-y-auto bg-neo-bg dark:bg-black transition-colors">
       <div className="container mx-auto px-6 py-12 max-w-7xl">
         {/* Back Button */}
         <NeoButton
           onClick={onNavigateDown}
           label="Back to Home"
           icon={<ArrowDown className="w-4 h-4" />}
-          className="mb-8 !text-gray-700"
+          className="mb-8"
         />
 
         {/* Header */}
@@ -34,7 +34,7 @@ export default function EagleLPContent({ onNavigateDown }: Props) {
                 alt="Eagle"
                 className="w-16 h-16"
               />
-              <span className="text-4xl font-bold text-gray-900">+</span>
+              <span className="text-4xl font-bold text-gray-900 dark:text-gray-100">+</span>
               <img 
                 src={ICONS.ETHEREUM}
                 alt="ETH"
@@ -43,8 +43,8 @@ export default function EagleLPContent({ onNavigateDown }: Props) {
             </div>
           </div>
           
-          <h1 className="text-6xl font-bold text-gray-900 mb-4">EAGLE/ETH Liquidity Pool</h1>
-          <p className="text-xl text-gray-600">
+          <h1 className="text-6xl font-bold text-gray-900 dark:text-gray-100 mb-4">EAGLE/ETH Liquidity Pool</h1>
+          <p className="text-xl text-gray-600 dark:text-gray-400">
             Provide liquidity, earn trading fees, and support the Eagle ecosystem
           </p>
         </motion.div>
@@ -110,11 +110,11 @@ export default function EagleLPContent({ onNavigateDown }: Props) {
                 </svg>
               </motion.div>
               
-              <h2 className="text-4xl font-bold text-gray-900 mb-4">
+              <h2 className="text-4xl font-bold text-gray-900 dark:text-gray-100 mb-4">
                 EAGLE/ETH Pool Coming Soon
               </h2>
               
-              <p className="text-xl text-gray-700 mb-8 leading-relaxed">
+              <p className="text-xl text-gray-700 dark:text-gray-300 mb-8 leading-relaxed">
                 We're launching the EAGLE/ETH liquidity pool on Uniswap V3. Provide liquidity, earn trading fees, 
                 and help build the Eagle ecosystem.
               </p>
