@@ -12,6 +12,7 @@ export const CONTRACTS = {
   
   // External Contracts
   CHARM_VAULT: '0x22828Dbf15f5FBa2394Ba7Cf8fA9A96BdB444B71', // Charm USD1/WLFI Vault
+  UNISWAP_V3_POOL: '0x4637Ea6eCf7E16C99E67E941ab4d7d52eAc7c73d', // Uniswap V3 1% Fee Tier USD1/WLFI Pool
   
   // Token addresses (REAL tokens!)
   WLFI: '0xdA5e1988097297dCdc1f90D4dFE7909e847CBeF6',      // World Liberty Financial

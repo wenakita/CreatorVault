@@ -309,6 +309,111 @@ export default function Analytics({ provider, account, onNavigateUp }: Props) {
             </div>
           </div>
         </NeoCard>
+
+        {/* Contract Addresses */}
+        <NeoCard className="mt-8">
+          <div className="p-6">
+            <h3 className="text-gray-900 font-bold text-xl mb-6">Contract Addresses</h3>
+            
+            <div className="space-y-4">
+              {/* Uniswap V3 Pool */}
+              <div className="bg-white/50 shadow-neo-inset rounded-xl p-4">
+                <div className="text-xs text-gray-600 uppercase tracking-wider mb-2 font-semibold">
+                  Uniswap V3 LP 1% Fee Tier USD1/WLFI
+                </div>
+                <div className="flex items-center gap-2">
+                  <code className="text-gray-900 font-mono text-sm bg-gray-100 px-3 py-2 rounded-lg flex-1 break-all">
+                    {CONTRACTS.UNISWAP_V3_POOL}
+                  </code>
+                  <button
+                    onClick={() => navigator.clipboard.writeText(CONTRACTS.UNISWAP_V3_POOL)}
+                    className="p-2 hover:bg-gray-200 rounded-lg transition-colors flex-shrink-0"
+                    title="Copy to clipboard"
+                  >
+                    <svg className="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                    </svg>
+                  </button>
+                  <a
+                    href={`https://etherscan.io/address/${CONTRACTS.UNISWAP_V3_POOL}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="p-2 hover:bg-gray-200 rounded-lg transition-colors flex-shrink-0"
+                    title="View on Etherscan"
+                  >
+                    <svg className="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                    </svg>
+                  </a>
+                </div>
+              </div>
+
+              {/* Charm Vault */}
+              <div className="bg-white/50 shadow-neo-inset rounded-xl p-4">
+                <div className="text-xs text-gray-600 uppercase tracking-wider mb-2 font-semibold">
+                  Charm Vault Contract
+                </div>
+                <div className="flex items-center gap-2">
+                  <code className="text-gray-900 font-mono text-sm bg-gray-100 px-3 py-2 rounded-lg flex-1 break-all">
+                    {CONTRACTS.CHARM_VAULT}
+                  </code>
+                  <button
+                    onClick={() => navigator.clipboard.writeText(CONTRACTS.CHARM_VAULT)}
+                    className="p-2 hover:bg-gray-200 rounded-lg transition-colors flex-shrink-0"
+                    title="Copy to clipboard"
+                  >
+                    <svg className="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                    </svg>
+                  </button>
+                  <a
+                    href={`https://etherscan.io/address/${CONTRACTS.CHARM_VAULT}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="p-2 hover:bg-gray-200 rounded-lg transition-colors flex-shrink-0"
+                    title="View on Etherscan"
+                  >
+                    <svg className="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                    </svg>
+                  </a>
+                </div>
+              </div>
+
+              {/* Strategy Contract */}
+              <div className="bg-white/50 shadow-neo-inset rounded-xl p-4">
+                <div className="text-xs text-gray-600 uppercase tracking-wider mb-2 font-semibold">
+                  Strategy Contract
+                </div>
+                <div className="flex items-center gap-2">
+                  <code className="text-gray-900 font-mono text-sm bg-gray-100 px-3 py-2 rounded-lg flex-1 break-all">
+                    {CONTRACTS.STRATEGY}
+                  </code>
+                  <button
+                    onClick={() => navigator.clipboard.writeText(CONTRACTS.STRATEGY)}
+                    className="p-2 hover:bg-gray-200 rounded-lg transition-colors flex-shrink-0"
+                    title="Copy to clipboard"
+                  >
+                    <svg className="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                    </svg>
+                  </button>
+                  <a
+                    href={`https://etherscan.io/address/${CONTRACTS.STRATEGY}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="p-2 hover:bg-gray-200 rounded-lg transition-colors flex-shrink-0"
+                    title="View on Etherscan"
+                  >
+                    <svg className="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                    </svg>
+                  </a>
+                </div>
+              </div>
+            </div>
+          </div>
+        </NeoCard>
       </div>
     </div>
   );

@@ -6,8 +6,9 @@ import FloorIndicator from './FloorIndicator';
 import EagleHomeContent from './EagleHomeContent';
 import VaultView from './VaultView';
 import EagleLPContent from './EagleLPContent';
+import WrapperView from './WrapperView';
 
-export type Floor = 'lp' | 'home' | 'vault';
+export type Floor = 'lp' | 'home' | 'vault' | 'wrapper';
 
 interface Props {
   provider: BrowserProvider | null;
@@ -25,15 +26,17 @@ export default function EagleEcosystemWithRoutes({ provider, account, onToast }:
     '/': 'home',
     '/lp': 'lp',
     '/vault': 'vault',
+    '/wrapper': 'wrapper',
   };
 
   const currentFloor = routeToFloor[location.pathname] || 'home';
 
-  // Floor offsets for animation
-  const floorOffsets: Record<Floor, number> = {
-    'lp': 0,      // Top floor at 0vh
-    'home': 100,  // Main floor at 100vh  
-    'vault': 200  // Vault at 200vh (basement)
+  // Floor offsets for animation (y-axis vertical positioning)
+  const floorOffsets: Record<Floor, { y: number; x: number }> = {
+    'lp': { y: 0, x: 0 },         // Top floor at 0vh
+    'home': { y: 100, x: 0 },     // Main floor at 100vh  
+    'vault': { y: 200, x: 0 },    // Vault at 200vh (basement)
+    'wrapper': { y: 50, x: 50 }   // Wrapper at 45° angle (diagonal up-right from vault)
   };
 
   const navigateToFloor = (floor: Floor) => {
@@ -43,6 +46,7 @@ export default function EagleEcosystemWithRoutes({ provider, account, onToast }:
       'lp': '/lp',
       'home': '/',
       'vault': '/vault',
+      'wrapper': '/wrapper',
     };
     
     // Scroll floor to top immediately
@@ -65,12 +69,13 @@ export default function EagleEcosystemWithRoutes({ provider, account, onToast }:
 
   return (
     <div className="h-full overflow-hidden relative bg-[#0a0a0a]">
-      {/* Animated Container - Each floor is 100vh */}
+      {/* Animated Container - Each floor is 100vh, wrapper is positioned diagonally at 45° */}
       <motion.div
         className="absolute w-full"
-        style={{ height: '300vh' }}
+        style={{ height: '300vh', width: '150vw' }}
         animate={{ 
-          y: `${-currentOffset}vh` 
+          y: `${-currentOffset.y}vh`,
+          x: `${-currentOffset.x}vw`
         }}
         transition={{ 
           type: "spring",
@@ -81,7 +86,7 @@ export default function EagleEcosystemWithRoutes({ provider, account, onToast }:
         }}
       >
         {/* Top Floor - EAGLE/ETH LP */}
-        <div className="h-screen overflow-hidden relative bg-[#0a0a0a]" id="lp-floor">
+        <div className="h-screen overflow-hidden relative bg-[#0a0a0a]" id="lp-floor" style={{ position: 'absolute', top: 0, left: 0, width: '100vw' }}>
           <motion.div
             animate={{
               opacity: isTransitioning && currentFloor !== 'lp' ? 0.5 : 1,
@@ -96,7 +101,7 @@ export default function EagleEcosystemWithRoutes({ provider, account, onToast }:
         </div>
 
         {/* Main Floor - Home */}
-        <div className="h-screen overflow-hidden relative bg-[#0a0a0a]" id="home-floor">
+        <div className="h-screen overflow-hidden relative bg-[#0a0a0a]" id="home-floor" style={{ position: 'absolute', top: '100vh', left: 0, width: '100vw' }}>
           <motion.div
             animate={{
               opacity: isTransitioning && currentFloor !== 'home' ? 0.5 : 1,
@@ -112,7 +117,7 @@ export default function EagleEcosystemWithRoutes({ provider, account, onToast }:
         </div>
 
         {/* Basement - Vault */}
-        <div className="h-screen overflow-hidden relative bg-[#0a0a0a]" id="vault-floor">
+        <div className="h-screen overflow-hidden relative bg-[#0a0a0a]" id="vault-floor" style={{ position: 'absolute', top: '200vh', left: 0, width: '100vw' }}>
           <motion.div
             animate={{
               opacity: isTransitioning && currentFloor !== 'vault' ? 0.5 : 1,
@@ -125,6 +130,26 @@ export default function EagleEcosystemWithRoutes({ provider, account, onToast }:
               account={account}
               onToast={onToast}
               onNavigateUp={() => navigateToFloor('home')}
+              onNavigateToWrapper={() => navigateToFloor('wrapper')}
+            />
+          </motion.div>
+        </div>
+
+        {/* Wrapper - Diagonal Branch (45° from vault) */}
+        <div className="h-screen overflow-hidden relative bg-[#0a0a0a]" id="wrapper-floor" style={{ position: 'absolute', top: '50vh', left: '50vw', width: '100vw' }}>
+          <motion.div
+            animate={{
+              opacity: isTransitioning && currentFloor !== 'wrapper' ? 0.5 : 1,
+            }}
+            className="h-full overflow-y-auto overflow-x-hidden scroll-smooth"
+            style={{ scrollbarGutter: 'stable' }}
+          >
+            <WrapperView 
+              provider={provider}
+              account={account}
+              onToast={onToast}
+              onNavigateDown={() => navigateToFloor('vault')}
+              onNavigateUp={() => navigateToFloor('lp')}
             />
           </motion.div>
         </div>
