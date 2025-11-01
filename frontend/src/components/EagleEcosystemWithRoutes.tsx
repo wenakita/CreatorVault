@@ -68,14 +68,21 @@ export default function EagleEcosystemWithRoutes({ provider, account, onToast }:
   const currentOffset = floorOffsets[currentFloor];
 
   return (
-    <div className="h-full overflow-hidden relative bg-[#0a0a0a]">
-      {/* Animated Container - Each floor is 100vh, wrapper is positioned diagonally at 45° */}
+    <div className="h-full overflow-hidden relative bg-[#0a0a0a]" style={{ perspective: '2000px' }}>
+      {/* Animated Container with 3D transforms */}
       <motion.div
         className="absolute w-full"
-        style={{ height: '300vh', width: '150vw' }}
+        style={{ 
+          height: '300vh', 
+          width: '150vw',
+          transformStyle: 'preserve-3d'
+        }}
         animate={{ 
           y: `${-currentOffset.y}vh`,
-          x: `${-currentOffset.x}vw`
+          x: `${-currentOffset.x}vw`,
+          rotateZ: currentFloor === 'wrapper' ? -3 : 0,
+          rotateX: currentFloor === 'wrapper' ? 5 : 0,
+          scale: currentFloor === 'wrapper' ? 0.98 : 1,
         }}
         transition={{ 
           type: "spring",
