@@ -86,12 +86,17 @@ export default function EagleEcosystemWithRoutes({ provider, account, onToast }:
         }}
       >
         {/* Top Floor - EAGLE/ETH LP */}
-        <div className="h-screen overflow-hidden relative bg-[#0a0a0a]" id="lp-floor" style={{ position: 'absolute', top: 0, left: 0, width: '100vw' }}>
+        <div className="h-screen overflow-hidden relative bg-gradient-to-br from-[#0a0e1a] via-[#0a0a0a] to-[#0d0a14]" id="lp-floor" style={{ position: 'absolute', top: 0, left: 0, width: '100vw' }}>
+          {/* Animated gradient orbs */}
+          <div className="absolute inset-0 overflow-hidden pointer-events-none">
+            <div className="absolute top-0 right-1/4 w-96 h-96 bg-blue-500/5 rounded-full blur-3xl animate-pulse" style={{ animationDuration: '4s' }}></div>
+            <div className="absolute bottom-1/4 left-1/4 w-96 h-96 bg-purple-500/5 rounded-full blur-3xl animate-pulse" style={{ animationDuration: '6s' }}></div>
+          </div>
           <motion.div
             animate={{
               opacity: isTransitioning && currentFloor !== 'lp' ? 0.5 : 1,
             }}
-            className="h-full overflow-y-auto overflow-x-hidden"
+            className="h-full overflow-y-auto overflow-x-hidden relative z-10"
           >
             <EagleLPContent 
               onNavigateDown={() => navigateToFloor('home')}
@@ -101,12 +106,17 @@ export default function EagleEcosystemWithRoutes({ provider, account, onToast }:
         </div>
 
         {/* Main Floor - Home */}
-        <div className="h-screen overflow-hidden relative bg-[#0a0a0a]" id="home-floor" style={{ position: 'absolute', top: '100vh', left: 0, width: '100vw' }}>
+        <div className="h-screen overflow-hidden relative bg-gradient-to-br from-[#0a0a0a] via-[#0d0a10] to-[#0a0a0a]" id="home-floor" style={{ position: 'absolute', top: '100vh', left: 0, width: '100vw' }}>
+          {/* Animated gradient orbs */}
+          <div className="absolute inset-0 overflow-hidden pointer-events-none">
+            <div className="absolute top-1/4 right-1/3 w-[500px] h-[500px] bg-yellow-500/5 rounded-full blur-3xl animate-pulse" style={{ animationDuration: '5s' }}></div>
+            <div className="absolute bottom-1/3 left-1/4 w-96 h-96 bg-amber-500/5 rounded-full blur-3xl animate-pulse" style={{ animationDuration: '7s' }}></div>
+          </div>
           <motion.div
             animate={{
               opacity: isTransitioning && currentFloor !== 'home' ? 0.5 : 1,
             }}
-            className="h-full overflow-hidden"
+            className="h-full overflow-hidden relative z-10"
           >
             <EagleHomeContent 
               onNavigateUp={() => navigateToFloor('lp')}
@@ -117,12 +127,17 @@ export default function EagleEcosystemWithRoutes({ provider, account, onToast }:
         </div>
 
         {/* Basement - Vault */}
-        <div className="h-screen overflow-hidden relative bg-[#0a0a0a]" id="vault-floor" style={{ position: 'absolute', top: '200vh', left: 0, width: '100vw' }}>
+        <div className="h-screen overflow-hidden relative bg-gradient-to-br from-[#0a0a0a] via-[#0d0a0a] to-[#0a0d0a]" id="vault-floor" style={{ position: 'absolute', top: '200vh', left: 0, width: '100vw' }}>
+          {/* Animated gradient orbs */}
+          <div className="absolute inset-0 overflow-hidden pointer-events-none">
+            <div className="absolute top-1/3 right-1/4 w-96 h-96 bg-yellow-600/5 rounded-full blur-3xl animate-pulse" style={{ animationDuration: '6s' }}></div>
+            <div className="absolute bottom-1/4 left-1/3 w-96 h-96 bg-amber-600/5 rounded-full blur-3xl animate-pulse" style={{ animationDuration: '4s' }}></div>
+          </div>
           <motion.div
             animate={{
               opacity: isTransitioning && currentFloor !== 'vault' ? 0.5 : 1,
             }}
-            className="h-full overflow-y-auto overflow-x-hidden scroll-smooth"
+            className="h-full overflow-y-auto overflow-x-hidden scroll-smooth relative z-10"
             style={{ scrollbarGutter: 'stable' }}
           >
             <VaultView 
@@ -136,12 +151,18 @@ export default function EagleEcosystemWithRoutes({ provider, account, onToast }:
         </div>
 
         {/* Wrapper - Elevated above Home (far right) */}
-        <div className="h-screen overflow-hidden relative bg-gradient-to-b from-[#0a0a0a] via-[#0f0f1a] to-[#0a0a0a]" id="wrapper-floor" style={{ position: 'absolute', top: '95vh', left: '100vw', width: '100vw' }}>
+        <div className="h-screen overflow-hidden relative bg-gradient-to-br from-[#0d0a1a] via-[#10081a] to-[#0a0a1a]" id="wrapper-floor" style={{ position: 'absolute', top: '95vh', left: '100vw', width: '100vw' }}>
+          {/* Animated gradient orbs for wrapper */}
+          <div className="absolute inset-0 overflow-hidden pointer-events-none">
+            <div className="absolute top-1/4 right-1/3 w-[600px] h-[600px] bg-purple-500/10 rounded-full blur-3xl animate-pulse" style={{ animationDuration: '5s' }}></div>
+            <div className="absolute bottom-1/4 left-1/4 w-96 h-96 bg-blue-500/8 rounded-full blur-3xl animate-pulse" style={{ animationDuration: '7s' }}></div>
+            <div className="absolute top-1/2 left-1/2 w-[400px] h-[400px] bg-indigo-500/6 rounded-full blur-3xl animate-pulse" style={{ animationDuration: '6s' }}></div>
+          </div>
           <motion.div
             animate={{
               opacity: isTransitioning && currentFloor !== 'wrapper' ? 0.5 : 1,
             }}
-            className="h-full overflow-y-auto overflow-x-hidden scroll-smooth"
+            className="h-full overflow-y-auto overflow-x-hidden scroll-smooth relative z-10"
             style={{ scrollbarGutter: 'stable' }}
           >
             <WrapperView 

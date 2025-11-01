@@ -11,7 +11,7 @@ interface Props {
 
 export default function EagleLPContent({ onNavigateDown }: Props) {
   return (
-    <div className="h-full overflow-y-auto bg-neo-bg dark:bg-black transition-colors">
+    <div className="h-full overflow-y-auto">
       <div className="container mx-auto px-6 py-12 max-w-7xl">
         {/* Back Button */}
         <NeoButton

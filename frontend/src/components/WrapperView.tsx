@@ -20,13 +20,7 @@ export default function WrapperView({ provider, account, onToast, onNavigateDown
   const [amount, setAmount] = useState('');
 
   return (
-    <div className="min-h-screen bg-[#0a0a0a] text-white relative overflow-hidden">
-      {/* Animated background */}
-      <div className="absolute inset-0 overflow-hidden">
-        <div className="absolute top-1/4 -right-1/4 w-96 h-96 bg-purple-500/10 rounded-full blur-3xl" />
-        <div className="absolute bottom-1/4 -left-1/4 w-96 h-96 bg-blue-500/10 rounded-full blur-3xl" />
-      </div>
-
+    <div className="min-h-screen text-white relative overflow-hidden">
       {/* Content */}
       <div className="relative z-10 container mx-auto px-4 py-12">
         {/* Header */}
