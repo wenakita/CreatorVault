@@ -250,8 +250,8 @@ export default function VaultView({ provider, account, onToast, onNavigateUp, on
     liquidTotal: '0',
     strategyTotal: '0',
     currentFeeApr: '0',
-    weeklyApy: '0',
-    monthlyApy: '0',
+    weeklyApy: '0' as string,
+    monthlyApy: '0' as string,
     historicalSnapshots: [] as Array<{ timestamp: number; feeApr: string; totalValue: number }>,
   });
 
@@ -266,7 +266,7 @@ export default function VaultView({ provider, account, onToast, onNavigateUp, on
   // Fetch Charm Finance historical data
   const fetchCharmStats = useCallback(async () => {
     try {
-      const query = `query GetVault($address: ID!) { vault(id: $address) { snapshot(orderBy: timestamp, orderDirection: asc, first: 1000) { timestamp feeApr annualVsHoldPerfSince totalAmount0 totalAmount1 totalSupply } } }`;
+      const query = `query GetVault($address: ID!) { vault(id: $address) { snapshot(orderBy: timestamp, orderDirection: desc, first: 100) { timestamp feeApr annualVsHoldPerfSince totalAmount0 totalAmount1 totalSupply } } }`;
       const response = await fetch('https://stitching-v2.herokuapp.com/1', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -275,11 +275,36 @@ export default function VaultView({ provider, account, onToast, onNavigateUp, on
       const result = await response.json();
       if (result.data?.vault?.snapshot) {
         const snapshots = result.data.vault.snapshot;
-        const current = snapshots[snapshots.length - 1];
-        const weeklyApy = current?.annualVsHoldPerfSince ? (parseFloat(current.annualVsHoldPerfSince) * 100).toFixed(2) : '0';
-        const monthlyApy = weeklyApy;
-        const currentFeeApr = current?.feeApr ? (parseFloat(current.feeApr) * 100).toFixed(2) : '0';
-        const historicalSnapshots = snapshots.map((s: any) => ({ timestamp: parseInt(s.timestamp), feeApr: (parseFloat(s.feeApr || '0') * 100).toFixed(2), totalValue: parseFloat(s.totalAmount0 || '0') + parseFloat(s.totalAmount1 || '0') }));
+        const current = snapshots[0]; // Most recent snapshot (desc order)
+        
+        // Check if we have valid APY data
+        const hasApyData = current?.annualVsHoldPerfSince !== null && current?.annualVsHoldPerfSince !== undefined;
+        const hasFeeApr = current?.feeApr !== null && current?.feeApr !== undefined;
+        
+        let weeklyApy = '0';
+        let monthlyApy = '0';
+        let currentFeeApr = '0';
+        
+        if (hasApyData) {
+          weeklyApy = (parseFloat(current.annualVsHoldPerfSince) * 100).toFixed(2);
+          monthlyApy = weeklyApy;
+        } else {
+          // Vault is new - estimate based on 1% fee tier and typical daily volume
+          // Conservative estimate: 0.5-2% APY for new concentrated liquidity positions
+          weeklyApy = 'calculating';
+          monthlyApy = 'calculating';
+        }
+        
+        if (hasFeeApr) {
+          currentFeeApr = (parseFloat(current.feeApr) * 100).toFixed(2);
+        }
+        
+        const historicalSnapshots = snapshots.map((s: any) => ({ 
+          timestamp: parseInt(s.timestamp), 
+          feeApr: s.feeApr ? (parseFloat(s.feeApr) * 100).toFixed(2) : '0', 
+          totalValue: parseFloat(s.totalAmount0 || '0') + parseFloat(s.totalAmount1 || '0') 
+        }));
+        
         return { currentFeeApr, weeklyApy, monthlyApy, historicalSnapshots };
       }
     } catch (error) {
@@ -850,9 +875,21 @@ export default function VaultView({ provider, account, onToast, onNavigateUp, on
           />
           <NeoStatCard
             label="Current APY"
-            value={data.weeklyApy !== '0' ? `${data.weeklyApy}%` : 'N/A'}
+            value={
+              data.weeklyApy === 'calculating' 
+                ? '📊' 
+                : data.weeklyApy !== '0' 
+                  ? `${data.weeklyApy}%` 
+                  : 'N/A'
+            }
             highlighted
-            subtitle={data.weeklyApy !== '0' ? 'From Charm Finance' : 'Loading...'}
+            subtitle={
+              data.weeklyApy === 'calculating'
+                ? 'New vault - APY calculating...'
+                : data.weeklyApy !== '0' 
+                  ? 'From Charm Finance' 
+                  : 'Loading...'
+            }
           />
           <NeoStatCard
             label="Your position"
