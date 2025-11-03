@@ -80,28 +80,28 @@ export default function EagleLPContent({ onNavigateDown }: Props) {
         >
           <NeoStatCard
             label="Total Liquidity"
-            value="$0"
-            subtitle="Coming Soon"
+            value="$6.6K"
+            subtitle="Live on Uniswap V3"
           />
           <NeoStatCard
             label="24h Volume"
-            value="$0"
-            subtitle="---"
+            value="$14.8K"
+            subtitle="-32.2% (24h)"
           />
           <NeoStatCard
-            label="APR"
-            value="---%"
-            subtitle="Trading fees"
+            label="Estimated APR"
+            value="~820%"
+            subtitle="Based on 24h volume"
             highlighted
           />
           <NeoStatCard
-            label="Your Liquidity"
-            value="$0.00"
-            subtitle="Connect wallet"
+            label="EAGLE Price"
+            value="$0.00537"
+            subtitle="FDV: $268.5K"
           />
         </motion.div>
 
-        {/* Coming Soon Card */}
+        {/* Live Pool Card */}
         <motion.div 
           initial={{ scale: 0.95, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
@@ -149,14 +149,17 @@ export default function EagleLPContent({ onNavigateDown }: Props) {
               </motion.div>
               
               {/* Title */}
-              <h2 className="text-3xl md:text-4xl font-bold bg-gradient-to-r from-gray-900 via-gray-700 to-gray-900 dark:from-gray-100 dark:via-white dark:to-gray-100 bg-clip-text text-transparent mb-4">
-                EAGLE/ETH Pool Coming Soon
+              <h2 className="text-3xl md:text-4xl font-bold bg-gradient-to-r from-green-600 via-emerald-600 to-green-600 dark:from-green-400 dark:via-emerald-400 dark:to-green-400 bg-clip-text text-transparent mb-4 flex items-center justify-center gap-3">
+                <span className="inline-flex items-center gap-2">
+                  <div className="w-3 h-3 bg-green-500 rounded-full animate-pulse"></div>
+                  EAGLE/ETH Pool is LIVE
+                </span>
               </h2>
               
               {/* Description */}
               <p className="text-lg md:text-xl text-gray-700 dark:text-gray-300 mb-10 leading-relaxed px-4">
-                We're launching the EAGLE/ETH liquidity pool on Uniswap V4 with custom hooks. Provide liquidity, 
-                earn trading fees, and benefit from innovative DeFi features.
+                The EAGLE/ETH liquidity pool is now live on Uniswap V3! Provide liquidity, 
+                earn trading fees, and support the Eagle ecosystem. Currently generating ~820% APR from trading activity.
               </p>
               
               {/* Info Badges */}
@@ -173,7 +176,7 @@ export default function EagleLPContent({ onNavigateDown }: Props) {
                         alt="Uniswap"
                         className="w-6 h-6"
                       />
-                      <span className="text-lg font-bold text-pink-600 dark:text-pink-400">V4</span>
+                      <span className="text-lg font-bold text-pink-600 dark:text-pink-400">V3</span>
                     </div>
                   </div>
                 </motion.div>
@@ -199,28 +202,52 @@ export default function EagleLPContent({ onNavigateDown }: Props) {
                 </motion.div>
               </div>
 
-              {/* CTA Button */}
-              <motion.div 
-                whileHover={{ scale: 1.03, y: -2 }}
-                transition={{ type: "spring", stiffness: 400, damping: 17 }}
-              >
-                <a 
-                  href="https://t.me/Eagle_community_47" 
-                  target="_blank" 
-                  rel="noopener noreferrer"
-                  className="inline-block"
+              {/* CTA Buttons */}
+              <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
+                <motion.div 
+                  whileHover={{ scale: 1.03, y: -2 }}
+                  transition={{ type: "spring", stiffness: 400, damping: 17 }}
                 >
-                  <div className="relative group">
-                    <div className="absolute inset-0 bg-gradient-to-r from-blue-500 to-blue-600 rounded-2xl blur-lg opacity-50 group-hover:opacity-75 transition-opacity duration-300"></div>
-                    <div className="relative bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white font-bold py-4 px-8 rounded-2xl shadow-neo-raised dark:shadow-neo-raised-dark transition-all duration-300 flex items-center gap-3">
-                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-                      </svg>
-                      <span>Join Telegram for Updates</span>
+                  <a 
+                    href="https://dexscreener.com/ethereum/0xcf728b099b672c72d61f6ec4c4928c2f2a96cefdfd518c3470519d76545ed333" 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="inline-block"
+                  >
+                    <div className="relative group">
+                      <div className="absolute inset-0 bg-gradient-to-r from-green-500 to-emerald-600 rounded-2xl blur-lg opacity-50 group-hover:opacity-75 transition-opacity duration-300"></div>
+                      <div className="relative bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white font-bold py-4 px-8 rounded-2xl shadow-neo-raised dark:shadow-neo-raised-dark transition-all duration-300 flex items-center gap-3">
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+                        </svg>
+                        <span>View on DexScreener</span>
+                      </div>
                     </div>
-                  </div>
-                </a>
-              </motion.div>
+                  </a>
+                </motion.div>
+                
+                <motion.div 
+                  whileHover={{ scale: 1.03, y: -2 }}
+                  transition={{ type: "spring", stiffness: 400, damping: 17 }}
+                >
+                  <a 
+                    href="https://t.me/Eagle_community_47" 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="inline-block"
+                  >
+                    <div className="relative group">
+                      <div className="absolute inset-0 bg-gradient-to-r from-blue-500 to-blue-600 rounded-2xl blur-lg opacity-50 group-hover:opacity-75 transition-opacity duration-300"></div>
+                      <div className="relative bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white font-bold py-4 px-8 rounded-2xl shadow-neo-raised dark:shadow-neo-raised-dark transition-all duration-300 flex items-center gap-3">
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                        </svg>
+                        <span>Join Community</span>
+                      </div>
+                    </div>
+                  </a>
+                </motion.div>
+              </div>
             </div>
           </NeoCard>
         </motion.div>
