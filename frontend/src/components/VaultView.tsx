@@ -858,7 +858,7 @@ export default function VaultView({ provider, account, onToast, onNavigateUp, on
         />
 
         {/* Stats */}
-        <div className="grid grid-cols-3 gap-4 mb-8">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 mb-6 sm:mb-8">
           <NeoStatCard
             label="Total deposited"
             value={(() => {
@@ -904,16 +904,16 @@ export default function VaultView({ provider, account, onToast, onNavigateUp, on
           <div className="lg:col-span-1">
             <NeoCard className="!p-0 overflow-hidden relative">
               {/* Disabled Overlay */}
-              <div className="absolute inset-0 bg-gray-200/60 dark:bg-gray-900/60 backdrop-blur-sm z-10 flex items-center justify-center">
-                <div className="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-2xl max-w-xs text-center border-2 border-blue-500 dark:border-blue-600">
-                  <div className="w-12 h-12 bg-blue-500 dark:bg-blue-600 rounded-full flex items-center justify-center mx-auto mb-4">
-                    <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <div className="absolute inset-0 bg-gray-200/60 dark:bg-gray-900/60 backdrop-blur-sm z-10 flex items-center justify-center p-4">
+                <div className="bg-white dark:bg-gray-800 rounded-xl p-4 sm:p-6 shadow-2xl max-w-xs text-center border-2 border-blue-500 dark:border-blue-600">
+                  <div className="w-10 h-10 sm:w-12 sm:h-12 bg-blue-500 dark:bg-blue-600 rounded-full flex items-center justify-center mx-auto mb-3 sm:mb-4">
+                    <svg className="w-5 h-5 sm:w-6 sm:h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
                     </svg>
                   </div>
-                  <h4 className="text-lg font-bold text-gray-900 dark:text-white mb-2">Bootstrapping Phase</h4>
-                  <p className="text-sm text-gray-600 dark:text-gray-400">
-                    Deposits & withdrawals are temporarily disabled while we carefully deploy capital to strategies.
+                  <h4 className="text-base sm:text-lg font-bold text-gray-900 dark:text-white mb-2">Bootstrapping Phase</h4>
+                  <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">
+                    Deposits & withdrawals temporarily disabled while we deploy capital.
                   </p>
                 </div>
               </div>
@@ -1030,13 +1030,14 @@ export default function VaultView({ provider, account, onToast, onNavigateUp, on
             {onNavigateToWrapper && (
               <button
                 onClick={onNavigateToWrapper}
-                className="w-full mt-4 px-6 py-4 rounded-xl flex items-center justify-center gap-3 font-semibold bg-gradient-to-r from-purple-500 via-purple-600 to-blue-500 hover:from-purple-600 hover:via-purple-700 hover:to-blue-600 text-white shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-[1.02] active:scale-[0.98]"
+                className="w-full mt-4 px-4 sm:px-6 py-3 sm:py-4 rounded-xl flex items-center justify-center gap-2 sm:gap-3 font-semibold text-sm sm:text-base bg-gradient-to-r from-purple-500 via-purple-600 to-blue-500 hover:from-purple-600 hover:via-purple-700 hover:to-blue-600 text-white shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-[1.02] active:scale-[0.98]"
               >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
                 </svg>
-                <span>Wrap Shares to EAGLE</span>
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <span className="hidden sm:inline">Wrap Shares to EAGLE</span>
+                <span className="sm:hidden">Wrap to EAGLE</span>
+                <svg className="w-3 h-3 sm:w-4 sm:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                 </svg>
               </button>
@@ -1059,7 +1060,7 @@ export default function VaultView({ provider, account, onToast, onNavigateUp, on
               </div>
 
               {/* Tab Content */}
-              <div className="p-8">
+              <div className="p-4 sm:p-6 lg:p-8">
                 {infoTab === 'about' && (
                   <div className="space-y-6">
                     {/* Vault Description */}
@@ -1100,7 +1101,7 @@ export default function VaultView({ provider, account, onToast, onNavigateUp, on
                     {/* Fee Structure */}
                     <div>
                       <h4 className={`${DS.text.h4} mb-4`}>Fee Structure</h4>
-                      <div className="grid grid-cols-3 gap-4">
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
                         <div className={`${DS.backgrounds.card} ${DS.shadows.raised} ${DS.radius.md} p-6 ${DS.borders.subtle} ${DS.shadows.raisedHover} ${DS.transitions.default}`}>
                           <div className={`${DS.text.labelSmall} mb-3`}>Deposit</div>
                           <div className={DS.text.valueMedium}>1%</div>
@@ -1120,7 +1121,7 @@ export default function VaultView({ provider, account, onToast, onNavigateUp, on
                     {/* Vault Assets */}
                     <div>
                       <h4 className={`${DS.text.h4} mb-4`}>Accepted Assets</h4>
-                      <div className="grid grid-cols-2 gap-4">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                         <div className={`${DS.backgrounds.card} ${DS.shadows.raised} ${DS.radius.md} ${DS.spacing.cardPadding} ${DS.borders.subtle} ${DS.shadows.raisedHover} ${DS.transitions.default}`}>
                           <div className="flex items-center gap-4">
                             <img src={ICONS.WLFI} alt="WLFI" className={`w-14 h-14 ${DS.radius.full} border-2 border-white dark:border-gray-600 shadow-lg flex-shrink-0`} />
