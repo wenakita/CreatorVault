@@ -49,6 +49,13 @@
 - Enables cross-chain bridging via LayerZero
 - **Same EAGLE token on ALL chains** (via CREATE2)
 
+### 🔐 Safe App Integration (NEW!)
+- **Multi-sig Security**: Use Eagle Vault directly within Safe interface
+- **Admin Controls**: Execute capital injections with multi-sig approval
+- **Transparent Operations**: All signers can view and approve transactions
+- **One-Click Access**: Load app in Safe at https://app.safe.global/
+- 📖 **[Safe App Integration Guide](./docs/SAFE_APP_INTEGRATION.md)**
+
 ---
 
 ## 📊 Current Status

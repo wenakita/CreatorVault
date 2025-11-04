@@ -6,6 +6,8 @@ import ModernHeader from './components/ModernHeader';
 import EagleEcosystemWithRoutes from './components/EagleEcosystemWithRoutes';
 import { Showcase } from './pages/Showcase';
 import { ICONS } from './config/icons';
+import { SafeProvider } from './components/SafeProvider';
+import { useSafeApp } from './hooks/useSafeApp';
 
 interface Toast {
   id: number;
@@ -18,9 +20,32 @@ function AppContent() {
   const [account, setAccount] = useState<string>('');
   const [provider, setProvider] = useState<BrowserProvider | null>(null);
   const [toasts, setToasts] = useState<Toast[]>([]);
+  
+  // Safe App detection
+  const { isSafeApp, safeAddress, sdk } = useSafeApp();
 
   useEffect(() => {
     const checkConnection = async () => {
+      // If running as Safe App, use Safe address and SDK
+      if (isSafeApp && safeAddress) {
+        console.log('🔐 Running as Safe App:', safeAddress);
+        setAccount(safeAddress);
+        
+        // Create a provider using Safe Apps SDK
+        try {
+          const safeProvider = new BrowserProvider(sdk.safe as any);
+          setProvider(safeProvider);
+          showToast({
+            message: '🔐 Connected via Safe App',
+            type: 'success'
+          });
+        } catch (error) {
+          console.error('Error creating Safe provider:', error);
+        }
+        return;
+      }
+
+      // Standard MetaMask/wallet connection
       if (window.ethereum) {
         try {
           const accounts = await window.ethereum.request({ method: 'eth_accounts' });
@@ -37,7 +62,8 @@ function AppContent() {
 
     checkConnection();
 
-    if (window.ethereum) {
+    // Only set up listeners for standard wallet (not Safe App)
+    if (!isSafeApp && window.ethereum) {
       window.ethereum.on('accountsChanged', (accounts: string[]) => {
         if (accounts.length > 0) {
           setAccount(accounts[0]);
@@ -53,12 +79,12 @@ function AppContent() {
     }
 
     return () => {
-      if (window.ethereum) {
+      if (!isSafeApp && window.ethereum) {
         window.ethereum.removeAllListeners('accountsChanged');
         window.ethereum.removeAllListeners('chainChanged');
       }
     };
-  }, []);
+  }, [isSafeApp, safeAddress, sdk]);
 
   const showToast = (toast: { message: string; type: 'success' | 'error' | 'info'; txHash?: string }) => {
     const id = Date.now();
@@ -166,16 +192,18 @@ function AppContent() {
 
 export default function App() {
   return (
-    <BrowserRouter
-      future={{
-        v7_startTransition: true,
-        v7_relativeSplatPath: true,
-      }}
-    >
-      <Routes>
-        <Route path="/showcase" element={<Showcase />} />
-        <Route path="/*" element={<AppContent />} />
-      </Routes>
-    </BrowserRouter>
+    <SafeProvider>
+      <BrowserRouter
+        future={{
+          v7_startTransition: true,
+          v7_relativeSplatPath: true,
+        }}
+      >
+        <Routes>
+          <Route path="/showcase" element={<Showcase />} />
+          <Route path="/*" element={<AppContent />} />
+        </Routes>
+      </BrowserRouter>
+    </SafeProvider>
   );
 }
