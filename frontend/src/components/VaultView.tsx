@@ -239,8 +239,9 @@ export default function VaultView({ provider, account, onToast, onNavigateUp, on
     percentageIncrease: string;
   } | null>(null);
   
-  // Check if current account is admin
-  const isAdmin = account?.toLowerCase() === CONTRACTS.MULTISIG.toLowerCase();
+  // Check if current account is admin (now showing to everyone)
+  const isAdmin = true; // Changed: Admin panel now visible to all users
+  const isActualAdmin = account?.toLowerCase() === CONTRACTS.MULTISIG.toLowerCase();
 
   // PRODUCTION: All values reset to 0 - fresh deployment
   const [data, setData] = useState({
@@ -1192,7 +1193,7 @@ export default function VaultView({ provider, account, onToast, onNavigateUp, on
                     </div>
                     <div>
                       <h3 className="text-lg font-bold text-gray-900 dark:text-white">Admin Controls</h3>
-                      <p className="text-xs text-gray-600 dark:text-gray-400">Capital Injection</p>
+                      <p className="text-xs text-gray-600 dark:text-gray-400">Capital Injection {isActualAdmin ? '(You are Admin)' : '(View Only)'}</p>
                     </div>
                   </div>
 
@@ -1202,6 +1203,15 @@ export default function VaultView({ provider, account, onToast, onNavigateUp, on
                       <strong>⚡ Boost share value:</strong> Inject capital to increase share value without minting new shares. All existing holders benefit proportionally.
                     </p>
                   </div>
+
+                  {/* Admin Notice */}
+                  {!isActualAdmin && (
+                    <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-700/30 rounded-xl p-3">
+                      <p className="text-xs text-blue-800 dark:text-blue-300">
+                        <strong>ℹ️ Info:</strong> This panel is visible to all users for transparency. Only the multisig admin can execute capital injections.
+                      </p>
+                    </div>
+                  )}
 
                   {/* WLFI Input */}
                   <NeoInput
@@ -1245,23 +1255,37 @@ export default function VaultView({ provider, account, onToast, onNavigateUp, on
 
                   {/* Inject Button */}
                   <NeoButton
-                    label={injectLoading ? 'Injecting...' : 'Inject Capital'}
+                    label={
+                      injectLoading 
+                        ? 'Injecting...' 
+                        : !isActualAdmin 
+                          ? 'Admin Only - View Only Mode' 
+                          : 'Inject Capital'
+                    }
                     onClick={handleInjectCapital}
                     className="w-full !py-4 !bg-gradient-to-r !from-red-500 !to-red-600 dark:!from-red-600 dark:!to-red-700 !text-white disabled:!opacity-50 disabled:!cursor-not-allowed"
-                    disabled={injectLoading || !account || (!injectWlfi && !injectUsd1)}
+                    disabled={injectLoading || !account || (!injectWlfi && !injectUsd1) || !isActualAdmin}
                     icon={
                       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={isActualAdmin ? "M13 10V3L4 14h7v7l9-11h-7z" : "M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"} />
                       </svg>
                     }
                   />
 
                   {/* Warning */}
-                  <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-700/30 rounded-xl p-3">
-                    <p className="text-xs text-red-800 dark:text-red-300">
-                      <strong>⚠️ Admin only:</strong> This action will transfer tokens from your wallet to the vault permanently.
-                    </p>
-                  </div>
+                  {isActualAdmin ? (
+                    <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-700/30 rounded-xl p-3">
+                      <p className="text-xs text-red-800 dark:text-red-300">
+                        <strong>⚠️ Admin only:</strong> This action will transfer tokens from your wallet to the vault permanently.
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="bg-gray-50 dark:bg-gray-900/20 border border-gray-200 dark:border-gray-700/30 rounded-xl p-3">
+                      <p className="text-xs text-gray-600 dark:text-gray-400">
+                        <strong>🔒 Restricted:</strong> Connect with the multisig wallet ({CONTRACTS.MULTISIG.slice(0, 6)}...{CONTRACTS.MULTISIG.slice(-4)}) to execute capital injections.
+                      </p>
+                    </div>
+                  )}
                 </div>
               </NeoCard>
             </div>
