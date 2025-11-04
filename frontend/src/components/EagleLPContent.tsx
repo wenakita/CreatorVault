@@ -1,6 +1,7 @@
 import { motion } from 'framer-motion';
 import { BrowserProvider } from 'ethers';
 import { ArrowDown } from 'lucide-react';
+import { useState, useEffect } from 'react';
 import { ICONS } from '../config/icons';
 import { NeoButton, NeoStatCard, NeoCard, NeoTaskBadge } from './neumorphic';
 
@@ -9,7 +10,83 @@ interface Props {
   provider: BrowserProvider | null;
 }
 
+interface PoolData {
+  liquidity: string;
+  volume24h: string;
+  priceChange24h: string;
+  priceUsd: string;
+  fdv: string;
+  apr: string;
+}
+
 export default function EagleLPContent({ onNavigateDown }: Props) {
+  const [poolData, setPoolData] = useState<PoolData>({
+    liquidity: '$6.6K',
+    volume24h: '$14.8K',
+    priceChange24h: '-32.2%',
+    priceUsd: '$0.00537',
+    fdv: '$268.5K',
+    apr: '~820%'
+  });
+  const [loading, setLoading] = useState(false);
+  const [lastUpdate, setLastUpdate] = useState<Date>(new Date());
+
+  const fetchPoolData = async () => {
+    try {
+      setLoading(true);
+      const response = await fetch('https://api.dexscreener.com/latest/dex/pairs/ethereum/0xcf728b099b672c72d61f6ec4c4928c2f2a96cefdfd518c3470519d76545ed333');
+      const data = await response.json();
+      
+      if (data?.pair) {
+        const pair = data.pair;
+        const liquidityUsd = parseFloat(pair.liquidity?.usd || 0);
+        const volume24h = parseFloat(pair.volume?.h24 || 0);
+        const priceUsd = parseFloat(pair.priceUsd || 0);
+        const priceChange24h = parseFloat(pair.priceChange?.h24 || 0);
+        const fdv = parseFloat(pair.fdv || 0);
+        
+        // Calculate APR: (24h Volume × 365 × Fee %) / Liquidity
+        // Assuming 0.3% fee tier (standard Uniswap V3)
+        const estimatedAPR = liquidityUsd > 0 
+          ? ((volume24h * 365 * 0.003) / liquidityUsd) * 100 
+          : 0;
+
+        setPoolData({
+          liquidity: liquidityUsd >= 1000 
+            ? `$${(liquidityUsd / 1000).toFixed(1)}K` 
+            : `$${liquidityUsd.toFixed(2)}`,
+          volume24h: volume24h >= 1000 
+            ? `$${(volume24h / 1000).toFixed(1)}K` 
+            : `$${volume24h.toFixed(2)}`,
+          priceChange24h: `${priceChange24h > 0 ? '+' : ''}${priceChange24h.toFixed(1)}%`,
+          priceUsd: `$${priceUsd.toFixed(5)}`,
+          fdv: fdv >= 1000 
+            ? `$${(fdv / 1000).toFixed(1)}K` 
+            : `$${fdv.toFixed(2)}`,
+          apr: `~${estimatedAPR.toFixed(0)}%`
+        });
+        
+        setLastUpdate(new Date());
+      }
+    } catch (error) {
+      console.error('Error fetching pool data:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    // Fetch immediately on mount
+    fetchPoolData();
+
+    // Set up interval to fetch every 30 seconds
+    const interval = setInterval(() => {
+      fetchPoolData();
+    }, 30000);
+
+    // Cleanup interval on unmount
+    return () => clearInterval(interval);
+  }, []);
   return (
     <div className="h-full overflow-y-auto bg-gradient-to-br from-gray-50 via-gray-100 to-gray-50 dark:from-gray-900 dark:via-gray-850 dark:to-gray-900">
       <div className="container mx-auto px-6 py-12 max-w-7xl">
@@ -80,26 +157,41 @@ export default function EagleLPContent({ onNavigateDown }: Props) {
         >
           <NeoStatCard
             label="Total Liquidity"
-            value="$6.6K"
-            subtitle="Live on Uniswap V3"
+            value={poolData.liquidity}
+            subtitle={loading ? "Updating..." : "Live on Uniswap V3"}
           />
           <NeoStatCard
             label="24h Volume"
-            value="$14.8K"
-            subtitle="-32.2% (24h)"
+            value={poolData.volume24h}
+            subtitle={poolData.priceChange24h}
           />
           <NeoStatCard
             label="Estimated APR"
-            value="~820%"
+            value={poolData.apr}
             subtitle="Based on 24h volume"
             highlighted
           />
           <NeoStatCard
             label="EAGLE Price"
-            value="$0.00537"
-            subtitle="FDV: $268.5K"
+            value={poolData.priceUsd}
+            subtitle={`FDV: ${poolData.fdv}`}
           />
         </motion.div>
+
+        {/* Last Update Indicator */}
+        <div className="flex justify-end items-center gap-2 mb-6 text-xs text-gray-500 dark:text-gray-400">
+          <motion.div
+            animate={{ rotate: loading ? 360 : 0 }}
+            transition={{ duration: 1, repeat: loading ? Infinity : 0, ease: "linear" }}
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+            </svg>
+          </motion.div>
+          <span>
+            {loading ? 'Updating...' : `Updated ${lastUpdate.toLocaleTimeString()}`}
+          </span>
+        </div>
 
         {/* Live Pool Card */}
         <motion.div 
@@ -149,9 +241,9 @@ export default function EagleLPContent({ onNavigateDown }: Props) {
               </motion.div>
               
               {/* Title */}
-              <h2 className="text-3xl md:text-4xl font-bold bg-gradient-to-r from-green-600 via-emerald-600 to-green-600 dark:from-green-400 dark:via-emerald-400 dark:to-green-400 bg-clip-text text-transparent mb-4 flex items-center justify-center gap-3">
+              <h2 className="text-3xl md:text-4xl font-bold bg-gradient-to-r from-yellow-600 via-orange-500 to-yellow-600 dark:from-yellow-400 dark:via-orange-400 dark:to-yellow-400 bg-clip-text text-transparent mb-4 flex items-center justify-center gap-3">
                 <span className="inline-flex items-center gap-2">
-                  <div className="w-3 h-3 bg-green-500 rounded-full animate-pulse"></div>
+                  <div className="w-3 h-3 bg-yellow-500 dark:bg-yellow-400 rounded-full animate-pulse shadow-lg shadow-yellow-500/50"></div>
                   EAGLE/ETH Pool is LIVE
                 </span>
               </h2>
@@ -159,7 +251,7 @@ export default function EagleLPContent({ onNavigateDown }: Props) {
               {/* Description */}
               <p className="text-lg md:text-xl text-gray-700 dark:text-gray-300 mb-10 leading-relaxed px-4">
                 The EAGLE/ETH liquidity pool is now live on Uniswap V3! Provide liquidity, 
-                earn trading fees, and support the Eagle ecosystem. Currently generating ~820% APR from trading activity.
+                earn trading fees, and support the Eagle ecosystem. Currently generating {poolData.apr} APR from trading activity.
               </p>
               
               {/* Info Badges */}
@@ -215,8 +307,8 @@ export default function EagleLPContent({ onNavigateDown }: Props) {
                     className="inline-block"
                   >
                     <div className="relative group">
-                      <div className="absolute inset-0 bg-gradient-to-r from-green-500 to-emerald-600 rounded-2xl blur-lg opacity-50 group-hover:opacity-75 transition-opacity duration-300"></div>
-                      <div className="relative bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white font-bold py-4 px-8 rounded-2xl shadow-neo-raised dark:shadow-neo-raised-dark transition-all duration-300 flex items-center gap-3">
+                      <div className="absolute inset-0 bg-gradient-to-r from-yellow-500 to-orange-600 rounded-2xl blur-lg opacity-50 group-hover:opacity-75 transition-opacity duration-300"></div>
+                      <div className="relative bg-gradient-to-r from-yellow-500 to-orange-600 hover:from-yellow-600 hover:to-orange-700 text-white font-bold py-4 px-8 rounded-2xl shadow-neo-raised dark:shadow-neo-raised-dark transition-all duration-300 flex items-center gap-3">
                         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
                         </svg>
