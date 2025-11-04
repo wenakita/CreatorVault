@@ -268,7 +268,7 @@ export default function EagleLPContent({ onNavigateDown }: Props) {
                         alt="Uniswap"
                         className="w-6 h-6"
                       />
-                      <span className="text-lg font-bold text-pink-600 dark:text-pink-400">V3</span>
+                      <span className="text-lg font-bold text-pink-600 dark:text-pink-400">V4</span>
                     </div>
                   </div>
                 </motion.div>
@@ -287,9 +287,13 @@ export default function EagleLPContent({ onNavigateDown }: Props) {
                   whileHover={{ scale: 1.05, y: -4 }}
                   transition={{ type: "spring", stiffness: 400, damping: 17 }}
                 >
-                  <div className="bg-gradient-to-br from-white to-gray-50 dark:from-gray-800 dark:to-gray-850 rounded-2xl p-4 shadow-neo-inset dark:shadow-neo-inset-dark border border-gray-200/50 dark:border-gray-600/50">
-                    <div className="text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1 uppercase tracking-wider">Network</div>
-                    <div className="text-lg font-bold text-green-600 dark:text-green-400">Ethereum</div>
+                  <div className="bg-gradient-to-br from-white to-gray-50 dark:from-gray-800 dark:to-gray-850 rounded-2xl p-4 shadow-neo-inset dark:shadow-neo-inset-dark border border-gray-200/50 dark:border-gray-600/50 flex items-center justify-center">
+                    <img 
+                      src={ICONS.ETHEREUM}
+                      alt="Ethereum Network"
+                      className="w-12 h-12 rounded-full"
+                      title="Ethereum Network"
+                    />
                   </div>
                 </motion.div>
               </div>
