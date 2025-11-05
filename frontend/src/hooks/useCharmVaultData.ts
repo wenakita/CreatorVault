@@ -6,17 +6,72 @@ import { CONTRACTS } from '../config/contracts';
 // Public RPC endpoint for reading data
 const PUBLIC_RPC = import.meta.env.VITE_ETHEREUM_RPC || 'https://eth.llamarpc.com';
 
-// Charm Finance Alpha Vault ABI (minimal interface for what we need)
+// Fetch from Charm Finance GraphQL API
+async function fetchFromGraphQL() {
+  const query = `
+    query GetVault($address: ID!) {
+      vault(id: $address) {
+        baseLower
+        baseUpper
+        limitLower
+        limitUpper
+        baseThreshold
+        limitThreshold
+        fullRangeWeight
+        pool { tick }
+      }
+    }
+  `;
+
+  const response = await fetch('https://stitching-v2.herokuapp.com/1', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      query,
+      variables: { address: CONTRACTS.CHARM_VAULT.toLowerCase() }
+    })
+  });
+
+  const result = await response.json();
+  const vault = result.data?.vault;
+  
+  if (!vault) {
+    console.log('[fetchFromGraphQL] No vault data returned');
+    return null;
+  }
+
+  console.log('[fetchFromGraphQL] Success! Vault data:', vault);
+
+  // Parse the GraphQL data
+  return {
+    baseTickLower: parseInt(vault.baseLower),
+    baseTickUpper: parseInt(vault.baseUpper),
+    limitTickLower: parseInt(vault.limitLower),
+    limitTickUpper: parseInt(vault.limitUpper),
+    currentTick: vault.pool?.tick ? parseInt(vault.pool.tick) : 0,
+    baseWeight: parseFloat(vault.baseThreshold || '0') / 100,
+    limitWeight: parseFloat(vault.limitThreshold || '0') / 100,
+    fullRangeWeight: parseFloat(vault.fullRangeWeight || '0') / 100,
+    total0: '0',
+    total1: '0',
+  };
+}
+
+// Charm Finance Alpha Vault ABI (minimal interface - public state variables)
 const CHARM_VAULT_ABI = [
-  'function getTotalAmounts() view returns (uint256 total0, uint256 total1)',
-  'function getBasePosition() view returns (int24 tickLower, int24 tickUpper)',
-  'function getLimitPosition() view returns (int24 tickLower, int24 tickUpper)',
-  'function baseThreshold() view returns (uint256)',
-  'function limitThreshold() view returns (uint256)',
-  'function maxTotalSupply() view returns (uint256)',
+  // Position tick ranges (public state variables)
+  'function baseLower() view returns (int24)',
+  'function baseUpper() view returns (int24)',
+  'function limitLower() view returns (int24)',
+  'function limitUpper() view returns (int24)',
+  // Thresholds (in basis points, where 10000 = 100%)
+  'function baseThreshold() view returns (uint24)',
+  'function limitThreshold() view returns (uint24)',
+  'function fullRangeWeight() view returns (uint24)',
+  // Pool reference
   'function pool() view returns (address)',
-  'function token0() view returns (address)',
-  'function token1() view returns (address)',
+  // Token amounts
+  'function getTotalAmounts() view returns (uint256 total0, uint256 total1)',
 ];
 
 const POOL_ABI = [
@@ -70,22 +125,42 @@ export function useCharmVaultData(): CharmVaultData {
       try {
         console.log('[useCharmVaultData] Fetching vault data from contract...');
         
+        // Try GraphQL API first (more reliable)
+        try {
+          const graphqlData = await fetchFromGraphQL();
+          if (graphqlData) {
+            setData({
+              ...graphqlData,
+              loading: false,
+              error: null,
+            });
+            return;
+          }
+        } catch (e) {
+          console.log('[useCharmVaultData] GraphQL fetch failed, trying direct contract calls...');
+        }
+
+        // Fallback to direct contract calls
         const vaultContract = new Contract(CONTRACTS.CHARM_VAULT, CHARM_VAULT_ABI, provider);
         
         // Fetch all data in parallel
         const [
-          totalAmounts,
-          basePosition,
-          limitPosition,
+          baseLower,
+          baseUpper,
+          limitLower,
+          limitUpper,
           baseThreshold,
           limitThreshold,
+          fullRangeWeight,
           poolAddress,
         ] = await Promise.all([
-          vaultContract.getTotalAmounts(),
-          vaultContract.getBasePosition(),
-          vaultContract.getLimitPosition(),
-          vaultContract.baseThreshold(),
-          vaultContract.limitThreshold(),
+          vaultContract.baseLower(),
+          vaultContract.baseUpper(),
+          vaultContract.limitLower(),
+          vaultContract.limitUpper(),
+          vaultContract.baseThreshold().catch(() => 2900n), // Default 29%
+          vaultContract.limitThreshold().catch(() => 2400n), // Default 24%
+          vaultContract.fullRangeWeight().catch(() => 4700n), // Default 47%
           vaultContract.pool(),
         ]);
 
@@ -94,29 +169,34 @@ export function useCharmVaultData(): CharmVaultData {
         const slot0 = await poolContract.slot0();
         const currentTick = Number(slot0[1]);
 
-        // Calculate weights (thresholds are in basis points: 10000 = 100%)
-        const baseThresholdBps = Number(formatUnits(baseThreshold, 0));
-        const limitThresholdBps = Number(formatUnits(limitThreshold, 0));
-        
-        // In Charm vaults:
-        // - baseThreshold = minimum % for base position
-        // - limitThreshold = minimum % for limit position
-        // - remaining goes to full range
-        const baseWeightCalc = baseThresholdBps / 100; // Convert basis points to percentage
-        const limitWeightCalc = limitThresholdBps / 100;
-        const fullRangeWeightCalc = 100 - baseWeightCalc - limitWeightCalc;
+        // Get total amounts (may not exist on all vaults)
+        let total0 = '0';
+        let total1 = '0';
+        try {
+          const totalAmounts = await vaultContract.getTotalAmounts();
+          total0 = formatUnits(totalAmounts[0], 18);
+          total1 = formatUnits(totalAmounts[1], 18);
+        } catch (e) {
+          console.log('[useCharmVaultData] getTotalAmounts not available, using defaults');
+        }
+
+        // Calculate weights (values are in basis points: 10000 = 100%)
+        // Convert BigInt to number then to percentage
+        const baseWeightCalc = Number(baseThreshold) / 100; // basis points to percentage
+        const limitWeightCalc = Number(limitThreshold) / 100;
+        const fullRangeWeightCalc = Number(fullRangeWeight) / 100;
 
         const vaultData: CharmVaultData = {
-          baseTickLower: Number(basePosition[0]),
-          baseTickUpper: Number(basePosition[1]),
-          limitTickLower: Number(limitPosition[0]),
-          limitTickUpper: Number(limitPosition[1]),
+          baseTickLower: Number(baseLower),
+          baseTickUpper: Number(baseUpper),
+          limitTickLower: Number(limitLower),
+          limitTickUpper: Number(limitUpper),
           currentTick,
           baseWeight: baseWeightCalc,
           limitWeight: limitWeightCalc,
           fullRangeWeight: fullRangeWeightCalc,
-          total0: formatUnits(totalAmounts[0], 18),
-          total1: formatUnits(totalAmounts[1], 18),
+          total0,
+          total1,
           loading: false,
           error: null,
         };
