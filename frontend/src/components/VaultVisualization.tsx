@@ -97,7 +97,7 @@ interface VaultVisualizationProps {
 }
 
 export default function VaultVisualization({ currentPrice = WLFI_PRICE_USD }: VaultVisualizationProps) {
-  const size = 20
+  const size = 15  // Reduced from 20 for better visibility
   const [revertData, setRevertData] = useState<any>(null)
   const [hoveredTick, setHoveredTick] = useState<number | null>(null)
   
@@ -227,20 +227,20 @@ export default function VaultVisualization({ currentPrice = WLFI_PRICE_USD }: Va
           </div>
         ) : (
           <div style={{ height: '500px', background: '#000' }}>
-            <Canvas camera={{ position: [0, 10, 25], fov: 50 }}>
+            <Canvas camera={{ position: [0, 5, 30], fov: 60 }}>
               <ambientLight intensity={0.5} />
               <pointLight position={[10, 10, 10]} intensity={1} />
               <pointLight position={[-10, -10, -10]} intensity={0.3} />
               <OrbitControls enableDamping dampingFactor={0.05} />
 
               {/* Current Price Indicator */}
-              <mesh position={[0, size / 2, 0]}>
-                <boxGeometry args={[0.1, size, 2]} />
+              <mesh position={[0, size / 3, 0]}>
+                <boxGeometry args={[0.1, size * 0.7, 2]} />
                 <meshStandardMaterial color="yellow" transparent opacity={0.5} />
               </mesh>
 
               {/* Price Label */}
-              <Text position={[0, 1, size / 2 + 1]} color="yellow" fontSize={0.4} anchorX="center">
+              <Text position={[0, 0.5, size / 2 + 1]} color="yellow" fontSize={0.4} anchorX="center">
                 ${currentPrice.toFixed(4)}
               </Text>
 
@@ -275,7 +275,8 @@ export default function VaultVisualization({ currentPrice = WLFI_PRICE_USD }: Va
               {tickDistribution.map((bar, i) => {
                 const TICK_WIDTH = (200 / 80000) * size
                 const x = ((bar.tick - usedTick) / 80000) * size
-                const height = (bar.liquidity / 100) * (size / 2)
+                // Reduced height scaling for better visibility
+                const height = (bar.liquidity / 100) * (size / 3)
                 const y = height / 2
                 
                 const isHovered = hoveredTick === bar.tick
