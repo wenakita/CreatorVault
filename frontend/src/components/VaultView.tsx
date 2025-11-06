@@ -9,12 +9,13 @@ import AssetAllocationSunburst from './AssetAllocationSunburst';
 import { NeoTabs, NeoButton, NeoInput, NeoStatCard, NeoCard, NeoStatusIndicator } from './neumorphic';
 import { UniswapBadge, CharmBadge, LayerZeroBadge } from './tech-stack';
 import { DESIGN_SYSTEM as DS } from '../styles/design-system';
+import { useRevertFinanceData } from '../hooks/useRevertFinanceData';
 
 // Lazy load 3D visualization
 const VaultVisualization = lazy(() => import('./VaultVisualization'));
 
 // Strategy Row Component with Dropdown
-function StrategyRow({ strategy, wlfiPrice }: { strategy: any; wlfiPrice?: string }) {
+function StrategyRow({ strategy, wlfiPrice, revertData }: { strategy: any; wlfiPrice?: string; revertData?: any }) {
   const [isExpanded, setIsExpanded] = useState(false);
 
   return (
@@ -31,9 +32,9 @@ function StrategyRow({ strategy, wlfiPrice }: { strategy: any; wlfiPrice?: strin
         className="w-full px-8 py-5 transition-all duration-300 hover:bg-gray-100/50 dark:hover:bg-white/5"
       >
         <div className="flex items-center gap-6">
-          {/* Strategy Number - Metallic Badge */}
+          {/* Strategy Number Badge */}
           <div className={`
-            px-4 py-1.5 rounded-lg text-xs font-bold tracking-wider
+            px-4 py-1.5 rounded-lg text-xs font-bold tracking-wider shrink-0
             ${strategy.status === 'active'
               ? 'bg-gradient-to-br from-yellow-500 via-yellow-400 to-yellow-600 dark:from-yellow-600 dark:via-yellow-500 dark:to-amber-600 text-gray-900 dark:text-white shadow-neo-raised dark:shadow-[0_2px_8px_rgba(234,179,8,0.4),inset_0_1px_0_rgba(255,255,255,0.3)]'
               : 'bg-gradient-to-br from-gray-300 to-gray-400 dark:from-zinc-700 dark:via-zinc-800 dark:to-zinc-900 text-gray-700 dark:text-zinc-400 border border-gray-400/50 dark:border-zinc-600/30 shadow-neo-inset dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.05)]'
@@ -42,9 +43,9 @@ function StrategyRow({ strategy, wlfiPrice }: { strategy: any; wlfiPrice?: strin
             #{strategy.id}
           </div>
           
-          {/* Status Indicator - Minimal Dot */}
+          {/* Status Indicator */}
           {strategy.status === 'active' ? (
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 shrink-0">
               <div className="relative">
                 <div className="w-2 h-2 bg-green-400 rounded-full"></div>
                 <div className="absolute inset-0 w-2 h-2 bg-green-400 rounded-full animate-ping"></div>
@@ -52,31 +53,74 @@ function StrategyRow({ strategy, wlfiPrice }: { strategy: any; wlfiPrice?: strin
               <span className="text-xs text-green-400 font-medium uppercase tracking-wide">Live</span>
             </div>
           ) : (
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 shrink-0">
               <div className="w-2 h-2 bg-gray-500 rounded-full"></div>
               <span className="text-xs text-gray-500 font-medium uppercase tracking-wide">Pending</span>
             </div>
           )}
           
-          {/* Strategy Name & Protocol - More Space */}
-          <div className="flex-1 text-left">
-            <h4 className="text-gray-900 dark:text-white font-semibold text-lg mb-0.5 group-hover:text-yellow-600 dark:group-hover:text-yellow-400 transition-colors">
-              {strategy.name}
-            </h4>
-            <p className="text-sm text-gray-600 dark:text-gray-400">{strategy.protocol}</p>
-          </div>
+          {/* Protocol Logos & Info - NEW */}
+          {strategy.id === 1 && strategy.status === 'active' && (
+            <div className="flex items-center gap-3 flex-1">
+              {/* Logos */}
+              <div className="flex items-center -space-x-2">
+                <UniswapBadge className="!w-8 !h-8 ring-2 ring-white dark:ring-zinc-800" />
+                <CharmBadge className="!w-8 !h-8 ring-2 ring-white dark:ring-zinc-800" />
+              </div>
+              
+              {/* Pool Info */}
+              <div className="text-left">
+                <h4 className="text-gray-900 dark:text-white font-semibold text-base group-hover:text-yellow-600 dark:group-hover:text-yellow-400 transition-colors">
+                  Uniswap V3 LP
+                </h4>
+                <p className="text-sm text-gray-600 dark:text-gray-400 font-mono">
+                  USD1/WLFI • 1% Fee
+                </p>
+              </div>
+            </div>
+          )}
+
+          {/* Fallback for other strategies */}
+          {(strategy.id !== 1 || strategy.status !== 'active') && (
+            <div className="flex-1 text-left">
+              <h4 className="text-gray-900 dark:text-white font-semibold text-lg mb-0.5 group-hover:text-yellow-600 dark:group-hover:text-yellow-400 transition-colors">
+                {strategy.name}
+              </h4>
+              <p className="text-sm text-gray-600 dark:text-gray-400">{strategy.protocol}</p>
+            </div>
+          )}
           
-          {/* Allocation - Elegant Percentage */}
+          {/* TVL - NEW */}
+          {strategy.id === 1 && strategy.status === 'active' && revertData && !revertData.loading && (
+            <div className="text-right shrink-0">
+              <div className="text-sm font-medium text-gray-600 dark:text-gray-500 mb-0.5">TVL</div>
+              <div className="text-lg font-bold text-gray-900 dark:text-white">
+                ${revertData.tvl > 1000 ? (revertData.tvl / 1000).toFixed(1) + 'K' : revertData.tvl.toFixed(0)}
+              </div>
+            </div>
+          )}
+          
+          {/* APR - NEW */}
+          {strategy.id === 1 && strategy.status === 'active' && revertData && !revertData.loading && (
+            <div className="text-right shrink-0">
+              <div className="text-sm font-medium text-gray-600 dark:text-gray-500 mb-0.5">7d Avg APR</div>
+              <div className="text-lg font-bold text-green-500">
+                {revertData.avgAPR.toFixed(1)}%
+              </div>
+            </div>
+          )}
+          
+          {/* Allocation */}
           {strategy.allocation && (
-            <div className="text-right mr-4">
+            <div className="text-right shrink-0 mr-4">
               <div className="text-2xl font-bold text-yellow-600 dark:text-yellow-400">{strategy.allocation}</div>
               <div className="text-xs text-gray-600 dark:text-gray-500 uppercase tracking-wider">Allocated</div>
             </div>
           )}
           
-          {/* Expand Arrow - Metallic Button */}
+          {/* Expand Arrow */}
           <div className={`
-            w-10 h-10 rounded-lg flex items-center justify-center transition-all duration-300
+            w-10 h-10 rounded-lg flex items-center justify-center transition-all duration-300 shrink-0
             bg-gradient-to-br from-gray-200 to-gray-300 dark:from-zinc-700 dark:via-zinc-800 dark:to-zinc-900 
             border border-gray-300/50 dark:border-zinc-600/30 shadow-neo-inset dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.05),0_2px_4px_rgba(0,0,0,0.3)]
             group-hover:border-gray-400/70 dark:group-hover:border-zinc-500/50 group-hover:shadow-neo-pressed dark:group-hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.1),0_2px_8px_rgba(0,0,0,0.4)]
@@ -242,6 +286,9 @@ export default function VaultView({ provider, account, onToast, onNavigateUp, on
   // Check if current account is admin (now showing to everyone)
   const isAdmin = true; // Changed: Admin panel now visible to all users
   const isActualAdmin = account?.toLowerCase() === CONTRACTS.MULTISIG.toLowerCase();
+
+  // Fetch Revert Finance data for strategy display
+  const revertData = useRevertFinanceData();
 
   // PRODUCTION: All values reset to 0 - fresh deployment
   const [data, setData] = useState({
@@ -1467,7 +1514,12 @@ export default function VaultView({ provider, account, onToast, onNavigateUp, on
                           allocation: '0%'
                         }
                       ].map((strategy) => (
-                        <StrategyRow key={strategy.id} strategy={strategy} wlfiPrice={data.wlfiPrice} />
+                        <StrategyRow 
+                          key={strategy.id} 
+                          strategy={strategy} 
+                          wlfiPrice={data.wlfiPrice} 
+                          revertData={revertData}
+                        />
                       ))}
                     </div>
                   </div>
