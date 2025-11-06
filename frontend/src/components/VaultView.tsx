@@ -197,19 +197,36 @@ function StrategyRow({ strategy, wlfiPrice, revertData }: { strategy: any; wlfiP
                 )}
               </div>
 
-              {strategy.analytics && (
-                <a 
-                  href={strategy.analytics} 
-                  target="_blank" 
-                  rel="noopener noreferrer" 
-                  className="text-yellow-600 dark:text-yellow-400 hover:text-yellow-700 dark:hover:text-yellow-300 font-medium text-sm inline-flex items-center gap-2 transition-colors mb-4"
-                >
-                  View Analytics on Charm Finance
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-                  </svg>
-                </a>
-              )}
+              {/* Analytics Links */}
+              <div className="flex flex-col gap-2 mb-4">
+                {strategy.analytics && (
+                  <a 
+                    href={strategy.analytics} 
+                    target="_blank" 
+                    rel="noopener noreferrer" 
+                    className="text-yellow-600 dark:text-yellow-400 hover:text-yellow-700 dark:hover:text-yellow-300 font-medium text-sm inline-flex items-center gap-2 transition-colors"
+                  >
+                    View Analytics on Charm Finance
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                    </svg>
+                  </a>
+                )}
+                
+                {strategy.revertAnalytics && (
+                  <a 
+                    href={strategy.revertAnalytics} 
+                    target="_blank" 
+                    rel="noopener noreferrer" 
+                    className="text-green-600 dark:text-green-400 hover:text-green-700 dark:hover:text-green-300 font-medium text-sm inline-flex items-center gap-2 transition-colors"
+                  >
+                    View Pool Analytics on Revert Finance
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                    </svg>
+                  </a>
+                )}
+              </div>
 
               {strategy.contract && (
                 <div className="bg-white/50 dark:bg-gray-800/50 rounded-lg p-4 border border-gray-200/50 dark:border-gray-700/50 mt-4">
@@ -1491,11 +1508,12 @@ export default function VaultView({ provider, account, onToast, onNavigateUp, on
                           name: 'Charm USD1/WLFI Alpha Vault',
                           protocol: 'Charm Finance',
                           pool: 'USD1/WLFI',
-                          feeTier: '0.3%',
+                          feeTier: '1%',
                           allocation: '100%',
                           status: 'active',
-                          description: 'Actively managed concentrated liquidity position on Uniswap V3, optimized for the USD1/WLFI 0.3% fee tier pool.',
+                          description: 'Actively managed concentrated liquidity position on Uniswap V3, optimized for the USD1/WLFI 1% fee tier pool.',
                           analytics: 'https://alpha.charm.fi/vault/1/0x47b2f57fb48177c02e9e219ad4f4e42d5f4f1a0c',
+                          revertAnalytics: 'https://revert.finance/#/pool/mainnet/uniswapv3/0xf9f5e6f7a44ee10c72e67bded6654afaf4d0c85d',
                           contract: CONTRACTS.STRATEGY
                         },
                         {
