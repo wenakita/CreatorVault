@@ -145,11 +145,21 @@ export default function VaultVisualization({ currentPrice = WLFI_PRICE_USD }: Va
       { name: "Limit Order", tickLower: limitLower, tickUpper: limitUpper, weight: limitWeight, color: "#9e4a4a" },
     ]
 
-    console.log('[VaultViz] Position Weights:', {
-      fullRange: fullWeight.toFixed(1) + '%',
-      base: baseWeight.toFixed(1) + '%',
-      limit: limitWeight.toFixed(1) + '%',
-      total: (fullWeight + baseWeight + limitWeight).toFixed(1) + '%'
+    const totalWeight = fullWeight + baseWeight + limitWeight;
+
+    console.log('[VaultViz] Raw charmData:', {
+      loading: charmData.loading,
+      fullRangeWeight: charmData.fullRangeWeight,
+      baseWeight: charmData.baseWeight,
+      limitWeight: charmData.limitWeight,
+    });
+
+    console.log('[VaultViz] Calculated Position Weights:', {
+      fullRange: `${fullWeight.toFixed(1)}%`,
+      base: `${baseWeight.toFixed(1)}%`,
+      limit: `${limitWeight.toFixed(1)}%`,
+      total: `${totalWeight.toFixed(1)}%`,
+      isValid: totalWeight >= 99 && totalWeight <= 101
     })
 
     console.log('[VaultViz] Position Ranges:', {
@@ -157,6 +167,8 @@ export default function VaultVisualization({ currentPrice = WLFI_PRICE_USD }: Va
       limit: `${limitLower} to ${limitUpper}`,
       currentTick: currentTickValue
     })
+
+    console.log('[VaultViz] Final result array:', result);
 
     return result
   }, [charmData])
@@ -413,6 +425,12 @@ export default function VaultVisualization({ currentPrice = WLFI_PRICE_USD }: Va
                 </div>
               </div>
             ))}
+          </div>
+          <div className="text-xs text-gray-500 mb-3">
+            Total Allocation: {positions.reduce((sum, pos) => sum + pos.weight, 0).toFixed(1)}%
+            {positions.reduce((sum, pos) => sum + pos.weight, 0) > 105 && (
+              <span className="text-yellow-500 ml-2">⚠️ Warning: Total exceeds 100%</span>
+            )}
           </div>
           {revertData && (
             <div className="pt-3 border-t border-white/5">
