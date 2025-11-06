@@ -29,9 +29,9 @@ function StrategyRow({ strategy, wlfiPrice, revertData }: { strategy: any; wlfiP
       {/* Header - Always Visible */}
       <button
         onClick={() => setIsExpanded(!isExpanded)}
-        className="w-full px-8 py-5 transition-all duration-300 hover:bg-gray-100/50 dark:hover:bg-white/5"
+        className="w-full px-3 sm:px-6 lg:px-8 py-3 sm:py-4 lg:py-5 transition-all duration-300 hover:bg-gray-100/50 dark:hover:bg-white/5"
       >
-        <div className="flex items-center gap-6">
+        <div className="flex flex-wrap sm:flex-nowrap items-center gap-3 sm:gap-4 lg:gap-6">
           {/* Strategy Number Badge */}
           <div className={`
             px-4 py-1.5 rounded-lg text-xs font-bold tracking-wider shrink-0
@@ -61,19 +61,19 @@ function StrategyRow({ strategy, wlfiPrice, revertData }: { strategy: any; wlfiP
           
           {/* Protocol Logos & Info - NEW */}
           {strategy.id === 1 && strategy.status === 'active' && (
-            <div className="flex items-center gap-3 flex-1">
+            <div className="flex items-center gap-2 sm:gap-3 flex-1 min-w-0">
               {/* Logos */}
-              <div className="flex items-center -space-x-2">
-                <UniswapBadge className="!w-8 !h-8 ring-2 ring-white dark:ring-zinc-800" />
-                <CharmBadge className="!w-8 !h-8 ring-2 ring-white dark:ring-zinc-800" />
+              <div className="flex items-center -space-x-1 sm:-space-x-2 shrink-0">
+                <UniswapBadge className="!w-6 !h-6 sm:!w-8 sm:!h-8 ring-2 ring-white dark:ring-zinc-800" />
+                <CharmBadge className="!w-6 !h-6 sm:!w-8 sm:!h-8 ring-2 ring-white dark:ring-zinc-800" />
               </div>
               
               {/* Pool Info */}
-              <div className="text-left">
-                <h4 className="text-gray-900 dark:text-white font-semibold text-base group-hover:text-yellow-600 dark:group-hover:text-yellow-400 transition-colors">
+              <div className="text-left min-w-0">
+                <h4 className="text-gray-900 dark:text-white font-semibold text-sm sm:text-base group-hover:text-yellow-600 dark:group-hover:text-yellow-400 transition-colors">
                   Uniswap V3 LP
                 </h4>
-                <p className="text-sm text-gray-600 dark:text-gray-400 font-mono">
+                <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 font-mono truncate">
                   USD1/WLFI • 1% Fee
                 </p>
               </div>
@@ -82,19 +82,19 @@ function StrategyRow({ strategy, wlfiPrice, revertData }: { strategy: any; wlfiP
 
           {/* Fallback for other strategies */}
           {(strategy.id !== 1 || strategy.status !== 'active') && (
-            <div className="flex-1 text-left">
-              <h4 className="text-gray-900 dark:text-white font-semibold text-lg mb-0.5 group-hover:text-yellow-600 dark:group-hover:text-yellow-400 transition-colors">
+            <div className="flex-1 text-left min-w-0">
+              <h4 className="text-gray-900 dark:text-white font-semibold text-base sm:text-lg mb-0.5 group-hover:text-yellow-600 dark:group-hover:text-yellow-400 transition-colors truncate">
                 {strategy.name}
               </h4>
-              <p className="text-sm text-gray-600 dark:text-gray-400">{strategy.protocol}</p>
+              <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 truncate">{strategy.protocol}</p>
             </div>
           )}
           
           {/* TVL - NEW */}
           {strategy.id === 1 && strategy.status === 'active' && (
-            <div className="text-right shrink-0">
-              <div className="text-sm font-medium text-gray-600 dark:text-gray-500 mb-0.5">TVL</div>
-              <div className="text-lg font-bold text-gray-900 dark:text-white">
+            <div className="text-right shrink-0 w-full sm:w-auto">
+              <div className="text-xs sm:text-sm font-medium text-gray-600 dark:text-gray-500 mb-0.5">TVL</div>
+              <div className="text-base sm:text-lg font-bold text-gray-900 dark:text-white">
                 {revertData.loading ? (
                   <span className="text-sm">...</span>
                 ) : revertData.error ? (
@@ -108,9 +108,9 @@ function StrategyRow({ strategy, wlfiPrice, revertData }: { strategy: any; wlfiP
           
           {/* APR - NEW */}
           {strategy.id === 1 && strategy.status === 'active' && (
-            <div className="text-right shrink-0">
-              <div className="text-sm font-medium text-gray-600 dark:text-gray-500 mb-0.5">7d Avg APR</div>
-              <div className="text-lg font-bold text-green-500">
+            <div className="text-right shrink-0 w-full sm:w-auto">
+              <div className="text-xs sm:text-sm font-medium text-gray-600 dark:text-gray-500 mb-0.5">7d Avg APR</div>
+              <div className="text-base sm:text-lg font-bold text-green-500">
                 {revertData.loading ? (
                   <span className="text-sm">...</span>
                 ) : revertData.error ? (
@@ -315,6 +315,20 @@ export default function VaultView({ provider, account, onToast, onNavigateUp, on
   // Check if current account is admin (now showing to everyone)
   const isAdmin = true; // Changed: Admin panel now visible to all users
   const isActualAdmin = account?.toLowerCase() === CONTRACTS.MULTISIG.toLowerCase();
+  
+  // Debug admin status
+  useEffect(() => {
+    if (account) {
+      console.log('[VaultView] Admin Check:', {
+        currentAccount: account,
+        currentAccountLower: account.toLowerCase(),
+        multisig: CONTRACTS.MULTISIG,
+        multisigLower: CONTRACTS.MULTISIG.toLowerCase(),
+        isActualAdmin,
+        match: account.toLowerCase() === CONTRACTS.MULTISIG.toLowerCase()
+      });
+    }
+  }, [account, isActualAdmin]);
 
   // Fetch Revert Finance data for strategy display
   const revertData = useRevertFinanceData();
@@ -890,7 +904,16 @@ export default function VaultView({ provider, account, onToast, onNavigateUp, on
 
   // Handle capital injection
   const handleInjectCapital = async () => {
-    if (!provider || !account || (!injectWlfi && !injectUsd1)) return;
+    if (!provider || !account || (!injectWlfi && !injectUsd1)) {
+      onToast({ message: 'Please enter WLFI and/or USD1 amount', type: 'error' });
+      return;
+    }
+
+    // Check if user is actually admin
+    if (!isActualAdmin) {
+      onToast({ message: 'Only the multisig admin can execute capital injections', type: 'error' });
+      return;
+    }
 
     setInjectLoading(true);
     try {
@@ -904,37 +927,73 @@ export default function VaultView({ provider, account, onToast, onNavigateUp, on
         signer
       );
 
-      const wlfiWei = injectWlfi ? parseEther(injectWlfi) : 0n;
-      const usd1Wei = injectUsd1 ? parseEther(injectUsd1) : 0n;
+      const wlfiWei = injectWlfi && parseFloat(injectWlfi) > 0 ? parseEther(injectWlfi) : 0n;
+      const usd1Wei = injectUsd1 && parseFloat(injectUsd1) > 0 ? parseEther(injectUsd1) : 0n;
+
+      console.log('[VaultView] Injecting capital:', { wlfiWei: wlfiWei.toString(), usd1Wei: usd1Wei.toString() });
 
       // Approve tokens if needed
-      if (injectWlfi && parseFloat(injectWlfi) > 0) {
+      if (wlfiWei > 0n) {
         const wlfiToken = new Contract(
           CONTRACTS.WLFI,
-          ['function approve(address spender, uint256 amount) external returns (bool)', 'function allowance(address owner, address spender) external view returns (uint256)'],
+          [
+            'function approve(address spender, uint256 amount) external returns (bool)', 
+            'function allowance(address owner, address spender) external view returns (uint256)',
+            'function balanceOf(address) external view returns (uint256)'
+          ],
           signer
         );
         
+        // Check balance first
+        const balance = await wlfiToken.balanceOf(account);
+        console.log('[VaultView] WLFI balance:', formatEther(balance), 'Required:', formatEther(wlfiWei));
+        
+        if (balance < wlfiWei) {
+          onToast({ message: `Insufficient WLFI balance. You have ${formatEther(balance)} but need ${formatEther(wlfiWei)}`, type: 'error' });
+          setInjectLoading(false);
+          return;
+        }
+
         const allowance = await wlfiToken.allowance(account, CONTRACTS.VAULT);
-        if (allowance < wlfiWei) {
+        console.log('[VaultView] WLFI allowance:', formatEther(allowance));
+        
+        if (BigInt(allowance.toString()) < wlfiWei) {
           onToast({ message: 'Approving WLFI...', type: 'info' });
           const approveTx = await wlfiToken.approve(CONTRACTS.VAULT, wlfiWei);
+          console.log('[VaultView] WLFI approve tx:', approveTx.hash);
           await approveTx.wait();
           onToast({ message: 'WLFI approved!', type: 'success', txHash: approveTx.hash });
         }
       }
 
-      if (injectUsd1 && parseFloat(injectUsd1) > 0) {
+      if (usd1Wei > 0n) {
         const usd1Token = new Contract(
           CONTRACTS.USD1,
-          ['function approve(address spender, uint256 amount) external returns (bool)', 'function allowance(address owner, address spender) external view returns (uint256)'],
+          [
+            'function approve(address spender, uint256 amount) external returns (bool)', 
+            'function allowance(address owner, address spender) external view returns (uint256)',
+            'function balanceOf(address) external view returns (uint256)'
+          ],
           signer
         );
         
+        // Check balance first
+        const balance = await usd1Token.balanceOf(account);
+        console.log('[VaultView] USD1 balance:', formatEther(balance), 'Required:', formatEther(usd1Wei));
+        
+        if (balance < usd1Wei) {
+          onToast({ message: `Insufficient USD1 balance. You have ${formatEther(balance)} but need ${formatEther(usd1Wei)}`, type: 'error' });
+          setInjectLoading(false);
+          return;
+        }
+        
         const allowance = await usd1Token.allowance(account, CONTRACTS.VAULT);
-        if (allowance < usd1Wei) {
+        console.log('[VaultView] USD1 allowance:', formatEther(allowance));
+        
+        if (BigInt(allowance.toString()) < usd1Wei) {
           onToast({ message: 'Approving USD1...', type: 'info' });
           const approveTx = await usd1Token.approve(CONTRACTS.VAULT, usd1Wei);
+          console.log('[VaultView] USD1 approve tx:', approveTx.hash);
           await approveTx.wait();
           onToast({ message: 'USD1 approved!', type: 'success', txHash: approveTx.hash });
         }
@@ -942,10 +1001,15 @@ export default function VaultView({ provider, account, onToast, onNavigateUp, on
 
       // Inject capital
       onToast({ message: 'Injecting capital into vault...', type: 'info' });
+      console.log('[VaultView] Calling injectCapital with:', { wlfiWei: wlfiWei.toString(), usd1Wei: usd1Wei.toString() });
+      
       const tx = await vault.injectCapital(wlfiWei, usd1Wei);
+      console.log('[VaultView] Inject capital tx:', tx.hash);
       onToast({ message: 'Transaction submitted...', type: 'info', txHash: tx.hash });
 
-      await tx.wait();
+      const receipt = await tx.wait();
+      console.log('[VaultView] Inject capital receipt:', receipt);
+      
       onToast({ 
         message: `✅ Successfully injected ${injectWlfi || '0'} WLFI + ${injectUsd1 || '0'} USD1!`, 
         type: 'success', 
@@ -957,13 +1021,24 @@ export default function VaultView({ provider, account, onToast, onNavigateUp, on
       setInjectionPreview(null);
       await fetchData();
     } catch (error: any) {
-      console.error('Inject capital error:', error);
+      console.error('[VaultView] Inject capital error:', error);
       let errorMessage = 'Capital injection failed';
       
       if (error.code === 'ACTION_REJECTED' || error.code === 4001) {
         errorMessage = 'Transaction rejected by user';
+      } else if (error.reason) {
+        errorMessage = `Error: ${error.reason}`;
       } else if (error.message) {
-        errorMessage = error.message.slice(0, 150);
+        // Try to extract meaningful error
+        if (error.message.includes('insufficient funds')) {
+          errorMessage = 'Insufficient funds for transaction';
+        } else if (error.message.includes('user rejected')) {
+          errorMessage = 'Transaction rejected by user';
+        } else if (error.message.includes('ERC20')) {
+          errorMessage = 'Token transfer failed - check balance and allowance';
+        } else {
+          errorMessage = error.message.slice(0, 150);
+        }
       }
       
       onToast({ message: errorMessage, type: 'error' });
@@ -979,9 +1054,9 @@ export default function VaultView({ provider, account, onToast, onNavigateUp, on
 
   return (
     <div className="bg-gradient-to-br from-gray-50 via-gray-100 to-gray-50 dark:from-gray-900 dark:via-black dark:to-gray-900 min-h-screen pb-24 transition-colors">
-      <div className="max-w-6xl mx-auto px-6 pt-6 pb-24">
+      <div className="max-w-6xl mx-auto px-3 sm:px-6 pt-4 sm:pt-6 pb-16 sm:pb-24">
         {/* Navigation Buttons */}
-        <div className="flex items-center gap-4 mb-6">
+        <div className="flex items-center gap-2 sm:gap-4 mb-4 sm:mb-6">
           {onNavigateUp ? (
             <NeoButton 
               onClick={onNavigateUp}
@@ -1007,27 +1082,29 @@ export default function VaultView({ provider, account, onToast, onNavigateUp, on
         </div>
 
         {/* Header */}
-        <div className="flex items-center gap-4 mb-6">
-          <img 
-            src={ICONS.EAGLE}
-            alt="vEAGLE"
-            className="w-16 h-16 rounded-2xl"
-          />
-          <div className="flex-1">
-            <div className="flex items-center gap-3 mb-2">
-              <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">Eagle Vault</h1>
-              <div className="flex items-center gap-2">
-                <img src={ICONS.WLFI} alt="WLFI" className="w-8 h-8 rounded-full border-2 border-white dark:border-gray-700 shadow-lg" />
-                <img src={ICONS.USD1} alt="USD1" className="w-8 h-8 rounded-full border-2 border-white dark:border-gray-700 shadow-lg" />
+        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-4 mb-4 sm:mb-6">
+          <div className="flex items-center gap-3 sm:gap-4 w-full sm:w-auto">
+            <img 
+              src={ICONS.EAGLE}
+              alt="vEAGLE"
+              className="w-12 h-12 sm:w-16 sm:h-16 rounded-2xl shrink-0"
+            />
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2 sm:gap-3 mb-1 sm:mb-2">
+                <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900 dark:text-gray-100">Eagle Vault</h1>
+                <div className="flex items-center gap-1 sm:gap-2">
+                  <img src={ICONS.WLFI} alt="WLFI" className="w-6 h-6 sm:w-8 sm:h-8 rounded-full border-2 border-white dark:border-gray-700 shadow-lg" />
+                  <img src={ICONS.USD1} alt="USD1" className="w-6 h-6 sm:w-8 sm:h-8 rounded-full border-2 border-white dark:border-gray-700 shadow-lg" />
+                </div>
               </div>
+              <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 font-mono truncate">{CONTRACTS.VAULT}</p>
             </div>
-            <p className="text-sm text-gray-600 dark:text-gray-400 font-mono">{CONTRACTS.VAULT}</p>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 w-full sm:w-auto flex-wrap sm:flex-nowrap">
             <NeoButton
               onClick={handleSyncBalances}
-              label="Sync Vault"
-              className="!px-4 !py-2 !text-sm"
+              label="Sync"
+              className="!px-3 sm:!px-4 !py-1.5 sm:!py-2 !text-xs sm:!text-sm"
             />
             <NeoButton
               onClick={handleRefresh}
@@ -1035,7 +1112,7 @@ export default function VaultView({ provider, account, onToast, onNavigateUp, on
               label=""
               icon={
                 <svg 
-                  className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`}
+                  className={`w-3 h-3 sm:w-4 sm:h-4 ${refreshing ? 'animate-spin' : ''}`}
                   fill="none" 
                   stroke="currentColor" 
                   viewBox="0 0 24 24"
@@ -1043,24 +1120,24 @@ export default function VaultView({ provider, account, onToast, onNavigateUp, on
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
                 </svg>
               }
-              className="!px-3 !py-2 !w-auto !rounded-full"
+              className="!px-2 sm:!px-3 !py-1.5 sm:!py-2 !w-auto !rounded-full"
             />
-            <div className={`flex items-center gap-2 px-4 py-2 ${DS.backgrounds.card} ${DS.shadows.raised} ${DS.radius.full} ${DS.borders.subtle}`}>
+            <div className={`flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-4 py-1.5 sm:py-2 ${DS.backgrounds.card} ${DS.shadows.raised} ${DS.radius.full} ${DS.borders.subtle}`}>
               <img 
                 src="https://tomato-abundant-urial-204.mypinata.cloud/ipfs/bafybeigzyatm2pgrkqbnskyvflnagtqli6rgh7wv7t2znaywkm2pixmkxy"
                 alt="vEAGLE"
-                className="w-5 h-5"
+                className="w-4 h-4 sm:w-5 sm:h-5"
               />
-              <span className={`text-sm ${DS.text.label}`}>vEAGLE</span>
+              <span className={`text-xs sm:text-sm ${DS.text.label}`}>vEAGLE</span>
             </div>
-            <div className={`flex items-center gap-2 px-4 py-2 bg-gradient-to-br from-emerald-50 to-emerald-100/50 dark:from-gray-800 dark:to-gray-850 ${DS.radius.full} ${DS.shadows.raised} border border-emerald-200/70 dark:border-emerald-700/50`}>
-              <div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></div>
+            <div className={`flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-4 py-1.5 sm:py-2 bg-gradient-to-br from-emerald-50 to-emerald-100/50 dark:from-gray-800 dark:to-gray-850 ${DS.radius.full} ${DS.shadows.raised} border border-emerald-200/70 dark:border-emerald-700/50`}>
+              <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-emerald-500 rounded-full animate-pulse"></div>
               <img 
                 src={ICONS.ETHEREUM}
                 alt="Ethereum"
-                className="w-5 h-5 rounded-full"
+                className="w-4 h-4 sm:w-5 sm:h-5 rounded-full"
               />
-              <span className="text-sm text-gray-800 dark:text-gray-200 font-semibold">Ethereum</span>
+              <span className="text-xs sm:text-sm text-gray-800 dark:text-gray-200 font-semibold">Ethereum</span>
             </div>
           </div>
         </div>
@@ -1115,24 +1192,26 @@ export default function VaultView({ provider, account, onToast, onNavigateUp, on
         </div>
 
         {/* Main Grid */}
-        <div className={`grid gap-6 ${isAdmin ? 'lg:grid-cols-2' : 'lg:grid-cols-3'}`}>
+        <div className={`grid gap-4 sm:gap-6 grid-cols-1 ${isAdmin ? 'lg:grid-cols-2' : 'lg:grid-cols-3'}`}>
           {/* Left - Deposit/Withdraw */}
           <div className="lg:col-span-1">
             <NeoCard className="!p-0 overflow-hidden relative">
-              {/* Disabled Overlay */}
-              <div className="absolute inset-0 bg-gray-200/60 dark:bg-gray-900/60 backdrop-blur-sm z-10 flex items-center justify-center p-4">
-                <div className="bg-white dark:bg-gray-800 rounded-xl p-4 sm:p-6 shadow-2xl max-w-xs text-center border-2 border-blue-500 dark:border-blue-600">
-                  <div className="w-10 h-10 sm:w-12 sm:h-12 bg-blue-500 dark:bg-blue-600 rounded-full flex items-center justify-center mx-auto mb-3 sm:mb-4">
-                    <svg className="w-5 h-5 sm:w-6 sm:h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-                    </svg>
+              {/* Disabled Overlay - Hidden for admin */}
+              {!isActualAdmin && (
+                <div className="absolute inset-0 bg-gray-200/60 dark:bg-gray-900/60 backdrop-blur-sm z-10 flex items-center justify-center p-4">
+                  <div className="bg-white dark:bg-gray-800 rounded-xl p-4 sm:p-6 shadow-2xl max-w-xs text-center border-2 border-blue-500 dark:border-blue-600">
+                    <div className="w-10 h-10 sm:w-12 sm:h-12 bg-blue-500 dark:bg-blue-600 rounded-full flex items-center justify-center mx-auto mb-3 sm:mb-4">
+                      <svg className="w-5 h-5 sm:w-6 sm:h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                      </svg>
+                    </div>
+                    <h4 className="text-base sm:text-lg font-bold text-gray-900 dark:text-white mb-2">Bootstrapping Phase</h4>
+                    <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">
+                      Deposits & withdrawals temporarily disabled while we deploy capital.
+                    </p>
                   </div>
-                  <h4 className="text-base sm:text-lg font-bold text-gray-900 dark:text-white mb-2">Bootstrapping Phase</h4>
-                  <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">
-                    Deposits & withdrawals temporarily disabled while we deploy capital.
-                  </p>
                 </div>
-              </div>
+              )}
               
               {/* Tabs */}
               <div className="p-2">
