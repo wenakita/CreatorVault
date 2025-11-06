@@ -4,7 +4,7 @@
   "description": "Telegram bot to detect buys from Uniswap V4 pools",
   "main": "dist/index.js",
   "scripts": {
-    "start": "npx prisma generate && node dist/index.js",
+    "start": "npx prisma generate && npx prisma db push --accept-data-loss && node dist/index.js",
     "postinstall": "DATABASE_URL=file:./build-time.db npx prisma generate && npm run build",
     "dev": "ts-node src/index.ts",
     "build": "tsc",
