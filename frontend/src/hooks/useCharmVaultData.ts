@@ -96,37 +96,72 @@ async function fetchFromGraphQL() {
     totalValue
   });
   
-  // If amounts aren't available from GraphQL, return null to fall back to contract calls
+  // Get full range weight from contract (in basis points: 7400 = 74%)
+  const fullRangeWeightBps = parseFloat(vault.fullRangeWeight || '0');
+  const fullRangePercent = fullRangeWeightBps / 100; // Convert basis points to percentage
+  
+  console.log('[fetchFromGraphQL] Full range weight from contract:', {
+    basisPoints: fullRangeWeightBps,
+    percentage: fullRangePercent + '%'
+  });
+  
+  // Calculate remaining allocation for base + limit orders
+  const remainingPercent = 100 - fullRangePercent;
+  
+  console.log('[fetchFromGraphQL] Remaining allocation for base+limit:', remainingPercent + '%');
+  
+  // If amounts aren't available, we can't calculate the base/limit split
   if (totalValue === 0) {
-    console.log('[fetchFromGraphQL] No amount data available from GraphQL, will use direct contract calls');
-    return null;
+    console.log('[fetchFromGraphQL] No amount data available, using estimated split');
+    // Fall back to estimated split (roughly equal)
+    return {
+      baseTickLower: parseInt(vault.baseLower),
+      baseTickUpper: parseInt(vault.baseUpper),
+      limitTickLower: parseInt(vault.limitLower),
+      limitTickUpper: parseInt(vault.limitUpper),
+      currentTick: vault.pool?.tick ? parseInt(vault.pool.tick) : 0,
+      baseWeight: remainingPercent * 0.5,
+      limitWeight: remainingPercent * 0.5,
+      fullRangeWeight: fullRangePercent,
+      total0: vault.total0 || '0',
+      total1: vault.total1 || '0',
+    };
   }
   
-  // Calculate percentages from actual amounts
-  const fullValue = fullAmount0 + fullAmount1;
+  // Calculate actual base and limit percentages from amounts
   const baseValue = baseAmount0 + baseAmount1;
   const limitValue = limitAmount0 + limitAmount1;
+  const nonFullRangeValue = baseValue + limitValue;
   
-  let fullRangePercent = (fullValue / totalValue) * 100;
-  let basePercent = (baseValue / totalValue) * 100;
-  let limitPercent = (limitValue / totalValue) * 100;
+  let basePercent = 0;
+  let limitPercent = 0;
   
-  // Safeguard: If any value > 100, divide by 100 (likely already in basis points format)
-  if (fullRangePercent > 100) {
-    console.warn('[fetchFromGraphQL] fullRangePercent > 100, dividing by 100:', fullRangePercent);
-    fullRangePercent = fullRangePercent / 100;
-    basePercent = basePercent / 100;
-    limitPercent = limitPercent / 100;
+  if (nonFullRangeValue > 0) {
+    // Split the remaining 26% (or whatever remains) based on actual amounts in each position
+    const baseRatio = baseValue / nonFullRangeValue;
+    const limitRatio = limitValue / nonFullRangeValue;
+    
+    basePercent = remainingPercent * baseRatio;
+    limitPercent = remainingPercent * limitRatio;
+  } else {
+    // If no non-full-range liquidity, split evenly
+    basePercent = remainingPercent * 0.5;
+    limitPercent = remainingPercent * 0.5;
   }
   
-  console.log('[fetchFromGraphQL] Calculated from amounts:', {
-    values: { full: fullValue, base: baseValue, limit: limitValue, total: totalValue },
-    percentages: {
-      fullRange: fullRangePercent.toFixed(2) + '%',
-      base: basePercent.toFixed(2) + '%',
-      limit: limitPercent.toFixed(2) + '%',
-      total: (fullRangePercent + basePercent + limitPercent).toFixed(2) + '%'
-    }
+  console.log('[fetchFromGraphQL] Base/Limit split calculation:', {
+    baseValue,
+    limitValue,
+    nonFullRangeValue,
+    baseRatio: nonFullRangeValue > 0 ? (baseValue / nonFullRangeValue).toFixed(2) : 'N/A',
+    limitRatio: nonFullRangeValue > 0 ? (limitValue / nonFullRangeValue).toFixed(2) : 'N/A',
+  });
+  
+  console.log('[fetchFromGraphQL] Final allocation:', {
+    fullRange: fullRangePercent.toFixed(2) + '%',
+    base: basePercent.toFixed(2) + '%',
+    limit: limitPercent.toFixed(2) + '%',
+    total: (fullRangePercent + basePercent + limitPercent).toFixed(2) + '%'
   });
   
   return {

@@ -113,25 +113,12 @@ export default function VaultVisualization({ currentPrice = WLFI_PRICE_USD }: Va
   }, [])
 
   const positions = useMemo(() => {
-    // Use actual weights from Charm Finance data (calculated from position amounts)
-    // Safeguard: if values are > 100, they're likely in basis points, divide by 100
-    let fullWeight = charmData.loading ? 47 : charmData.fullRangeWeight
-    let baseWeight = charmData.loading ? 29 : charmData.baseWeight
-    let limitWeight = charmData.loading ? 24 : charmData.limitWeight
-    
-    // Convert from basis points if needed (values should be 0-100%)
-    if (fullWeight > 100) {
-      console.warn('[VaultViz] fullWeight > 100 (likely basis points), dividing by 100:', fullWeight);
-      fullWeight = fullWeight / 100;
-    }
-    if (baseWeight > 100) {
-      console.warn('[VaultViz] baseWeight > 100 (likely basis points), dividing by 100:', baseWeight);
-      baseWeight = baseWeight / 100;
-    }
-    if (limitWeight > 100) {
-      console.warn('[VaultViz] limitWeight > 100 (likely basis points), dividing by 100:', limitWeight);
-      limitWeight = limitWeight / 100;
-    }
+    // Weights are now correctly calculated in the hook:
+    // - Full range: from contract configuration (e.g., 74%)
+    // - Base/Limit: split the remaining % based on actual position amounts
+    const fullWeight = charmData.loading ? 47 : charmData.fullRangeWeight
+    const baseWeight = charmData.loading ? 29 : charmData.baseWeight
+    const limitWeight = charmData.loading ? 24 : charmData.limitWeight
 
     const currentTickValue = charmData.loading ? CURRENT_TICK : charmData.currentTick
 
@@ -157,28 +144,27 @@ export default function VaultVisualization({ currentPrice = WLFI_PRICE_USD }: Va
 
     const totalWeight = fullWeight + baseWeight + limitWeight;
 
-    console.log('[VaultViz] Raw charmData:', {
-      loading: charmData.loading,
-      fullRangeWeight: charmData.fullRangeWeight,
-      baseWeight: charmData.baseWeight,
-      limitWeight: charmData.limitWeight,
-    });
-
-    console.log('[VaultViz] Calculated Position Weights:', {
+    console.log('[VaultViz] Position Weights:', {
       fullRange: `${fullWeight.toFixed(1)}%`,
       base: `${baseWeight.toFixed(1)}%`,
       limit: `${limitWeight.toFixed(1)}%`,
       total: `${totalWeight.toFixed(1)}%`,
       isValid: totalWeight >= 99 && totalWeight <= 101
     })
+    
+    // Validation check
+    if (totalWeight < 99 || totalWeight > 101) {
+      console.error('[VaultViz] WARNING: Total allocation is not 100%!', {
+        total: totalWeight,
+        breakdown: { fullWeight, baseWeight, limitWeight }
+      });
+    }
 
     console.log('[VaultViz] Position Ranges:', {
       base: `${baseLower} to ${baseUpper}`,
       limit: `${limitLower} to ${limitUpper}`,
       currentTick: currentTickValue
     })
-
-    console.log('[VaultViz] Final result array:', result);
 
     return result
   }, [charmData])
