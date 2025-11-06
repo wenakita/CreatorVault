@@ -25,10 +25,19 @@ export function useRevertFinanceData(): RevertFinanceData {
   useEffect(() => {
     async function fetchData() {
       try {
+        console.log('[useRevertFinanceData] Fetching from API...');
         const response = await fetch(
           `https://api.revert.finance/v1/discover-pools/daily?pool=${POOL_ADDRESS}&days=30&network=mainnet`
         );
+        
+        console.log('[useRevertFinanceData] Response status:', response.status);
+        
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
         const result = await response.json();
+        console.log('[useRevertFinanceData] Raw result:', result);
         
         if (result.success && result.data && result.data.length > 0) {
           const latestDay = result.data[result.data.length - 1];
@@ -46,15 +55,20 @@ export function useRevertFinanceData(): RevertFinanceData {
           // Use max APR from last 7 days
           const maxAPR = Math.max(...last7Days.map((d: any) => d.fees_apr));
           
-          setData({
+          const calculatedData = {
             tvl: latestDay.tvl_usd || 0,
             avgAPR,
             maxAPR,
             avgVolume,
             loading: false,
             error: null,
-          });
+          };
+          
+          console.log('[useRevertFinanceData] Calculated data:', calculatedData);
+          
+          setData(calculatedData);
         } else {
+          console.log('[useRevertFinanceData] No data available in result');
           setData(prev => ({ ...prev, loading: false, error: 'No data available' }));
         }
       } catch (err: any) {

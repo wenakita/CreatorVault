@@ -91,21 +91,33 @@ function StrategyRow({ strategy, wlfiPrice, revertData }: { strategy: any; wlfiP
           )}
           
           {/* TVL - NEW */}
-          {strategy.id === 1 && strategy.status === 'active' && revertData && !revertData.loading && (
+          {strategy.id === 1 && strategy.status === 'active' && (
             <div className="text-right shrink-0">
               <div className="text-sm font-medium text-gray-600 dark:text-gray-500 mb-0.5">TVL</div>
               <div className="text-lg font-bold text-gray-900 dark:text-white">
-                ${revertData.tvl > 1000 ? (revertData.tvl / 1000).toFixed(1) + 'K' : revertData.tvl.toFixed(0)}
+                {revertData.loading ? (
+                  <span className="text-sm">...</span>
+                ) : revertData.error ? (
+                  <span className="text-xs text-red-500">N/A</span>
+                ) : (
+                  `$${revertData.tvl > 1000 ? (revertData.tvl / 1000).toFixed(1) + 'K' : revertData.tvl.toFixed(0)}`
+                )}
               </div>
             </div>
           )}
           
           {/* APR - NEW */}
-          {strategy.id === 1 && strategy.status === 'active' && revertData && !revertData.loading && (
+          {strategy.id === 1 && strategy.status === 'active' && (
             <div className="text-right shrink-0">
               <div className="text-sm font-medium text-gray-600 dark:text-gray-500 mb-0.5">7d Avg APR</div>
               <div className="text-lg font-bold text-green-500">
-                {revertData.avgAPR.toFixed(1)}%
+                {revertData.loading ? (
+                  <span className="text-sm">...</span>
+                ) : revertData.error ? (
+                  <span className="text-xs text-red-500">N/A</span>
+                ) : (
+                  `${revertData.avgAPR.toFixed(1)}%`
+                )}
               </div>
             </div>
           )}
@@ -289,6 +301,11 @@ export default function VaultView({ provider, account, onToast, onNavigateUp, on
 
   // Fetch Revert Finance data for strategy display
   const revertData = useRevertFinanceData();
+  
+  // Debug: Log revert data state
+  useEffect(() => {
+    console.log('[VaultView] Revert Finance Data:', revertData);
+  }, [revertData]);
 
   // PRODUCTION: All values reset to 0 - fresh deployment
   const [data, setData] = useState({
