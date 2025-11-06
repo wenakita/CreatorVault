@@ -9,6 +9,7 @@ const PUBLIC_RPC = import.meta.env.VITE_ETHEREUM_RPC || 'https://eth.llamarpc.co
 // Fetch from Charm Finance GraphQL API
 async function fetchFromGraphQL() {
   // Use the actual Charm Finance query structure
+  // We need the amounts to calculate actual weight percentages
   const query = `
     query GetVault($address: ID!) {
       vault(id: $address) {
@@ -21,6 +22,12 @@ async function fetchFromGraphQL() {
         total0
         total1
         totalSupply
+        fullAmount0
+        fullAmount1
+        baseAmount0
+        baseAmount1
+        limitAmount0
+        limitAmount1
         pool {
           id
           tick
@@ -59,26 +66,56 @@ async function fetchFromGraphQL() {
 
   console.log('[fetchFromGraphQL] Success! Full vault data:', vault);
 
-  // Parse the GraphQL data
-  // fullRangeWeight is in basis points (10000 = 100%)
-  const fullRangeWeightBps = parseFloat(vault.fullRangeWeight || '0');
-  const fullRangePercent = fullRangeWeightBps / 100; // Convert basis points to percentage
+  // Calculate actual allocation percentages from the amounts in each position
+  // Each position has token0 and token1 amounts - we'll use USD value approximation
   
-  // Calculate base and limit weights from the remaining percentage
-  // In Charm vaults, the weights are distributed as: fullRange + base + limit = 100%
-  // The actual base/limit split isn't stored directly, we need to calculate it from the amounts
+  const fullAmount0 = parseFloat(vault.fullAmount0 || '0');
+  const fullAmount1 = parseFloat(vault.fullAmount1 || '0');
+  const baseAmount0 = parseFloat(vault.baseAmount0 || '0');
+  const baseAmount1 = parseFloat(vault.baseAmount1 || '0');
+  const limitAmount0 = parseFloat(vault.limitAmount0 || '0');
+  const limitAmount1 = parseFloat(vault.limitAmount1 || '0');
   
-  console.log('[fetchFromGraphQL] Raw fullRangeWeight (basis points):', fullRangeWeightBps);
-  console.log('[fetchFromGraphQL] Full range percentage:', fullRangePercent + '%');
+  console.log('[fetchFromGraphQL] Position amounts:', {
+    full: { token0: fullAmount0, token1: fullAmount1 },
+    base: { token0: baseAmount0, token1: baseAmount1 },
+    limit: { token0: limitAmount0, token1: limitAmount1 }
+  });
   
-  // For now, use a typical Charm distribution for base/limit from the remaining allocation
-  const remainingPercent = 100 - fullRangePercent;
+  // For simplicity, sum token0 amounts (USD1) as the primary measure of value
+  // This gives us a rough approximation of capital allocation
+  const fullValue = fullAmount0 + fullAmount1;
+  const baseValue = baseAmount0 + baseAmount1;
+  const limitValue = limitAmount0 + limitAmount1;
+  const totalValue = fullValue + baseValue + limitValue;
   
-  // Typical Charm strategy: ~55% base, ~45% limit of the non-full-range allocation
-  const basePercent = remainingPercent * 0.55;
-  const limitPercent = remainingPercent * 0.45;
+  console.log('[fetchFromGraphQL] Position values:', {
+    full: fullValue.toFixed(2),
+    base: baseValue.toFixed(2),
+    limit: limitValue.toFixed(2),
+    total: totalValue.toFixed(2)
+  });
   
-  console.log('[fetchFromGraphQL] Calculated weights:', {
+  let fullRangePercent = 0;
+  let basePercent = 0;
+  let limitPercent = 0;
+  
+  if (totalValue > 0) {
+    // Calculate percentages based on actual capital in each position
+    fullRangePercent = (fullValue / totalValue) * 100;
+    basePercent = (baseValue / totalValue) * 100;
+    limitPercent = (limitValue / totalValue) * 100;
+  } else {
+    // Fallback to fullRangeWeight from contract if no amounts available
+    const fullRangeWeightBps = parseFloat(vault.fullRangeWeight || '0');
+    fullRangePercent = fullRangeWeightBps / 100;
+    const remainingPercent = 100 - fullRangePercent;
+    basePercent = remainingPercent * 0.55;
+    limitPercent = remainingPercent * 0.45;
+    console.log('[fetchFromGraphQL] No amounts available, using fallback weights');
+  }
+  
+  console.log('[fetchFromGraphQL] Calculated allocation percentages:', {
     fullRange: fullRangePercent.toFixed(2) + '%',
     base: basePercent.toFixed(2) + '%',
     limit: limitPercent.toFixed(2) + '%',

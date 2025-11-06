@@ -113,15 +113,11 @@ export default function VaultVisualization({ currentPrice = WLFI_PRICE_USD }: Va
   }, [])
 
   const positions = useMemo(() => {
-    // Use real data from contract - ensure values are reasonable
-    let fullWeight = charmData.loading ? 47 : charmData.fullRangeWeight
-    let baseWeight = charmData.loading ? 29 : charmData.baseWeight
-    let limitWeight = charmData.loading ? 24 : charmData.limitWeight
-
-    // Clamp weights to reasonable values (0-100%)
-    fullWeight = Math.min(Math.max(fullWeight, 0), 100)
-    baseWeight = Math.min(Math.max(baseWeight, 0), 100)
-    limitWeight = Math.min(Math.max(limitWeight, 0), 100)
+    // Use actual weights from Charm Finance data (calculated from position amounts)
+    // These are now guaranteed to sum to 100% from the hook calculation
+    const fullWeight = charmData.loading ? 47 : charmData.fullRangeWeight
+    const baseWeight = charmData.loading ? 29 : charmData.baseWeight
+    const limitWeight = charmData.loading ? 24 : charmData.limitWeight
 
     const currentTickValue = charmData.loading ? CURRENT_TICK : charmData.currentTick
 
