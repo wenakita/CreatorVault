@@ -42,12 +42,29 @@ async function fetchFromGraphQL() {
 
   console.log('[fetchFromGraphQL] Success! Vault data:', vault);
 
-  // Parse the GraphQL data (values in basis points: 10000 = 100%)
-  const baseThreshold = parseFloat(vault.baseThreshold || '0');
-  const limitThreshold = parseFloat(vault.limitThreshold || '0');
-  const fullRangeWeight = parseFloat(vault.fullRangeWeight || '0');
+  // Parse the GraphQL data (values are in various formats depending on the vault)
+  let baseThreshold = parseFloat(vault.baseThreshold || '0');
+  let limitThreshold = parseFloat(vault.limitThreshold || '0');
+  let fullRangeWeight = parseFloat(vault.fullRangeWeight || '0');
   
-  console.log('[fetchFromGraphQL] Raw values:', { baseThreshold, limitThreshold, fullRangeWeight });
+  console.log('[fetchFromGraphQL] Raw values from API:', { baseThreshold, limitThreshold, fullRangeWeight });
+  
+  // Convert from basis points if needed (values > 1000 are likely basis points)
+  if (baseThreshold > 1000) baseThreshold = baseThreshold / 100;
+  if (limitThreshold > 1000) limitThreshold = limitThreshold / 100;
+  if (fullRangeWeight > 1000) fullRangeWeight = fullRangeWeight / 100;
+  
+  console.log('[fetchFromGraphQL] After basis point conversion:', { baseThreshold, limitThreshold, fullRangeWeight });
+  
+  // Normalize to ensure they sum to 100% (in case they're weights, not percentages)
+  const total = baseThreshold + limitThreshold + fullRangeWeight;
+  if (total > 0 && (total < 99 || total > 101)) {
+    console.log(`[fetchFromGraphQL] Total is ${total}%, normalizing to 100%`);
+    baseThreshold = (baseThreshold / total) * 100;
+    limitThreshold = (limitThreshold / total) * 100;
+    fullRangeWeight = (fullRangeWeight / total) * 100;
+    console.log('[fetchFromGraphQL] After normalization:', { baseThreshold, limitThreshold, fullRangeWeight, total: baseThreshold + limitThreshold + fullRangeWeight });
+  }
   
   return {
     baseTickLower: parseInt(vault.baseLower),
@@ -55,10 +72,9 @@ async function fetchFromGraphQL() {
     limitTickLower: parseInt(vault.limitLower),
     limitTickUpper: parseInt(vault.limitUpper),
     currentTick: vault.pool?.tick ? parseInt(vault.pool.tick) : 0,
-    // Convert basis points to percentage: divide by 100 (not 10000 since GraphQL already returns percentage-like values)
-    baseWeight: baseThreshold > 1000 ? baseThreshold / 100 : baseThreshold,
-    limitWeight: limitThreshold > 1000 ? limitThreshold / 100 : limitThreshold,
-    fullRangeWeight: fullRangeWeight > 1000 ? fullRangeWeight / 100 : fullRangeWeight,
+    baseWeight: baseThreshold,
+    limitWeight: limitThreshold,
+    fullRangeWeight: fullRangeWeight,
     total0: '0',
     total1: '0',
   };
