@@ -97,8 +97,10 @@ async function fetchFromGraphQL() {
   });
   
   // Get full range weight from contract (in basis points: 7400 = 74%)
+  // Note: GraphQL returns the raw uint24 value which is in hundredths of a percent
+  // So 7400 means 74.00%, not 7400%
   const fullRangeWeightBps = parseFloat(vault.fullRangeWeight || '0');
-  const fullRangePercent = fullRangeWeightBps / 100; // Convert basis points to percentage
+  const fullRangePercent = fullRangeWeightBps / 100; // Convert hundredths to percentage (7400 → 74)
   
   console.log('[fetchFromGraphQL] Full range weight from contract:', {
     basisPoints: fullRangeWeightBps,

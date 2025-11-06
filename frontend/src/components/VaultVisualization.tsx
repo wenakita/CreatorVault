@@ -116,9 +116,24 @@ export default function VaultVisualization({ currentPrice = WLFI_PRICE_USD }: Va
     // Weights are now correctly calculated in the hook:
     // - Full range: from contract configuration (e.g., 74%)
     // - Base/Limit: split the remaining % based on actual position amounts
-    const fullWeight = charmData.loading ? 47 : charmData.fullRangeWeight
-    const baseWeight = charmData.loading ? 29 : charmData.baseWeight
-    const limitWeight = charmData.loading ? 24 : charmData.limitWeight
+    // Note: Values should already be in percentage form (74, not 7400)
+    let fullWeight = charmData.loading ? 47 : charmData.fullRangeWeight
+    let baseWeight = charmData.loading ? 29 : charmData.baseWeight
+    let limitWeight = charmData.loading ? 24 : charmData.limitWeight
+
+    // Safety check: if values are > 100, they're likely in basis points (divide by 100)
+    if (fullWeight > 100) {
+      console.warn('[VaultViz] Full weight > 100%, dividing by 100. Was:', fullWeight);
+      fullWeight = fullWeight / 100;
+    }
+    if (baseWeight > 100) {
+      console.warn('[VaultViz] Base weight > 100%, dividing by 100. Was:', baseWeight);
+      baseWeight = baseWeight / 100;
+    }
+    if (limitWeight > 100) {
+      console.warn('[VaultViz] Limit weight > 100%, dividing by 100. Was:', limitWeight);
+      limitWeight = limitWeight / 100;
+    }
 
     const currentTickValue = charmData.loading ? CURRENT_TICK : charmData.currentTick
 
