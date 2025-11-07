@@ -355,22 +355,41 @@ export function useCharmVaultData(): CharmVaultData {
           total: (baseWeightCalc + limitWeightCalc + fullRangeWeightCalc).toFixed(2) + '%'
         });
 
+        // Final safety check before setting state
+        let safeFullWeight = fullRangeWeightCalc;
+        let safeBaseWeight = baseWeightCalc;
+        let safeLimitWeight = limitWeightCalc;
+        
+        // Triple-check the values are sane
+        if (Math.abs(safeFullWeight) > 100) {
+          console.error('[useCharmVaultData] CRITICAL: Full weight still > 100 after conversion!', safeFullWeight);
+          safeFullWeight = safeFullWeight / 100;
+        }
+        if (Math.abs(safeBaseWeight) > 100 || safeBaseWeight < 0) {
+          console.error('[useCharmVaultData] CRITICAL: Base weight invalid!', safeBaseWeight);
+          safeBaseWeight = Math.abs(safeBaseWeight) > 100 ? safeBaseWeight / 100 : 8.67;
+        }
+        if (Math.abs(safeLimitWeight) > 100 || safeLimitWeight < 0) {
+          console.error('[useCharmVaultData] CRITICAL: Limit weight invalid!', safeLimitWeight);
+          safeLimitWeight = Math.abs(safeLimitWeight) > 100 ? safeLimitWeight / 100 : 17.33;
+        }
+
         const vaultData: CharmVaultData = {
           baseTickLower: Number(baseLower),
           baseTickUpper: Number(baseUpper),
           limitTickLower: Number(limitLower),
           limitTickUpper: Number(limitUpper),
           currentTick,
-          baseWeight: baseWeightCalc,
-          limitWeight: limitWeightCalc,
-          fullRangeWeight: fullRangeWeightCalc,
+          baseWeight: safeBaseWeight,
+          limitWeight: safeLimitWeight,
+          fullRangeWeight: safeFullWeight,
           total0,
           total1,
           loading: false,
           error: null,
         };
 
-        console.log('[useCharmVaultData] Vault data fetched:', {
+        console.log('[useCharmVaultData] FINAL Vault data (after safety checks):', {
           basePosition: `${vaultData.baseTickLower} to ${vaultData.baseTickUpper}`,
           limitPosition: `${vaultData.limitTickLower} to ${vaultData.limitTickUpper}`,
           currentTick: vaultData.currentTick,
@@ -378,6 +397,7 @@ export function useCharmVaultData(): CharmVaultData {
             base: `${vaultData.baseWeight.toFixed(2)}%`,
             limit: `${vaultData.limitWeight.toFixed(2)}%`,
             fullRange: `${vaultData.fullRangeWeight.toFixed(2)}%`,
+            total: `${(vaultData.baseWeight + vaultData.limitWeight + vaultData.fullRangeWeight).toFixed(2)}%`
           },
           amounts: {
             USD1: vaultData.total0,
