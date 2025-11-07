@@ -12,20 +12,21 @@ export const NeoPriceBadge = ({ icon, label, value, className = '' }: NeoPriceBa
     <motion.div
       whileHover={{ scale: 1.02, y: -1 }}
       className={`
-        flex items-center gap-2 px-4 py-2 rounded-full
+        flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-1.5 sm:py-2 rounded-full
         bg-neo-bg-light dark:bg-neo-bg-dark 
         shadow-neo-raised dark:shadow-neo-raised-dark
         hover:shadow-neo-raised-hover dark:hover:shadow-neo-raised-lift-dark
         transition-all duration-300
+        touch-manipulation
         ${className}
       `}
     >
       <img 
         src={icon} 
         alt={label}
-        className="w-5 h-5"
+        className="w-4 h-4 sm:w-5 sm:h-5 flex-shrink-0"
       />
-      <span className="text-sm font-mono text-gray-700 dark:text-gray-300 font-semibold">{value}</span>
+      <span className="text-xs sm:text-sm font-mono text-gray-700 dark:text-gray-300 font-semibold truncate">{value}</span>
     </motion.div>
   );
 };

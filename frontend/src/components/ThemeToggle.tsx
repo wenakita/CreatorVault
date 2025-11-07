@@ -39,8 +39,9 @@ export const ThemeToggle = () => {
       whileHover={{ scale: 1.05 }}
       whileTap={{ scale: 0.95 }}
       className={`
-        relative w-14 h-14 rounded-full flex items-center justify-center
+        relative w-10 h-10 sm:w-12 sm:h-12 md:w-14 md:h-14 rounded-full flex items-center justify-center
         transition-all duration-300
+        touch-manipulation
         ${isDark
           ? 'bg-neo-bg-dark shadow-neo-raised-dark hover:shadow-neo-raised-lift-dark'
           : 'bg-neo-bg-light shadow-neo-raised hover:shadow-neo-raised-lift'
@@ -58,7 +59,7 @@ export const ThemeToggle = () => {
         transition={{ duration: 0.3 }}
         className="absolute"
       >
-        <Sun className={`w-6 h-6 ${isDark ? 'text-gray-500' : 'text-yellow-500'}`} />
+        <Sun className={`w-5 h-5 sm:w-5.5 sm:h-5.5 md:w-6 md:h-6 ${isDark ? 'text-gray-500' : 'text-yellow-500'}`} />
       </motion.div>
       
       <motion.div
@@ -70,7 +71,7 @@ export const ThemeToggle = () => {
         transition={{ duration: 0.3 }}
         className="absolute"
       >
-        <Moon className={`w-6 h-6 ${isDark ? 'text-blue-400' : 'text-gray-500'}`} />
+        <Moon className={`w-5 h-5 sm:w-5.5 sm:h-5.5 md:w-6 md:h-6 ${isDark ? 'text-blue-400' : 'text-gray-500'}`} />
       </motion.div>
     </motion.button>
   );

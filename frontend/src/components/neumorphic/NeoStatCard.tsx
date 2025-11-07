@@ -23,23 +23,24 @@ export const NeoStatCard = ({
       transition={{ type: "spring", stiffness: 500, damping: 20 }}
       className={`
         bg-gradient-to-br from-white to-gray-50 dark:from-gray-800 dark:to-gray-850
-        rounded-3xl p-6
+        rounded-2xl sm:rounded-3xl p-4 sm:p-5 md:p-6
         shadow-neo-raised dark:shadow-neo-raised-dark
         hover:shadow-neo-hover dark:hover:shadow-neo-hover-dark
         border border-gray-200/50 dark:border-gray-600/50
         hover:border-gray-300/70 dark:hover:border-gray-500/60
         backdrop-blur-sm
         transition-all duration-500 ease-out
-        ${highlighted ? 'border-t-4 border-t-eagle-gold dark:border-t-eagle-gold-light ring-1 ring-yellow-400/20 dark:ring-yellow-500/20' : ''}
+        touch-manipulation
+        ${highlighted ? 'border-t-2 sm:border-t-4 border-t-eagle-gold dark:border-t-eagle-gold-light ring-1 ring-yellow-400/20 dark:ring-yellow-500/20' : ''}
         ${className}
       `}
     >
-      <div className="text-sm text-gray-600 dark:text-gray-400 font-semibold uppercase tracking-wider mb-3 transition-colors duration-300">{label}</div>
-      <div className={`text-4xl font-bold mb-2 transition-all duration-300 ${highlighted ? 'text-eagle-gold-darker dark:text-eagle-gold-light bg-gradient-to-r from-yellow-600 to-yellow-500 dark:from-yellow-400 dark:to-yellow-300 bg-clip-text text-transparent' : 'text-gray-900 dark:text-gray-100'}`}>
+      <div className="text-[10px] sm:text-xs md:text-sm text-gray-600 dark:text-gray-400 font-semibold uppercase tracking-wider mb-2 sm:mb-3 transition-colors duration-300 truncate">{label}</div>
+      <div className={`text-2xl sm:text-3xl md:text-4xl font-bold mb-1.5 sm:mb-2 transition-all duration-300 truncate ${highlighted ? 'text-eagle-gold-darker dark:text-eagle-gold-light bg-gradient-to-r from-yellow-600 to-yellow-500 dark:from-yellow-400 dark:to-yellow-300 bg-clip-text text-transparent' : 'text-gray-900 dark:text-gray-100'}`}>
         {value}
       </div>
       {subtitle && (
-        <div className="text-xs text-gray-600 dark:text-gray-400 font-medium transition-colors duration-300">{subtitle}</div>
+        <div className="text-[10px] sm:text-xs text-gray-600 dark:text-gray-400 font-medium transition-colors duration-300 truncate">{subtitle}</div>
       )}
     </motion.div>
   );

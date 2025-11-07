@@ -45,19 +45,20 @@ export const NeoSlider = ({
   return (
     <div className="w-full">
       {label && (
-        <div className="flex justify-between items-center mb-2">
-          <span className="text-gray-700 dark:text-gray-300 font-medium">{label}</span>
-          <span className="text-gray-600 dark:text-gray-400 text-sm">{Math.round(value)}%</span>
+        <div className="flex justify-between items-center mb-1.5 sm:mb-2">
+          <span className="text-sm sm:text-base text-gray-700 dark:text-gray-300 font-medium truncate">{label}</span>
+          <span className="text-gray-600 dark:text-gray-400 text-xs sm:text-sm flex-shrink-0 ml-2">{Math.round(value)}%</span>
         </div>
       )}
       <div
         ref={trackRef}
         onClick={handleTrackClick}
         className="
-          relative h-3 w-full rounded-full
+          relative h-2.5 sm:h-3 w-full rounded-full
           bg-neo-bg-light dark:bg-neo-bg-dark 
           shadow-neo-raised dark:shadow-neo-raised-dark
           cursor-pointer
+          touch-manipulation
           transition-all duration-300
         "
       >
@@ -83,10 +84,11 @@ export const NeoSlider = ({
           whileDrag={{ scale: 1.2 }}
           whileHover={{ scale: 1.1 }}
           className="
-            absolute top-1/2 left-0 w-6 h-6 rounded-full
+            absolute top-1/2 left-0 w-5 h-5 sm:w-6 sm:h-6 rounded-full
             bg-white dark:bg-gray-300 
             shadow-neo-raised-lift dark:shadow-neo-raised-lift-dark
             cursor-grab active:cursor-grabbing
+            touch-manipulation
             -translate-y-1/2
             -translate-x-1/2
           "
