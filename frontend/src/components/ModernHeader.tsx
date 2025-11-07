@@ -65,24 +65,24 @@ export default function ModernHeader() {
 
   return (
     <header className="sticky top-0 z-50 bg-gradient-to-b from-neo-bg-light to-gray-50 dark:from-neo-bg-dark dark:to-gray-900 border-b border-gray-300/50 dark:border-gray-700/30 shadow-neo-inset dark:shadow-neo-inset-dark backdrop-blur-xl transition-all duration-500">
-      <div className="container mx-auto px-6 py-4">
+      <div className="container mx-auto px-3 sm:px-4 md:px-6 py-2 sm:py-3 md:py-4">
         <div className="flex items-center justify-between">
           {/* Logo & Title */}
           <motion.div 
-            className="flex items-center gap-4"
+            className="flex items-center gap-2 sm:gap-3 md:gap-4"
             whileHover={{ scale: 1.02 }}
             transition={{ type: "spring", stiffness: 400, damping: 20 }}
           >
             <motion.img 
               src={ICONS.EAGLE} 
               alt="47 Eagle"
-              className="w-10 h-10 drop-shadow-lg"
+              className="w-7 h-7 sm:w-8 sm:h-8 md:w-10 md:h-10 drop-shadow-lg"
               whileHover={{ rotate: [0, -10, 10, 0] }}
               transition={{ duration: 0.5 }}
             />
-            <div>
-              <h1 className="text-xl font-bold bg-gradient-to-r from-gray-900 to-gray-700 dark:from-gray-100 dark:to-gray-300 bg-clip-text text-transparent">47 Eagle</h1>
-              <p className="text-xs text-gray-600 dark:text-gray-400 font-medium">Omnichain WLFI Yield Strategies</p>
+            <div className="min-w-0">
+              <h1 className="text-sm sm:text-base md:text-xl font-bold bg-gradient-to-r from-gray-900 to-gray-700 dark:from-gray-100 dark:to-gray-300 bg-clip-text text-transparent truncate">47 Eagle</h1>
+              <p className="text-[10px] sm:text-xs text-gray-600 dark:text-gray-400 font-medium truncate hidden sm:block">Omnichain WLFI Yield Strategies</p>
             </div>
           </motion.div>
 
@@ -152,17 +152,68 @@ export default function ModernHeader() {
           </div>
 
           {/* Right Side - Theme Toggle + Connect Button */}
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 sm:gap-3">
             <ThemeToggle />
-            <ConnectButton 
-              chainStatus="icon"
-              showBalance={false}
-              accountStatus={{
-                smallScreen: 'avatar',
-                largeScreen: 'full',
-              }}
-            />
+            <div className="scale-90 sm:scale-95 md:scale-100">
+              <ConnectButton 
+                chainStatus="icon"
+                showBalance={false}
+                accountStatus={{
+                  smallScreen: 'avatar',
+                  largeScreen: 'full',
+                }}
+              />
+            </div>
           </div>
+        </div>
+        
+        {/* Mobile Price Tickers - Below header on small screens */}
+        <div className="lg:hidden flex items-center gap-2 mt-2 overflow-x-auto pb-1 scrollbar-hide">
+          <motion.div 
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-br from-neo-bg-light to-gray-50 dark:from-neo-bg-dark dark:to-gray-900 rounded-full shadow-neo-raised dark:shadow-neo-raised-dark border border-gray-200/50 dark:border-gray-700/30 whitespace-nowrap flex-shrink-0"
+            animate={priceChanged === 'wlfi' ? { scale: [1, 1.05, 1] } : {}}
+          >
+            <img src={ICONS.WLFI} alt="WLFI" className="w-4 h-4" />
+            <AnimatePresence mode="wait">
+              <motion.span 
+                key={wlfiPrice}
+                initial={{ y: 5, opacity: 0 }}
+                animate={{ y: 0, opacity: 1 }}
+                exit={{ y: -5, opacity: 0 }}
+                transition={{ duration: 0.15 }}
+                className="text-xs font-mono text-gray-800 dark:text-gray-200 font-semibold"
+              >
+                {wlfiPrice === '--' ? '--' : `$${wlfiPrice}`}
+              </motion.span>
+            </AnimatePresence>
+          </motion.div>
+          
+          <motion.div 
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-br from-neo-bg-light to-gray-50 dark:from-neo-bg-dark dark:to-gray-900 rounded-full shadow-neo-raised dark:shadow-neo-raised-dark border border-gray-200/50 dark:border-gray-700/30 whitespace-nowrap flex-shrink-0"
+            animate={priceChanged === 'usd1' ? { scale: [1, 1.05, 1] } : {}}
+          >
+            <img src={ICONS.USD1} alt="USD1" className="w-4 h-4" />
+            <AnimatePresence mode="wait">
+              <motion.span 
+                key={usd1Price}
+                initial={{ y: 5, opacity: 0 }}
+                animate={{ y: 0, opacity: 1 }}
+                exit={{ y: -5, opacity: 0 }}
+                transition={{ duration: 0.15 }}
+                className="text-xs font-mono text-gray-800 dark:text-gray-200 font-semibold"
+              >
+                {usd1Price === '--' ? '--' : `$${usd1Price}`}
+              </motion.span>
+            </AnimatePresence>
+          </motion.div>
+          
+          <motion.div
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-br from-emerald-50 to-emerald-100/50 dark:from-gray-800 dark:to-gray-850 rounded-full shadow-neo-raised dark:shadow-neo-raised-dark border border-emerald-200/70 dark:border-emerald-700/50 whitespace-nowrap flex-shrink-0"
+          >
+            <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse"></div>
+            <img src={ICONS.ETHEREUM} alt="Ethereum" className="w-4 h-4 rounded-full" />
+            <span className="text-xs text-gray-800 dark:text-gray-200 font-semibold">Ethereum</span>
+          </motion.div>
         </div>
       </div>
     </header>

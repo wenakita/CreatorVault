@@ -241,13 +241,13 @@ export default function VaultVisualization({ currentPrice = WLFI_PRICE_USD }: Va
   return (
     <div className="w-full">
       <div className="bg-black/40 border border-white/5 rounded-xl overflow-hidden">
-        <div className="p-4 border-b border-white/5 bg-black/20">
-          <div className="flex items-center justify-between">
-            <div className="flex-1">
-              <h4 className="text-sm font-semibold text-white mb-1">3D Capital Allocation</h4>
-              <p className="text-xs text-gray-400">Liquidity distribution across price ranges</p>
+        <div className="p-3 sm:p-4 border-b border-white/5 bg-black/20">
+          <div className="flex items-center justify-between flex-wrap gap-2">
+            <div className="flex-1 min-w-0">
+              <h4 className="text-xs sm:text-sm font-semibold text-white mb-0.5 sm:mb-1 truncate">3D Capital Allocation</h4>
+              <p className="text-[10px] sm:text-xs text-gray-400 truncate">Liquidity distribution across price ranges</p>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1.5 sm:gap-2 flex-shrink-0">
               <UniswapBadge />
               <CharmBadge />
             </div>
@@ -276,7 +276,7 @@ export default function VaultVisualization({ currentPrice = WLFI_PRICE_USD }: Va
             </div>
           </div>
         ) : (
-          <div style={{ height: '500px', background: '#000' }}>
+          <div className="h-64 sm:h-80 md:h-96 lg:h-[500px]" style={{ background: '#000' }}>
             <Canvas camera={{ position: [0, 5, 30], fov: 60 }}>
               <ambientLight intensity={0.5} />
               <pointLight position={[10, 10, 10]} intensity={1} />
@@ -442,32 +442,34 @@ export default function VaultVisualization({ currentPrice = WLFI_PRICE_USD }: Va
         )}
 
         {/* Legend */}
-        <div className="p-4 border-t border-white/5 bg-black/20">
-          <div className="grid grid-cols-3 gap-4 text-xs mb-3">
+        <div className="p-3 sm:p-4 border-t border-white/5 bg-black/20">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-4 text-xs mb-3">
             {positions.map((pos, i) => (
               <div key={i} className="flex items-center gap-2">
-                <div className="w-3 h-3 rounded" style={{ backgroundColor: pos.color }}></div>
-                <div>
-                  <div className="text-white font-medium">{pos.name}</div>
-                  <div className="text-gray-400">{pos.weight.toFixed(1)}% of capital</div>
+                <div className="w-3 h-3 rounded flex-shrink-0" style={{ backgroundColor: pos.color }}></div>
+                <div className="min-w-0 flex-1">
+                  <div className="text-white font-medium truncate">{pos.name}</div>
+                  <div className="text-gray-400 text-[10px] sm:text-xs">{pos.weight.toFixed(1)}% of capital</div>
                 </div>
               </div>
             ))}
           </div>
-          <div className="text-xs text-gray-500 mb-3">
+          <div className="text-[10px] sm:text-xs text-gray-500 mb-2 sm:mb-3">
             Total Allocation: {positions.reduce((sum, pos) => sum + pos.weight, 0).toFixed(1)}%
             {(positions.reduce((sum, pos) => sum + pos.weight, 0) < 95 || positions.reduce((sum, pos) => sum + pos.weight, 0) > 105) && (
-              <span className="text-yellow-500 ml-2">⚠️ Warning: Total should be ~100%</span>
+              <span className="text-yellow-500 ml-2 block sm:inline mt-1 sm:mt-0">⚠️ Warning: Total should be ~100%</span>
             )}
           </div>
           {revertData && (
-            <div className="pt-3 border-t border-white/5">
-              <div className="text-xs text-gray-400">
-                <span className="text-blue-400 font-semibold">Pool Analytics (7-day):</span>{' '}
-                TVL ${revertData.latest?.tvl_usd.toFixed(2) || '0'} • 
-                Avg APR {revertData.avgAPR?.toFixed(1) || '0'}% • 
-                Max APR {revertData.maxAPR?.toFixed(1) || '0'}% • 
-                Avg Vol ${revertData.avgVolume?.toFixed(0) || '0'}/day
+            <div className="pt-2 sm:pt-3 border-t border-white/5">
+              <div className="text-[10px] sm:text-xs text-gray-400 space-y-1 sm:space-y-0">
+                <div className="text-blue-400 font-semibold">Pool Analytics (7-day):</div>
+                <div className="sm:inline sm:ml-1">
+                  TVL ${revertData.latest?.tvl_usd.toFixed(2) || '0'} • 
+                  Avg APR {revertData.avgAPR?.toFixed(1) || '0'}% • 
+                  Max APR {revertData.maxAPR?.toFixed(1) || '0'}% • 
+                  Avg Vol ${revertData.avgVolume?.toFixed(0) || '0'}/day
+                </div>
               </div>
             </div>
           )}
