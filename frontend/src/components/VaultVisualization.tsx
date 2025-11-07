@@ -119,9 +119,38 @@ export default function VaultVisualization({ currentPrice = WLFI_PRICE_USD }: Va
     //   * Base = 2000 ticks → gets 1/3 of 26% = ~8.67%
     //   * Limit = 4000 ticks → gets 2/3 of 26% = ~17.33%
     //   * Total = 74% + 8.67% + 17.33% = 100% ✅
-    const fullWeight = charmData.loading ? 47 : charmData.fullRangeWeight
-    const baseWeight = charmData.loading ? 29 : charmData.baseWeight
-    const limitWeight = charmData.loading ? 24 : charmData.limitWeight
+    let fullWeight = charmData.loading ? 47 : charmData.fullRangeWeight
+    let baseWeight = charmData.loading ? 29 : charmData.baseWeight
+    let limitWeight = charmData.loading ? 24 : charmData.limitWeight
+
+    // Debug: Log what we received
+    console.log('[VaultViz] Raw weights from hook:', {
+      fullWeight,
+      baseWeight,
+      limitWeight,
+      loading: charmData.loading
+    });
+
+    // Critical safety check: convert basis points to percentage if needed
+    if (Math.abs(fullWeight) > 100) {
+      console.warn('[VaultViz] Full weight is in basis points, converting:', fullWeight);
+      fullWeight = fullWeight / 100;
+    }
+    if (Math.abs(baseWeight) > 100) {
+      console.warn('[VaultViz] Base weight is in basis points, converting:', baseWeight);
+      baseWeight = baseWeight / 100;
+    }
+    if (Math.abs(limitWeight) > 100) {
+      console.warn('[VaultViz] Limit weight is in basis points, converting:', limitWeight);
+      limitWeight = limitWeight / 100;
+    }
+
+    console.log('[VaultViz] After conversion:', {
+      fullWeight,
+      baseWeight,
+      limitWeight,
+      total: fullWeight + baseWeight + limitWeight
+    });
 
     const currentTickValue = charmData.loading ? CURRENT_TICK : charmData.currentTick
 

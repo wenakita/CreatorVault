@@ -96,16 +96,19 @@ async function fetchFromGraphQL() {
     totalValue
   });
   
-  // Get full range weight from contract (in basis points: 7400 = 74%)
-  // Note: GraphQL returns the raw uint24 value which is in hundredths of a percent
-  // So 7400 means 74.00%, not 7400%
-  const fullRangeWeightBps = parseFloat(vault.fullRangeWeight || '0');
-  const fullRangePercent = fullRangeWeightBps / 100; // Convert hundredths to percentage (7400 → 74)
+  // Get full range weight from contract
+  // GraphQL might return basis points (7400) or already-converted percentage (74)
+  const fullRangeWeightRaw = parseFloat(vault.fullRangeWeight || '0');
   
-  console.log('[fetchFromGraphQL] Full range weight from contract:', {
-    basisPoints: fullRangeWeightBps,
-    percentage: fullRangePercent + '%'
-  });
+  // If value is > 100, it's in basis points and needs conversion
+  // If value is <= 100, it's already a percentage
+  let fullRangePercent = fullRangeWeightRaw;
+  if (fullRangeWeightRaw > 100) {
+    fullRangePercent = fullRangeWeightRaw / 100; // Convert basis points (7400 → 74)
+    console.log('[fetchFromGraphQL] Converted from basis points:', fullRangeWeightRaw, '→', fullRangePercent + '%');
+  } else {
+    console.log('[fetchFromGraphQL] Already in percentage:', fullRangePercent + '%');
+  }
   
   // Calculate remaining allocation for base + limit orders
   const remainingPercent = 100 - fullRangePercent;
@@ -311,14 +314,31 @@ export function useCharmVaultData(): CharmVaultData {
         });
 
         // Calculate weights
-        // fullRangeWeight is the actual allocation (e.g., 7400 = 74%)
-        const fullRangeWeightCalc = Number(fullRangeWeight) / 100;
+        // fullRangeWeight might be in basis points (7400) or percentage (74)
+        const fullRangeWeightRaw = Number(fullRangeWeight);
+        let fullRangeWeightCalc = fullRangeWeightRaw;
+        
+        // If > 100, it's in basis points, convert it
+        if (fullRangeWeightRaw > 100) {
+          fullRangeWeightCalc = fullRangeWeightRaw / 100;
+          console.log('[useCharmVaultData] Converted from basis points:', fullRangeWeightRaw, '→', fullRangeWeightCalc + '%');
+        } else {
+          console.log('[useCharmVaultData] Already in percentage:', fullRangeWeightCalc + '%');
+        }
         
         // The remaining % is split between base and limit
         const remainingPercent = 100 - fullRangeWeightCalc;
         
-        console.log('[useCharmVaultData] Full range:', fullRangeWeightCalc + '%');
         console.log('[useCharmVaultData] Remaining for base+limit:', remainingPercent + '%');
+        
+        // Safety check: if remaining is negative, something is wrong
+        if (remainingPercent < 0) {
+          console.error('[useCharmVaultData] ERROR: Remaining percent is negative!', {
+            fullRangeWeightRaw,
+            fullRangeWeightCalc,
+            remainingPercent
+          });
+        }
         
         // baseThreshold and limitThreshold are NOT weights, they're rebalancing thresholds
         // We need to calculate the actual split based on position widths or amounts
