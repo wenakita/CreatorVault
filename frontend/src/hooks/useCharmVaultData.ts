@@ -114,10 +114,20 @@ async function fetchFromGraphQL() {
   const remainingPercent = 100 - fullRangePercent;
   
   console.log('[fetchFromGraphQL] Remaining allocation for base+limit:', remainingPercent + '%');
+  console.log('[fetchFromGraphQL] ⚠️ CRITICAL DEBUG - fullRangePercent:', fullRangePercent);
+  console.log('[fetchFromGraphQL] ⚠️ CRITICAL DEBUG - remainingPercent:', remainingPercent);
   
   // If amounts aren't available, we can't calculate the base/limit split
   if (totalValue === 0) {
     console.log('[fetchFromGraphQL] No amount data available, using estimated split');
+    const baseCalc = remainingPercent * 0.5;
+    const limitCalc = remainingPercent * 0.5;
+    console.log('[fetchFromGraphQL] ⚠️ EARLY RETURN - Calculated splits:', {
+      baseWeight: baseCalc,
+      limitWeight: limitCalc,
+      fullRangeWeight: fullRangePercent,
+      total: baseCalc + limitCalc + fullRangePercent
+    });
     // Fall back to estimated split (roughly equal)
     return {
       baseTickLower: parseInt(vault.baseLower),
@@ -125,8 +135,8 @@ async function fetchFromGraphQL() {
       limitTickLower: parseInt(vault.limitLower),
       limitTickUpper: parseInt(vault.limitUpper),
       currentTick: vault.pool?.tick ? parseInt(vault.pool.tick) : 0,
-      baseWeight: remainingPercent * 0.5,
-      limitWeight: remainingPercent * 0.5,
+      baseWeight: baseCalc,
+      limitWeight: limitCalc,
       fullRangeWeight: fullRangePercent,
       total0: vault.total0 || '0',
       total1: vault.total1 || '0',
@@ -186,7 +196,7 @@ async function fetchFromGraphQL() {
     total: (fullRangePercent + basePercent + limitPercent).toFixed(2) + '%'
   });
   
-  return {
+  const result = {
     baseTickLower: parseInt(vault.baseLower),
     baseTickUpper: parseInt(vault.baseUpper),
     limitTickLower: parseInt(vault.limitLower),
@@ -198,6 +208,10 @@ async function fetchFromGraphQL() {
     total0: vault.total0 || '0',
     total1: vault.total1 || '0',
   };
+  
+  console.log('[fetchFromGraphQL] ⚠️ FINAL RETURN VALUE:', result);
+  
+  return result;
 }
 
 // Charm Finance Alpha Vault ABI (minimal interface - public state variables)
@@ -270,17 +284,26 @@ export function useCharmVaultData(): CharmVaultData {
         
         // Try GraphQL API first (more reliable)
         try {
+          console.log('[useCharmVaultData] Attempting GraphQL fetch...');
           const graphqlData = await fetchFromGraphQL();
           if (graphqlData) {
+            console.log('[useCharmVaultData] ✅ GraphQL SUCCESS! Data received:', {
+              baseWeight: graphqlData.baseWeight,
+              limitWeight: graphqlData.limitWeight,
+              fullRangeWeight: graphqlData.fullRangeWeight,
+              total: graphqlData.baseWeight + graphqlData.limitWeight + graphqlData.fullRangeWeight
+            });
             setData({
               ...graphqlData,
               loading: false,
               error: null,
             });
             return;
+          } else {
+            console.log('[useCharmVaultData] GraphQL returned null, falling back to direct contract...');
           }
         } catch (e) {
-          console.log('[useCharmVaultData] GraphQL fetch failed, trying direct contract calls...');
+          console.log('[useCharmVaultData] GraphQL fetch failed, trying direct contract calls...', e);
         }
 
         // Fallback to direct contract calls
