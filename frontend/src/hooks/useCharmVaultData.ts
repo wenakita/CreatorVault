@@ -134,25 +134,42 @@ async function fetchFromGraphQL() {
   }
   
   // Calculate actual base and limit percentages from amounts
-  const baseValue = baseAmount0 + baseAmount1;
-  const limitValue = limitAmount0 + limitAmount1;
+  const baseValue = Math.abs(baseAmount0 + baseAmount1);
+  const limitValue = Math.abs(limitAmount0 + limitAmount1);
   const nonFullRangeValue = baseValue + limitValue;
   
   let basePercent = 0;
   let limitPercent = 0;
   
-  if (nonFullRangeValue > 0) {
-    // Split the remaining 26% (or whatever remains) based on actual amounts in each position
+  if (nonFullRangeValue > 0 && !isNaN(nonFullRangeValue)) {
+    // Split the remaining % based on actual amounts in each position
     const baseRatio = baseValue / nonFullRangeValue;
     const limitRatio = limitValue / nonFullRangeValue;
     
-    basePercent = remainingPercent * baseRatio;
-    limitPercent = remainingPercent * limitRatio;
+    // Ensure ratios are valid (not NaN, not negative)
+    if (!isNaN(baseRatio) && !isNaN(limitRatio) && baseRatio >= 0 && limitRatio >= 0) {
+      basePercent = remainingPercent * baseRatio;
+      limitPercent = remainingPercent * limitRatio;
+    } else {
+      // Invalid ratios, use tick-based split as fallback
+      console.warn('[fetchFromGraphQL] Invalid ratios, using tick-based fallback');
+      basePercent = remainingPercent * (2000 / 6000); // Base = 2000 ticks
+      limitPercent = remainingPercent * (4000 / 6000); // Limit = 4000 ticks
+    }
   } else {
-    // If no non-full-range liquidity, split evenly
-    basePercent = remainingPercent * 0.5;
-    limitPercent = remainingPercent * 0.5;
+    // No non-full-range liquidity or invalid data, use tick-based split
+    console.log('[fetchFromGraphQL] No valid amount data, using tick-based split');
+    basePercent = remainingPercent * (2000 / 6000); // Base = 2000 ticks  
+    limitPercent = remainingPercent * (4000 / 6000); // Limit = 4000 ticks
   }
+  
+  // Final safety: ensure all percentages are positive and valid
+  basePercent = Math.abs(basePercent);
+  limitPercent = Math.abs(limitPercent);
+  
+  // Ensure they're not NaN
+  if (isNaN(basePercent)) basePercent = remainingPercent * (2000 / 6000);
+  if (isNaN(limitPercent)) limitPercent = remainingPercent * (4000 / 6000);
   
   console.log('[fetchFromGraphQL] Base/Limit split calculation:', {
     baseValue,
@@ -327,26 +344,34 @@ export function useCharmVaultData(): CharmVaultData {
         }
         
         // The remaining % is split between base and limit
-        const remainingPercent = 100 - fullRangeWeightCalc;
+        const remainingPercent = Math.max(0, 100 - fullRangeWeightCalc); // Ensure non-negative
         
         console.log('[useCharmVaultData] Remaining for base+limit:', remainingPercent + '%');
         
         // Safety check: if remaining is negative, something is wrong
-        if (remainingPercent < 0) {
-          console.error('[useCharmVaultData] ERROR: Remaining percent is negative!', {
+        if (remainingPercent <= 0) {
+          console.error('[useCharmVaultData] ERROR: Remaining percent is zero or negative!', {
             fullRangeWeightRaw,
             fullRangeWeightCalc,
-            remainingPercent
+            remainingPercent,
+            usingFallback: true
           });
         }
         
         // baseThreshold and limitThreshold are NOT weights, they're rebalancing thresholds
         // We need to calculate the actual split based on position widths or amounts
-        // For now, use a simple split based on tick width:
+        // Use a simple split based on tick width:
         // Base = 2000 ticks, Limit = 4000 ticks (from user info)
         // So limit gets 2x the allocation of base
-        const baseWeightCalc = remainingPercent * (2000 / 6000); // 2000 out of 6000 total ticks
-        const limitWeightCalc = remainingPercent * (4000 / 6000); // 4000 out of 6000 total ticks
+        let baseWeightCalc = remainingPercent * (2000 / 6000); // 2000 out of 6000 total ticks
+        let limitWeightCalc = remainingPercent * (4000 / 6000); // 4000 out of 6000 total ticks
+        
+        // Ensure weights are positive and not NaN
+        baseWeightCalc = Math.abs(baseWeightCalc);
+        limitWeightCalc = Math.abs(limitWeightCalc);
+        
+        if (isNaN(baseWeightCalc)) baseWeightCalc = 8.67; // Fallback default
+        if (isNaN(limitWeightCalc)) limitWeightCalc = 17.33; // Fallback default
         
         console.log('[useCharmVaultData] Calculated weights:', {
           baseWeight: baseWeightCalc.toFixed(2) + '%',
@@ -365,14 +390,16 @@ export function useCharmVaultData(): CharmVaultData {
           console.error('[useCharmVaultData] CRITICAL: Full weight still > 100 after conversion!', safeFullWeight);
           safeFullWeight = safeFullWeight / 100;
         }
-        if (Math.abs(safeBaseWeight) > 100 || safeBaseWeight < 0) {
-          console.error('[useCharmVaultData] CRITICAL: Base weight invalid!', safeBaseWeight);
-          safeBaseWeight = Math.abs(safeBaseWeight) > 100 ? safeBaseWeight / 100 : 8.67;
-        }
-        if (Math.abs(safeLimitWeight) > 100 || safeLimitWeight < 0) {
-          console.error('[useCharmVaultData] CRITICAL: Limit weight invalid!', safeLimitWeight);
-          safeLimitWeight = Math.abs(safeLimitWeight) > 100 ? safeLimitWeight / 100 : 17.33;
-        }
+        
+        // Ensure all weights are positive
+        safeFullWeight = Math.abs(safeFullWeight);
+        safeBaseWeight = Math.abs(safeBaseWeight);
+        safeLimitWeight = Math.abs(safeLimitWeight);
+        
+        // Final NaN check
+        if (isNaN(safeFullWeight)) safeFullWeight = 74; // Default full range
+        if (isNaN(safeBaseWeight)) safeBaseWeight = 8.67;
+        if (isNaN(safeLimitWeight)) safeLimitWeight = 17.33;
 
         const vaultData: CharmVaultData = {
           baseTickLower: Number(baseLower),

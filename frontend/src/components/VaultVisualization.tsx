@@ -144,8 +144,18 @@ export default function VaultVisualization({ currentPrice = WLFI_PRICE_USD }: Va
       console.warn('[VaultViz] Limit weight is in basis points, converting:', limitWeight);
       limitWeight = limitWeight / 100;
     }
+    
+    // CRITICAL: Ensure all weights are positive (no negative percentages!)
+    fullWeight = Math.abs(fullWeight);
+    baseWeight = Math.abs(baseWeight);
+    limitWeight = Math.abs(limitWeight);
+    
+    // Ensure no NaN values
+    if (isNaN(fullWeight)) fullWeight = 74;
+    if (isNaN(baseWeight)) baseWeight = 8.67;
+    if (isNaN(limitWeight)) limitWeight = 17.33;
 
-    console.log('[VaultViz] After conversion:', {
+    console.log('[VaultViz] After conversion and safety checks:', {
       fullWeight,
       baseWeight,
       limitWeight,
