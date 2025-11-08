@@ -251,7 +251,7 @@ export default function WrapperView({ provider, account, onToast, onNavigateDown
   return (
     <div className="bg-gradient-to-br from-gray-50 via-gray-100 to-gray-50 dark:from-gray-900 dark:via-black dark:to-gray-900 min-h-screen flex flex-col transition-colors">
       {/* Top Navigation */}
-      <div className="flex justify-center pt-6 pb-4">
+      <div className="flex justify-center pt-4 sm:pt-6 pb-3 sm:pb-4 px-4">
         {onNavigateUp && (
           <NeoButton 
             onClick={onNavigateUp}
@@ -266,34 +266,38 @@ export default function WrapperView({ provider, account, onToast, onNavigateDown
       </div>
 
       {/* Centered Content */}
-      <div className="flex-1 flex items-center justify-center px-6">
+      <div className="flex-1 flex items-center justify-center px-4 sm:px-6 py-4 sm:py-0">
         <div className="max-w-2xl w-full">
           {/* Compact Header */}
-          <div className="flex items-center justify-between mb-8">
-            <div className="flex items-center gap-4">
-              <img src={ICONS.EAGLE} alt="EAGLE" className="w-12 h-12 rounded-xl" />
-              <div>
-                <div className="flex items-center gap-2">
-                  <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Eagle Wrapper</h1>
-                  <LayerZeroBadge />
+          <div className="flex items-center justify-between mb-4 sm:mb-6 md:mb-8 gap-2">
+            <div className="flex items-center gap-2.5 sm:gap-3 md:gap-4 min-w-0">
+              <img src={ICONS.EAGLE} alt="EAGLE" className="w-10 h-10 sm:w-11 sm:h-11 md:w-12 md:h-12 rounded-xl flex-shrink-0" />
+              <div className="min-w-0">
+                <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
+                  <h1 className="text-lg sm:text-xl md:text-2xl font-bold text-gray-900 dark:text-gray-100 truncate">Eagle Wrapper</h1>
+                  <div className="flex-shrink-0">
+                    <LayerZeroBadge />
+                  </div>
                 </div>
-                <p className="text-xs text-gray-500 dark:text-gray-500">1:1 Cross-Chain Conversion</p>
+                <p className="text-[10px] sm:text-xs text-gray-500 dark:text-gray-500 truncate">1:1 Cross-Chain Conversion</p>
               </div>
             </div>
-            <NeoButton
-              onClick={handleRefresh}
-              disabled={refreshing}
-              label=""
-              icon={
-                <svg className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                </svg>
-              }
-            />
+            <div className="flex-shrink-0">
+              <NeoButton
+                onClick={handleRefresh}
+                disabled={refreshing}
+                label=""
+                icon={
+                  <svg className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                  </svg>
+                }
+              />
+            </div>
           </div>
 
           {/* Compact Stats */}
-          <div className="grid grid-cols-2 gap-4 mb-6">
+          <div className="grid grid-cols-2 gap-3 sm:gap-4 mb-4 sm:mb-5 md:mb-6">
             <NeoStatCard
               label="Your Vault Shares"
               value={parseFloat(vaultShareBalance).toLocaleString(undefined, { maximumFractionDigits: 2 })}
@@ -308,7 +312,7 @@ export default function WrapperView({ provider, account, onToast, onNavigateDown
 
           {/* Main Wrapper Interface */}
           <NeoCard className="relative z-10">
-            <div className="p-6 relative z-10">
+            <div className="p-4 sm:p-5 md:p-6 relative z-10">
               <NeoTabs
                 tabs={[
                   { id: 'wrap', label: 'Wrap' },
@@ -318,7 +322,7 @@ export default function WrapperView({ provider, account, onToast, onNavigateDown
                 onChange={(tab) => setActiveTab(tab as 'wrap' | 'unwrap')}
               />
 
-              <div className="mt-6 space-y-4">
+              <div className="mt-4 sm:mt-5 md:mt-6 space-y-3 sm:space-y-4">
                 {/* Amount Input */}
                 <NeoInput
                   value={amount}
@@ -341,7 +345,7 @@ export default function WrapperView({ provider, account, onToast, onNavigateDown
                   className="w-full relative z-10 cursor-pointer"
                 />
                 
-                <p className="text-xs text-center text-gray-500 dark:text-gray-500">
+                <p className="text-[10px] sm:text-xs text-center text-gray-500 dark:text-gray-500">
                   Fee: {activeTab === 'wrap' ? wrapFee : unwrapFee}% • 1:1 Ratio • LayerZero Compatible
                 </p>
               </div>
@@ -351,11 +355,11 @@ export default function WrapperView({ provider, account, onToast, onNavigateDown
       </div>
 
       {/* Bottom Navigation - Down to Vault */}
-      <div className="flex flex-col items-center justify-center pt-4 pb-6 relative z-10">
+      <div className="flex flex-col items-center justify-center pt-3 sm:pt-4 pb-4 sm:pb-6 px-4 relative z-10">
         {onNavigateDown && (
           <>
-            <div className="flex items-center gap-2 mb-2">
-              <svg className="w-5 h-5 text-gray-400 dark:text-gray-500 animate-bounce" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <div className="flex items-center gap-2 mb-1.5 sm:mb-2">
+              <svg className="w-4 h-4 sm:w-5 sm:h-5 text-gray-400 dark:text-gray-500 animate-bounce" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 14l-7 7m0 0l-7-7m7 7V3" />
               </svg>
             </div>
