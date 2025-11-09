@@ -336,6 +336,9 @@ export default function VaultView({ provider, account, onToast, onNavigateUp, on
   // Safe App detection
   const { isSafeApp, safeAddress, isSafeMultisig } = useSafeApp();
   
+  // Determine which address to use for transactions: Safe wallet if available, otherwise the connected account
+  const effectiveAddress = isSafeApp && safeAddress ? safeAddress : account;
+  
   // Check if current account is admin (now showing to everyone)
   const isAdmin = true; // Changed: Admin panel now visible to all users
   
@@ -344,7 +347,7 @@ export default function VaultView({ provider, account, onToast, onNavigateUp, on
     account?.toLowerCase() === CONTRACTS.MULTISIG.toLowerCase() || // Direct connection
     (isSafeApp && isSafeMultisig(CONTRACTS.MULTISIG)); // Running in Safe app with correct Safe address
   
-  // Debug admin status
+  // Debug admin status and effective address
   useEffect(() => {
     if (account || isSafeApp) {
       console.log('[VaultView] Admin Check:', {
@@ -354,11 +357,13 @@ export default function VaultView({ provider, account, onToast, onNavigateUp, on
         multisigLower: CONTRACTS.MULTISIG.toLowerCase(),
         isSafeApp,
         safeAddress,
+        effectiveAddress,
+        usingAddress: effectiveAddress ? `Using ${isSafeApp ? 'Safe' : 'regular'} wallet: ${effectiveAddress}` : 'No address',
         isSafeMultisig: isSafeMultisig(CONTRACTS.MULTISIG),
         isActualAdmin,
       });
     }
-  }, [account, isActualAdmin, isSafeApp, safeAddress, isSafeMultisig]);
+  }, [account, isActualAdmin, isSafeApp, safeAddress, effectiveAddress, isSafeMultisig]);
 
   // Fetch Revert Finance data for strategy display
   const revertData = useRevertFinanceData();
@@ -511,10 +516,10 @@ export default function VaultView({ provider, account, onToast, onNavigateUp, on
 
       if (account) {
         const [vEagle, wlfiBal, usd1Bal, maxRedeem] = await Promise.all([
-          vault.balanceOf(account),
-          wlfi.balanceOf(account),
-          usd1.balanceOf(account),
-          vault.maxRedeem(account),
+          vault.balanceOf(effectiveAddress),
+          wlfi.balanceOf(effectiveAddress),
+          usd1.balanceOf(effectiveAddress),
+          vault.maxRedeem(effectiveAddress),
         ]);
         userBalance = formatEther(vEagle);
         wlfiBalance = formatEther(wlfiBal);
@@ -638,7 +643,7 @@ export default function VaultView({ provider, account, onToast, onNavigateUp, on
       // Approve if needed
       if (wlfiAmt > 0n) {
         const wlfi = new Contract(CONTRACTS.WLFI, ERC20_ABI, signer);
-        const allowance = await wlfi.allowance(account, CONTRACTS.VAULT);
+        const allowance = await wlfi.allowance(effectiveAddress, CONTRACTS.VAULT);
         if (allowance < wlfiAmt) {
           const tx = await wlfi.approve(CONTRACTS.VAULT, wlfiAmt);
           await tx.wait();
@@ -647,7 +652,7 @@ export default function VaultView({ provider, account, onToast, onNavigateUp, on
 
       if (usd1Amt > 0n) {
         const usd1 = new Contract(CONTRACTS.USD1, ERC20_ABI, signer);
-        const allowance = await usd1.allowance(account, CONTRACTS.VAULT);
+        const allowance = await usd1.allowance(effectiveAddress, CONTRACTS.VAULT);
         if (allowance < usd1Amt) {
           const tx = await usd1.approve(CONTRACTS.VAULT, usd1Amt);
           await tx.wait();
@@ -655,7 +660,7 @@ export default function VaultView({ provider, account, onToast, onNavigateUp, on
       }
 
       const vault = new Contract(CONTRACTS.VAULT, VAULT_ABI, signer);
-      const tx = await vault.depositDual(wlfiAmt, usd1Amt, account);
+      const tx = await vault.depositDual(wlfiAmt, usd1Amt, effectiveAddress);
       onToast({ message: 'Depositing...', type: 'info', txHash: tx.hash });
 
       await tx.wait();
@@ -975,7 +980,7 @@ export default function VaultView({ provider, account, onToast, onNavigateUp, on
         );
         
         // Check balance first
-        const balance = await wlfiToken.balanceOf(account);
+        const balance = await wlfiToken.balanceOf(effectiveAddress);
         console.log('[VaultView] WLFI balance:', formatEther(balance), 'Required:', formatEther(wlfiWei));
         
         if (balance < wlfiWei) {
@@ -984,7 +989,7 @@ export default function VaultView({ provider, account, onToast, onNavigateUp, on
           return;
         }
 
-        const allowance = await wlfiToken.allowance(account, CONTRACTS.VAULT);
+        const allowance = await wlfiToken.allowance(effectiveAddress, CONTRACTS.VAULT);
         console.log('[VaultView] WLFI allowance:', formatEther(allowance));
         
         if (BigInt(allowance.toString()) < wlfiWei) {
@@ -1008,7 +1013,7 @@ export default function VaultView({ provider, account, onToast, onNavigateUp, on
         );
         
         // Check balance first
-        const balance = await usd1Token.balanceOf(account);
+        const balance = await usd1Token.balanceOf(effectiveAddress);
         console.log('[VaultView] USD1 balance:', formatEther(balance), 'Required:', formatEther(usd1Wei));
         
         if (balance < usd1Wei) {
@@ -1017,7 +1022,7 @@ export default function VaultView({ provider, account, onToast, onNavigateUp, on
           return;
         }
         
-        const allowance = await usd1Token.allowance(account, CONTRACTS.VAULT);
+        const allowance = await usd1Token.allowance(effectiveAddress, CONTRACTS.VAULT);
         console.log('[VaultView] USD1 allowance:', formatEther(allowance));
         
         if (BigInt(allowance.toString()) < usd1Wei) {
