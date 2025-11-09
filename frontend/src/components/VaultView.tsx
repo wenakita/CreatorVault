@@ -91,34 +91,51 @@ function StrategyRow({ strategy, wlfiPrice, revertData }: { strategy: any; wlfiP
             </div>
           )}
           
-          {/* TVL - NEW */}
-          {strategy.id === 1 && strategy.status === 'active' && (
-            <div className="text-right shrink-0 w-full sm:w-auto">
-              <div className="text-xs sm:text-sm font-medium text-gray-600 dark:text-gray-500 mb-0.5">TVL</div>
-              <div className="text-base sm:text-lg font-bold text-gray-900 dark:text-white">
-                {revertData.loading ? (
-                  <span className="text-sm">...</span>
-                ) : revertData.error ? (
-                  <span className="text-xs text-red-500">N/A</span>
-                ) : (
-                  `$${revertData.tvl > 1000 ? (revertData.tvl / 1000).toFixed(1) + 'K' : revertData.tvl.toFixed(0)}`
-                )}
+          {/* POOL ANALYTICS - Comprehensive */}
+          {strategy.id === 1 && strategy.status === 'active' && !revertData.loading && !revertData.error && (
+            <div className="flex-1 min-w-0 max-w-2xl">
+              <div className="bg-gradient-to-br from-blue-50/50 to-cyan-50/50 dark:from-blue-950/30 dark:to-cyan-950/30 rounded-xl p-3 border border-blue-200/50 dark:border-blue-800/30">
+                <div className="flex items-center justify-between mb-2">
+                  <div className="text-xs font-semibold text-blue-600 dark:text-blue-400 uppercase tracking-wider">
+                    Pool Analytics
+                  </div>
+                  <div className="text-[9px] text-gray-500 dark:text-gray-600">Last 7 days</div>
+                </div>
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-2">
+                  <div className="bg-white/60 dark:bg-black/20 rounded-lg p-2 border border-white/50 dark:border-white/5">
+                    <div className="text-[9px] text-gray-500 dark:text-gray-600 mb-0.5 uppercase tracking-wide">TVL</div>
+                    <div className="text-sm font-bold text-cyan-600 dark:text-cyan-400">
+                      ${revertData.tvl.toFixed(2)}
+                    </div>
+                  </div>
+                  <div className="bg-white/60 dark:bg-black/20 rounded-lg p-2 border border-white/50 dark:border-white/5">
+                    <div className="text-[9px] text-gray-500 dark:text-gray-600 mb-0.5 uppercase tracking-wide">7d Avg APR</div>
+                    <div className="text-sm font-bold text-green-600 dark:text-green-400">
+                      {revertData.avgAPR.toFixed(1)}%
+                    </div>
+                  </div>
+                  <div className="bg-white/60 dark:bg-black/20 rounded-lg p-2 border border-white/50 dark:border-white/5">
+                    <div className="text-[9px] text-gray-500 dark:text-gray-600 mb-0.5 uppercase tracking-wide">Max APR</div>
+                    <div className="text-sm font-bold text-yellow-600 dark:text-yellow-400">
+                      {revertData.maxAPR.toFixed(1)}%
+                    </div>
+                  </div>
+                  <div className="bg-white/60 dark:bg-black/20 rounded-lg p-2 border border-white/50 dark:border-white/5">
+                    <div className="text-[9px] text-gray-500 dark:text-gray-600 mb-0.5 uppercase tracking-wide">Avg Vol</div>
+                    <div className="text-sm font-bold text-purple-600 dark:text-purple-400">
+                      ${revertData.avgVolume.toFixed(0)}/day
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
           )}
           
-          {/* APR - NEW */}
-          {strategy.id === 1 && strategy.status === 'active' && (
-            <div className="text-right shrink-0 w-full sm:w-auto">
-              <div className="text-xs sm:text-sm font-medium text-gray-600 dark:text-gray-500 mb-0.5">7d Avg APR</div>
-              <div className="text-base sm:text-lg font-bold text-green-500">
-                {revertData.loading ? (
-                  <span className="text-sm">...</span>
-                ) : revertData.error ? (
-                  <span className="text-xs text-red-500">N/A</span>
-                ) : (
-                  `${revertData.avgAPR.toFixed(1)}%`
-                )}
+          {/* Loading/Error State */}
+          {strategy.id === 1 && strategy.status === 'active' && (revertData.loading || revertData.error) && (
+            <div className="text-right shrink-0">
+              <div className="text-xs text-gray-500 dark:text-gray-600">
+                {revertData.loading ? 'Loading analytics...' : 'Analytics unavailable'}
               </div>
             </div>
           )}
