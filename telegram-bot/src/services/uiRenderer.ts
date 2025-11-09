@@ -234,8 +234,8 @@ ${repeatedEmojis}
 👤 <a href="${traderProfileLink}">${traderLabel}</a> | <a href="${txLink}">Txn</a>
 🔼 Market Cap: ${marketCap}
 
-📈 Chart (https://dexscreener.com/ethereum/${tokenAddress}) 🔄 Buy (https://app.uniswap.org/swap?chain=mainnet&inputCurrency=ETH&outputCurrency=${tokenAddress}) 🟦 Trending (https://www.geckoterminal.com/eth/pools/${swap.poolId})
-📱 47Eagle (https://47eagle.com)`;
+📈 <a href="https://dexscreener.com/ethereum/${tokenAddress}">Chart</a> | 🔄 <a href="https://app.uniswap.org/swap?chain=mainnet&inputCurrency=ETH&outputCurrency=${tokenAddress}">Buy</a> | 🟦 <a href="https://www.geckoterminal.com/eth/pools/${swap.poolId}">Trending</a>
+📱 <a href="https://47eagle.com">47Eagle</a>`;
     }
 
     const keyboard = this.createTradeKeyboard(swap);
