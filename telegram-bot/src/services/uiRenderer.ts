@@ -218,29 +218,30 @@ export class UIRenderer {
       const traderLabel = direction === 'BUY' ? 'Buyer' : 'Seller';
       const tokenAddress = swap.token1Info?.address || '';
       
-      // Calculate emoji count based on dollar value (1 emoji per $1, no upper limit)
+      // Calculate visual indicator based on dollar value (1 symbol per $1, no upper limit)
       const usdValue = parseFloat(valueUSD.replace(/[$,]/g, ''));
-      const emojiCount = Math.max(1, Math.floor(usdValue));
-      // Use alternating diamond and eagle emojis
-      const diamond = '💎';
-      const eagle = '🦅';
-      let repeatedEmojis = '';
-      for (let i = 0; i < emojiCount; i++) {
-        repeatedEmojis += i % 2 === 0 ? diamond : eagle;
+      const symbolCount = Math.max(1, Math.floor(usdValue));
+      // Use Unicode symbols for a unique, professional look
+      const bar = '▰'; // Filled bar
+      const arrow = '▲'; // Up arrow
+      let visualIndicator = '';
+      for (let i = 0; i < symbolCount; i++) {
+        visualIndicator += i % 2 === 0 ? bar : arrow;
       }
 
       message =
-`EAGLE ${direction}!
+`🦅 EAGLE ${direction}
 
-${repeatedEmojis}
+${visualIndicator}
 
-💵 ${ethAmount} ${tokenIn} (${valueUSD})
-🪙 ${tokenAmount} ${tokenOut}
-👤 <a href="${traderProfileLink}">${traderLabel}</a> | <a href="${txLink}">Txn</a>
-🏅 Market Cap: ${marketCap}
+Ξ ${ethAmount} ${tokenIn} (${valueUSD})
+⟐ ${tokenAmount} ${tokenOut}
+⚡ <a href="${traderProfileLink}">${traderLabel}</a> │ <a href="${txLink}">Txn</a>
+◈ Market Cap: ${marketCap}
 
-📊 <a href="https://dexscreener.com/ethereum/${tokenAddress}">Chart</a> | 🦄 <a href="https://app.uniswap.org/swap?chain=mainnet&inputCurrency=ETH&outputCurrency=${tokenAddress}">Buy</a> | 🔀 <a href="https://www.geckoterminal.com/eth/pools/${swap.poolId}">Trending</a>
-📱 <a href="https://47eagle.com">47Eagle</a>`;
+━━━━━━━━━━━━━━━━━━━━
+▸ <a href="https://dexscreener.com/ethereum/${tokenAddress}">Chart</a> │ <a href="https://app.uniswap.org/swap?chain=mainnet&inputCurrency=ETH&outputCurrency=${tokenAddress}">Buy</a> │ <a href="https://www.geckoterminal.com/eth/pools/${swap.poolId}">Trending</a>
+⌘ <a href="https://47eagle.com">47Eagle</a>`;
     }
 
     const keyboard = this.createTradeKeyboard(swap);
