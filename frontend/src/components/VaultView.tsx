@@ -323,7 +323,6 @@ interface Props {
 
 export default function VaultView({ provider, account, onToast, onNavigateUp, onNavigateToWrapper }: Props) {
   const [activeTab, setActiveTab] = useState<'deposit' | 'withdraw'>('deposit');
-  const [infoTab, setInfoTab] = useState<'about' | 'strategies' | 'info'>('about');
   const [wlfiAmount, setWlfiAmount] = useState('');
   const [usd1Amount, setUsd1Amount] = useState('');
   const [withdrawAmount, setWithdrawAmount] = useState('');
@@ -1297,9 +1296,9 @@ export default function VaultView({ provider, account, onToast, onNavigateUp, on
           />
         </div>
 
-        {/* Main Grid */}
-        <div className={`grid gap-4 sm:gap-6 grid-cols-1 ${isAdmin ? 'lg:grid-cols-2' : 'lg:grid-cols-3'}`}>
-          {/* Left - User/Admin Controls */}
+        {/* Main Grid - 3 Columns: Controls, Vault Info, Strategies */}
+        <div className="grid gap-4 sm:gap-6 grid-cols-1 lg:grid-cols-3">
+          {/* Column 0 - User/Admin Controls */}
           <div className="lg:col-span-1">
             <NeoCard className="!p-0 overflow-hidden relative">
               {/* Mode Toggle Button */}
@@ -1627,26 +1626,11 @@ export default function VaultView({ provider, account, onToast, onNavigateUp, on
             )}
           </div>
 
-          {/* Right - Info Tabs */}
-          <div className={isAdmin ? 'lg:col-span-2' : 'lg:col-span-2'}>
-            <NeoCard className="!p-0">
-              {/* Tab Headers */}
-              <div className="px-4 sm:px-6 pt-4 sm:pt-6 pb-3 sm:pb-4 border-b border-gray-300/50 dark:border-gray-700/30">
-                <NeoTabs
-                  tabs={[
-                    { id: 'about', label: 'Vault' },
-                    { id: 'strategies', label: 'Strategies' },
-                  ]}
-                  defaultTab={infoTab}
-                  onChange={(tabId) => setInfoTab(tabId as 'about' | 'strategies' | 'info')}
-                />
-              </div>
-
-              {/* Tab Content */}
-              <div className="p-4 sm:p-6">
-                {infoTab === 'about' && (
-                  <div className="space-y-6">
-                    {/* Vault Description */}
+          {/* Column 1 - Vault Info */}
+          <div className="lg:col-span-1">
+            <NeoCard>
+              <div className="space-y-6">
+                {/* Vault Description */}
                     <div>
                       <h3 className={`${DS.text.h3} mb-3`}>ERC-4626 Tokenized Vault</h3>
                       <p className={`${DS.text.body} leading-relaxed`}>
@@ -1750,10 +1734,61 @@ export default function VaultView({ provider, account, onToast, onNavigateUp, on
                             </a>
                           </div>
                         </div>
-                          </div>
-                )}
 
-                {infoTab === 'strategies' && (
+                    {/* Asset Allocation */}
+                    <div>
+                      <h4 className={`${DS.text.h4} mb-4`}>Asset Allocation</h4>
+                      <div className="space-y-3">
+                        {/* Strategy 1 - Active */}
+                        <div className={`${DS.backgrounds.card} ${DS.shadows.raised} ${DS.radius.md} p-4 ${DS.borders.subtle}`}>
+                          <div className="flex items-center justify-between mb-2">
+                            <div className="flex items-center gap-2">
+                              <div className="w-3 h-3 rounded-full bg-gradient-to-r from-green-500 to-emerald-600"></div>
+                              <span className={`${DS.text.label} font-semibold`}>Strategy 1</span>
+                              <span className="px-2 py-0.5 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 text-xs font-bold rounded-full">
+                                ACTIVE
+                              </span>
+                            </div>
+                            <span className={`${DS.text.highlight} font-bold text-lg`}>100%</span>
+                          </div>
+                          <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2.5">
+                            <div className="bg-gradient-to-r from-green-500 to-emerald-600 h-2.5 rounded-full" style={{width: '100%'}}></div>
+                          </div>
+                          <p className={`${DS.text.descriptionSmall} mt-2`}>Charm USD1/WLFI Alpha Vault</p>
+                        </div>
+
+                        {/* Strategies 2-5 - Coming Soon */}
+                        {[2, 3, 4, 5].map((num) => (
+                          <div key={num} className={`${DS.backgrounds.card} ${DS.shadows.inset} ${DS.radius.md} p-4 ${DS.borders.subtle} opacity-50`}>
+                            <div className="flex items-center justify-between mb-2">
+                              <div className="flex items-center gap-2">
+                                <div className="w-3 h-3 rounded-full bg-gray-400 dark:bg-gray-600"></div>
+                                <span className={`${DS.text.label} font-semibold`}>Strategy {num}</span>
+                                <span className="px-2 py-0.5 bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 text-xs font-bold rounded-full">
+                                  COMING SOON
+                                </span>
+                              </div>
+                              <span className={`${DS.text.label}`}>0%</span>
+                            </div>
+                            <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2.5">
+                              <div className="bg-gray-400 dark:bg-gray-600 h-2.5 rounded-full" style={{width: '0%'}}></div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+              </div>
+            </NeoCard>
+          </div>
+
+          {/* Column 2 - Strategies */}
+          <div className="lg:col-span-1">
+            <NeoCard>
+              <div className="space-y-6">
+                <div className="border-b border-gray-300/50 dark:border-gray-700/30 pb-4">
+                  <h3 className={`${DS.text.h3}`}>Strategies</h3>
+                  <p className={`${DS.text.descriptionSmall} mt-1`}>Active and upcoming yield strategies</p>
+                </div>
                   <div className="space-y-8">
                     {/* All 5 Strategies as Expandable Rows */}
                     <div className="space-y-5">
@@ -1813,12 +1848,11 @@ export default function VaultView({ provider, account, onToast, onNavigateUp, on
                       ))}
                     </div>
                   </div>
-                )}
-              </div>
-            </NeoCard>
+                </div>
+              </NeoCard>
+            </div>
           </div>
         </div>
       </div>
-    </div>
   );
 }
