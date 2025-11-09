@@ -26,19 +26,25 @@ function AppContent() {
 
   useEffect(() => {
     const checkConnection = async () => {
-      // If running as Safe App, use Safe address and SDK
+      // If running as Safe App, use Safe address with window.ethereum provider
+      // Safe provides window.ethereum that routes transactions through the Safe
       if (isSafeApp && safeAddress) {
         console.log('🔐 Running as Safe App:', safeAddress);
         setAccount(safeAddress);
         
-        // Create a provider using Safe Apps SDK
+        // Use window.ethereum (provided by Safe) as the provider
         try {
-          const safeProvider = new BrowserProvider(sdk.safe as any);
-          setProvider(safeProvider);
-          showToast({
-            message: '🔐 Connected via Safe App',
-            type: 'success'
-          });
+          if (window.ethereum) {
+            const safeProvider = new BrowserProvider(window.ethereum);
+            setProvider(safeProvider);
+            console.log('✅ Safe provider created successfully');
+            showToast({
+              message: '🔐 Connected via Safe App',
+              type: 'success'
+            });
+          } else {
+            console.warn('⚠️ No window.ethereum available in Safe App context');
+          }
         } catch (error) {
           console.error('Error creating Safe provider:', error);
         }
