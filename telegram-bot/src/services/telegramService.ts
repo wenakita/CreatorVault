@@ -785,6 +785,13 @@ export class TelegramService {
       return false;
     }
     
+    // SECOND: Only notify for BUY transactions (not sells)
+    const isBuy = swap.amount1 > 0n; // amount1 > 0 means buying EAGLE
+    if (!isBuy) {
+      console.log(`⏭️  Skipping SELL transaction`);
+      return false;
+    }
+    
     // Get settings from database
     const settings = await this.db.getAlertSettings();
     
