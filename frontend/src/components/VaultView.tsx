@@ -10,6 +10,7 @@ import { NeoTabs, NeoButton, NeoInput, NeoStatCard, NeoCard, NeoStatusIndicator 
 import { UniswapBadge, CharmBadge, LayerZeroBadge } from './tech-stack';
 import { DESIGN_SYSTEM as DS } from '../styles/design-system';
 import { useRevertFinanceData } from '../hooks/useRevertFinanceData';
+import { useSafeApp } from '../hooks/useSafeApp';
 
 // Lazy load 3D visualization
 const VaultVisualization = lazy(() => import('./VaultVisualization'));
@@ -312,23 +313,32 @@ export default function VaultView({ provider, account, onToast, onNavigateUp, on
     percentageIncrease: string;
   } | null>(null);
   
+  // Safe App detection
+  const { isSafeApp, safeAddress, isSafeMultisig } = useSafeApp();
+  
   // Check if current account is admin (now showing to everyone)
   const isAdmin = true; // Changed: Admin panel now visible to all users
-  const isActualAdmin = account?.toLowerCase() === CONTRACTS.MULTISIG.toLowerCase();
+  
+  // Admin check: either direct connection with multisig address OR running in Safe app with correct multisig
+  const isActualAdmin = 
+    account?.toLowerCase() === CONTRACTS.MULTISIG.toLowerCase() || // Direct connection
+    (isSafeApp && isSafeMultisig(CONTRACTS.MULTISIG)); // Running in Safe app with correct Safe address
   
   // Debug admin status
   useEffect(() => {
-    if (account) {
+    if (account || isSafeApp) {
       console.log('[VaultView] Admin Check:', {
         currentAccount: account,
-        currentAccountLower: account.toLowerCase(),
+        currentAccountLower: account?.toLowerCase(),
         multisig: CONTRACTS.MULTISIG,
         multisigLower: CONTRACTS.MULTISIG.toLowerCase(),
+        isSafeApp,
+        safeAddress,
+        isSafeMultisig: isSafeMultisig(CONTRACTS.MULTISIG),
         isActualAdmin,
-        match: account.toLowerCase() === CONTRACTS.MULTISIG.toLowerCase()
       });
     }
-  }, [account, isActualAdmin]);
+  }, [account, isActualAdmin, isSafeApp, safeAddress, isSafeMultisig]);
 
   // Fetch Revert Finance data for strategy display
   const revertData = useRevertFinanceData();
@@ -1369,7 +1379,7 @@ export default function VaultView({ provider, account, onToast, onNavigateUp, on
                   {!isActualAdmin && (
                     <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-700/30 rounded-xl p-2.5 sm:p-3">
                       <p className="text-xs text-blue-800 dark:text-blue-300">
-                        <strong>ℹ️ Info:</strong> This panel is visible to all users for transparency. Only the multisig admin can execute capital injections.
+                        <strong>ℹ️ Info:</strong> This panel is visible to all users for transparency. Only the multisig admin can execute capital injections. Open this page from within your Safe wallet to inject capital.
                       </p>
                     </div>
                   )}
@@ -1443,7 +1453,7 @@ export default function VaultView({ provider, account, onToast, onNavigateUp, on
                   ) : (
                     <div className="bg-gray-50 dark:bg-gray-900/20 border border-gray-200 dark:border-gray-700/30 rounded-xl p-3">
                       <p className="text-xs text-gray-600 dark:text-gray-400">
-                        <strong>🔒 Restricted:</strong> Connect with the multisig wallet ({CONTRACTS.MULTISIG.slice(0, 6)}...{CONTRACTS.MULTISIG.slice(-4)}) to execute capital injections.
+                        <strong>🔒 Restricted:</strong> Open this page from within your Safe multisig wallet ({CONTRACTS.MULTISIG.slice(0, 6)}...{CONTRACTS.MULTISIG.slice(-4)}) to execute capital injections.
                       </p>
                     </div>
                   )}
