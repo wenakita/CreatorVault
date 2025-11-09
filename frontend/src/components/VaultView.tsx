@@ -1247,15 +1247,6 @@ export default function VaultView({ provider, account, onToast, onNavigateUp, on
           </div>
         </div>
 
-        {/* Asset Deployment Sunburst Chart */}
-        <AssetAllocationSunburst
-          vaultWLFI={Number(data.vaultLiquidWLFI)}
-          vaultUSD1={Number(data.vaultLiquidUSD1)}
-          strategyWLFI={Number(data.strategyWLFI)}
-          strategyUSD1={Number(data.strategyUSD1)}
-          wlfiPrice={Number(data.wlfiPrice)}
-        />
-
         {/* Stats */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 mb-6 sm:mb-8">
           <NeoStatCard
@@ -1749,6 +1740,17 @@ export default function VaultView({ provider, account, onToast, onNavigateUp, on
                           </div>
                         </a>
                       </div>
+                    </div>
+
+                    {/* Asset Deployment Sunburst Chart */}
+                    <div>
+                      <AssetAllocationSunburst
+                        vaultWLFI={Number(data.vaultLiquidWLFI)}
+                        vaultUSD1={Number(data.vaultLiquidUSD1)}
+                        strategyWLFI={Number(data.strategyWLFI)}
+                        strategyUSD1={Number(data.strategyUSD1)}
+                        wlfiPrice={Number(data.wlfiPrice)}
+                      />
                     </div>
                   </div>
                 )}
