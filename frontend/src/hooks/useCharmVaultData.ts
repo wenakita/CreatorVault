@@ -97,14 +97,14 @@ async function fetchFromGraphQL() {
   });
   
   // Get full range weight from contract
-  // GraphQL might return basis points (7400) or already-converted percentage (74)
+  // GraphQL might return basis points (740000) or already-converted percentage (74)
   const fullRangeWeightRaw = parseFloat(vault.fullRangeWeight || '0');
   
   // If value is > 100, it's in basis points and needs conversion
   // If value is <= 100, it's already a percentage
   let fullRangePercent = fullRangeWeightRaw;
   if (fullRangeWeightRaw > 100) {
-    fullRangePercent = fullRangeWeightRaw / 100; // Convert basis points (7400 → 74)
+    fullRangePercent = fullRangeWeightRaw / 10000; // Convert basis points (740000 → 74, where 10000 = 100%)
     console.log('[fetchFromGraphQL] Converted from basis points:', fullRangeWeightRaw, '→', fullRangePercent + '%');
   } else {
     console.log('[fetchFromGraphQL] Already in percentage:', fullRangePercent + '%');
@@ -196,7 +196,7 @@ async function fetchFromGraphQL() {
     total: (fullRangePercent + basePercent + limitPercent).toFixed(2) + '%'
   });
   
-  const result = {
+  const vaultData = {
     baseTickLower: parseInt(vault.baseLower),
     baseTickUpper: parseInt(vault.baseUpper),
     limitTickLower: parseInt(vault.limitLower),
@@ -209,9 +209,9 @@ async function fetchFromGraphQL() {
     total1: vault.total1 || '0',
   };
   
-  console.log('[fetchFromGraphQL] ⚠️ FINAL RETURN VALUE:', result);
+  console.log('[fetchFromGraphQL] ⚠️ FINAL RETURN VALUE:', vaultData);
   
-  return result;
+  return vaultData;
 }
 
 // Charm Finance Alpha Vault ABI (minimal interface - public state variables)
@@ -354,13 +354,13 @@ export function useCharmVaultData(): CharmVaultData {
         });
 
         // Calculate weights
-        // fullRangeWeight might be in basis points (7400) or percentage (74)
+        // fullRangeWeight might be in basis points (740000) or percentage (74)
         const fullRangeWeightRaw = Number(fullRangeWeight);
         let fullRangeWeightCalc = fullRangeWeightRaw;
         
         // If > 100, it's in basis points, convert it
         if (fullRangeWeightRaw > 100) {
-          fullRangeWeightCalc = fullRangeWeightRaw / 100;
+          fullRangeWeightCalc = fullRangeWeightRaw / 10000; // Convert basis points (740000 → 74, where 10000 = 100%)
           console.log('[useCharmVaultData] Converted from basis points:', fullRangeWeightRaw, '→', fullRangeWeightCalc + '%');
         } else {
           console.log('[useCharmVaultData] Already in percentage:', fullRangeWeightCalc + '%');
@@ -411,7 +411,7 @@ export function useCharmVaultData(): CharmVaultData {
         // Triple-check the values are sane
         if (Math.abs(safeFullWeight) > 100) {
           console.error('[useCharmVaultData] CRITICAL: Full weight still > 100 after conversion!', safeFullWeight);
-          safeFullWeight = safeFullWeight / 100;
+          safeFullWeight = safeFullWeight / 10000; // Convert basis points (where 10000 = 100%)
         }
         
         // Ensure all weights are positive
