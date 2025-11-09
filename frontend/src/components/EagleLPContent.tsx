@@ -158,7 +158,7 @@ export default function EagleLPContent({ onNavigateDown }: Props) {
           <NeoStatCard
             label="Total Liquidity"
             value={poolData.liquidity}
-            subtitle={loading ? "Updating..." : "Live on Uniswap V3"}
+            subtitle={loading ? "Updating..." : "Live on Uniswap V4"}
           />
           <NeoStatCard
             label="24h Volume"
