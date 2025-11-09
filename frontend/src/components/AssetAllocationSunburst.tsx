@@ -223,6 +223,8 @@ export default function AssetAllocationSunburst({
       .attr('stroke-width', 1.5);
     
     // Center content - always visible
+    const totalWLFI = vaultWLFI + strategyWLFI;
+    
     centerGroup.append('text')
       .attr('text-anchor', 'middle')
       .attr('y', -8)
@@ -230,7 +232,7 @@ export default function AssetAllocationSunburst({
       .style('font-weight', '700')
       .style('fill', '#d4af37')
       .style('letter-spacing', '1px')
-      .text(grandTotal.toFixed(0));
+      .text(totalWLFI.toFixed(2));
 
     centerGroup.append('text')
       .attr('text-anchor', 'middle')
@@ -239,7 +241,7 @@ export default function AssetAllocationSunburst({
       .style('fill', '#9ca3af')
       .style('text-transform', 'uppercase')
       .style('letter-spacing', '1.5px')
-      .text('Total Tokens');
+      .text('WLFI');
 
   }, [vaultWLFI, vaultUSD1, strategyWLFI, strategyUSD1, grandTotal, selectedPath, animationKey]);
 
