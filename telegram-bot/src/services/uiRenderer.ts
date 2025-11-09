@@ -218,16 +218,12 @@ export class UIRenderer {
       const traderLabel = direction === 'BUY' ? 'Buyer' : 'Seller';
       const tokenAddress = swap.token1Info?.address || '';
       
-      // Calculate visual indicator based on dollar value (1 symbol per $1, no upper limit)
+      // Calculate visual indicator based on dollar value (1 green circle per $1, no upper limit)
       const usdValue = parseFloat(valueUSD.replace(/[$,]/g, ''));
-      const symbolCount = Math.max(1, Math.floor(usdValue));
-      // Use Unicode symbols for a unique, professional look
-      const bar = '▰'; // Filled bar
-      const arrow = '▲'; // Up arrow
-      let visualIndicator = '';
-      for (let i = 0; i < symbolCount; i++) {
-        visualIndicator += i % 2 === 0 ? bar : arrow;
-      }
+      const circleCount = Math.max(1, Math.floor(usdValue));
+      // Use green circles to show purchase amount
+      const greenCircle = '🟢';
+      let visualIndicator = greenCircle.repeat(circleCount);
 
       message =
 `🦅 EAGLE ${direction}
