@@ -14,7 +14,8 @@ const VAULT_ABI = ['function getWLFIPrice() view returns (uint256)', 'function g
 export default function ModernHeader() {
   const [wlfiPrice, setWlfiPrice] = useState<string>('--');
   const [usd1Price, setUsd1Price] = useState<string>('--');
-  const [priceChanged, setPriceChanged] = useState<'wlfi' | 'usd1' | null>(null);
+  const [eaglePrice, setEaglePrice] = useState<string>('--');
+  const [priceChanged, setPriceChanged] = useState<'wlfi' | 'usd1' | 'eagle' | null>(null);
   const provider = useEthersProvider();
 
   useEffect(() => {
@@ -62,6 +63,32 @@ export default function ModernHeader() {
       return () => clearInterval(interval);
     }
   }, [provider]);
+
+  // Fetch EAGLE price from DexScreener
+  useEffect(() => {
+    const fetchEaglePrice = async () => {
+      try {
+        const response = await fetch('https://api.dexscreener.com/latest/dex/pairs/ethereum/0xcf728b099b672c72d61f6ec4c4928c2f2a96cefdfd518c3470519d76545ed333');
+        const data = await response.json();
+        if (data?.pair?.priceUsd) {
+          const newEaglePrice = parseFloat(data.pair.priceUsd).toFixed(6);
+          setEaglePrice((prev) => {
+            if (prev !== '--' && prev !== newEaglePrice) {
+              setPriceChanged('eagle');
+              setTimeout(() => setPriceChanged(null), 2000);
+            }
+            return newEaglePrice;
+          });
+        }
+      } catch (error) {
+        console.error('Error fetching EAGLE price:', error);
+      }
+    };
+
+    fetchEaglePrice();
+    const interval = setInterval(fetchEaglePrice, 30000);
+    return () => clearInterval(interval);
+  }, []);
 
   return (
     <header className="sticky top-0 z-50 bg-gradient-to-b from-neo-bg-light to-gray-50 dark:from-neo-bg-dark dark:to-gray-900 border-b border-gray-300/50 dark:border-gray-700/30 shadow-neo-inset dark:shadow-neo-inset-dark backdrop-blur-xl transition-all duration-500">
@@ -136,19 +163,34 @@ export default function ModernHeader() {
                 </motion.span>
               </AnimatePresence>
             </motion.div>
-            <motion.div
-              className="flex items-center gap-2 px-5 py-2.5 bg-gradient-to-br from-emerald-50 to-emerald-100/50 dark:from-gray-800 dark:to-gray-850 rounded-full shadow-neo-raised dark:shadow-neo-raised-dark hover:shadow-neo-hover dark:hover:shadow-neo-hover-dark border border-emerald-200/70 dark:border-emerald-700/50 hover:border-emerald-300 dark:hover:border-emerald-600 transition-all duration-400"
+            <motion.a
+              href="https://dexscreener.com/ethereum/0xcf728b099b672c72d61f6ec4c4928c2f2a96cefdfd518c3470519d76545ed333"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-2 px-5 py-2.5 bg-gradient-to-br from-yellow-50 to-yellow-100/50 dark:from-yellow-900/20 dark:to-yellow-800/20 rounded-full shadow-neo-raised dark:shadow-neo-raised-dark hover:shadow-neo-hover dark:hover:shadow-neo-hover-dark border border-yellow-200/70 dark:border-yellow-600/30 hover:border-yellow-300 dark:hover:border-yellow-500 transition-all duration-400 cursor-pointer"
               whileHover={{ scale: 1.05, y: -2 }}
               transition={{ type: "spring", stiffness: 500, damping: 20 }}
+              animate={priceChanged === 'eagle' ? { scale: [1, 1.08, 1] } : {}}
+              title="View on DexScreener"
             >
-              <div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></div>
               <img 
-                src={ICONS.ETHEREUM}
-                alt="Ethereum"
-                className="w-5 h-5 rounded-full"
+                src="https://tomato-abundant-urial-204.mypinata.cloud/ipfs/bafybeigzyatm2pgrkqbnskyvflnagtqli6rgh7wv7t2znaywkm2pixmkxy"
+                alt="EAGLE"
+                className="w-5 h-5"
               />
-              <span className="text-sm text-gray-800 dark:text-gray-200 font-semibold">Ethereum</span>
-            </motion.div>
+              <AnimatePresence mode="wait">
+                <motion.span 
+                  key={eaglePrice}
+                  initial={{ y: 10, opacity: 0 }}
+                  animate={{ y: 0, opacity: 1 }}
+                  exit={{ y: -10, opacity: 0 }}
+                  transition={{ duration: 0.2 }}
+                  className="text-sm font-mono text-gray-800 dark:text-gray-200 font-semibold min-w-[60px]"
+                >
+                  {eaglePrice === '--' ? '--' : `$${eaglePrice}`}
+                </motion.span>
+              </AnimatePresence>
+            </motion.a>
           </div>
 
           {/* Right Side - Theme Toggle + Connect Button */}
@@ -207,13 +249,32 @@ export default function ModernHeader() {
             </AnimatePresence>
           </motion.div>
           
-          <motion.div
-            className="flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-br from-emerald-50 to-emerald-100/50 dark:from-gray-800 dark:to-gray-850 rounded-full shadow-neo-raised dark:shadow-neo-raised-dark border border-emerald-200/70 dark:border-emerald-700/50 whitespace-nowrap flex-shrink-0"
+          <motion.a
+            href="https://dexscreener.com/ethereum/0xcf728b099b672c72d61f6ec4c4928c2f2a96cefdfd518c3470519d76545ed333"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-br from-yellow-50 to-yellow-100/50 dark:from-yellow-900/20 dark:to-yellow-800/20 rounded-full shadow-neo-raised dark:shadow-neo-raised-dark border border-yellow-200/70 dark:border-yellow-600/30 whitespace-nowrap flex-shrink-0 cursor-pointer"
+            animate={priceChanged === 'eagle' ? { scale: [1, 1.05, 1] } : {}}
+            title="View on DexScreener"
           >
-            <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse"></div>
-            <img src={ICONS.ETHEREUM} alt="Ethereum" className="w-4 h-4 rounded-full" />
-            <span className="text-xs text-gray-800 dark:text-gray-200 font-semibold">Ethereum</span>
-          </motion.div>
+            <img 
+              src="https://tomato-abundant-urial-204.mypinata.cloud/ipfs/bafybeigzyatm2pgrkqbnskyvflnagtqli6rgh7wv7t2znaywkm2pixmkxy" 
+              alt="EAGLE" 
+              className="w-4 h-4" 
+            />
+            <AnimatePresence mode="wait">
+              <motion.span 
+                key={eaglePrice}
+                initial={{ y: 5, opacity: 0 }}
+                animate={{ y: 0, opacity: 1 }}
+                exit={{ y: -5, opacity: 0 }}
+                transition={{ duration: 0.15 }}
+                className="text-xs font-mono text-gray-800 dark:text-gray-200 font-semibold"
+              >
+                {eaglePrice === '--' ? '--' : `$${eaglePrice}`}
+              </motion.span>
+            </AnimatePresence>
+          </motion.a>
         </div>
       </div>
     </header>
