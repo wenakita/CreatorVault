@@ -1237,13 +1237,20 @@ export default function VaultView({ provider, account, onToast, onNavigateUp, on
               }
               className="!px-2 sm:!px-3 !py-1.5 sm:!py-2 !w-auto !rounded-full"
             />
-            <div className={`flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-4 py-1.5 sm:py-2 ${DS.backgrounds.card} ${DS.shadows.raised} ${DS.radius.full} ${DS.borders.subtle}`}>
+            <div className={`flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-4 py-1.5 sm:py-2 bg-gradient-to-br from-yellow-50 to-yellow-100/50 dark:from-yellow-900/20 dark:to-yellow-800/20 ${DS.radius.full} ${DS.shadows.raised} border border-yellow-200/70 dark:border-yellow-600/30`}>
               <img 
                 src="https://tomato-abundant-urial-204.mypinata.cloud/ipfs/bafybeigzyatm2pgrkqbnskyvflnagtqli6rgh7wv7t2znaywkm2pixmkxy"
-                alt="vEAGLE"
+                alt="EAGLE"
                 className="w-4 h-4 sm:w-5 sm:h-5"
               />
-              <span className={`text-xs sm:text-sm ${DS.text.label}`}>vEAGLE</span>
+              <div className="flex flex-col">
+                <span className="text-[10px] text-yellow-700 dark:text-yellow-400 font-semibold uppercase leading-none">EAGLE</span>
+                <span className="text-xs sm:text-sm text-gray-900 dark:text-white font-bold leading-tight">
+                  ${Number(data.totalSupply) > 0 
+                    ? (Number(data.totalAssets) / Number(data.totalSupply)).toFixed(3)
+                    : '1.000'}
+                </span>
+              </div>
             </div>
           </div>
         </div>
