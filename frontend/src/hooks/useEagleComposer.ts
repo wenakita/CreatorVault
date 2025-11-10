@@ -20,11 +20,11 @@ const ERC20_ABI = [
   "function balanceOf(address account) external view returns (uint256)"
 ];
 
-// Configuration - UPDATE THESE
+// Configuration - DEPLOYED ADDRESSES (Nov 10, 2025)
 const ADDRESSES = {
-  COMPOSER: '0x...', // Your EagleOVaultComposer address
-  WLFI: '0x...',     // WLFI token address
-  EAGLE: '0x...',    // EAGLE OFT address
+  COMPOSER: '0x8e2F25Eb48CB30879ec4FD45E3881B975C5D10Cb', // EagleOVaultComposer
+  WLFI: '0xdA5e1988097297dCdc1f90D4dFE7909e847CBeF6',     // WLFI token (mainnet)
+  EAGLE: '0x474eD38C256A7FA0f3B8c48496CE1102ab0eA91E',    // EAGLE OFT V4
 };
 
 export interface ComposerPreview {
