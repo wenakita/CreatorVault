@@ -575,12 +575,32 @@ export default function VaultView({ provider, account, onToast, onNavigateUp, on
       
       const charmStatsPromise = fetchCharmStats();
 
-      const [totalAssets, totalSupply, wlfiPrice, usd1Price] = await Promise.all([
-        vault.totalAssets(),
-        vault.totalSupply(),
-        vault.getWLFIPrice(),
-        vault.getUSD1Price(),
-      ]);
+      // Fetch vault data with individual error handling for totalAssets (may revert due to stale oracles)
+      let totalAssets = 0n;
+      let totalSupply = 0n;
+      let wlfiPrice = 0n;
+      let usd1Price = 0n;
+
+      try {
+        [totalSupply, wlfiPrice, usd1Price] = await Promise.all([
+          vault.totalSupply(),
+          vault.getWLFIPrice(),
+          vault.getUSD1Price(),
+        ]);
+      } catch (error: any) {
+        console.error('[VaultView] Error fetching basic vault data:', error);
+        throw error; // This is critical, can't continue
+      }
+
+      // Try to get totalAssets, but don't fail if oracles are stale
+      try {
+        totalAssets = await vault.totalAssets();
+        console.log('[VaultView] totalAssets:', formatEther(totalAssets));
+      } catch (error: any) {
+        console.warn('[VaultView] totalAssets() failed (likely stale oracle), will calculate manually:', error?.reason || error?.message);
+        // We'll calculate it manually from vault + strategy balances below
+        totalAssets = 0n;
+      }
 
       let userBalance = '0';
       let wlfiBalance = '0';
@@ -656,6 +676,13 @@ export default function VaultView({ provider, account, onToast, onNavigateUp, on
         liquidTotal,
         strategyTotal
       });
+
+      // If totalAssets failed to fetch, calculate it manually
+      if (totalAssets === 0n) {
+        const manualTotal = Number(vaultLiquidWLFI) + Number(vaultLiquidUSD1) + Number(strategyWLFI) + Number(strategyUSD1);
+        totalAssets = parseEther(manualTotal.toFixed(18));
+        console.log('[VaultView] Calculated totalAssets manually:', formatEther(totalAssets));
+      }
 
       const charmStats = await charmStatsPromise;
 
