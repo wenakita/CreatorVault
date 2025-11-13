@@ -37,33 +37,37 @@ contract UpgradeVaultPreview is Script {
         // 3. Update frontend contracts.ts with new vault address
         
         // Check if vault is upgradeable
-        EagleOVault vault = EagleOVault(VAULT);
-        address owner = vault.owner();
-        console.log("Vault owner:", owner);
-        
-        if (owner != MULTISIG && owner != deployer) {
-            console.log("WARNING: You are not the owner. Cannot upgrade.");
-            console.log("Owner must be:", MULTISIG, "or deployer:", deployer);
-            vm.stopBroadcast();
-            return;
-        }
-        
+        // TODO: Fix constructor call - EagleOVault requires constructor parameters
+        // EagleOVault vault = EagleOVault(VAULT);
+        // address owner = vault.owner();
+        // console.log("Vault owner:", owner);
+        // 
+        // if (owner != MULTISIG && owner != deployer) {
+        //     console.log("WARNING: You are not the owner. Cannot upgrade.");
+        //     console.log("Owner must be:", MULTISIG, "or deployer:", deployer);
+        //     vm.stopBroadcast();
+        //     return;
+        // }
+        // 
         // Deploy new implementation
-        console.log("Deploying new vault implementation...");
-        EagleOVault newImplementation = new EagleOVault();
-        console.log("New implementation deployed at:", address(newImplementation));
+        // console.log("Deploying new vault implementation...");
+        // EagleOVault newImplementation = new EagleOVault(); // TODO: Requires constructor params
+        // console.log("New implementation deployed at:", address(newImplementation));
+        
+        revert("Script disabled - EagleOVault constructor requires parameters");
         
         // NOTE: You'll need to call upgradeTo() on the proxy contract
         // This requires the vault to be UUPS upgradeable
         // If it's not upgradeable, skip this and deploy a new vault instead
         
-        console.log("\n=== MANUAL STEPS REQUIRED ===");
-        console.log("If vault is UUPS upgradeable:");
-        console.log("1. Call vault.upgradeTo(", address(newImplementation), ") from multisig");
-        console.log("\nIf vault is NOT upgradeable:");
-        console.log("1. Deploy new vault (use DeployFreshVault.s.sol)");
-        console.log("2. Migrate funds from old vault");
-        console.log("3. Update frontend contracts.ts with new address");
+        // TODO: Uncomment when script is fixed
+        // console.log("\n=== MANUAL STEPS REQUIRED ===");
+        // console.log("If vault is UUPS upgradeable:");
+        // console.log("1. Call vault.upgradeTo(", address(newImplementation), ") from multisig");
+        // console.log("\nIf vault is NOT upgradeable:");
+        // console.log("1. Deploy new vault (use DeployFreshVault.s.sol)");
+        // console.log("2. Migrate funds from old vault");
+        // console.log("3. Update frontend contracts.ts with new address");
         
         vm.stopBroadcast();
     }

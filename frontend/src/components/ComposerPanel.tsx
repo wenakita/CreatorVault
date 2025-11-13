@@ -1,10 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { parseEther, formatEther } from 'viem';
 import { useEagleComposer } from '../hooks/useEagleComposer';
-import { NeoCard } from './ui/NeoCard';
-import { NeoButton } from './ui/NeoButton';
-import { NeoInput } from './ui/NeoInput';
-import { NeoTabs } from './ui/NeoTabs';
+import { NeoCard, NeoButton, NeoInput, NeoTabs } from './neumorphic';
 
 /**
  * Composer Panel Component
@@ -119,8 +116,8 @@ export function ComposerPanel() {
             </svg>
           </div>
           <div>
-            <h3 className="text-lg font-bold text-gray-900 dark:text-white">Eagle Composer</h3>
-            <p className="text-xs text-gray-600 dark:text-gray-400">One-click vault operations</p>
+            <h3 className="text-xl font-bold text-gray-900 dark:text-white">Eagle Composer</h3>
+            <p className="text-sm text-gray-600 dark:text-gray-400">One-click vault operations</p>
           </div>
         </div>
       </div>
@@ -170,7 +167,7 @@ export function ComposerPanel() {
                 type="number"
                 placeholder="0.0"
                 value={inputAmount}
-                onChange={(e) => setInputAmount(e.target.value)}
+                onChange={setInputAmount}
                 className="pr-20"
               />
               <button

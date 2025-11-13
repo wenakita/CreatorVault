@@ -5,8 +5,9 @@ Complete toolkit for deploying, verifying, and testing your EagleOVaultComposer.
 ## Scripts Overview
 
 1. **`deployComposer.ts`** - Deploy Composer (10 min)
-2. **`verifyComposer.ts`** - Quick verification (2 min)
-3. **`testComposerLocal.ts`** - Full operation test (5 min)
+2. **`deployComposerCreate2.ts`** - Deploy with CREATE2 for vanity address (15 min) 🎯 NEW!
+3. **`verifyComposer.ts`** - Quick verification (2 min)
+4. **`testComposerLocal.ts`** - Full operation test (5 min)
 
 ---
 
@@ -98,7 +99,67 @@ const ADDRESSES = {
 
 ---
 
-## 2. Verify Composer
+## 2. Deploy Composer with CREATE2 (Vanity Address) 🎯
+
+### `deployComposerCreate2.ts` - Deterministic Vanity Address Deployment
+
+Deploy your Composer to a vanity address starting with `0x47`!
+
+**Already done for you:**
+- ✅ Rust miner found salt: `0x00000000000000000000000000000000000000000000000000000000000001a6`
+- ✅ Vanity address: `0x478eaa3170c670386349d69bbd0658a0ef1c8f16`
+- ✅ Script ready to use
+
+**Deploy:**
+```bash
+npx hardhat run scripts/deployComposerCreate2.ts --network ethereum
+```
+
+**What it does:**
+1. ✅ Validates init bytecode hash matches
+2. ✅ Predicts final address (verifies it's the vanity address)
+3. ✅ Deploys via Arachnid CREATE2 Factory
+4. ✅ Verifies deployment succeeded
+5. ✅ Saves deployment artifacts
+
+**Expected Output:**
+```
+🦅 Eagle OVault Composer - CREATE2 Deployment
+
+🎯 Expected Address: 0x478eaa3170c670386349d69bbd0658a0ef1c8f16
+
+✅ Predicted Address: 0x478eaa3170c670386349d69bbd0658a0ef1c8f16
+✅ Address matches expected vanity address!
+
+🚀 Deploying via CREATE2 Factory...
+✅ Transaction sent: 0x...
+✅ Deployed in block: 12345678
+
+✅ DEPLOYMENT SUCCESSFUL!
+🎉 Composer Address: 0x478eaa3170c670386349d69bbd0658a0ef1c8f16
+```
+
+**Benefits of CREATE2:**
+- ✅ Same address on all EVM chains (if you use same salt)
+- ✅ Vanity address starting with `0x47` (Eagle signature)
+- ✅ Predictable address before deployment
+- ✅ Can pre-compute address for other chains
+
+**Mining Your Own Vanity Address:**
+
+See the `create2-miner/` directory for the Rust mining tool:
+
+```bash
+cd create2-miner
+cargo build --release
+cargo run --release
+```
+
+Edit `src/main.rs` to change the target prefix or other parameters.
+
+---
+
+## 3. Verify Composer
 
 ## Setup (30 seconds)
 

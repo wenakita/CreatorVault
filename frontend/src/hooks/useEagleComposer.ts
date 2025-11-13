@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react';
-import { useAccount, useProvider, useSigner } from 'wagmi';
+import { useAccount, usePublicClient, useWalletClient } from 'wagmi';
 import { ethers, Contract } from 'ethers';
 import { parseEther, formatEther } from 'viem';
 
@@ -20,9 +20,9 @@ const ERC20_ABI = [
   "function balanceOf(address account) external view returns (uint256)"
 ];
 
-// Configuration - DEPLOYED ADDRESSES (Nov 10, 2025)
+// Configuration - DEPLOYED ADDRESSES (Nov 10, 2025 - Updated)
 const ADDRESSES = {
-  COMPOSER: '0x8e2F25Eb48CB30879ec4FD45E3881B975C5D10Cb', // EagleOVaultComposer
+  COMPOSER: '0x3A91B3e863C0bd6948088e8A0A9B1D22d6D05da9', // EagleOVaultComposer V2
   WLFI: '0xdA5e1988097297dCdc1f90D4dFE7909e847CBeF6',     // WLFI token (mainnet)
   EAGLE: '0x474eD38C256A7FA0f3B8c48496CE1102ab0eA91E',    // EAGLE OFT V4
 };
@@ -48,11 +48,24 @@ export interface ComposerTransaction {
  */
 export function useEagleComposer() {
   const { address } = useAccount();
-  const provider = useProvider();
-  const { data: signer } = useSigner();
+  const publicClient = usePublicClient();
+  const { data: walletClient } = useWalletClient();
   
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  
+  // Helper to get ethers provider from viem publicClient
+  const getProvider = useCallback(() => {
+    if (!publicClient) return null;
+    return new ethers.BrowserProvider(window.ethereum as any);
+  }, [publicClient]);
+  
+  // Helper to get ethers signer from viem walletClient
+  const getSigner = useCallback(async () => {
+    if (!walletClient) return null;
+    const provider = new ethers.BrowserProvider(window.ethereum as any);
+    return provider.getSigner();
+  }, [walletClient]);
   
   // ============================================
   // PREVIEW FUNCTIONS
@@ -64,6 +77,7 @@ export function useEagleComposer() {
   const previewDeposit = useCallback(async (
     wlfiAmount: bigint
   ): Promise<ComposerPreview | null> => {
+    const provider = getProvider();
     if (!provider || wlfiAmount === 0n) return null;
     
     try {
@@ -86,7 +100,7 @@ export function useEagleComposer() {
       setError(err.message);
       return null;
     }
-  }, [provider]);
+  }, [getProvider]);
   
   /**
    * Preview redeem: EAGLE → WLFI
@@ -94,6 +108,7 @@ export function useEagleComposer() {
   const previewRedeem = useCallback(async (
     eagleAmount: bigint
   ): Promise<ComposerPreview | null> => {
+    const provider = getProvider();
     if (!provider || eagleAmount === 0n) return null;
     
     try {
@@ -116,7 +131,7 @@ export function useEagleComposer() {
       setError(err.message);
       return null;
     }
-  }, [provider]);
+  }, [getProvider]);
   
   // ============================================
   // DEPOSIT: WLFI → EAGLE
@@ -131,7 +146,7 @@ export function useEagleComposer() {
     onSuccess?: (tx: ComposerTransaction) => void,
     onError?: (error: string) => void
   ): Promise<ComposerTransaction | null> => {
-    if (!signer || !address) {
+    if (!address) {
       const err = 'Wallet not connected';
       setError(err);
       onError?.(err);
@@ -142,6 +157,11 @@ export function useEagleComposer() {
     setError(null);
     
     try {
+      const signer = await getSigner();
+      if (!signer) {
+        throw new Error('Failed to get signer');
+      }
+      
       const composer = new Contract(ADDRESSES.COMPOSER, COMPOSER_ABI, signer);
       const wlfi = new Contract(ADDRESSES.WLFI, ERC20_ABI, signer);
       
@@ -193,7 +213,7 @@ export function useEagleComposer() {
       setLoading(false);
       return null;
     }
-  }, [signer, address]);
+  }, [getSigner, address]);
   
   // ============================================
   // REDEEM: EAGLE → WLFI
@@ -208,7 +228,7 @@ export function useEagleComposer() {
     onSuccess?: (tx: ComposerTransaction) => void,
     onError?: (error: string) => void
   ): Promise<ComposerTransaction | null> => {
-    if (!signer || !address) {
+    if (!address) {
       const err = 'Wallet not connected';
       setError(err);
       onError?.(err);
@@ -219,6 +239,11 @@ export function useEagleComposer() {
     setError(null);
     
     try {
+      const signer = await getSigner();
+      if (!signer) {
+        throw new Error('Failed to get signer');
+      }
+      
       const composer = new Contract(ADDRESSES.COMPOSER, COMPOSER_ABI, signer);
       const eagle = new Contract(ADDRESSES.EAGLE, ERC20_ABI, signer);
       
@@ -270,7 +295,7 @@ export function useEagleComposer() {
       setLoading(false);
       return null;
     }
-  }, [signer, address]);
+  }, [getSigner, address]);
   
   // ============================================
   // BALANCES
@@ -280,6 +305,7 @@ export function useEagleComposer() {
    * Get user balances
    */
   const getBalances = useCallback(async () => {
+    const provider = getProvider();
     if (!provider || !address) return { wlfi: 0n, eagle: 0n };
     
     try {
@@ -299,7 +325,7 @@ export function useEagleComposer() {
       console.error('Failed to get balances:', err);
       return { wlfi: 0n, eagle: 0n };
     }
-  }, [provider, address]);
+  }, [getProvider, address]);
   
   return {
     // Functions
