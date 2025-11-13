@@ -8,10 +8,16 @@ export const CONTRACTS = {
   VAULT: '0x47b3ef629D9cB8DFcF8A6c61058338f4e99d7953',       // EagleOVault (Vanity) ✅
   OFT: '0x474eD38C256A7FA0f3B8c48496CE1102ab0eA91E',         // EagleShareOFT (Premium Vanity) ✨✅
   WRAPPER: '0x47dAc5063c526dBc6f157093DD1D62d9DE8891c5',     // EagleVaultWrapper (Vanity) ✅
-  STRATEGY: '0x47B2659747d6A7E00c8251c3C3f7e92625a8cf6f',    // CharmStrategyUSD1 (Vanity) ✅
+  
+  // Strategy Contracts
+  STRATEGY_USD1: '0x47B2659747d6A7E00c8251c3C3f7e92625a8cf6f',  // CharmStrategyUSD1 (50% allocation) ✅
+  STRATEGY_WETH: '0x997feaa69a60c536F8449F0D5Adf997fD83aDf39',  // CharmStrategyWETH (50% allocation) ✅
+  STRATEGY: '0x47B2659747d6A7E00c8251c3C3f7e92625a8cf6f',    // Legacy - points to USD1 strategy
   
   // External Contracts
-  CHARM_VAULT: '0x22828Dbf15f5FBa2394Ba7Cf8fA9A96BdB444B71', // Charm USD1/WLFI Vault
+  CHARM_VAULT_USD1: '0x22828Dbf15f5FBa2394Ba7Cf8fA9A96BdB444B71', // Charm USD1/WLFI Vault
+  CHARM_VAULT_WETH: '0x3314e248F3F752Cd16939773D83bEb3a362F0AEF', // Charm WETH/WLFI Vault
+  CHARM_VAULT: '0x22828Dbf15f5FBa2394Ba7Cf8fA9A96BdB444B71', // Legacy - points to USD1 vault
   UNISWAP_V3_POOL: '0x4637Ea6eCf7E16C99E67E941ab4d7d52eAc7c73d', // Uniswap V3 1% Fee Tier USD1/WLFI Pool
   
   // Uniswap V4 (EAGLE/ETH Pool - Coming Soon)

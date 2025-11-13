@@ -596,20 +596,39 @@ export default function VaultView({ provider, account, onToast, onNavigateUp, on
       vaultLiquidWLFI = formatEther(vaultWlfiBal);
       vaultLiquidUSD1 = formatEther(vaultUsd1Bal);
       
-      // Get strategy balances from getTotalAmounts() which accounts for Charm LP position
+      // Get strategy balances from BOTH strategies
+      // USD1 Strategy: getTotalAmounts() returns (wlfiAmount, usd1Amount)
       try {
-        const strategy = new Contract(
-          CONTRACTS.STRATEGY,
+        const usd1Strategy = new Contract(
+          CONTRACTS.STRATEGY_USD1,
           ['function getTotalAmounts() external view returns (uint256 wlfiAmount, uint256 usd1Amount)'],
           provider
         );
-        const [strategyWlfiBal, strategyUsd1Bal] = await strategy.getTotalAmounts();
-        strategyWLFI = formatEther(strategyWlfiBal);
-        strategyUSD1 = formatEther(strategyUsd1Bal);
+        const [usd1Wlfi, usd1Amount] = await usd1Strategy.getTotalAmounts();
+        // For USD1 strategy display, show total USD1 + WLFI in USD1 terms
+        const usd1Total = Number(formatEther(usd1Amount)) + Number(formatEther(usd1Wlfi));
+        strategyUSD1 = usd1Total.toFixed(2);
       } catch (error) {
-        console.error('Error fetching strategy balances:', error);
-        strategyWLFI = '0';
+        console.error('Error fetching USD1 strategy balances:', error);
         strategyUSD1 = '0';
+      }
+      
+      // WETH Strategy: getTotalAmounts() returns (wethAmount, wlfiAmount)
+      try {
+        const wethStrategy = new Contract(
+          CONTRACTS.STRATEGY_WETH,
+          ['function getTotalAmounts() external view returns (uint256 wethAmount, uint256 wlfiAmount)'],
+          provider
+        );
+        const [wethAmount, wlfiAmount] = await wethStrategy.getTotalAmounts();
+        // For WETH strategy display, show WETH + WLFI in WLFI terms (approximate)
+        // Or we can convert WETH to USD and add both values
+        const wlfiTotal = Number(formatEther(wlfiAmount));
+        const wethTotal = Number(formatEther(wethAmount));
+        strategyWLFI = (wlfiTotal + wethTotal * 3500).toFixed(2); // Rough WETH->WLFI conversion for display
+      } catch (error) {
+        console.error('Error fetching WETH strategy balances:', error);
+        strategyWLFI = '0';
       }
 
       const liquidTotal = (Number(vaultLiquidWLFI) + Number(vaultLiquidUSD1)).toFixed(2);
@@ -802,18 +821,37 @@ export default function VaultView({ provider, account, onToast, onNavigateUp, on
           usd1.balanceOf(CONTRACTS.VAULT),
         ]);
         
-        // Get strategy balances from getTotalAmounts()
+        // Get strategy balances from BOTH strategies
         let strategyWlfiBal = 0n;
         let strategyUsd1Bal = 0n;
+        let strategyWethBal = 0n;
+        
         try {
-          const strategy = new Contract(
-            CONTRACTS.STRATEGY,
+          // USD1 Strategy
+          const usd1Strategy = new Contract(
+            CONTRACTS.STRATEGY_USD1,
             ['function getTotalAmounts() external view returns (uint256 wlfiAmount, uint256 usd1Amount)'],
             provider
           );
-          [strategyWlfiBal, strategyUsd1Bal] = await strategy.getTotalAmounts();
+          const [usd1Wlfi, usd1Amount] = await usd1Strategy.getTotalAmounts();
+          strategyWlfiBal = usd1Wlfi;
+          strategyUsd1Bal = usd1Amount;
         } catch (error) {
-          console.error('Error fetching strategy balances for withdrawal calc:', error);
+          console.error('Error fetching USD1 strategy balances for withdrawal calc:', error);
+        }
+        
+        try {
+          // WETH Strategy
+          const wethStrategy = new Contract(
+            CONTRACTS.STRATEGY_WETH,
+            ['function getTotalAmounts() external view returns (uint256 wethAmount, uint256 wlfiAmount)'],
+            provider
+          );
+          const [wethAmount, wlfiAmount] = await wethStrategy.getTotalAmounts();
+          strategyWlfiBal = strategyWlfiBal + wlfiAmount; // Add WLFI from both strategies
+          strategyWethBal = wethAmount;
+        } catch (error) {
+          console.error('Error fetching WETH strategy balances for withdrawal calc:', error);
         }
         
         const supply = Number(formatEther(totalSupply));
@@ -902,18 +940,35 @@ export default function VaultView({ provider, account, onToast, onNavigateUp, on
       const supply = Number(formatEther(totalSupply));
       // const assets = Number(formatEther(totalAssets)); // For potential future use
       
-      // Get strategy balances from getTotalAmounts()
+      // Get strategy balances from BOTH strategies
       let strategyWlfiBal = 0n;
       let strategyUsd1Bal = 0n;
+      
       try {
-        const strategy = new Contract(
-          CONTRACTS.STRATEGY,
+        // USD1 Strategy
+        const usd1Strategy = new Contract(
+          CONTRACTS.STRATEGY_USD1,
           ['function getTotalAmounts() external view returns (uint256 wlfiAmount, uint256 usd1Amount)'],
           provider
         );
-        [strategyWlfiBal, strategyUsd1Bal] = await strategy.getTotalAmounts();
+        const [usd1Wlfi, usd1Amount] = await usd1Strategy.getTotalAmounts();
+        strategyWlfiBal = usd1Wlfi;
+        strategyUsd1Bal = usd1Amount;
       } catch (error) {
-        console.error('Error fetching strategy balances for withdraw:', error);
+        console.error('Error fetching USD1 strategy balances for withdraw:', error);
+      }
+      
+      try {
+        // WETH Strategy
+        const wethStrategy = new Contract(
+          CONTRACTS.STRATEGY_WETH,
+          ['function getTotalAmounts() external view returns (uint256 wethAmount, uint256 wlfiAmount)'],
+          provider
+        );
+        const [wethAmount, wlfiAmount] = await wethStrategy.getTotalAmounts();
+        strategyWlfiBal = strategyWlfiBal + wlfiAmount; // Add WLFI from both strategies
+      } catch (error) {
+        console.error('Error fetching WETH strategy balances for withdraw:', error);
       }
       
       const strategyWlfi = Number(formatEther(strategyWlfiBal));
