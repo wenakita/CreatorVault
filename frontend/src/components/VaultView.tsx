@@ -613,22 +613,31 @@ export default function VaultView({ provider, account, onToast, onNavigateUp, on
         strategyUSD1 = '0';
       }
       
-      // WETH Strategy: getTotalAmounts() returns (wethAmount, wlfiAmount)
+      // WETH Strategy: getTotalAmounts() returns (wlfiAmount, usd1Amount)
+      // Note: This may revert if Chainlink oracles are stale
       try {
         const wethStrategy = new Contract(
           CONTRACTS.STRATEGY_WETH,
-          ['function getTotalAmounts() external view returns (uint256 wethAmount, uint256 wlfiAmount)'],
+          ['function getTotalAmounts() external view returns (uint256 wlfiAmount, uint256 usd1Amount)'],
           provider
         );
-        const [wethAmount, wlfiAmount] = await wethStrategy.getTotalAmounts();
-        // For WETH strategy display, show WETH + WLFI in WLFI terms (approximate)
-        // Or we can convert WETH to USD and add both values
-        const wlfiTotal = Number(formatEther(wlfiAmount));
-        const wethTotal = Number(formatEther(wethAmount));
-        strategyWLFI = (wlfiTotal + wethTotal * 3500).toFixed(2); // Rough WETH->WLFI conversion for display
-      } catch (error) {
-        console.error('Error fetching WETH strategy balances:', error);
-        strategyWLFI = '0';
+        const [wlfiAmount, usd1Equivalent] = await wethStrategy.getTotalAmounts();
+        // For WETH strategy display, show the deployed WLFI + USD1 equivalent
+        strategyWLFI = (Number(formatEther(wlfiAmount)) + Number(formatEther(usd1Equivalent))).toFixed(2);
+      } catch (error: any) {
+        console.warn('WETH strategy getTotalAmounts() failed (likely stale oracle):', error?.reason || error?.message || error);
+        // Fallback: Get WLFI balance directly from the strategy
+        try {
+          const wlfi = new Contract(
+            CONTRACTS.WLFI,
+            ['function balanceOf(address) external view returns (uint256)'],
+            provider
+          );
+          const strategyWlfiBalance = await wlfi.balanceOf(CONTRACTS.STRATEGY_WETH);
+          strategyWLFI = Number(formatEther(strategyWlfiBalance)).toFixed(2);
+        } catch {
+          strategyWLFI = '0';
+        }
       }
 
       const liquidTotal = (Number(vaultLiquidWLFI) + Number(vaultLiquidUSD1)).toFixed(2);
@@ -841,17 +850,22 @@ export default function VaultView({ provider, account, onToast, onNavigateUp, on
         }
         
         try {
-          // WETH Strategy
+          // WETH Strategy - may fail if oracles are stale
           const wethStrategy = new Contract(
             CONTRACTS.STRATEGY_WETH,
-            ['function getTotalAmounts() external view returns (uint256 wethAmount, uint256 wlfiAmount)'],
+            ['function getTotalAmounts() external view returns (uint256 wlfiAmount, uint256 usd1Amount)'],
             provider
           );
-          const [wethAmount, wlfiAmount] = await wethStrategy.getTotalAmounts();
+          const [wlfiAmount] = await wethStrategy.getTotalAmounts();
           strategyWlfiBal = strategyWlfiBal + wlfiAmount; // Add WLFI from both strategies
-          strategyWethBal = wethAmount;
-        } catch (error) {
-          console.error('Error fetching WETH strategy balances for withdrawal calc:', error);
+        } catch (error: any) {
+          console.warn('WETH strategy getTotalAmounts() failed in withdrawal calc:', error?.reason || error?.message);
+          // Fallback: Use WLFI balance of strategy contract
+          try {
+            const wlfi = new Contract(CONTRACTS.WLFI, ['function balanceOf(address) external view returns (uint256)'], provider);
+            const wlfiBal = await wlfi.balanceOf(CONTRACTS.STRATEGY_WETH);
+            strategyWlfiBal = strategyWlfiBal + wlfiBal;
+          } catch {}
         }
         
         const supply = Number(formatEther(totalSupply));
@@ -959,16 +973,22 @@ export default function VaultView({ provider, account, onToast, onNavigateUp, on
       }
       
       try {
-        // WETH Strategy
+        // WETH Strategy - may fail if oracles are stale
         const wethStrategy = new Contract(
           CONTRACTS.STRATEGY_WETH,
-          ['function getTotalAmounts() external view returns (uint256 wethAmount, uint256 wlfiAmount)'],
+          ['function getTotalAmounts() external view returns (uint256 wlfiAmount, uint256 usd1Amount)'],
           provider
         );
-        const [wethAmount, wlfiAmount] = await wethStrategy.getTotalAmounts();
+        const [wlfiAmount] = await wethStrategy.getTotalAmounts();
         strategyWlfiBal = strategyWlfiBal + wlfiAmount; // Add WLFI from both strategies
-      } catch (error) {
-        console.error('Error fetching WETH strategy balances for withdraw:', error);
+      } catch (error: any) {
+        console.warn('WETH strategy getTotalAmounts() failed in withdraw:', error?.reason || error?.message);
+        // Fallback: Use WLFI balance of strategy contract
+        try {
+          const wlfi = new Contract(CONTRACTS.WLFI, ['function balanceOf(address) external view returns (uint256)'], provider);
+          const wlfiBal = await wlfi.balanceOf(CONTRACTS.STRATEGY_WETH);
+          strategyWlfiBal = strategyWlfiBal + wlfiBal;
+        } catch {}
       }
       
       const strategyWlfi = Number(formatEther(strategyWlfiBal));
