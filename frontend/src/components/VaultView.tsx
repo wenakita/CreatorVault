@@ -22,73 +22,90 @@ function StrategyRow({ strategy, wlfiPrice, revertData }: { strategy: any; wlfiP
 
   return (
     <div className={`
-      group relative rounded-2xl overflow-hidden transition-all duration-300
+      group relative rounded-3xl overflow-hidden transition-all duration-500 transform
       ${strategy.status === 'active' 
-        ? 'bg-gradient-to-br from-white to-gray-50 dark:from-zinc-800 dark:via-zinc-900 dark:to-black border border-yellow-400/40 dark:border-yellow-500/30 shadow-neo-raised dark:shadow-[0_4px_20px_rgba(234,179,8,0.15),inset_0_1px_0_rgba(255,255,255,0.1)] hover:border-yellow-500/60 dark:hover:border-yellow-500/40 hover:shadow-neo-raised-lift dark:hover:shadow-[0_8px_30px_rgba(234,179,8,0.25),inset_0_1px_0_rgba(255,255,255,0.15)]' 
-        : 'bg-gradient-to-br from-gray-100 to-gray-200 dark:from-zinc-800 dark:via-zinc-900 dark:to-black border border-gray-300/50 dark:border-zinc-700/50 shadow-neo-raised dark:shadow-[0_2px_10px_rgba(0,0,0,0.5),inset_0_1px_0_rgba(255,255,255,0.05)] hover:border-gray-400/70 dark:hover:border-zinc-600'
+        ? 'bg-gradient-to-br from-white via-yellow-50/30 to-amber-50/50 dark:from-zinc-900 dark:via-yellow-900/10 dark:to-amber-900/10 border-2 border-yellow-400/60 dark:border-yellow-500/40 shadow-neo-raised dark:shadow-[0_8px_30px_rgba(234,179,8,0.2),inset_0_2px_0_rgba(255,255,255,0.1)] hover:shadow-neo-raised-lift dark:hover:shadow-[0_12px_40px_rgba(234,179,8,0.3),inset_0_2px_0_rgba(255,255,255,0.15)] hover:scale-[1.02]' 
+        : 'bg-gradient-to-br from-gray-100 to-gray-200 dark:from-zinc-800 dark:to-zinc-900 border-2 border-gray-300/50 dark:border-zinc-700/50 shadow-neo-inset dark:shadow-[inset_0_2px_8px_rgba(0,0,0,0.3)] hover:border-gray-400/70 dark:hover:border-zinc-600 opacity-60'
       }
     `}>
       {/* Header - Always Visible */}
       <button
         onClick={() => setIsExpanded(!isExpanded)}
-        className="w-full px-3 sm:px-6 lg:px-8 py-3 sm:py-4 lg:py-5 transition-all duration-300 hover:bg-gray-100/50 dark:hover:bg-white/5"
+        className="w-full px-4 sm:px-6 lg:px-8 py-4 sm:py-5 lg:py-6 transition-all duration-300"
       >
         <div className="flex flex-wrap sm:flex-nowrap items-center gap-3 sm:gap-4 lg:gap-6">
           {/* Strategy Number Badge */}
           <div className={`
-            px-4 py-1.5 rounded-lg text-xs font-bold tracking-wider shrink-0
+            relative px-5 py-2 rounded-xl text-sm font-black tracking-wider shrink-0 transition-all duration-300
             ${strategy.status === 'active'
-              ? 'bg-gradient-to-br from-yellow-500 via-yellow-400 to-yellow-600 dark:from-yellow-600 dark:via-yellow-500 dark:to-amber-600 text-gray-900 dark:text-white shadow-neo-raised dark:shadow-[0_2px_8px_rgba(234,179,8,0.4),inset_0_1px_0_rgba(255,255,255,0.3)]'
-              : 'bg-gradient-to-br from-gray-300 to-gray-400 dark:from-zinc-700 dark:via-zinc-800 dark:to-zinc-900 text-gray-700 dark:text-zinc-400 border border-gray-400/50 dark:border-zinc-600/30 shadow-neo-inset dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.05)]'
+              ? 'bg-gradient-to-br from-yellow-400 via-yellow-500 to-amber-600 dark:from-yellow-500 dark:via-yellow-600 dark:to-amber-700 text-white shadow-[0_4px_12px_rgba(234,179,8,0.4),inset_0_2px_0_rgba(255,255,255,0.3)] group-hover:shadow-[0_6px_16px_rgba(234,179,8,0.6),inset_0_2px_0_rgba(255,255,255,0.4)] group-hover:scale-110'
+              : 'bg-gradient-to-br from-gray-300 to-gray-400 dark:from-zinc-700 dark:to-zinc-800 text-gray-600 dark:text-zinc-400 shadow-neo-inset'
             }
           `}>
-            #{strategy.id}
+            <span className="relative z-10">#{strategy.id}</span>
+            {strategy.status === 'active' && (
+              <div className="absolute inset-0 rounded-xl bg-gradient-to-br from-white/20 to-transparent"></div>
+            )}
           </div>
           
           {/* Status Indicator */}
           {strategy.status === 'active' ? (
-            <div className="flex items-center gap-2 shrink-0">
+            <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-green-500/20 dark:bg-green-500/10 border border-green-400/30 dark:border-green-500/20 shrink-0 shadow-neo-inset">
               <div className="relative">
-                <div className="w-2 h-2 bg-green-400 rounded-full"></div>
-                <div className="absolute inset-0 w-2 h-2 bg-green-400 rounded-full animate-ping"></div>
+                <div className="w-2.5 h-2.5 bg-green-500 rounded-full shadow-[0_0_8px_rgba(34,197,94,0.6)]"></div>
+                <div className="absolute inset-0 w-2.5 h-2.5 bg-green-400 rounded-full animate-ping"></div>
               </div>
-              <span className="text-xs text-green-400 font-medium uppercase tracking-wide">Live</span>
+              <span className="text-xs text-green-600 dark:text-green-400 font-bold uppercase tracking-wider">Active</span>
             </div>
           ) : (
-            <div className="flex items-center gap-2 shrink-0">
-              <div className="w-2 h-2 bg-gray-500 rounded-full"></div>
-              <span className="text-xs text-gray-500 font-medium uppercase tracking-wide">Pending</span>
+            <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-gray-400/20 dark:bg-gray-600/10 border border-gray-400/30 dark:border-gray-600/20 shrink-0">
+              <div className="w-2.5 h-2.5 bg-gray-500 dark:bg-gray-600 rounded-full"></div>
+              <span className="text-xs text-gray-600 dark:text-gray-500 font-bold uppercase tracking-wider">Soon</span>
             </div>
           )}
           
-          {/* Protocol Logos & Info - NEW */}
-          {strategy.id === 1 && strategy.status === 'active' && (
-            <div className="flex items-center gap-2 sm:gap-3 flex-1 min-w-0">
-              {/* Logos */}
-              <div className="flex items-center -space-x-1 sm:-space-x-2 shrink-0">
-                <UniswapBadge className="!w-6 !h-6 sm:!w-8 sm:!h-8 ring-2 ring-white dark:ring-zinc-800" />
-                <CharmBadge className="!w-6 !h-6 sm:!w-8 sm:!h-8 ring-2 ring-white dark:ring-zinc-800" />
+          {/* Protocol Badges & Info */}
+          {strategy.status === 'active' && (
+            <div className="flex items-center gap-3 sm:gap-4 flex-1 min-w-0">
+              {/* Protocol Logos Stack */}
+              <div className="flex items-center shrink-0">
+                <div className="relative">
+                  <UniswapBadge className="!w-10 !h-10 sm:!w-12 sm:!h-12 ring-3 ring-white dark:ring-zinc-900 shadow-neo-raised transition-transform group-hover:scale-110" />
+                  <div className="absolute -bottom-1 -right-1 w-5 h-5 sm:w-6 sm:h-6 bg-white dark:bg-zinc-900 rounded-full flex items-center justify-center ring-2 ring-white dark:ring-zinc-900">
+                    <CharmBadge className="!w-4 !h-4 sm:!w-5 sm:!h-5" />
+                  </div>
+                </div>
               </div>
               
               {/* Pool Info */}
-              <div className="text-left min-w-0">
-                <h4 className="text-gray-900 dark:text-white font-semibold text-sm sm:text-base group-hover:text-yellow-600 dark:group-hover:text-yellow-400 transition-colors">
-                  Uniswap V3 LP
+              <div className="text-left min-w-0 flex-1">
+                <h4 className="text-gray-900 dark:text-white font-bold text-base sm:text-lg mb-0.5 group-hover:text-yellow-600 dark:group-hover:text-yellow-400 transition-colors truncate">
+                  {strategy.name}
                 </h4>
-                <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 font-mono truncate">
-                  USD1/WLFI • 1% Fee
-                </p>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 font-medium">
+                    {strategy.pool}
+                  </span>
+                  {strategy.feeTier && (
+                    <>
+                      <span className="text-gray-400 dark:text-gray-600">•</span>
+                      <span className="px-2 py-0.5 rounded-md bg-blue-500/10 dark:bg-blue-500/20 text-blue-600 dark:text-blue-400 text-xs font-bold border border-blue-500/20">
+                        {strategy.feeTier} Fee
+                      </span>
+                    </>
+                  )}
+                </div>
               </div>
             </div>
           )}
 
-          {/* Fallback for other strategies */}
-          {(strategy.id !== 1 || strategy.status !== 'active') && (
+          {/* Coming Soon Strategies */}
+          {strategy.status !== 'active' && (
             <div className="flex-1 text-left min-w-0">
-              <h4 className="text-gray-900 dark:text-white font-semibold text-base sm:text-lg mb-0.5 group-hover:text-yellow-600 dark:group-hover:text-yellow-400 transition-colors truncate">
+              <h4 className="text-gray-700 dark:text-gray-400 font-bold text-base sm:text-lg mb-0.5 truncate">
                 {strategy.name}
               </h4>
-              <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 truncate">{strategy.protocol}</p>
+              <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-500 truncate">{strategy.protocol}</p>
             </div>
           )}
           
@@ -152,29 +169,42 @@ function StrategyRow({ strategy, wlfiPrice, revertData }: { strategy: any; wlfiP
             </div>
           )}
           
-          {/* Allocation */}
-          {strategy.allocation && (
-            <div className="text-right shrink-0 mr-4">
-              <div className="text-2xl font-bold text-yellow-600 dark:text-yellow-400">{strategy.allocation}</div>
-              <div className="text-xs text-gray-600 dark:text-gray-500 uppercase tracking-wider">Allocated</div>
+          {/* Allocation Badge */}
+          {strategy.allocation && strategy.status === 'active' && (
+            <div className="relative shrink-0 mr-2">
+              <div className="px-4 py-2 rounded-xl bg-gradient-to-br from-yellow-400 via-yellow-500 to-amber-500 dark:from-yellow-500 dark:via-yellow-600 dark:to-amber-600 shadow-neo-raised border-2 border-yellow-300/50 dark:border-yellow-400/30">
+                <div className="text-center">
+                  <div className="text-2xl font-black text-white leading-none mb-0.5 drop-shadow-md">{strategy.allocation}</div>
+                  <div className="text-[9px] text-yellow-100 dark:text-yellow-200 font-bold uppercase tracking-widest">Weight</div>
+                </div>
+              </div>
             </div>
           )}
           
-          {/* Expand Arrow */}
+          {/* Expand Button - Neumorphic */}
           <div className={`
-            w-10 h-10 rounded-lg flex items-center justify-center transition-all duration-300 shrink-0
-            bg-gradient-to-br from-gray-200 to-gray-300 dark:from-zinc-700 dark:via-zinc-800 dark:to-zinc-900 
-            border border-gray-300/50 dark:border-zinc-600/30 shadow-neo-inset dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.05),0_2px_4px_rgba(0,0,0,0.3)]
-            group-hover:border-gray-400/70 dark:group-hover:border-zinc-500/50 group-hover:shadow-neo-pressed dark:group-hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.1),0_2px_8px_rgba(0,0,0,0.4)]
-            ${isExpanded ? 'rotate-180' : ''}
+            relative w-12 h-12 rounded-2xl flex items-center justify-center transition-all duration-500 shrink-0
+            ${strategy.status === 'active'
+              ? 'bg-gradient-to-br from-yellow-100 to-yellow-200 dark:from-yellow-900/30 dark:to-amber-900/30 border-2 border-yellow-300/50 dark:border-yellow-600/30 shadow-neo-inset group-hover:shadow-neo-pressed'
+              : 'bg-gradient-to-br from-gray-200 to-gray-300 dark:from-zinc-700 dark:to-zinc-800 border-2 border-gray-300/50 dark:border-zinc-600/30 shadow-neo-inset'
+            }
+            ${isExpanded ? 'shadow-neo-pressed' : ''}
           `}>
             <svg 
-              className="w-5 h-5 text-gray-600 dark:text-zinc-400 group-hover:text-yellow-600 dark:group-hover:text-yellow-400 transition-colors"
+              className={`
+                w-6 h-6 transition-all duration-500
+                ${strategy.status === 'active'
+                  ? 'text-yellow-600 dark:text-yellow-400 group-hover:text-yellow-700 dark:group-hover:text-yellow-300'
+                  : 'text-gray-600 dark:text-zinc-400'
+                }
+                ${isExpanded ? 'rotate-180' : ''}
+              `}
               fill="none" 
               stroke="currentColor" 
               viewBox="0 0 24 24"
+              strokeWidth={3}
             >
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19 9l-7 7-7-7" />
+              <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
             </svg>
           </div>
         </div>
@@ -182,7 +212,13 @@ function StrategyRow({ strategy, wlfiPrice, revertData }: { strategy: any; wlfiP
 
       {/* Expanded Content */}
       {isExpanded && (
-        <div className="px-8 pb-6 pt-4 border-t border-gray-300/50 dark:border-zinc-700/50 bg-gradient-to-b from-gray-50/60 to-gray-100/80 dark:from-black/40 dark:to-black/60 animate-fadeIn">
+        <div className={`
+          px-6 sm:px-8 pb-6 sm:pb-8 pt-6 border-t-2 animate-fadeIn
+          ${strategy.status === 'active'
+            ? 'border-yellow-300/40 dark:border-yellow-600/20 bg-gradient-to-b from-yellow-50/40 via-amber-50/30 to-white/50 dark:from-yellow-900/5 dark:via-amber-900/5 dark:to-black/20'
+            : 'border-gray-300/40 dark:border-zinc-700/30 bg-gradient-to-b from-gray-100/60 to-gray-200/40 dark:from-zinc-800/40 dark:to-zinc-900/60'
+          }
+        `}>
           {/* 3D Visualization for Strategy 1 */}
           {strategy.id === 1 && wlfiPrice && (
             <div className="mb-6">
@@ -259,57 +295,72 @@ function StrategyRow({ strategy, wlfiPrice, revertData }: { strategy: any; wlfiP
               </div>
 
               {strategy.contract && (
-                <div className="space-y-3 mt-4">
-                  {/* Strategy Contract */}
-                  <div className="bg-white/50 dark:bg-gray-800/50 rounded-lg p-4 border border-gray-200/50 dark:border-gray-700/50">
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs text-gray-600 dark:text-gray-400 font-medium">Strategy Contract</span>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-6">
+                  {/* Strategy Contract Card */}
+                  <div className="group rounded-2xl bg-gradient-to-br from-white to-gray-50 dark:from-zinc-800 dark:to-zinc-900 p-5 border-2 border-gray-200/50 dark:border-zinc-700/30 shadow-neo-raised hover:shadow-neo-raised-lift transition-all duration-300">
+                    <div className="flex items-center gap-2 mb-3">
+                      <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center shadow-neo-raised">
+                        <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                        </svg>
+                      </div>
+                      <span className="text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider">Strategy Contract</span>
+                    </div>
+                    <a 
+                      href={`https://etherscan.io/address/${strategy.contract}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-2 text-yellow-600 dark:text-yellow-400 hover:text-yellow-700 dark:hover:text-yellow-300 transition-colors group"
+                    >
+                      <code className="text-xs font-mono break-all font-semibold">
+                        {strategy.contract}
+                      </code>
+                      <svg className="w-4 h-4 flex-shrink-0 group-hover:translate-x-1 group-hover:-translate-y-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                      </svg>
+                    </a>
+                  </div>
+
+                  {/* Charm Vault Card (if exists) */}
+                  {strategy.charmVault && (
+                    <div className="group rounded-2xl bg-gradient-to-br from-white to-gray-50 dark:from-zinc-800 dark:to-zinc-900 p-5 border-2 border-gray-200/50 dark:border-zinc-700/30 shadow-neo-raised hover:shadow-neo-raised-lift transition-all duration-300">
+                      <div className="flex items-center gap-2 mb-3">
+                        <CharmBadge className="!w-8 !h-8 shadow-neo-raised" />
+                        <span className="text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider">Charm Vault</span>
+                      </div>
                       <a 
-                        href={`https://etherscan.io/address/${strategy.contract}`}
+                        href={`https://etherscan.io/address/${strategy.charmVault}`}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="flex items-center gap-2 text-yellow-600 dark:text-yellow-400 hover:text-yellow-700 dark:hover:text-yellow-300 transition-colors"
+                        className="flex items-center gap-2 text-yellow-600 dark:text-yellow-400 hover:text-yellow-700 dark:hover:text-yellow-300 transition-colors group"
                       >
-                        <code className="text-xs font-mono break-all">
-                          {strategy.contract}
+                        <code className="text-xs font-mono break-all font-semibold">
+                          {strategy.charmVault}
                         </code>
-                        <svg className="w-3 h-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <svg className="w-4 h-4 flex-shrink-0 group-hover:translate-x-1 group-hover:-translate-y-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
                         </svg>
                       </a>
                     </div>
-                  </div>
-
-                  {/* Charm Vault (if exists) */}
-                  {strategy.charmVault && (
-                    <div className="bg-white/50 dark:bg-gray-800/50 rounded-lg p-4 border border-gray-200/50 dark:border-gray-700/50">
-                      <div className="flex items-center justify-between">
-                        <span className="text-xs text-gray-600 dark:text-gray-400 font-medium">Charm Vault</span>
-                        <a 
-                          href={`https://etherscan.io/address/${strategy.charmVault}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="flex items-center gap-2 text-yellow-600 dark:text-yellow-400 hover:text-yellow-700 dark:hover:text-yellow-300 transition-colors"
-                        >
-                          <code className="text-xs font-mono break-all">
-                            {strategy.charmVault}
-                          </code>
-                          <svg className="w-3 h-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-                          </svg>
-                        </a>
-                      </div>
-                    </div>
                   )}
 
-                  {/* Deployed Amount (if exists) */}
+                  {/* Deployed Amount Card (if exists) - Full Width */}
                   {strategy.deployed !== undefined && (
-                    <div className="bg-gradient-to-br from-yellow-50 to-amber-50 dark:from-yellow-900/20 dark:to-amber-900/20 rounded-lg p-4 border border-yellow-200 dark:border-yellow-600/30">
+                    <div className="col-span-1 sm:col-span-2 rounded-2xl bg-gradient-to-br from-yellow-400/10 via-yellow-500/10 to-amber-500/10 dark:from-yellow-500/5 dark:via-yellow-600/5 dark:to-amber-600/5 p-5 border-2 border-yellow-400/30 dark:border-yellow-500/20 shadow-neo-inset backdrop-blur-sm">
                       <div className="flex items-center justify-between">
-                        <span className="text-xs text-gray-600 dark:text-gray-400 font-medium">Currently Deployed</span>
-                        <span className="text-lg font-bold text-yellow-700 dark:text-yellow-300">
-                          {Number(strategy.deployed).toFixed(2)} Tokens
-                        </span>
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-yellow-500 to-amber-600 flex items-center justify-center shadow-neo-raised">
+                            <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                          </div>
+                          <div>
+                            <div className="text-xs font-bold text-gray-600 dark:text-gray-400 uppercase tracking-wider mb-1">Currently Deployed</div>
+                            <div className="text-2xl font-black text-yellow-700 dark:text-yellow-300">
+                              {Number(strategy.deployed).toFixed(2)} <span className="text-lg text-gray-600 dark:text-gray-400">Tokens</span>
+                            </div>
+                          </div>
+                        </div>
                       </div>
                     </div>
                   )}
