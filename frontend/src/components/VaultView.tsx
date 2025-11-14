@@ -1687,36 +1687,21 @@ export default function VaultView({ provider, account, onToast, onNavigateUp, on
                         feeTier: '1%',
                         allocation: '50%',
                         status: 'active',
-                        description: 'Actively managed concentrated liquidity position on Uniswap V3, optimized for the WETH/WLFI 1% fee tier pool.',
+                        description: 'Actively managed concentrated liquidity position on Uniswap V3, optimized for the WETH/WLFI 1% fee tier pool. Features 24-hour oracle support for stable operations.',
                         analytics: 'https://alpha.charm.fi/vault/1/0x3314e248F3F752Cd16939773D83bEb3a362F0AEF',
-                        contract: '0x997feaa69a60c536F8449F0D5Adf997fD83aDf39',
+                        contract: '0x5c525Af4153B1c43f9C06c31D32a84637c617FfE',
                         charmVault: '0x3314e248F3F752Cd16939773D83bEb3a362F0AEF',
                         deployed: data.strategyWLFI,
-                        wethAmount: data.strategyWETH // Add WETH amount for display
+                        wethAmount: data.strategyWETH, // Add WETH amount for display
+                        wlfiAmount: data.strategyWLFIinPool // Add WLFI in pool for display
                       },
                       {
                         id: 3,
-                        name: 'Strategy 3',
-                        protocol: 'TBD',
-                        description: 'Additional yield strategy coming soon. Protocol and implementation details to be announced.',
+                        name: 'Additional Strategies',
+                        protocol: 'Coming Soon',
+                        description: 'More yield optimization strategies are in development. Stay tuned for announcements about additional DeFi integrations and liquidity opportunities.',
                         status: 'coming-soon',
-                        allocation: '0%'
-                      },
-                      {
-                        id: 4,
-                        name: 'Strategy 4',
-                        protocol: 'TBD',
-                        description: 'Additional yield strategy coming soon. Protocol and implementation details to be announced.',
-                        status: 'coming-soon',
-                        allocation: '0%'
-                      },
-                      {
-                        id: 5,
-                        name: 'Strategy 5',
-                        protocol: 'TBD',
-                        description: 'Additional yield strategy coming soon. Protocol and implementation details to be announced.',
-                        status: 'coming-soon',
-                        allocation: '0%'
+                        allocation: 'TBD'
                       }
                     ].map((strategy) => (
                       <StrategyRow 
