@@ -70,6 +70,17 @@ export default function AssetAllocationSunburst({
   useEffect(() => {
     if (!svgRef.current) return;
     
+    // Initialize tooltip with D3
+    const tooltip = d3.select('#tooltip');
+    tooltip
+      .style('position', 'fixed')
+      .style('opacity', '0')
+      .style('left', '-9999px')
+      .style('top', '-9999px')
+      .style('pointer-events', 'none')
+      .style('z-index', '1000')
+      .style('transition', 'opacity 0.2s ease');
+    
     // Clear previous
     d3.select(svgRef.current).selectAll('*').remove();
 
@@ -182,8 +193,6 @@ export default function AssetAllocationSunburst({
       .style('transition', 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)')
       .style('filter', 'drop-shadow(0 4px 6px rgba(0, 0, 0, 0.3))')
       .on('mouseenter', function(event, d) {
-        console.log('[Sunburst] Mouse entered slice:', d.data.name);
-        
         d3.select(this)
           .transition()
           .duration(300)
@@ -195,20 +204,10 @@ export default function AssetAllocationSunburst({
         // Show elegant tooltip with correct positioning
         const percentage = grandTotal > 0 ? ((d.value || 0) / grandTotal * 100).toFixed(1) : '0';
         
-        // Try both methods and log them
-        const pointerCoords = d3.pointer(event, document.body);
-        const clientCoords = [event.clientX, event.clientY];
-        console.log('[Sunburst] Pointer coords:', pointerCoords);
-        console.log('[Sunburst] Client coords:', clientCoords);
-        
-        // Use clientX/clientY for fixed positioning
-        const tooltip = d3.select('#tooltip');
-        console.log('[Sunburst] Tooltip element:', tooltip.node());
-        
-        tooltip
+        d3.select('#tooltip')
           .style('left', (event.clientX + 15) + 'px')
           .style('top', (event.clientY - 10) + 'px')
-          .style('opacity', 1)
+          .style('opacity', '1')
           .html(`
             <div style="
               background: linear-gradient(135deg, rgba(0,0,0,0.95) 0%, rgba(20,20,20,0.95) 100%);
@@ -249,7 +248,7 @@ export default function AssetAllocationSunburst({
         d3.select('#tooltip')
           .transition()
           .duration(200)
-          .style('opacity', 0)
+          .style('opacity', '0')
           .on('end', function() {
             // Move offscreen after fade out completes
             d3.select(this)
@@ -263,7 +262,7 @@ export default function AssetAllocationSunburst({
         
         // Hide tooltip immediately on click and move it offscreen
         d3.select('#tooltip')
-          .style('opacity', 0)
+          .style('opacity', '0')
           .style('left', '-9999px')
           .style('top', '-9999px');
         
@@ -348,18 +347,7 @@ export default function AssetAllocationSunburst({
           <div className="relative">
             <div className="absolute inset-0 bg-gradient-to-br from-[#F2D57C]/10 to-blue-500/10 rounded-full blur-2xl"></div>
             <svg ref={svgRef} className="relative drop-shadow-2xl"></svg>
-            <div 
-              id="tooltip" 
-              style={{ 
-                position: 'fixed', 
-                opacity: 0, 
-                left: '-9999px',
-                top: '-9999px',
-                pointerEvents: 'none',
-                zIndex: 1000,
-                transition: 'opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1)'
-              }}
-            />
+            <div id="tooltip" />
           </div>
           
           {/* Selected Section Info Card - Below Chart */}
