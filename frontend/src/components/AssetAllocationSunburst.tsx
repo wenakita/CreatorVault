@@ -190,14 +190,11 @@ export default function AssetAllocationSunburst({
           .attr('opacity', 1)
           .style('filter', 'drop-shadow(0 8px 16px rgba(0, 0, 0, 0.4)) drop-shadow(0 0 20px ' + (d.data.color || '#666') + '80)');
         
-        // Show elegant tooltip with correct positioning
+        // Show elegant tooltip with correct positioning using D3's pointer method
         const percentage = grandTotal > 0 ? ((d.value || 0) / grandTotal * 100).toFixed(1) : '0';
         
-        // Get mouse position - check for both native event and D3 event
-        const mouseX = event.clientX !== undefined ? event.clientX : (event as any).layerX || 0;
-        const mouseY = event.clientY !== undefined ? event.clientY : (event as any).layerY || 0;
-        
-        console.log('Tooltip position:', { mouseX, mouseY, event });
+        // Get mouse position relative to the body for fixed positioning
+        const [mouseX, mouseY] = d3.pointer(event, document.body);
         
         d3.select('#tooltip')
           .style('left', (mouseX + 15) + 'px')
@@ -226,9 +223,8 @@ export default function AssetAllocationSunburst({
           `);
       })
       .on('mousemove', function(event, d) {
-        // Update tooltip position as mouse moves (viewport coordinates for fixed positioning)
-        const mouseX = event.clientX !== undefined ? event.clientX : (event as any).layerX || 0;
-        const mouseY = event.clientY !== undefined ? event.clientY : (event as any).layerY || 0;
+        // Update tooltip position as mouse moves using D3's pointer method
+        const [mouseX, mouseY] = d3.pointer(event, document.body);
         
         d3.select('#tooltip')
           .style('left', (mouseX + 15) + 'px')
