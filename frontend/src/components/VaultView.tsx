@@ -1597,14 +1597,92 @@ export default function VaultView({ provider, account, onToast, onNavigateUp, on
                       {/* Assets Display */}
                       <div>
                         <div className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2">Assets</div>
-                        <div className="flex gap-2">
-                          <div className="flex-1 flex items-center gap-2 bg-gray-50 dark:bg-gray-900/30 rounded-lg px-3 py-2 border border-gray-200/50 dark:border-gray-700/30">
+                        <div className="space-y-2">
+                          {/* WLFI */}
+                          <div className="flex items-center gap-3 bg-gray-50 dark:bg-gray-900/30 rounded-lg px-3 py-2.5 border border-gray-200/50 dark:border-gray-700/30">
                             <img src={ICONS.WLFI} alt="WLFI" className="w-8 h-8 rounded-full flex-shrink-0" />
-                            <div className="text-sm font-bold text-gray-900 dark:text-white">WLFI</div>
+                            <div className="flex-1 min-w-0">
+                              <div className="text-sm font-bold text-gray-900 dark:text-white mb-0.5">WLFI</div>
+                              <a 
+                                href={`https://etherscan.io/token/${CONTRACTS.WLFI}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-[10px] text-gray-600 dark:text-gray-400 hover:text-[#A27D46] dark:hover:text-[#D4B474] font-mono transition-colors truncate block"
+                                title={CONTRACTS.WLFI}
+                              >
+                                {CONTRACTS.WLFI}
+                              </a>
+                            </div>
+                            <button
+                              onClick={() => {
+                                navigator.clipboard.writeText(CONTRACTS.WLFI);
+                                onToast({ message: 'WLFI address copied!', type: 'success' });
+                              }}
+                              className="shrink-0 p-1.5 rounded hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
+                              title="Copy address"
+                            >
+                              <svg className="w-3.5 h-3.5 text-gray-600 dark:text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                              </svg>
+                            </button>
                           </div>
-                          <div className="flex-1 flex items-center gap-2 bg-gray-50 dark:bg-gray-900/30 rounded-lg px-3 py-2 border border-gray-200/50 dark:border-gray-700/30">
+
+                          {/* USD1 */}
+                          <div className="flex items-center gap-3 bg-gray-50 dark:bg-gray-900/30 rounded-lg px-3 py-2.5 border border-gray-200/50 dark:border-gray-700/30">
                             <img src={ICONS.USD1} alt="USD1" className="w-8 h-8 rounded-full flex-shrink-0" />
-                            <div className="text-sm font-bold text-gray-900 dark:text-white">USD1</div>
+                            <div className="flex-1 min-w-0">
+                              <div className="text-sm font-bold text-gray-900 dark:text-white mb-0.5">USD1</div>
+                              <a 
+                                href={`https://etherscan.io/token/${CONTRACTS.USD1}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-[10px] text-gray-600 dark:text-gray-400 hover:text-[#A27D46] dark:hover:text-[#D4B474] font-mono transition-colors truncate block"
+                                title={CONTRACTS.USD1}
+                              >
+                                {CONTRACTS.USD1}
+                              </a>
+                            </div>
+                            <button
+                              onClick={() => {
+                                navigator.clipboard.writeText(CONTRACTS.USD1);
+                                onToast({ message: 'USD1 address copied!', type: 'success' });
+                              }}
+                              className="shrink-0 p-1.5 rounded hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
+                              title="Copy address"
+                            >
+                              <svg className="w-3.5 h-3.5 text-gray-600 dark:text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                              </svg>
+                            </button>
+                          </div>
+
+                          {/* WETH */}
+                          <div className="flex items-center gap-3 bg-gray-50 dark:bg-gray-900/30 rounded-lg px-3 py-2.5 border border-gray-200/50 dark:border-gray-700/30">
+                            <img src={ICONS.ETHEREUM} alt="WETH" className="w-8 h-8 rounded-full flex-shrink-0" />
+                            <div className="flex-1 min-w-0">
+                              <div className="text-sm font-bold text-gray-900 dark:text-white mb-0.5">WETH</div>
+                              <a 
+                                href={`https://etherscan.io/token/${CONTRACTS.WETH}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-[10px] text-gray-600 dark:text-gray-400 hover:text-[#A27D46] dark:hover:text-[#D4B474] font-mono transition-colors truncate block"
+                                title={CONTRACTS.WETH}
+                              >
+                                {CONTRACTS.WETH}
+                              </a>
+                            </div>
+                            <button
+                              onClick={() => {
+                                navigator.clipboard.writeText(CONTRACTS.WETH);
+                                onToast({ message: 'WETH address copied!', type: 'success' });
+                              }}
+                              className="shrink-0 p-1.5 rounded hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
+                              title="Copy address"
+                            >
+                              <svg className="w-3.5 h-3.5 text-gray-600 dark:text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                              </svg>
+                            </button>
                           </div>
                         </div>
                       </div>
