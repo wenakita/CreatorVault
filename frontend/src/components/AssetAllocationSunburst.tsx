@@ -109,7 +109,8 @@ export default function AssetAllocationSunburst({
           name: 'USD1/WLFI Strategy',
           color: '#6366f1', // Indigo (USD1 Strategy)
           children: [
-            { name: 'USD1/WLFI in Charm', value: strategyUSD1, color: '#818cf8' } // Total value in USD1 strategy
+            { name: 'USD1 in Charm', value: strategyUSD1InPool, color: '#818cf8' }, // Light indigo (USD1 already in USD)
+            { name: 'WLFI in Charm', value: strategyWLFIinUSD1Pool * 0.132, color: '#a5b4fc' } // Lighter indigo (WLFI to USD)
           ]
         },
         ...(strategyWETH > 0 ? [{
@@ -424,8 +425,8 @@ export default function AssetAllocationSunburst({
           <div 
             className={`cursor-pointer p-3 sm:p-4 rounded-lg sm:rounded-xl transition-all duration-300 touch-manipulation active:scale-[0.98] ${
               expandedSection === 'usd1'
-                ? 'bg-[#FFE7A3]/20 dark:bg-[#C9A854]/20 shadow-neo-inset dark:shadow-neo-inset-dark border-2 border-[#F2D57C] dark:border-[#C9A854]' 
-                : 'bg-white dark:bg-gray-800 shadow-neo-raised dark:shadow-neo-raised-dark border border-gray-300/50 dark:border-gray-600/50 hover:shadow-neo-hover dark:hover:shadow-neo-hover-dark'
+                ? 'bg-indigo-100/30 dark:bg-indigo-900/20 shadow-neo-inset dark:shadow-neo-inset-dark border-2 border-indigo-400 dark:border-indigo-500' 
+                : 'bg-indigo-50/50 dark:bg-indigo-950/30 shadow-neo-raised dark:shadow-neo-raised-dark border border-indigo-300/50 dark:border-indigo-700/50 hover:shadow-neo-hover dark:hover:shadow-neo-hover-dark'
             }`}
             onClick={() => {
               setExpandedSection(expandedSection === 'usd1' ? null : 'usd1');
@@ -438,14 +439,14 @@ export default function AssetAllocationSunburst({
               <div className="space-y-1.5 sm:space-y-2">
                 <div className="flex items-center justify-between gap-2">
                   <div className="flex items-center gap-1.5 sm:gap-2">
-                    <div className="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full shadow-neo-inset dark:shadow-neo-inset-dark bg-[#FFE7A3] flex-shrink-0"></div>
+                    <div className="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full shadow-neo-inset dark:shadow-neo-inset-dark bg-indigo-400 flex-shrink-0"></div>
                     <span className="text-xs sm:text-sm text-gray-700 dark:text-gray-300 font-medium">USD1</span>
                   </div>
                   <span className="text-xs sm:text-sm font-mono text-gray-900 dark:text-gray-100 font-semibold">{strategyUSD1InPool.toFixed(2)}</span>
                 </div>
                 <div className="flex items-center justify-between gap-2">
                   <div className="flex items-center gap-1.5 sm:gap-2">
-                    <div className="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full shadow-neo-inset dark:shadow-neo-inset-dark bg-[#F2D57C] flex-shrink-0"></div>
+                    <div className="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full shadow-neo-inset dark:shadow-neo-inset-dark bg-indigo-300 flex-shrink-0"></div>
                     <span className="text-xs sm:text-sm text-gray-700 dark:text-gray-300 font-medium">WLFI</span>
                   </div>
                   <span className="text-xs sm:text-sm font-mono text-gray-900 dark:text-gray-100 font-semibold">{strategyWLFIinUSD1Pool.toFixed(2)}</span>
@@ -458,7 +459,7 @@ export default function AssetAllocationSunburst({
               </div>
             )}
             
-            <div className="text-[10px] sm:text-xs text-[#A69348] dark:text-[#F2D57C] mt-1.5 sm:mt-2 font-semibold">
+            <div className="text-[10px] sm:text-xs text-indigo-600 dark:text-indigo-400 mt-1.5 sm:mt-2 font-semibold">
               {grandTotal > 0 ? ((totalUSD1Strategy / grandTotal) * 100).toFixed(1) : '0'}% • Charm USD1/WLFI
             </div>
           </div>
