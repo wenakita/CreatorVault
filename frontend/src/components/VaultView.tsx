@@ -129,8 +129,8 @@ function StrategyRow({ strategy, wlfiPrice, revertData }: { strategy: any; wlfiP
             : 'border-gray-200/3 dark:border-gray-700/5'
           }
         `}>
-          {/* 3D Visualization for Strategy 1 */}
-          {strategy.id === 1 && wlfiPrice && (
+          {/* 3D Visualization for Active Strategies */}
+          {(strategy.id === 1 || strategy.id === 2) && wlfiPrice && (
             <div className="mb-4">
               <ErrorBoundary fallback={
                 <div className="bg-orange-50 dark:bg-orange-900/30 border border-orange-300 dark:border-orange-700 rounded-lg p-4 text-center">
