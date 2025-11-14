@@ -19,6 +19,16 @@ const VaultVisualization = lazy(() => import('./VaultVisualization'));
 // Strategy Row Component with Dropdown
 function StrategyRow({ strategy, wlfiPrice, revertData }: { strategy: any; wlfiPrice?: string; revertData?: any }) {
   const [isExpanded, setIsExpanded] = useState(false);
+  
+  // Debug: Log strategy data for #2
+  if (strategy.id === 2 && strategy.deployed !== undefined) {
+    console.log('[StrategyRow #2] Received data:', {
+      deployed: strategy.deployed,
+      wethAmount: strategy.wethAmount,
+      hasWethAmount: !!strategy.wethAmount,
+      wethAmountValue: Number(strategy.wethAmount)
+    });
+  }
 
   return (
     <div className={`
@@ -705,6 +715,7 @@ export default function VaultView({ provider, account, onToast, onNavigateUp, on
         vaultLiquidUSD1,
         strategyUSD1,
         strategyWLFI,
+        strategyWETH,
         liquidTotal,
         strategyTotal
       });
@@ -761,7 +772,12 @@ export default function VaultView({ provider, account, onToast, onNavigateUp, on
         historicalSnapshots: charmStats?.historicalSnapshots || [],
       };
       
-      console.log('[VaultView] Setting new data:', newData);
+      console.log('[VaultView] Setting new data:', {
+        ...newData,
+        strategyWETH_check: strategyWETH, // Explicit check
+        strategyWLFI_check: strategyWLFI,
+        strategyUSD1_check: strategyUSD1
+      });
       setData(newData);
       console.log('[VaultView] Data fetch complete!');
     } catch (error) {
