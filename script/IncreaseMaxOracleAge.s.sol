@@ -76,13 +76,13 @@ contract IncreaseMaxOracleAge is Script {
             console.log("Suggested maxOracleAge:", (maxAge + 3600), "seconds"); // Add 1 hour buffer
             console.log("");
             
-            // Increase maxOracleAge to 2 hours (7200 seconds)
-            uint256 newMaxOracleAge = 7200; // 2 hours (maximum allowed)
+            // Increase maxOracleAge to 2 hours (7200 seconds) - contract maximum
+            uint256 newMaxOracleAge = 7200; // 2 hours (contract maximum)
             
             vm.startBroadcast(pk);
             
             console.log("[UPDATING PARAMETERS]");
-            console.log("New maxOracleAge: 7200 seconds (2 hours)");
+            console.log("New maxOracleAge: 7200 seconds (2 hours - contract maximum)");
             
             strategy.updateParameters(
                 strategy.maxSlippage(),
@@ -92,7 +92,7 @@ contract IncreaseMaxOracleAge is Script {
             
             vm.stopBroadcast();
             
-            console.log("SUCCESS: maxOracleAge increased to 2 hours");
+            console.log("SUCCESS: maxOracleAge increased to 2 hours (contract maximum)");
         } else {
             console.log("Oracle is FRESH. No update needed.");
         }
