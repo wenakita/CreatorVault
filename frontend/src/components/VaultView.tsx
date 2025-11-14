@@ -125,19 +125,45 @@ function StrategyRow({ strategy, wlfiPrice, revertData, onToast }: { strategy: a
             <>
               {/* Deployed Amounts - At the top */}
               {strategy.deployed !== undefined && (
-                <div className="mb-4 bg-white/5 dark:bg-white/5 rounded-lg p-4 border border-gray-200/10 dark:border-gray-700/20">
-                  <div className="text-[10px] text-gray-500 dark:text-gray-500 uppercase tracking-wider mb-2">Deployed</div>
-                  <div className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
+                <div className="mb-4 bg-gradient-to-br from-emerald-50/50 to-green-50/50 dark:from-emerald-900/10 dark:to-green-900/10 rounded-lg p-4 border border-emerald-200/30 dark:border-emerald-700/20">
+                  <div className="text-[10px] text-gray-500 dark:text-gray-500 uppercase tracking-wider mb-2">Deployed Capital</div>
+                  <div className="text-3xl font-bold text-gray-900 dark:text-white mb-3">
                     ${Number(strategy.deployed).toFixed(0)}
                   </div>
-                  {/* Show token breakdown */}
+                  {/* Show token breakdown with icons */}
                   {strategy.usd1Amount && Number(strategy.usd1Amount) > 0 ? (
-                    <div className="text-sm text-gray-600 dark:text-gray-400">
-                      {strategy.usd1Amount} USD1 • {strategy.wlfiAmount} WLFI
+                    <div className="flex items-center gap-4">
+                      <div className="flex items-center gap-2 flex-1 bg-white/50 dark:bg-black/20 rounded-lg px-3 py-2">
+                        <img src={ICONS.USD1} alt="USD1" className="w-5 h-5 rounded-full" />
+                        <div>
+                          <div className="text-[10px] text-gray-500 dark:text-gray-500 uppercase tracking-wider">USD1</div>
+                          <div className="text-sm font-semibold text-gray-900 dark:text-white">{Number(strategy.usd1Amount).toFixed(2)}</div>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2 flex-1 bg-white/50 dark:bg-black/20 rounded-lg px-3 py-2">
+                        <img src={ICONS.WLFI} alt="WLFI" className="w-5 h-5 rounded-full" />
+                        <div>
+                          <div className="text-[10px] text-gray-500 dark:text-gray-500 uppercase tracking-wider">WLFI</div>
+                          <div className="text-sm font-semibold text-gray-900 dark:text-white">{Number(strategy.wlfiAmount).toFixed(2)}</div>
+                        </div>
+                      </div>
                     </div>
                   ) : strategy.wethAmount && Number(strategy.wethAmount) > 0 ? (
-                    <div className="text-sm text-gray-600 dark:text-gray-400">
-                      {strategy.wethAmount} WETH • {strategy.wlfiAmount} WLFI
+                    <div className="flex items-center gap-4">
+                      <div className="flex items-center gap-2 flex-1 bg-white/50 dark:bg-black/20 rounded-lg px-3 py-2">
+                        <img src={ICONS.ETHEREUM} alt="WETH" className="w-5 h-5 rounded-full" />
+                        <div>
+                          <div className="text-[10px] text-gray-500 dark:text-gray-500 uppercase tracking-wider">WETH</div>
+                          <div className="text-sm font-semibold text-gray-900 dark:text-white">{Number(strategy.wethAmount).toFixed(4)}</div>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2 flex-1 bg-white/50 dark:bg-black/20 rounded-lg px-3 py-2">
+                        <img src={ICONS.WLFI} alt="WLFI" className="w-5 h-5 rounded-full" />
+                        <div>
+                          <div className="text-[10px] text-gray-500 dark:text-gray-500 uppercase tracking-wider">WLFI</div>
+                          <div className="text-sm font-semibold text-gray-900 dark:text-white">{Number(strategy.wlfiAmount).toFixed(2)}</div>
+                        </div>
+                      </div>
                     </div>
                   ) : null}
                 </div>
@@ -251,7 +277,7 @@ function StrategyRow({ strategy, wlfiPrice, revertData, onToast }: { strategy: a
 
                     {/* Charm Vault */}
                     {strategy.charmVault && (
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 mb-2">
                         <span className="text-[10px] text-gray-500 dark:text-gray-500 uppercase tracking-wider font-semibold shrink-0 min-w-[100px]">Charm Vault:</span>
                         <a 
                           href={`https://etherscan.io/address/${strategy.charmVault}`}
@@ -287,36 +313,32 @@ function StrategyRow({ strategy, wlfiPrice, revertData, onToast }: { strategy: a
                         </a>
                       </div>
                     )}
-                  </div>
 
-                  {/* Uniswap Pool & Revert Finance Link */}
-                  {strategy.uniswapPool && (
-                    <div className="bg-gradient-to-r from-blue-50/50 to-purple-50/50 dark:from-blue-900/10 dark:to-purple-900/10 rounded-lg p-3 border border-blue-200/30 dark:border-blue-700/20">
-                      <div className="flex items-center gap-2 mb-2">
-                        <div className="text-[10px] text-gray-500 dark:text-gray-500 uppercase tracking-wider font-semibold">Uniswap V3 Pool</div>
-                        <div className="px-1.5 py-0.5 bg-blue-100 dark:bg-blue-900/30 rounded text-[9px] font-semibold text-blue-700 dark:text-blue-400">
-                          {strategy.feeTier || '1%'}
-                        </div>
-                      </div>
-                      
-                      <div className="flex items-center gap-2 mb-3">
+                    {/* Uniswap V3 Pool - Compact Single Line */}
+                    {strategy.uniswapPool && (
+                      <div className="flex items-center gap-2">
+                        <span className="text-[10px] text-gray-500 dark:text-gray-500 uppercase tracking-wider font-semibold shrink-0 min-w-[100px]">Uniswap Pool:</span>
                         <a 
                           href={`https://etherscan.io/address/${strategy.uniswapPool}`}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="flex-1 text-xs text-gray-700 dark:text-gray-300 hover:text-[#A27D46] dark:hover:text-[#D4B474] font-mono transition-colors break-all leading-relaxed"
+                          className="flex-1 text-xs text-gray-700 dark:text-gray-300 hover:text-[#A27D46] dark:hover:text-[#D4B474] font-mono transition-colors truncate"
+                          title={strategy.uniswapPool}
                         >
                           {strategy.uniswapPool}
                         </a>
+                        <div className="px-1.5 py-0.5 bg-blue-100 dark:bg-blue-900/30 rounded text-[9px] font-semibold text-blue-700 dark:text-blue-400 shrink-0">
+                          {strategy.feeTier || '1%'}
+                        </div>
                         <button
                           onClick={() => {
                             navigator.clipboard.writeText(strategy.uniswapPool);
                             onToast({ message: 'Pool address copied!', type: 'success' });
                           }}
-                          className="shrink-0 p-2 rounded-lg bg-blue-100/50 dark:bg-blue-900/30 hover:bg-blue-200/50 dark:hover:bg-blue-800/30 transition-colors group"
-                          title="Copy pool address"
+                          className="shrink-0 p-1.5 rounded hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
+                          title="Copy address"
                         >
-                          <svg className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400 group-hover:text-blue-700 dark:group-hover:text-blue-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <svg className="w-3 h-3 text-gray-600 dark:text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
                           </svg>
                         </button>
@@ -324,31 +346,27 @@ function StrategyRow({ strategy, wlfiPrice, revertData, onToast }: { strategy: a
                           href={`https://etherscan.io/address/${strategy.uniswapPool}`}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="shrink-0 p-2 rounded-lg bg-blue-100/50 dark:bg-blue-900/30 hover:bg-blue-200/50 dark:hover:bg-blue-800/30 transition-colors group"
-                          title="View pool on Etherscan"
+                          className="shrink-0 p-1.5 rounded hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
+                          title="View on Etherscan"
                         >
-                          <svg className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400 group-hover:text-blue-700 dark:group-hover:text-blue-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <svg className="w-3 h-3 text-gray-600 dark:text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
                           </svg>
                         </a>
+                        <a 
+                          href={`https://revert.finance/#/pool/mainnet/uniswapv3/${strategy.uniswapPool}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="shrink-0 p-1.5 rounded hover:bg-purple-100 dark:hover:bg-purple-900/30 transition-colors"
+                          title="View on Revert Finance"
+                        >
+                          <svg className="w-3 h-3 text-purple-600 dark:text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                          </svg>
+                        </a>
                       </div>
-                      
-                      <a 
-                        href={`https://revert.finance/#/pool/mainnet/uniswapv3/${strategy.uniswapPool}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="inline-flex items-center gap-1.5 text-xs font-medium text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 transition-colors group"
-                      >
-                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-                        </svg>
-                        View Pool Analytics on Revert Finance
-                        <svg className="w-3 h-3 group-hover:translate-x-0.5 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-                        </svg>
-                      </a>
-                    </div>
-                  )}
+                    )}
+                  </div>
                 </div>
               )}
             </>
