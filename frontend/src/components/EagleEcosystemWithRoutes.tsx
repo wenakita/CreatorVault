@@ -139,9 +139,9 @@ export default function EagleEcosystemWithRoutes({ provider, account, onToast }:
       bottom: 'rgba(249, 250, 251, 1)'      // soft white (gray-50)
     },
     'vault': { 
-      top: 'rgba(253, 230, 138, 0.5)',     // amber-200 with more opacity (light mode)
-      middle: 'rgba(254, 240, 138, 0.45)',  // yellow-200 with opacity
-      bottom: 'rgba(243, 244, 246, 1)'      // gray-100
+      top: 'rgba(255, 255, 255, 1)',        // pure white (light mode)
+      middle: 'rgba(252, 252, 253, 1)',     // pearly white
+      bottom: 'rgba(249, 250, 251, 1)'      // soft white (gray-50)
     },
     'wrapper': { 
       top: 'rgba(233, 213, 255, 0.55)',    // purple-200 with more opacity (light mode)
@@ -189,8 +189,8 @@ export default function EagleEcosystemWithRoutes({ provider, account, onToast }:
              currentFloor === 'vault' ? 'radial-gradient(ellipse 120% 100% at bottom, rgba(217, 119, 6, 0.16), transparent 60%)' :
              'radial-gradient(ellipse 120% 100% at top right, rgba(168, 85, 247, 0.18), transparent 60%)') :
             (currentFloor === 'lp' ? 'radial-gradient(ellipse 120% 100% at top, rgba(59, 130, 246, 0.15), transparent 70%)' :
-             currentFloor === 'home' ? 'radial-gradient(ellipse 120% 100% at center, rgba(0, 0, 0, 0.02), transparent 80%)' :
-             currentFloor === 'vault' ? 'radial-gradient(ellipse 120% 100% at bottom, rgba(217, 119, 6, 0.2), transparent 70%)' :
+             currentFloor === 'home' ? 'radial-gradient(ellipse 120% 100% at center, rgba(0, 0, 0, 0.01), transparent 90%)' :
+             currentFloor === 'vault' ? 'radial-gradient(ellipse 120% 100% at bottom, rgba(0, 0, 0, 0.01), transparent 90%)' :
              'radial-gradient(ellipse 120% 100% at top right, rgba(168, 85, 247, 0.22), transparent 70%)'),
           opacity: 1
         }}
