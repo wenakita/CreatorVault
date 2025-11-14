@@ -8,7 +8,7 @@ export const DESIGN_SYSTEM = {
   backgrounds: {
     card: 'bg-gradient-to-br from-white to-gray-50 dark:from-gray-800 dark:to-gray-850',
     cardAlt: 'bg-gradient-to-br from-gray-50 to-white dark:from-gray-850 dark:to-gray-800',
-    highlight: 'bg-gradient-to-br from-amber-50/80 to-orange-50/60 dark:from-amber-950/40 dark:to-orange-950/30',
+    highlight: 'bg-gradient-to-br from-[#DCC38A]/20 to-[#C9A769]/10 dark:from-[#8C6A38]/20 dark:to-[#A27D46]/15',
     info: 'bg-gradient-to-r from-blue-50 to-blue-100 dark:from-blue-900/30 dark:to-blue-800/20',
     inset: 'bg-white/50 dark:bg-gray-800/50',
   },
@@ -26,7 +26,7 @@ export const DESIGN_SYSTEM = {
   borders: {
     subtle: 'border border-gray-200/50 dark:border-gray-600/50',
     medium: 'border-2 border-gray-300/60 dark:border-gray-600/60',
-    highlight: 'border-2 border-amber-400/60 dark:border-amber-500/40',
+    highlight: 'border-2 border-[#C9A769]/60 dark:border-[#A27D46]/50',
     info: 'border-2 border-blue-400 dark:border-blue-600',
     separator: 'border-gray-300/50 dark:border-gray-700/30',
   },
@@ -66,8 +66,8 @@ export const DESIGN_SYSTEM = {
     descriptionSmall: 'text-xs text-gray-500 dark:text-gray-400',
     
     // Highlights
-    highlight: 'text-amber-600 dark:text-amber-400',
-    highlightBold: 'text-amber-700 dark:text-amber-300 font-semibold',
+    highlight: 'text-[#A27D46] dark:text-[#C9A769]',
+    highlightBold: 'text-[#8C6A38] dark:text-[#DCC38A] font-semibold',
   },
 
   // Spacing

@@ -59,7 +59,7 @@ export const ThemeToggle = () => {
         transition={{ duration: 0.3 }}
         className="absolute"
       >
-        <Sun className={`w-5 h-5 sm:w-5.5 sm:h-5.5 md:w-6 md:h-6 ${isDark ? 'text-gray-500' : 'text-amber-400'}`} />
+        <Sun className={`w-5 h-5 sm:w-5.5 sm:h-5.5 md:w-6 md:h-6 ${isDark ? 'text-gray-500' : 'text-[#C9A769]'}`} />
       </motion.div>
       
       <motion.div
