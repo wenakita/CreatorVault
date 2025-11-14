@@ -9,7 +9,7 @@ import { EagleOVault } from "../contracts/EagleOVault.sol";
  * @dev Run with: forge script script/WhitelistComposer.s.sol --rpc-url $RPC_URL --broadcast
  */
 contract WhitelistComposer is Script {
-    address constant VAULT = 0x47b3ef629D9cB8DFcF8A6c61058338f4e99d7953;
+    address payable constant VAULT = payable(0x47b3ef629D9cB8DFcF8A6c61058338f4e99d7953);
     address constant COMPOSER = 0x3A91B3e863C0bd6948088e8A0A9B1D22d6D05da9;
     
     function run() external {
@@ -32,9 +32,9 @@ contract WhitelistComposer is Script {
         if (!isWhitelisted) {
             console.log("\nAdding Composer to whitelist...");
             vault.setWhitelist(COMPOSER, true);
-            console.log("✅ Composer whitelisted!");
+            console.log("SUCCESS: Composer whitelisted!");
         } else {
-            console.log("\n✅ Composer already whitelisted");
+            console.log("\nSUCCESS: Composer already whitelisted");
         }
         
         vm.stopBroadcast();
