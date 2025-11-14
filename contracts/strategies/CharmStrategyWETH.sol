@@ -817,7 +817,9 @@ contract CharmStrategyWETH is IStrategy, ReentrancyGuard, Ownable {
         // In emergency mode, use manual override price
         if (emergencyMode) {
             if (emergencyWethPerUsd1 == 0) revert InvalidPrice();
-            return (wethAmount * 1e18) / emergencyWethPerUsd1;
+            // emergencyWethPerUsd1 actually represents USD1 per WETH despite the name
+            // Example: if 1 WETH = 3200 USD1, then emergencyWethPerUsd1 = 3200e18
+            return (wethAmount * emergencyWethPerUsd1) / 1e18;
         }
         
         // Require both Chainlink feeds to be available
@@ -829,8 +831,9 @@ contract CharmStrategyWETH is IStrategy, ReentrancyGuard, Ownable {
         uint256 wethPerUsd1 = _getWethPerUsd1FromChainlink();
         if (wethPerUsd1 == 0) revert InvalidPrice();
         
-        // USD1 equivalent = (WETH amount * 1e18) / (WETH per USD1)
-        return (wethAmount * 1e18) / wethPerUsd1;
+        // wethPerUsd1 actually represents USD1 per WETH despite the name
+        // USD1 equivalent = (WETH amount * USD1_per_WETH) / 1e18
+        return (wethAmount * wethPerUsd1) / 1e18;
     }
     
     /**
@@ -1007,8 +1010,9 @@ contract CharmStrategyWETH is IStrategy, ReentrancyGuard, Ownable {
     /**
      * @notice Set manual WETH/USD1 ratio for emergency mode
      * @dev Use current market price or Uniswap spot price
-     * @param _wethPerUsd1 Amount of WETH per 1 USD1 (18 decimals)
-     *      Example: If 1 WETH = 3000 USD1, then wethPerUsd1 = 3000e18
+     * @param _wethPerUsd1 Amount of USD1 per 1 WETH (18 decimals)
+     *      Example: If 1 WETH = 3000 USD1, then _wethPerUsd1 = 3000e18
+     *      (Variable name is misleading - it's actually USD1 per WETH, not WETH per USD1)
      */
     function setEmergencyPrice(uint256 _wethPerUsd1) external onlyOwner {
         if (_wethPerUsd1 == 0) revert InvalidPrice();
