@@ -95,15 +95,10 @@ function StrategyRow({ strategy, wlfiPrice, revertData }: { strategy: any; wlfiP
           
           {/* Right: Allocation + Expand */}
           <div className="flex items-center gap-3 shrink-0">
-            {/* Allocation - Compact */}
+            {/* Allocation - Clean */}
             {strategy.allocation && strategy.status === 'active' && (
-              <div className="text-right">
-                <div className="text-[9px] text-gray-500 dark:text-gray-500 uppercase tracking-wider mb-0.5">
-                  Allocation
-                </div>
-                <div className="text-2xl font-bold text-[#D4B474] dark:text-[#D4B474] leading-none dark:shadow-gold-glow-strong">
-                  {strategy.allocation}
-                </div>
+              <div className="text-2xl font-bold text-[#D4B474] dark:text-[#D4B474] leading-none dark:shadow-gold-glow-strong">
+                {strategy.allocation}
               </div>
             )}
             
