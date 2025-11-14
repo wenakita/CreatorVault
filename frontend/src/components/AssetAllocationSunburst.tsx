@@ -193,13 +193,10 @@ export default function AssetAllocationSunburst({
         // Show elegant tooltip with correct positioning
         const percentage = grandTotal > 0 ? ((d.value || 0) / grandTotal * 100).toFixed(1) : '0';
         
-        // Use pageX/pageY for absolute positioning relative to document
-        const mouseX = event.pageX !== undefined ? event.pageX : event.clientX + window.scrollX;
-        const mouseY = event.pageY !== undefined ? event.pageY : event.clientY + window.scrollY;
-        
+        // Use clientX/clientY for fixed positioning (viewport coordinates)
         d3.select('#tooltip')
-          .style('left', (mouseX + 15) + 'px')
-          .style('top', (mouseY - 10) + 'px')
+          .style('left', (event.clientX + 15) + 'px')
+          .style('top', (event.clientY - 10) + 'px')
           .style('opacity', 1)
           .html(`
             <div style="
@@ -224,13 +221,10 @@ export default function AssetAllocationSunburst({
           `);
       })
       .on('mousemove', function(event, d) {
-        // Update tooltip position as mouse moves with correct coordinates
-        const mouseX = event.pageX !== undefined ? event.pageX : event.clientX + window.scrollX;
-        const mouseY = event.pageY !== undefined ? event.pageY : event.clientY + window.scrollY;
-        
+        // Update tooltip position as mouse moves (viewport coordinates for fixed positioning)
         d3.select('#tooltip')
-          .style('left', (mouseX + 15) + 'px')
-          .style('top', (mouseY - 10) + 'px');
+          .style('left', (event.clientX + 15) + 'px')
+          .style('top', (event.clientY - 10) + 'px');
       })
       .on('mouseleave', function(event, d) {
         d3.select(this)
@@ -346,7 +340,7 @@ export default function AssetAllocationSunburst({
             <div 
               id="tooltip" 
               style={{ 
-                position: 'absolute', 
+                position: 'fixed', 
                 opacity: 0, 
                 left: '-9999px',
                 top: '-9999px',
