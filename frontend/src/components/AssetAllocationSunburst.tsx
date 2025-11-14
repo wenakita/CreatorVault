@@ -323,19 +323,39 @@ export default function AssetAllocationSunburst({
       
       <div className="flex flex-col lg:flex-row items-center justify-center gap-6 sm:gap-8 lg:gap-10 max-w-5xl mx-auto">
         {/* D3 Sunburst Chart with glow effect */}
-        <div className="flex-shrink-0 relative">
-          <div className="absolute inset-0 bg-gradient-to-br from-yellow-500/10 to-blue-500/10 rounded-full blur-2xl"></div>
-          <svg ref={svgRef} className="relative drop-shadow-2xl"></svg>
-          <div 
-            id="tooltip" 
-            style={{ 
-              position: 'fixed', 
-              opacity: 0, 
-              pointerEvents: 'none',
-              zIndex: 1000,
-              transition: 'opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1)'
-            }}
-          />
+        <div className="flex-shrink-0 relative flex flex-col items-center gap-4">
+          <div className="relative">
+            <div className="absolute inset-0 bg-gradient-to-br from-yellow-500/10 to-blue-500/10 rounded-full blur-2xl"></div>
+            <svg ref={svgRef} className="relative drop-shadow-2xl"></svg>
+            <div 
+              id="tooltip" 
+              style={{ 
+                position: 'fixed', 
+                opacity: 0, 
+                pointerEvents: 'none',
+                zIndex: 1000,
+                transition: 'opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1)'
+              }}
+            />
+          </div>
+          
+          {/* Selected Section Info Card - Below Chart */}
+          {selectedPath && (
+            <div className="w-full max-w-xs p-3 sm:p-4 bg-yellow-50 dark:bg-yellow-900/30 shadow-neo-inset dark:shadow-neo-inset-dark border border-yellow-400 dark:border-yellow-600 rounded-lg sm:rounded-xl animate-fadeIn">
+              <div className="flex items-center gap-1.5 sm:gap-2 mb-1.5 sm:mb-2">
+                <svg className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-yellow-600 dark:text-yellow-400 animate-pulse flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                  <path d="M10 12a2 2 0 100-4 2 2 0 000 4z"/>
+                  <path fillRule="evenodd" d="M.458 10C1.732 5.943 5.522 3 10 3s8.268 2.943 9.542 7c-1.274 4.057-5.064 7-9.542 7S1.732 14.057.458 10zM14 10a4 4 0 11-8 0 4 4 0 018 0z" clipRule="evenodd"/>
+                </svg>
+                <div className="text-xs sm:text-sm text-yellow-700 dark:text-yellow-400 font-bold truncate">
+                  Viewing: {selectedPath}
+                </div>
+              </div>
+              <p className="text-[10px] sm:text-xs text-gray-600 dark:text-gray-400">
+                Click any section to animate and update view
+              </p>
+            </div>
+          )}
         </div>
 
         {/* Neumorphic Interactive Legend */}
@@ -467,23 +487,6 @@ export default function AssetAllocationSunburst({
               <div className="text-[10px] sm:text-xs text-gray-700 dark:text-gray-400 mt-1.5 sm:mt-2 font-semibold">
                 {grandTotal > 0 ? ((totalWETHStrategy / grandTotal) * 100).toFixed(1) : '0'}% • Charm WETH/WLFI
               </div>
-            </div>
-          )}
-
-          {selectedPath && (
-            <div className="p-3 sm:p-4 bg-yellow-50 dark:bg-yellow-900/30 shadow-neo-inset dark:shadow-neo-inset-dark border border-yellow-400 dark:border-yellow-600 rounded-lg sm:rounded-xl animate-fadeIn">
-              <div className="flex items-center gap-1.5 sm:gap-2 mb-1.5 sm:mb-2">
-                <svg className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-yellow-600 dark:text-yellow-400 animate-pulse flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                  <path d="M10 12a2 2 0 100-4 2 2 0 000 4z"/>
-                  <path fillRule="evenodd" d="M.458 10C1.732 5.943 5.522 3 10 3s8.268 2.943 9.542 7c-1.274 4.057-5.064 7-9.542 7S1.732 14.057.458 10zM14 10a4 4 0 11-8 0 4 4 0 018 0z" clipRule="evenodd"/>
-                </svg>
-                <div className="text-xs sm:text-sm text-yellow-700 dark:text-yellow-400 font-bold truncate">
-                  Viewing: {selectedPath}
-                </div>
-              </div>
-              <p className="text-[10px] sm:text-xs text-gray-600 dark:text-gray-400">
-                Click any section to animate and update view
-              </p>
             </div>
           )}
         </div>
