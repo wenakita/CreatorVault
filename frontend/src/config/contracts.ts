@@ -11,7 +11,7 @@ export const CONTRACTS = {
   
   // Strategy Contracts
   STRATEGY_USD1: '0x47B2659747d6A7E00c8251c3C3f7e92625a8cf6f',  // CharmStrategyUSD1 (50% allocation) ✅
-  STRATEGY_WETH: '0x997feaa69a60c536F8449F0D5Adf997fD83aDf39',  // CharmStrategyWETH (50% allocation) ✅
+  STRATEGY_WETH: '0x5c525Af4153B1c43f9C06c31D32a84637c617FfE',  // CharmStrategyWETH (50% allocation) - 24hr oracle support ✅
   STRATEGY: '0x47B2659747d6A7E00c8251c3C3f7e92625a8cf6f',    // Legacy - points to USD1 strategy
   
   // External Contracts - Charm Alpha Vaults

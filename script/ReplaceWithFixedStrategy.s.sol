@@ -13,7 +13,7 @@ interface IEagleOVault {
 contract ReplaceWithFixedStrategy is Script {
     address constant VAULT = 0x47b3ef629D9cB8DFcF8A6c61058338f4e99d7953;
     address constant OLD_STRATEGY = 0x997feaa69a60c536F8449F0D5Adf997fD83aDf39;
-    address constant NEW_STRATEGY = 0xF73f57525d46C5f6064a1aAc0F09D3183Cd3A6eB;
+    address constant NEW_STRATEGY = 0x5c525Af4153B1c43f9C06c31D32a84637c617FfE; // NEW: 24hr oracle support
     address constant USD1_STRATEGY = 0x47B2659747d6A7E00c8251c3C3f7e92625a8cf6f;
 
     function run() external {
