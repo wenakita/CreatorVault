@@ -193,6 +193,8 @@ export default function AssetAllocationSunburst({
         // Show elegant tooltip
         const percentage = grandTotal > 0 ? ((d.value || 0) / grandTotal * 100).toFixed(1) : '0';
         d3.select('#tooltip')
+          .style('left', (event.clientX + 15) + 'px')
+          .style('top', (event.clientY - 10) + 'px')
           .style('opacity', 1)
           .html(`
             <div style="
@@ -340,6 +342,8 @@ export default function AssetAllocationSunburst({
               style={{ 
                 position: 'fixed', 
                 opacity: 0, 
+                left: '-9999px',
+                top: '-9999px',
                 pointerEvents: 'none',
                 zIndex: 1000,
                 transition: 'opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1)'
