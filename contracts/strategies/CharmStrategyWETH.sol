@@ -921,7 +921,7 @@ contract CharmStrategyWETH is IStrategy, ReentrancyGuard, Ownable {
     ) external onlyOwner {
         require(_maxSlippage <= 1000, "Slippage too high"); // Max 10%
         require(_twapPeriod >= 300 && _twapPeriod <= 3600, "TWAP period must be 5min-1hr");
-        require(_maxOracleAge >= 600 && _maxOracleAge <= 7200, "Oracle age must be 10min-2hr");
+        require(_maxOracleAge >= 600 && _maxOracleAge <= 86400, "Oracle age must be 10min-24hr"); // 24 hours for USD1 stablecoin oracle
         
         maxSlippage = _maxSlippage;
         twapPeriod = _twapPeriod;
