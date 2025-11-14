@@ -193,10 +193,15 @@ export default function AssetAllocationSunburst({
         // Show elegant tooltip with correct positioning
         const percentage = grandTotal > 0 ? ((d.value || 0) / grandTotal * 100).toFixed(1) : '0';
         
-        // Use clientX/clientY for fixed positioning (viewport coordinates)
+        // Get mouse position - check for both native event and D3 event
+        const mouseX = event.clientX !== undefined ? event.clientX : (event as any).layerX || 0;
+        const mouseY = event.clientY !== undefined ? event.clientY : (event as any).layerY || 0;
+        
+        console.log('Tooltip position:', { mouseX, mouseY, event });
+        
         d3.select('#tooltip')
-          .style('left', (event.clientX + 15) + 'px')
-          .style('top', (event.clientY - 10) + 'px')
+          .style('left', (mouseX + 15) + 'px')
+          .style('top', (mouseY - 10) + 'px')
           .style('opacity', 1)
           .html(`
             <div style="
@@ -222,9 +227,12 @@ export default function AssetAllocationSunburst({
       })
       .on('mousemove', function(event, d) {
         // Update tooltip position as mouse moves (viewport coordinates for fixed positioning)
+        const mouseX = event.clientX !== undefined ? event.clientX : (event as any).layerX || 0;
+        const mouseY = event.clientY !== undefined ? event.clientY : (event as any).layerY || 0;
+        
         d3.select('#tooltip')
-          .style('left', (event.clientX + 15) + 'px')
-          .style('top', (event.clientY - 10) + 'px');
+          .style('left', (mouseX + 15) + 'px')
+          .style('top', (mouseY - 10) + 'px');
       })
       .on('mouseleave', function(event, d) {
         d3.select(this)
