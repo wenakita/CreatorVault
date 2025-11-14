@@ -1288,7 +1288,7 @@ contract EagleOVault is ERC4626, Ownable, ReentrancyGuard {
     
     function setMaxTotalSupply(uint256 _maxTotalSupply) external onlyOwner {
         require(_maxTotalSupply >= totalSupply(), "Below current supply");
-        require(_maxTotalSupply <= 50_000_000e18, "Too high");
+        require(_maxTotalSupply <= 500_000_000e18, "Too high");
         maxTotalSupply = _maxTotalSupply;
     }
     
