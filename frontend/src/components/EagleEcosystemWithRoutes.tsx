@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { BrowserProvider } from 'ethers';
@@ -22,6 +22,21 @@ export default function EagleEcosystemWithRoutes({ provider, account, onToast }:
   const [isTransitioning, setIsTransitioning] = useState(false);
   const [hasLeftHome, setHasLeftHome] = useState(false);
   const [showHomeContent, setShowHomeContent] = useState(true);
+  const [isDarkMode, setIsDarkMode] = useState(document.documentElement.classList.contains('dark'));
+
+  // Listen for dark mode changes
+  useEffect(() => {
+    const observer = new MutationObserver(() => {
+      setIsDarkMode(document.documentElement.classList.contains('dark'));
+    });
+    
+    observer.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ['class']
+    });
+    
+    return () => observer.disconnect();
+  }, []);
 
   // Map routes to floors
   const routeToFloor: Record<string, Floor> = {
@@ -91,7 +106,7 @@ export default function EagleEcosystemWithRoutes({ provider, account, onToast }:
   const currentOffset = floorOffsets[currentFloor];
 
   // Background colors for each floor (RGB values for smooth color transitions)
-  const floorColors: Record<Floor, { top: string; middle: string; bottom: string }> = {
+  const floorColors: Record<Floor, { top: string; middle: string; bottom: string }> = isDarkMode ? {
     'lp': { 
       top: 'rgba(30, 58, 138, 0.15)',      // blue-950 with opacity
       middle: 'rgba(59, 7, 100, 0.15)',    // purple-950 with opacity
@@ -112,12 +127,33 @@ export default function EagleEcosystemWithRoutes({ provider, account, onToast }:
       middle: 'rgba(49, 46, 129, 0.24)',   // indigo-950 with opacity
       bottom: 'rgba(10, 10, 10, 1)' 
     },
+  } : {
+    'lp': { 
+      top: 'rgba(191, 219, 254, 0.4)',     // blue-200 with opacity (light mode)
+      middle: 'rgba(233, 213, 255, 0.35)',  // purple-200 with opacity
+      bottom: 'rgba(243, 244, 246, 1)'      // gray-100
+    },
+    'home': { 
+      top: 'rgba(254, 240, 138, 0.45)',    // yellow-200 with opacity (light mode)
+      middle: 'rgba(253, 230, 138, 0.4)',   // amber-200 with opacity
+      bottom: 'rgba(243, 244, 246, 1)'      // gray-100
+    },
+    'vault': { 
+      top: 'rgba(253, 230, 138, 0.5)',     // amber-200 with more opacity (light mode)
+      middle: 'rgba(254, 240, 138, 0.45)',  // yellow-200 with opacity
+      bottom: 'rgba(243, 244, 246, 1)'      // gray-100
+    },
+    'wrapper': { 
+      top: 'rgba(233, 213, 255, 0.55)',    // purple-200 with more opacity (light mode)
+      middle: 'rgba(199, 210, 254, 0.5)',   // indigo-200 with opacity
+      bottom: 'rgba(243, 244, 246, 1)'      // gray-100
+    },
   };
 
   return (
-    <div className="h-full overflow-hidden relative bg-[#0a0a0a]">
-      {/* Base layer - persistent dark background */}
-      <div className="absolute inset-0 bg-[#0a0a0a]" style={{ height: '300vh' }} />
+    <div className="h-full overflow-hidden relative bg-gray-100 dark:bg-[#0a0a0a]">
+      {/* Base layer - persistent background */}
+      <div className="absolute inset-0 bg-gray-100 dark:bg-[#0a0a0a]" style={{ height: '300vh' }} />
       
       {/* Cross-fade backgrounds for each floor - creates seamless transitions */}
       {Object.keys(floorColors).map((floor) => (
@@ -147,10 +183,15 @@ export default function EagleEcosystemWithRoutes({ provider, account, onToast }:
           willChange: 'opacity, background'
         }}
         animate={{
-          background: currentFloor === 'lp' ? 'radial-gradient(ellipse 120% 100% at top, rgba(59, 130, 246, 0.12), transparent 60%)' :
-                      currentFloor === 'home' ? 'radial-gradient(ellipse 120% 100% at center, rgba(245, 158, 11, 0.14), transparent 60%)' :
-                      currentFloor === 'vault' ? 'radial-gradient(ellipse 120% 100% at bottom, rgba(217, 119, 6, 0.16), transparent 60%)' :
-                      'radial-gradient(ellipse 120% 100% at top right, rgba(168, 85, 247, 0.18), transparent 60%)',
+          background: isDarkMode ? 
+            (currentFloor === 'lp' ? 'radial-gradient(ellipse 120% 100% at top, rgba(59, 130, 246, 0.12), transparent 60%)' :
+             currentFloor === 'home' ? 'radial-gradient(ellipse 120% 100% at center, rgba(245, 158, 11, 0.14), transparent 60%)' :
+             currentFloor === 'vault' ? 'radial-gradient(ellipse 120% 100% at bottom, rgba(217, 119, 6, 0.16), transparent 60%)' :
+             'radial-gradient(ellipse 120% 100% at top right, rgba(168, 85, 247, 0.18), transparent 60%)') :
+            (currentFloor === 'lp' ? 'radial-gradient(ellipse 120% 100% at top, rgba(59, 130, 246, 0.15), transparent 70%)' :
+             currentFloor === 'home' ? 'radial-gradient(ellipse 120% 100% at center, rgba(245, 158, 11, 0.18), transparent 70%)' :
+             currentFloor === 'vault' ? 'radial-gradient(ellipse 120% 100% at bottom, rgba(217, 119, 6, 0.2), transparent 70%)' :
+             'radial-gradient(ellipse 120% 100% at top right, rgba(168, 85, 247, 0.22), transparent 70%)'),
           opacity: 1
         }}
         transition={{ 
@@ -164,11 +205,13 @@ export default function EagleEcosystemWithRoutes({ provider, account, onToast }:
         className="absolute inset-0"
         style={{ 
           height: '300vh',
-          background: 'radial-gradient(ellipse 80% 60% at center, transparent 30%, rgba(0, 0, 0, 0.4) 100%)',
+          background: isDarkMode ? 
+            'radial-gradient(ellipse 80% 60% at center, transparent 30%, rgba(0, 0, 0, 0.4) 100%)' :
+            'radial-gradient(ellipse 80% 60% at center, transparent 40%, rgba(0, 0, 0, 0.08) 100%)',
           willChange: 'opacity'
         }}
         animate={{
-          opacity: isTransitioning ? 0.6 : 0.3
+          opacity: isTransitioning ? (isDarkMode ? 0.6 : 0.4) : (isDarkMode ? 0.3 : 0.2)
         }}
         transition={{ 
           duration: 3.0,
@@ -185,8 +228,10 @@ export default function EagleEcosystemWithRoutes({ provider, account, onToast }:
         }}
         initial={{ opacity: 0 }}
         animate={{
-          opacity: isTransitioning ? 0.3 : 0,
-          background: 'linear-gradient(180deg, rgba(0, 0, 0, 0.2), transparent 30%, transparent 70%, rgba(0, 0, 0, 0.2))'
+          opacity: isTransitioning ? (isDarkMode ? 0.3 : 0.15) : 0,
+          background: isDarkMode ? 
+            'linear-gradient(180deg, rgba(0, 0, 0, 0.2), transparent 30%, transparent 70%, rgba(0, 0, 0, 0.2))' :
+            'linear-gradient(180deg, rgba(0, 0, 0, 0.05), transparent 30%, transparent 70%, rgba(0, 0, 0, 0.05))'
         }}
         transition={{ 
           duration: 2.5,
