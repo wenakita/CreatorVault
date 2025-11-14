@@ -21,13 +21,14 @@ function StrategyRow({ strategy, wlfiPrice, revertData }: { strategy: any; wlfiP
   const [isExpanded, setIsExpanded] = useState(false);
   
   // Debug: Log strategy data for #2
-  if (strategy.id === 2 && strategy.deployed !== undefined) {
-    console.log('[StrategyRow #2] Received data:', {
-      deployed: strategy.deployed,
-      wethAmount: strategy.wethAmount,
-      hasWethAmount: !!strategy.wethAmount,
-      wethAmountValue: Number(strategy.wethAmount)
-    });
+  if (strategy.id === 2) {
+    console.log('[StrategyRow #2] ===== RECEIVED PROPS =====');
+    console.log('[StrategyRow #2] deployed:', strategy.deployed);
+    console.log('[StrategyRow #2] wethAmount:', strategy.wethAmount);
+    console.log('[StrategyRow #2] wethAmount type:', typeof strategy.wethAmount);
+    console.log('[StrategyRow #2] hasWethAmount:', !!strategy.wethAmount);
+    console.log('[StrategyRow #2] wethAmountValue:', Number(strategy.wethAmount));
+    console.log('[StrategyRow #2] ===========================');
   }
 
   return (
@@ -495,6 +496,7 @@ export default function VaultView({ provider, account, onToast, onNavigateUp, on
     strategyWLFI: '0', // Production: No strategy deposits yet
     strategyUSD1: '0', // Production: No strategy deposits yet
     strategyWETH: '0', // WETH amount in WETH/WLFI strategy
+    strategyWLFIinPool: '0', // Actual WLFI tokens in WETH/WLFI pool
     liquidTotal: '0',
     strategyTotal: '0',
     currentFeeApr: '0',
@@ -642,6 +644,7 @@ export default function VaultView({ provider, account, onToast, onNavigateUp, on
       // WETH Strategy: Get actual WETH + WLFI balances from Charm vault
       // Since getTotalAmounts() reverts due to stale oracles, we'll query the Charm vault directly
       let strategyWETH = '0';
+      let strategyWLFIinPool = '0';
       try {
         // Get strategy's share balance in Charm vault
         const charmVault = new Contract(
@@ -668,35 +671,35 @@ export default function VaultView({ provider, account, onToast, onNavigateUp, on
           const strategyWlfiAmount = (totalWlfi * strategyShares) / totalShares;
           
           strategyWETH = Number(formatEther(strategyWethAmount)).toFixed(4);
-          const wlfiPart = Number(formatEther(strategyWlfiAmount)).toFixed(2);
+          strategyWLFIinPool = Number(formatEther(strategyWlfiAmount)).toFixed(2);
           
-          console.log('[VaultView] WETH strategy balances:', {
-            weth: strategyWETH,
-            wlfi: wlfiPart,
-            shares: formatEther(strategyShares)
-          });
+      console.log('[VaultView] ===== WETH STRATEGY DATA =====');
+      console.log('[VaultView] WETH amount:', strategyWETH);
+      console.log('[VaultView] WLFI in pool amount:', strategyWLFIinPool);
+      console.log('[VaultView] Shares:', formatEther(strategyShares));
+      console.log('[VaultView] ============================');
           
           // For display, show total value (WETH worth ~$3500, approximate)
-          strategyWLFI = (Number(strategyWETH) * 3500 + Number(wlfiPart)).toFixed(2);
+          strategyWLFI = (Number(strategyWETH) * 3500 + Number(strategyWLFIinPool)).toFixed(2);
         }
       } catch (error: any) {
         console.warn('WETH strategy Charm vault query failed:', error?.reason || error?.message || error);
         strategyWLFI = '0';
         strategyWETH = '0';
+        strategyWLFIinPool = '0';
       }
 
       const liquidTotal = (Number(vaultLiquidWLFI) + Number(vaultLiquidUSD1)).toFixed(2);
       const strategyTotal = (Number(strategyWLFI) + Number(strategyUSD1)).toFixed(2);
 
-      console.log('[VaultView] Strategy balances fetched:', {
-        vaultLiquidWLFI,
-        vaultLiquidUSD1,
-        strategyUSD1,
-        strategyWLFI,
-        strategyWETH,
-        liquidTotal,
-        strategyTotal
-      });
+      console.log('[VaultView] ===== ALL STRATEGY BALANCES =====');
+      console.log('[VaultView] Vault Liquid WLFI:', vaultLiquidWLFI);
+      console.log('[VaultView] Vault Liquid USD1:', vaultLiquidUSD1);
+      console.log('[VaultView] USD1 Strategy Total:', strategyUSD1);
+      console.log('[VaultView] WETH Strategy Total Value:', strategyWLFI);
+      console.log('[VaultView] WETH Strategy WETH Amount:', strategyWETH);
+      console.log('[VaultView] WETH Strategy WLFI in Pool:', strategyWLFIinPool);
+      console.log('[VaultView] ===============================');
 
       // If totalAssets failed to fetch, calculate it manually
       if (totalAssets === 0n) {
@@ -742,6 +745,7 @@ export default function VaultView({ provider, account, onToast, onNavigateUp, on
         strategyWLFI,
         strategyUSD1,
         strategyWETH,
+        strategyWLFIinPool,
         liquidTotal,
         strategyTotal,
         currentFeeApr: charmStats?.currentFeeApr || '0',
@@ -1610,6 +1614,43 @@ export default function VaultView({ provider, account, onToast, onNavigateUp, on
                         strategyUSD1={Number(data.strategyUSD1)}
                         wlfiPrice={Number(data.wlfiPrice)}
                       />
+                      
+                      {/* WETH/WLFI Strategy Breakdown */}
+                      {Number(data.strategyWETH) > 0 && (
+                        <div className={`${DS.radius.md} ${DS.backgrounds.highlight} p-4 ${DS.borders.highlight} ${DS.shadows.raised} ${DS.transitions.default}`}>
+                          <div className="flex items-center gap-2 mb-3">
+                            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-yellow-600 to-yellow-700 dark:from-yellow-500 dark:to-yellow-600 flex items-center justify-center shadow-lg">
+                              <span className="text-white font-bold text-sm">Ξ</span>
+                            </div>
+                            <div>
+                              <h4 className={`${DS.text.h4} text-sm`}>WETH/WLFI Strategy</h4>
+                              <p className={`${DS.text.descriptionSmall}`}>Charm Alpha Vault Breakdown</p>
+                            </div>
+                          </div>
+                          
+                          <div className="grid grid-cols-2 gap-3">
+                            <div className={`${DS.radius.sm} bg-white/50 dark:bg-gray-800/50 p-3 ${DS.borders.subtle} ${DS.shadows.inset}`}>
+                              <div className={`${DS.text.labelSmall} mb-1`}>WETH Deployed</div>
+                              <div className={`${DS.text.valueMedium} ${DS.text.highlight} text-xl`}>
+                                {data.strategyWETH}
+                              </div>
+                              <div className={`${DS.text.descriptionSmall} mt-0.5`}>
+                                ~${(Number(data.strategyWETH) * 3500).toFixed(0)} USD
+                              </div>
+                            </div>
+                            
+                            <div className={`${DS.radius.sm} bg-white/50 dark:bg-gray-800/50 p-3 ${DS.borders.subtle} ${DS.shadows.inset}`}>
+                              <div className={`${DS.text.labelSmall} mb-1`}>WLFI in Pool</div>
+                              <div className={`${DS.text.valueMedium} text-gray-900 dark:text-white text-xl`}>
+                                {Number(data.strategyWLFIinPool).toFixed(0)}
+                              </div>
+                              <div className={`${DS.text.descriptionSmall} mt-0.5`}>
+                                ~${(Number(data.strategyWLFIinPool) * 0.132).toFixed(0)} USD
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      )}
                     </div>
                   </div>
                 )}
