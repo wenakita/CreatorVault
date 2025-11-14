@@ -349,7 +349,7 @@ export default function AssetAllocationSunburst({
           
           {/* Selected Section Info Card - Below Chart */}
           {selectedPath && (
-            <div className="w-full max-w-xs p-3 sm:p-4 bg-yellow-50 dark:bg-indigo-900/30 shadow-neo-inset dark:shadow-neo-inset-dark border border-indigo-400 dark:border-indigo-600 rounded-lg sm:rounded-xl animate-fadeIn">
+            <div className="w-full max-w-xs p-3 sm:p-4 bg-indigo-50 dark:bg-indigo-900/30 shadow-neo-inset dark:shadow-neo-inset-dark border border-indigo-400 dark:border-indigo-600 rounded-lg sm:rounded-xl animate-fadeIn">
               <div className="flex items-center gap-1.5 sm:gap-2 mb-1.5 sm:mb-2">
                 <svg className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-indigo-600 dark:text-indigo-400 animate-pulse flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
                   <path d="M10 12a2 2 0 100-4 2 2 0 000 4z"/>

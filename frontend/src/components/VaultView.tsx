@@ -192,7 +192,7 @@ function StrategyRow({ strategy, wlfiPrice, revertData }: { strategy: any; wlfiP
               <div className="px-5 py-2.5 rounded-xl bg-gradient-to-br from-indigo-500 to-indigo-600 shadow-[0_4px_16px_rgba(234,179,8,0.3),inset_0_1px_0_rgba(255,255,255,0.2)] border border-indigo-400/20">
                 <div className="text-center">
                   <div className="text-2xl font-black text-white leading-none mb-0.5">{strategy.allocation}</div>
-                  <div className="text-[9px] text-yellow-100 font-bold uppercase tracking-widest">WEIGHT</div>
+                  <div className="text-[9px] text-indigo-100 font-bold uppercase tracking-widest">WEIGHT</div>
                 </div>
               </div>
             </div>
@@ -287,7 +287,7 @@ function StrategyRow({ strategy, wlfiPrice, revertData }: { strategy: any; wlfiP
                     href={strategy.analytics} 
                     target="_blank" 
                     rel="noopener noreferrer" 
-                    className="text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-yellow-300 font-medium text-sm inline-flex items-center gap-2 transition-colors"
+                    className="text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-300 font-medium text-sm inline-flex items-center gap-2 transition-colors"
                   >
                     View Analytics on Charm Finance
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">

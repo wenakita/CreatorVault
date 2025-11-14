@@ -479,7 +479,7 @@ export default function EagleEcosystemWithRoutes({ provider, account, onToast }:
               transition={{ duration: 10, repeat: Infinity, ease: "easeInOut" }}
             />
             <motion.div 
-              className="absolute bottom-1/3 left-1/4 w-[700px] h-[700px] bg-amber-500/18 rounded-full blur-[110px]"
+              className="absolute bottom-1/3 left-1/4 w-[700px] h-[700px] bg-purple-500/18 rounded-full blur-[110px]"
               animate={{
                 scale: currentFloor === 'home' ? [1, 1.2, 1] : 0.8,
                 y: currentFloor === 'home' ? [0, 40, 0] : 0,

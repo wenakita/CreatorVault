@@ -36,7 +36,7 @@ export const NeoStatCard = ({
       `}
     >
       <div className="text-[10px] sm:text-xs md:text-sm text-gray-600 dark:text-gray-400 font-semibold uppercase tracking-wider mb-2 sm:mb-3 transition-colors duration-300 truncate">{label}</div>
-      <div className={`text-2xl sm:text-3xl md:text-4xl font-bold mb-1.5 sm:mb-2 transition-all duration-300 truncate ${highlighted ? 'text-eagle-gold-darker dark:text-eagle-gold-light bg-gradient-to-r from-indigo-600 to-purple-600 dark:from-yellow-400 dark:to-yellow-300 bg-clip-text text-transparent' : 'text-gray-900 dark:text-gray-100'}`}>
+      <div className={`text-2xl sm:text-3xl md:text-4xl font-bold mb-1.5 sm:mb-2 transition-all duration-300 truncate ${highlighted ? 'text-eagle-gold-darker dark:text-eagle-gold-light bg-gradient-to-r from-indigo-600 to-purple-600 dark:from-indigo-400 dark:to-purple-400 bg-clip-text text-transparent' : 'text-gray-900 dark:text-gray-100'}`}>
         {value}
       </div>
       {subtitle && (

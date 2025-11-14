@@ -89,7 +89,7 @@ export default function EagleHomeContent({ onNavigateUp, onNavigateDown, provide
             <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-blue-400 to-cyan-400 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
             
             {/* Status Badge - Top Right */}
-            <div className="absolute top-3 sm:top-4 right-3 sm:right-4 inline-flex items-center gap-1.5 sm:gap-2 px-2 sm:px-3 py-1 sm:py-1.5 bg-gradient-to-r from-orange-100 to-yellow-100 dark:from-orange-900/30 dark:to-yellow-900/30 border-2 border-orange-400 dark:border-orange-500 rounded-full shadow-sm">
+            <div className="absolute top-3 sm:top-4 right-3 sm:right-4 inline-flex items-center gap-1.5 sm:gap-2 px-2 sm:px-3 py-1 sm:py-1.5 bg-gradient-to-r from-indigo-100 to-purple-100 dark:from-indigo-900/30 dark:to-purple-900/30 border-2 border-orange-400 dark:border-orange-500 rounded-full shadow-sm">
               <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-orange-500 rounded-full animate-pulse"></div>
               <span className="text-[10px] sm:text-xs font-semibold text-orange-700 dark:text-orange-300">Coming Soon</span>
             </div>
@@ -115,7 +115,7 @@ export default function EagleHomeContent({ onNavigateUp, onNavigateDown, provide
             onClick={onNavigateDown}
           >
             {/* Gradient accent */}
-            <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-yellow-400 to-orange-400 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+            <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-indigo-400 to-purple-400 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
             
             {/* Status Badge - Top Right */}
             <div className="absolute top-3 sm:top-4 right-3 sm:right-4 inline-flex items-center gap-1.5 sm:gap-2 px-2 sm:px-3 py-1 sm:py-1.5 bg-gradient-to-r from-green-100 to-emerald-100 dark:from-green-900/30 dark:to-emerald-900/30 border-2 border-green-400 dark:border-green-500 rounded-full shadow-sm">
