@@ -349,7 +349,7 @@ export default function VaultVisualization({ currentPrice = WLFI_PRICE_USD }: Va
                 const g = Math.floor(185 - normalizedDistance * 83)
                 const b = Math.floor(129 + normalizedDistance * 112)
                 const baseColor = `rgb(${r}, ${g}, ${b})`
-                const color = isHovered ? '#fbbf24' : baseColor // Gold when hovered
+                const color = isHovered ? '#F2D57C' : baseColor // Primary Gold when hovered
 
                 // Calculate tick price for display
                 const tickPrice = Math.pow(1.0001, bar.tick)
@@ -374,7 +374,7 @@ export default function VaultVisualization({ currentPrice = WLFI_PRICE_USD }: Va
                         transparent 
                         opacity={isHovered ? 0.95 : 0.7}
                         emissive={color}
-                        emissiveIntensity={isHovered ? 0.6 : 0.2}
+                        emissiveIntensity={isHovered ? 0.8 : 0.3} // Enhanced glow for hover
                       />
                     </mesh>
                     
