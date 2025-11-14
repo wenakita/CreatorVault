@@ -37,8 +37,9 @@ export default function AssetAllocationSunburst({
   const strategyUSD1InWLFI = wlfiPrice > 0 ? strategyUSD1 / wlfiPrice : 0;
   
   const totalVault = vaultWLFI + vaultUSD1;
-  const totalStrategy = strategyWLFI + strategyUSD1;
-  const grandTotal = totalVault + totalStrategy;
+  const totalUSD1Strategy = strategyUSD1;
+  const totalWETHStrategy = (strategyWETH * 3500) + (strategyWLFIinPool * 0.132); // Convert to USD for comparison
+  const grandTotal = totalVault + totalUSD1Strategy + totalWETHStrategy;
   
   // Total in WLFI terms
   const totalInWLFI = vaultWLFI + vaultUSD1InWLFI + strategyWLFI + strategyUSD1InWLFI;
@@ -57,6 +58,7 @@ export default function AssetAllocationSunburst({
     const radius = Math.min(width, height) / 2 - 30;
 
     // Hierarchical data structure with Eagle Finance theme colors
+    // All values normalized to USD for proper comparison
     const data: HierarchyNode = {
       name: 'Total Assets',
       children: [
@@ -64,18 +66,25 @@ export default function AssetAllocationSunburst({
           name: 'Vault Reserves',
           color: '#d4af37', // Eagle Gold
           children: [
-            { name: 'Vault WLFI', value: vaultWLFI, color: '#f6d55c' }, // Light Gold
-            { name: 'Vault USD1', value: vaultUSD1, color: '#b8941f' } // Dark Gold
+            { name: 'Vault WLFI', value: vaultWLFI * 0.132, color: '#f6d55c' }, // Light Gold (WLFI in USD)
+            { name: 'Vault USD1', value: vaultUSD1, color: '#b8941f' } // Dark Gold (USD1 already in USD)
           ]
         },
         {
-          name: 'Charm Strategy',
-          color: '#6366f1', // Indigo (Strategy)
+          name: 'USD1/WLFI Strategy',
+          color: '#6366f1', // Indigo (USD1 Strategy)
           children: [
-            { name: 'Strategy WLFI', value: strategyWLFI, color: '#818cf8' }, // Light Indigo
-            { name: 'Strategy USD1', value: strategyUSD1, color: '#4f46e5' } // Dark Indigo
+            { name: 'USD1/WLFI in Charm', value: strategyUSD1, color: '#818cf8' } // Total value in USD1 strategy
           ]
-        }
+        },
+        ...(strategyWETH > 0 ? [{
+          name: 'WETH/WLFI Strategy',
+          color: '#f59e0b', // Amber (WETH Strategy)
+          children: [
+            { name: 'WETH in Pool', value: strategyWETH * 3500, color: '#fbbf24' }, // Light Amber (WETH to USD)
+            { name: 'WLFI in Pool', value: strategyWLFIinPool * 0.132, color: '#d97706' } // Dark Amber (WLFI to USD)
+          ]
+        }] : [])
       ]
     };
 
@@ -328,63 +337,59 @@ export default function AssetAllocationSunburst({
             </div>
           </div>
           
+          {/* USD1/WLFI Strategy */}
           <div 
             className={`cursor-pointer p-3 sm:p-4 rounded-lg sm:rounded-xl transition-all duration-300 touch-manipulation active:scale-[0.98] ${
-              selectedPath?.includes('Strategy') 
+              selectedPath?.includes('USD1') 
                 ? 'bg-indigo-100 dark:bg-indigo-900/30 shadow-neo-inset dark:shadow-neo-inset-dark border-2 border-indigo-400 dark:border-indigo-600' 
                 : 'bg-white dark:bg-gray-800 shadow-neo-raised dark:shadow-neo-raised-dark border border-gray-300/50 dark:border-gray-600/50 hover:shadow-neo-hover dark:hover:shadow-neo-hover-dark'
             }`}
-            onClick={() => setSelectedPath(selectedPath?.includes('Strategy') ? null : 'Charm Strategy')}
+            onClick={() => setSelectedPath(selectedPath?.includes('USD1') ? null : 'USD1/WLFI Strategy')}
           >
-            <div className="text-[10px] sm:text-xs text-gray-600 dark:text-gray-400 uppercase tracking-wider mb-1.5 sm:mb-2 font-semibold">Charm Strategy</div>
+            <div className="text-[10px] sm:text-xs text-gray-600 dark:text-gray-400 uppercase tracking-wider mb-1.5 sm:mb-2 font-semibold">USD1/WLFI Strategy</div>
             <div className="space-y-1.5 sm:space-y-2">
               <div className="flex items-center justify-between gap-2">
                 <div className="flex items-center gap-1.5 sm:gap-2">
                   <div className="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full shadow-neo-inset dark:shadow-neo-inset-dark bg-indigo-400 flex-shrink-0"></div>
-                  <span className="text-xs sm:text-sm text-gray-700 dark:text-gray-300 font-medium">WLFI</span>
+                  <span className="text-xs sm:text-sm text-gray-700 dark:text-gray-300 font-medium">Total Value</span>
                 </div>
-                <span className="text-xs sm:text-sm font-mono text-gray-900 dark:text-gray-100 font-semibold">{strategyWLFI.toFixed(2)}</span>
-              </div>
-              <div className="flex items-center justify-between gap-2">
-                <div className="flex items-center gap-1.5 sm:gap-2">
-                  <div className="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full shadow-neo-inset dark:shadow-neo-inset-dark bg-indigo-700 flex-shrink-0"></div>
-                  <span className="text-xs sm:text-sm text-gray-700 dark:text-gray-300 font-medium">USD1</span>
-                </div>
-                <span className="text-xs sm:text-sm font-mono text-gray-900 dark:text-gray-100 font-semibold">{strategyUSD1.toFixed(2)}</span>
+                <span className="text-xs sm:text-sm font-mono text-gray-900 dark:text-gray-100 font-semibold">${strategyUSD1.toFixed(2)}</span>
               </div>
             </div>
             <div className="text-[10px] sm:text-xs text-indigo-700 dark:text-indigo-400 mt-1.5 sm:mt-2 font-semibold">
-              {grandTotal > 0 ? ((totalStrategy / grandTotal) * 100).toFixed(1) : '100.0'}% • Earning yield
+              {grandTotal > 0 ? ((totalUSD1Strategy / grandTotal) * 100).toFixed(1) : '0'}% • Charm USD1/WLFI
             </div>
           </div>
 
-          {/* WETH/WLFI Strategy Breakdown */}
+          {/* WETH/WLFI Strategy */}
           {strategyWETH > 0 && (
-            <div className="bg-gradient-to-br from-yellow-50 to-amber-50 dark:from-yellow-900/20 dark:to-amber-900/20 shadow-neo-raised dark:shadow-neo-raised-dark border border-yellow-400/30 dark:border-yellow-600/30 rounded-lg sm:rounded-xl p-3 sm:p-4 hover:shadow-neo-hover dark:hover:shadow-neo-hover-dark transition-all duration-300">
-              <div className="flex items-center gap-2 mb-2">
-                <div className="w-6 h-6 rounded-full bg-gradient-to-br from-yellow-500 to-yellow-600 flex items-center justify-center shadow-md">
-                  <span className="text-white font-bold text-xs">Ξ</span>
-                </div>
-                <div className="text-[10px] sm:text-xs text-gray-700 dark:text-gray-300 uppercase tracking-wider font-semibold">WETH/WLFI Strategy</div>
-              </div>
+            <div 
+              className={`cursor-pointer p-3 sm:p-4 rounded-lg sm:rounded-xl transition-all duration-300 touch-manipulation active:scale-[0.98] ${
+                selectedPath?.includes('WETH') 
+                  ? 'bg-amber-100 dark:bg-amber-900/30 shadow-neo-inset dark:shadow-neo-inset-dark border-2 border-amber-400 dark:border-amber-600' 
+                  : 'bg-white dark:bg-gray-800 shadow-neo-raised dark:shadow-neo-raised-dark border border-gray-300/50 dark:border-gray-600/50 hover:shadow-neo-hover dark:hover:shadow-neo-hover-dark'
+              }`}
+              onClick={() => setSelectedPath(selectedPath?.includes('WETH') ? null : 'WETH/WLFI Strategy')}
+            >
+              <div className="text-[10px] sm:text-xs text-gray-600 dark:text-gray-400 uppercase tracking-wider mb-1.5 sm:mb-2 font-semibold">WETH/WLFI Strategy</div>
               <div className="space-y-1.5 sm:space-y-2">
                 <div className="flex items-center justify-between gap-2">
                   <div className="flex items-center gap-1.5 sm:gap-2">
-                    <div className="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full shadow-neo-inset dark:shadow-neo-inset-dark bg-gradient-to-br from-yellow-400 to-yellow-500 flex-shrink-0"></div>
+                    <div className="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full shadow-neo-inset dark:shadow-neo-inset-dark bg-amber-400 flex-shrink-0"></div>
                     <span className="text-xs sm:text-sm text-gray-700 dark:text-gray-300 font-medium">WETH</span>
                   </div>
                   <span className="text-xs sm:text-sm font-mono text-gray-900 dark:text-gray-100 font-semibold">{strategyWETH.toFixed(4)}</span>
                 </div>
                 <div className="flex items-center justify-between gap-2">
                   <div className="flex items-center gap-1.5 sm:gap-2">
-                    <div className="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full shadow-neo-inset dark:shadow-neo-inset-dark bg-gradient-to-br from-amber-400 to-amber-500 flex-shrink-0"></div>
+                    <div className="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full shadow-neo-inset dark:shadow-neo-inset-dark bg-amber-700 flex-shrink-0"></div>
                     <span className="text-xs sm:text-sm text-gray-700 dark:text-gray-300 font-medium">WLFI</span>
                   </div>
                   <span className="text-xs sm:text-sm font-mono text-gray-900 dark:text-gray-100 font-semibold">{strategyWLFIinPool.toFixed(2)}</span>
                 </div>
               </div>
-              <div className="text-[10px] sm:text-xs text-yellow-700 dark:text-yellow-400 mt-1.5 sm:mt-2 font-semibold">
-                Charm Alpha Vault Breakdown
+              <div className="text-[10px] sm:text-xs text-amber-700 dark:text-amber-400 mt-1.5 sm:mt-2 font-semibold">
+                {grandTotal > 0 ? ((totalWETHStrategy / grandTotal) * 100).toFixed(1) : '0'}% • Charm WETH/WLFI
               </div>
             </div>
           )}
