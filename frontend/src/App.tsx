@@ -63,7 +63,7 @@ function AppContent() {
   }, [isConnected, wagmiAddress, isSafeApp, safeAddress, account, provider]);
 
   return (
-    <div className="h-screen flex flex-col bg-neo-bg-light dark:bg-neo-bg-dark transition-colors duration-300">
+    <div className="h-screen flex flex-col transition-colors duration-300">
       {/* Fixed Header */}
       <div className="relative z-20 flex-shrink-0">
         <ModernHeader />
