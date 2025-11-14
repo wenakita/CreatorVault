@@ -1706,51 +1706,61 @@ export default function VaultView({ provider, account, onToast, onNavigateUp, on
                 {infoTab === 'strategies' && (
                   <div className="space-y-5">
                     {/* All 5 Strategies as Expandable Rows */}
-                    {[
-                      {
-                        id: 1,
-                        name: 'Charm USD1/WLFI Alpha Vault',
-                        protocol: 'Charm Finance',
-                        pool: 'USD1/WLFI',
-                        feeTier: '1%',
-                        allocation: '50%',
-                        status: 'active',
-                        description: 'Actively managed concentrated liquidity position on Uniswap V3, optimized for the USD1/WLFI 1% fee tier pool.',
-                        analytics: 'https://alpha.charm.fi/vault/1/0x47b2f57fb48177c02e9e219ad4f4e42d5f4f1a0c',
-                        revertAnalytics: 'https://revert.finance/#/pool/mainnet/uniswapv3/0xf9f5e6f7a44ee10c72e67bded6654afaf4d0c85d',
-                        contract: '0x47B2659747d6A7E00c8251c3C3f7e92625a8cf6f',
-                        charmVault: '0x22828Dbf15f5FBa2394Ba7Cf8fA9A96BdB444B71',
-                        uniswapPool: '0xf9f5E6f7A44Ee10c72E67Bded6654afAf4D0c85d', // USD1/WLFI 1% pool
-                        deployed: data.strategyUSD1,
-                        usd1Amount: data.strategyUSD1InPool, // Add USD1 amount for display
-                        wlfiAmount: data.strategyWLFIinUSD1Pool // Add WLFI amount for display
-                      },
-                      {
-                        id: 2,
-                        name: 'Charm WETH/WLFI Alpha Vault',
-                        protocol: 'Charm Finance',
-                        pool: 'WETH/WLFI',
-                        feeTier: '1%',
-                        allocation: '50%',
-                        status: 'active',
-                        description: 'Actively managed concentrated liquidity position on Uniswap V3, optimized for the WETH/WLFI 1% fee tier pool. Features 24-hour oracle support for stable operations.',
-                        analytics: 'https://alpha.charm.fi/vault/1/0x3314e248F3F752Cd16939773D83bEb3a362F0AEF',
-                        contract: '0x5c525Af4153B1c43f9C06c31D32a84637c617FfE',
-                        charmVault: '0x3314e248F3F752Cd16939773D83bEb3a362F0AEF',
-                        uniswapPool: '0xCa2e972f081764c30Ae5F012A29D5277EEf33838', // WETH/WLFI 1% pool
-                        deployed: data.strategyWLFI,
-                        wethAmount: data.strategyWETH, // Add WETH amount for display
-                        wlfiAmount: data.strategyWLFIinPool // Add WLFI in pool for display
-                      },
-                      {
-                        id: 3,
-                        name: 'Additional Strategies',
-                        protocol: 'Coming Soon',
-                        description: 'More yield optimization strategies are in development. Stay tuned for announcements about additional DeFi integrations and liquidity opportunities.',
-                        status: 'coming-soon',
-                        allocation: 'TBD'
-                      }
-                    ].map((strategy) => (
+                    {(() => {
+                      // Calculate actual allocation percentages
+                      const totalDeployed = Number(data.strategyTotal) || 1; // Avoid division by zero
+                      const usd1Deployed = Number(data.strategyUSD1) || 0;
+                      const wethDeployed = Number(data.strategyWLFI) || 0; // This is the WETH strategy total value
+                      
+                      const usd1Allocation = totalDeployed > 0 ? ((usd1Deployed / totalDeployed) * 100).toFixed(1) : '0.0';
+                      const wethAllocation = totalDeployed > 0 ? ((wethDeployed / totalDeployed) * 100).toFixed(1) : '0.0';
+                      
+                      return [
+                        {
+                          id: 1,
+                          name: 'Charm USD1/WLFI Alpha Vault',
+                          protocol: 'Charm Finance',
+                          pool: 'USD1/WLFI',
+                          feeTier: '1%',
+                          allocation: `${usd1Allocation}%`,
+                          status: 'active',
+                          description: 'Actively managed concentrated liquidity position on Uniswap V3, optimized for the USD1/WLFI 1% fee tier pool.',
+                          analytics: 'https://alpha.charm.fi/vault/1/0x47b2f57fb48177c02e9e219ad4f4e42d5f4f1a0c',
+                          revertAnalytics: 'https://revert.finance/#/pool/mainnet/uniswapv3/0xf9f5e6f7a44ee10c72e67bded6654afaf4d0c85d',
+                          contract: '0x47B2659747d6A7E00c8251c3C3f7e92625a8cf6f',
+                          charmVault: '0x22828Dbf15f5FBa2394Ba7Cf8fA9A96BdB444B71',
+                          uniswapPool: '0xf9f5E6f7A44Ee10c72E67Bded6654afAf4D0c85d', // USD1/WLFI 1% pool
+                          deployed: data.strategyUSD1,
+                          usd1Amount: data.strategyUSD1InPool, // Add USD1 amount for display
+                          wlfiAmount: data.strategyWLFIinUSD1Pool // Add WLFI amount for display
+                        },
+                        {
+                          id: 2,
+                          name: 'Charm WETH/WLFI Alpha Vault',
+                          protocol: 'Charm Finance',
+                          pool: 'WETH/WLFI',
+                          feeTier: '1%',
+                          allocation: `${wethAllocation}%`,
+                          status: 'active',
+                          description: 'Actively managed concentrated liquidity position on Uniswap V3, optimized for the WETH/WLFI 1% fee tier pool. Features 24-hour oracle support for stable operations.',
+                          analytics: 'https://alpha.charm.fi/vault/1/0x3314e248F3F752Cd16939773D83bEb3a362F0AEF',
+                          contract: '0x5c525Af4153B1c43f9C06c31D32a84637c617FfE',
+                          charmVault: '0x3314e248F3F752Cd16939773D83bEb3a362F0AEF',
+                          uniswapPool: '0xCa2e972f081764c30Ae5F012A29D5277EEf33838', // WETH/WLFI 1% pool
+                          deployed: data.strategyWLFI,
+                          wethAmount: data.strategyWETH, // Add WETH amount for display
+                          wlfiAmount: data.strategyWLFIinPool // Add WLFI in pool for display
+                        },
+                        {
+                          id: 3,
+                          name: 'Additional Strategies',
+                          protocol: 'Coming Soon',
+                          description: 'More yield optimization strategies are in development. Stay tuned for announcements about additional DeFi integrations and liquidity opportunities.',
+                          status: 'coming-soon',
+                          allocation: 'TBD'
+                        }
+                      ];
+                    })().map((strategy) => (
                       <StrategyRow 
                         key={strategy.id} 
                         strategy={strategy} 
