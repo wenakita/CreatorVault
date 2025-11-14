@@ -161,32 +161,83 @@ function StrategyRow({ strategy, wlfiPrice, revertData }: { strategy: any; wlfiP
 
               {strategy.contract && (
                 <div className="space-y-3 mb-4">
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    {/* Contract Address */}
-                    <div>
-                      <div className="text-[10px] text-gray-500 dark:text-gray-500 uppercase tracking-wider mb-1.5">Contract</div>
-                      <a 
-                        href={`https://etherscan.io/address/${strategy.contract}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-sm text-gray-700 dark:text-gray-300 hover:text-[#A27D46] dark:hover:text-[#D4B474] font-mono transition-colors block"
-                      >
-                        {strategy.contract.slice(0, 6)}...{strategy.contract.slice(-4)}
-                      </a>
+                  {/* Contract Addresses Section */}
+                  <div className="space-y-3">
+                    {/* Strategy Contract */}
+                    <div className="bg-white/5 dark:bg-white/5 rounded-lg p-3 border border-gray-200/10 dark:border-gray-700/20">
+                      <div className="text-[10px] text-gray-500 dark:text-gray-500 uppercase tracking-wider mb-2 font-semibold">Strategy Contract</div>
+                      <div className="flex items-center gap-2">
+                        <a 
+                          href={`https://etherscan.io/address/${strategy.contract}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex-1 text-xs text-gray-700 dark:text-gray-300 hover:text-[#A27D46] dark:hover:text-[#D4B474] font-mono transition-colors break-all leading-relaxed"
+                        >
+                          {strategy.contract}
+                        </a>
+                        <button
+                          onClick={() => {
+                            navigator.clipboard.writeText(strategy.contract);
+                            onToast({ message: 'Contract address copied!', type: 'success' });
+                          }}
+                          className="shrink-0 p-2 rounded-lg bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors group"
+                          title="Copy address"
+                        >
+                          <svg className="w-3.5 h-3.5 text-gray-600 dark:text-gray-400 group-hover:text-[#D4B474]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                          </svg>
+                        </button>
+                        <a 
+                          href={`https://etherscan.io/address/${strategy.contract}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="shrink-0 p-2 rounded-lg bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors group"
+                          title="View on Etherscan"
+                        >
+                          <svg className="w-3.5 h-3.5 text-gray-600 dark:text-gray-400 group-hover:text-[#D4B474]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                          </svg>
+                        </a>
+                      </div>
                     </div>
 
                     {/* Charm Vault */}
                     {strategy.charmVault && (
-                      <div>
-                        <div className="text-[10px] text-gray-500 dark:text-gray-500 uppercase tracking-wider mb-1.5">Charm Vault</div>
-                        <a 
-                          href={`https://etherscan.io/address/${strategy.charmVault}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-sm text-gray-700 dark:text-gray-300 hover:text-[#A27D46] dark:hover:text-[#D4B474] font-mono transition-colors block"
-                        >
-                          {strategy.charmVault.slice(0, 6)}...{strategy.charmVault.slice(-4)}
-                        </a>
+                      <div className="bg-white/5 dark:bg-white/5 rounded-lg p-3 border border-gray-200/10 dark:border-gray-700/20">
+                        <div className="text-[10px] text-gray-500 dark:text-gray-500 uppercase tracking-wider mb-2 font-semibold">Charm Alpha Vault</div>
+                        <div className="flex items-center gap-2">
+                          <a 
+                            href={`https://etherscan.io/address/${strategy.charmVault}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="flex-1 text-xs text-gray-700 dark:text-gray-300 hover:text-[#A27D46] dark:hover:text-[#D4B474] font-mono transition-colors break-all leading-relaxed"
+                          >
+                            {strategy.charmVault}
+                          </a>
+                          <button
+                            onClick={() => {
+                              navigator.clipboard.writeText(strategy.charmVault);
+                              onToast({ message: 'Charm Vault address copied!', type: 'success' });
+                            }}
+                            className="shrink-0 p-2 rounded-lg bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors group"
+                            title="Copy address"
+                          >
+                            <svg className="w-3.5 h-3.5 text-gray-600 dark:text-gray-400 group-hover:text-[#D4B474]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                            </svg>
+                          </button>
+                          <a 
+                            href={`https://etherscan.io/address/${strategy.charmVault}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="shrink-0 p-2 rounded-lg bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors group"
+                            title="View on Etherscan"
+                          >
+                            <svg className="w-3.5 h-3.5 text-gray-600 dark:text-gray-400 group-hover:text-[#D4B474]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                            </svg>
+                          </a>
+                        </div>
                       </div>
                     )}
                   </div>
@@ -194,38 +245,61 @@ function StrategyRow({ strategy, wlfiPrice, revertData }: { strategy: any; wlfiP
                   {/* Uniswap Pool & Revert Finance Link */}
                   {strategy.uniswapPool && (
                     <div className="bg-gradient-to-r from-blue-50/50 to-purple-50/50 dark:from-blue-900/10 dark:to-purple-900/10 rounded-lg p-3 border border-blue-200/30 dark:border-blue-700/20">
-                      <div className="flex items-start justify-between gap-3">
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2 mb-1.5">
-                            <div className="text-[10px] text-gray-500 dark:text-gray-500 uppercase tracking-wider">Uniswap V3 Pool</div>
-                            <div className="px-1.5 py-0.5 bg-blue-100 dark:bg-blue-900/30 rounded text-[9px] font-semibold text-blue-700 dark:text-blue-400">
-                              {strategy.feeTier || '1%'}
-                            </div>
-                          </div>
-                          <a 
-                            href={`https://etherscan.io/address/${strategy.uniswapPool}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-xs text-gray-600 dark:text-gray-400 hover:text-[#A27D46] dark:hover:text-[#D4B474] font-mono transition-colors block mb-2"
-                          >
-                            {strategy.uniswapPool.slice(0, 6)}...{strategy.uniswapPool.slice(-4)}
-                          </a>
-                          <a 
-                            href={`https://revert.finance/#/pool/mainnet/uniswapv3/${strategy.uniswapPool}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="inline-flex items-center gap-1.5 text-xs font-medium text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 transition-colors group"
-                          >
-                            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-                            </svg>
-                            View Pool Analytics on Revert Finance
-                            <svg className="w-3 h-3 group-hover:translate-x-0.5 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-                            </svg>
-                          </a>
+                      <div className="flex items-center gap-2 mb-2">
+                        <div className="text-[10px] text-gray-500 dark:text-gray-500 uppercase tracking-wider font-semibold">Uniswap V3 Pool</div>
+                        <div className="px-1.5 py-0.5 bg-blue-100 dark:bg-blue-900/30 rounded text-[9px] font-semibold text-blue-700 dark:text-blue-400">
+                          {strategy.feeTier || '1%'}
                         </div>
                       </div>
+                      
+                      <div className="flex items-center gap-2 mb-3">
+                        <a 
+                          href={`https://etherscan.io/address/${strategy.uniswapPool}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex-1 text-xs text-gray-700 dark:text-gray-300 hover:text-[#A27D46] dark:hover:text-[#D4B474] font-mono transition-colors break-all leading-relaxed"
+                        >
+                          {strategy.uniswapPool}
+                        </a>
+                        <button
+                          onClick={() => {
+                            navigator.clipboard.writeText(strategy.uniswapPool);
+                            onToast({ message: 'Pool address copied!', type: 'success' });
+                          }}
+                          className="shrink-0 p-2 rounded-lg bg-blue-100/50 dark:bg-blue-900/30 hover:bg-blue-200/50 dark:hover:bg-blue-800/30 transition-colors group"
+                          title="Copy pool address"
+                        >
+                          <svg className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400 group-hover:text-blue-700 dark:group-hover:text-blue-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                          </svg>
+                        </button>
+                        <a 
+                          href={`https://etherscan.io/address/${strategy.uniswapPool}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="shrink-0 p-2 rounded-lg bg-blue-100/50 dark:bg-blue-900/30 hover:bg-blue-200/50 dark:hover:bg-blue-800/30 transition-colors group"
+                          title="View pool on Etherscan"
+                        >
+                          <svg className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400 group-hover:text-blue-700 dark:group-hover:text-blue-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                          </svg>
+                        </a>
+                      </div>
+                      
+                      <a 
+                        href={`https://revert.finance/#/pool/mainnet/uniswapv3/${strategy.uniswapPool}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1.5 text-xs font-medium text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 transition-colors group"
+                      >
+                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                        </svg>
+                        View Pool Analytics on Revert Finance
+                        <svg className="w-3 h-3 group-hover:translate-x-0.5 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                        </svg>
+                      </a>
                     </div>
                   )}
 
