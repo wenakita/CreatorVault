@@ -9,6 +9,8 @@ interface AssetAllocationSunburstProps {
   wlfiPrice: number;
   strategyWETH?: number;
   strategyWLFIinPool?: number;
+  strategyUSD1InPool?: number;
+  strategyWLFIinUSD1Pool?: number;
 }
 
 interface HierarchyNode {
@@ -25,12 +27,15 @@ export default function AssetAllocationSunburst({
   strategyUSD1,
   wlfiPrice,
   strategyWETH = 0,
-  strategyWLFIinPool = 0
+  strategyWLFIinPool = 0,
+  strategyUSD1InPool = 0,
+  strategyWLFIinUSD1Pool = 0
 }: AssetAllocationSunburstProps) {
   
   const svgRef = useRef<SVGSVGElement>(null);
   const [selectedPath, setSelectedPath] = useState<string | null>(null);
   const [animationKey, setAnimationKey] = useState(0);
+  const [expandedSection, setExpandedSection] = useState<string | null>(null);
   
   // Convert USD1 to WLFI equivalent (USD1 = $1, so USD1 / wlfiPrice = WLFI equivalent)
   const vaultUSD1InWLFI = wlfiPrice > 0 ? vaultUSD1 / wlfiPrice : 0;
@@ -333,29 +338,41 @@ export default function AssetAllocationSunburst({
         <div className="space-y-2.5 sm:space-y-3 flex-shrink-0 w-full lg:w-auto">
           <div 
             className={`cursor-pointer p-3 sm:p-4 rounded-lg sm:rounded-xl transition-all duration-300 touch-manipulation active:scale-[0.98] ${
-              selectedPath?.includes('Vault') 
+              expandedSection === 'vault'
                 ? 'bg-yellow-100 dark:bg-yellow-900/30 shadow-neo-inset dark:shadow-neo-inset-dark border-2 border-yellow-400 dark:border-yellow-600' 
                 : 'bg-white dark:bg-gray-800 shadow-neo-raised dark:shadow-neo-raised-dark border border-gray-300/50 dark:border-gray-600/50 hover:shadow-neo-hover dark:hover:shadow-neo-hover-dark'
             }`}
-            onClick={() => setSelectedPath(selectedPath?.includes('Vault') ? null : 'Vault Reserves')}
+            onClick={() => {
+              setExpandedSection(expandedSection === 'vault' ? null : 'vault');
+              setSelectedPath(selectedPath?.includes('Vault') ? null : 'Vault Reserves');
+            }}
           >
             <div className="text-[10px] sm:text-xs text-gray-600 dark:text-gray-400 uppercase tracking-wider mb-1.5 sm:mb-2 font-semibold">Vault Reserves</div>
-            <div className="space-y-1.5 sm:space-y-2">
-              <div className="flex items-center justify-between gap-2">
-                <div className="flex items-center gap-1.5 sm:gap-2">
-                  <div className="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full shadow-neo-inset dark:shadow-neo-inset-dark flex-shrink-0" style={{ backgroundColor: '#f6d55c' }}></div>
-                  <span className="text-xs sm:text-sm text-gray-700 dark:text-gray-300 font-medium">WLFI</span>
+            
+            {expandedSection === 'vault' ? (
+              <div className="space-y-1.5 sm:space-y-2">
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-1.5 sm:gap-2">
+                    <div className="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full shadow-neo-inset dark:shadow-neo-inset-dark flex-shrink-0" style={{ backgroundColor: '#f6d55c' }}></div>
+                    <span className="text-xs sm:text-sm text-gray-700 dark:text-gray-300 font-medium">WLFI</span>
+                  </div>
+                  <span className="text-xs sm:text-sm font-mono text-gray-900 dark:text-gray-100 font-semibold">{vaultWLFI.toFixed(2)}</span>
                 </div>
-                <span className="text-xs sm:text-sm font-mono text-gray-900 dark:text-gray-100 font-semibold">{vaultWLFI.toFixed(2)}</span>
-              </div>
-              <div className="flex items-center justify-between gap-2">
-                <div className="flex items-center gap-1.5 sm:gap-2">
-                  <div className="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full shadow-neo-inset dark:shadow-neo-inset-dark flex-shrink-0" style={{ backgroundColor: '#b8941f' }}></div>
-                  <span className="text-xs sm:text-sm text-gray-700 dark:text-gray-300 font-medium">USD1</span>
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-1.5 sm:gap-2">
+                    <div className="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full shadow-neo-inset dark:shadow-neo-inset-dark flex-shrink-0" style={{ backgroundColor: '#b8941f' }}></div>
+                    <span className="text-xs sm:text-sm text-gray-700 dark:text-gray-300 font-medium">USD1</span>
+                  </div>
+                  <span className="text-xs sm:text-sm font-mono text-gray-900 dark:text-gray-100 font-semibold">{vaultUSD1.toFixed(2)}</span>
                 </div>
-                <span className="text-xs sm:text-sm font-mono text-gray-900 dark:text-gray-100 font-semibold">{vaultUSD1.toFixed(2)}</span>
               </div>
-            </div>
+            ) : (
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-sm sm:text-base text-gray-700 dark:text-gray-300 font-medium">Total Value</span>
+                <span className="text-base sm:text-lg font-mono text-gray-900 dark:text-gray-100 font-bold">${totalVault.toFixed(2)}</span>
+              </div>
+            )}
+            
             <div className="text-[10px] sm:text-xs text-yellow-700 dark:text-yellow-400 mt-1.5 sm:mt-2 font-semibold">
               {grandTotal > 0 ? ((totalVault / grandTotal) * 100).toFixed(1) : '0.0'}% • Available now
             </div>
@@ -364,22 +381,41 @@ export default function AssetAllocationSunburst({
           {/* USD1/WLFI Strategy */}
           <div 
             className={`cursor-pointer p-3 sm:p-4 rounded-lg sm:rounded-xl transition-all duration-300 touch-manipulation active:scale-[0.98] ${
-              selectedPath?.includes('USD1') 
+              expandedSection === 'usd1'
                 ? 'bg-indigo-100 dark:bg-indigo-900/30 shadow-neo-inset dark:shadow-neo-inset-dark border-2 border-indigo-400 dark:border-indigo-600' 
                 : 'bg-white dark:bg-gray-800 shadow-neo-raised dark:shadow-neo-raised-dark border border-gray-300/50 dark:border-gray-600/50 hover:shadow-neo-hover dark:hover:shadow-neo-hover-dark'
             }`}
-            onClick={() => setSelectedPath(selectedPath?.includes('USD1') ? null : 'USD1/WLFI Strategy')}
+            onClick={() => {
+              setExpandedSection(expandedSection === 'usd1' ? null : 'usd1');
+              setSelectedPath(selectedPath?.includes('USD1') ? null : 'USD1/WLFI Strategy');
+            }}
           >
             <div className="text-[10px] sm:text-xs text-gray-600 dark:text-gray-400 uppercase tracking-wider mb-1.5 sm:mb-2 font-semibold">USD1/WLFI Strategy</div>
-            <div className="space-y-1.5 sm:space-y-2">
-              <div className="flex items-center justify-between gap-2">
-                <div className="flex items-center gap-1.5 sm:gap-2">
-                  <div className="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full shadow-neo-inset dark:shadow-neo-inset-dark bg-indigo-400 flex-shrink-0"></div>
-                  <span className="text-xs sm:text-sm text-gray-700 dark:text-gray-300 font-medium">Total Value</span>
+            
+            {expandedSection === 'usd1' ? (
+              <div className="space-y-1.5 sm:space-y-2">
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-1.5 sm:gap-2">
+                    <div className="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full shadow-neo-inset dark:shadow-neo-inset-dark bg-indigo-300 flex-shrink-0"></div>
+                    <span className="text-xs sm:text-sm text-gray-700 dark:text-gray-300 font-medium">USD1</span>
+                  </div>
+                  <span className="text-xs sm:text-sm font-mono text-gray-900 dark:text-gray-100 font-semibold">{strategyUSD1InPool.toFixed(2)}</span>
                 </div>
-                <span className="text-xs sm:text-sm font-mono text-gray-900 dark:text-gray-100 font-semibold">${strategyUSD1.toFixed(2)}</span>
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-1.5 sm:gap-2">
+                    <div className="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full shadow-neo-inset dark:shadow-neo-inset-dark bg-indigo-500 flex-shrink-0"></div>
+                    <span className="text-xs sm:text-sm text-gray-700 dark:text-gray-300 font-medium">WLFI</span>
+                  </div>
+                  <span className="text-xs sm:text-sm font-mono text-gray-900 dark:text-gray-100 font-semibold">{strategyWLFIinUSD1Pool.toFixed(2)}</span>
+                </div>
               </div>
-            </div>
+            ) : (
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-sm sm:text-base text-gray-700 dark:text-gray-300 font-medium">Total Value</span>
+                <span className="text-base sm:text-lg font-mono text-gray-900 dark:text-gray-100 font-bold">${strategyUSD1.toFixed(2)}</span>
+              </div>
+            )}
+            
             <div className="text-[10px] sm:text-xs text-indigo-700 dark:text-indigo-400 mt-1.5 sm:mt-2 font-semibold">
               {grandTotal > 0 ? ((totalUSD1Strategy / grandTotal) * 100).toFixed(1) : '0'}% • Charm USD1/WLFI
             </div>
@@ -389,29 +425,41 @@ export default function AssetAllocationSunburst({
           {strategyWETH > 0 && (
             <div 
               className={`cursor-pointer p-3 sm:p-4 rounded-lg sm:rounded-xl transition-all duration-300 touch-manipulation active:scale-[0.98] ${
-                selectedPath?.includes('WETH') 
+                expandedSection === 'weth'
                   ? 'bg-gray-200 dark:bg-gray-800 shadow-neo-inset dark:shadow-neo-inset-dark border-2 border-gray-400 dark:border-gray-600' 
                   : 'bg-white dark:bg-gray-800 shadow-neo-raised dark:shadow-neo-raised-dark border border-gray-300/50 dark:border-gray-600/50 hover:shadow-neo-hover dark:hover:shadow-neo-hover-dark'
               }`}
-              onClick={() => setSelectedPath(selectedPath?.includes('WETH') ? null : 'WETH/WLFI Strategy')}
+              onClick={() => {
+                setExpandedSection(expandedSection === 'weth' ? null : 'weth');
+                setSelectedPath(selectedPath?.includes('WETH') ? null : 'WETH/WLFI Strategy');
+              }}
             >
               <div className="text-[10px] sm:text-xs text-gray-600 dark:text-gray-400 uppercase tracking-wider mb-1.5 sm:mb-2 font-semibold">WETH/WLFI Strategy</div>
-              <div className="space-y-1.5 sm:space-y-2">
-                <div className="flex items-center justify-between gap-2">
-                  <div className="flex items-center gap-1.5 sm:gap-2">
-                    <div className="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full shadow-neo-inset dark:shadow-neo-inset-dark bg-gradient-to-br from-gray-800 to-black flex-shrink-0"></div>
-                    <span className="text-xs sm:text-sm text-gray-700 dark:text-gray-300 font-medium">WETH</span>
+              
+              {expandedSection === 'weth' ? (
+                <div className="space-y-1.5 sm:space-y-2">
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-1.5 sm:gap-2">
+                      <div className="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full shadow-neo-inset dark:shadow-neo-inset-dark bg-gradient-to-br from-gray-800 to-black flex-shrink-0"></div>
+                      <span className="text-xs sm:text-sm text-gray-700 dark:text-gray-300 font-medium">WETH</span>
+                    </div>
+                    <span className="text-xs sm:text-sm font-mono text-gray-900 dark:text-gray-100 font-semibold">{strategyWETH.toFixed(4)}</span>
                   </div>
-                  <span className="text-xs sm:text-sm font-mono text-gray-900 dark:text-gray-100 font-semibold">{strategyWETH.toFixed(4)}</span>
-                </div>
-                <div className="flex items-center justify-between gap-2">
-                  <div className="flex items-center gap-1.5 sm:gap-2">
-                    <div className="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full shadow-neo-inset dark:shadow-neo-inset-dark bg-gradient-to-br from-gray-500 to-gray-600 flex-shrink-0"></div>
-                    <span className="text-xs sm:text-sm text-gray-700 dark:text-gray-300 font-medium">WLFI</span>
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-1.5 sm:gap-2">
+                      <div className="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full shadow-neo-inset dark:shadow-neo-inset-dark bg-gradient-to-br from-gray-500 to-gray-600 flex-shrink-0"></div>
+                      <span className="text-xs sm:text-sm text-gray-700 dark:text-gray-300 font-medium">WLFI</span>
+                    </div>
+                    <span className="text-xs sm:text-sm font-mono text-gray-900 dark:text-gray-100 font-semibold">{strategyWLFIinPool.toFixed(2)}</span>
                   </div>
-                  <span className="text-xs sm:text-sm font-mono text-gray-900 dark:text-gray-100 font-semibold">{strategyWLFIinPool.toFixed(2)}</span>
                 </div>
-              </div>
+              ) : (
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-sm sm:text-base text-gray-700 dark:text-gray-300 font-medium">Total Value</span>
+                  <span className="text-base sm:text-lg font-mono text-gray-900 dark:text-gray-100 font-bold">${totalWETHStrategy.toFixed(2)}</span>
+                </div>
+              )}
+              
               <div className="text-[10px] sm:text-xs text-gray-700 dark:text-gray-400 mt-1.5 sm:mt-2 font-semibold">
                 {grandTotal > 0 ? ((totalWETHStrategy / grandTotal) * 100).toFixed(1) : '0'}% • Charm WETH/WLFI
               </div>
