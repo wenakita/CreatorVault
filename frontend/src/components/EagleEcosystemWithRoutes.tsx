@@ -134,9 +134,9 @@ export default function EagleEcosystemWithRoutes({ provider, account, onToast }:
       bottom: 'rgba(243, 244, 246, 1)'      // gray-100
     },
     'home': { 
-      top: 'rgba(254, 240, 138, 0.45)',    // yellow-200 with opacity (light mode)
-      middle: 'rgba(253, 230, 138, 0.4)',   // amber-200 with opacity
-      bottom: 'rgba(243, 244, 246, 1)'      // gray-100
+      top: 'rgba(255, 255, 255, 1)',        // pure white (light mode)
+      middle: 'rgba(252, 252, 253, 1)',     // pearly white
+      bottom: 'rgba(249, 250, 251, 1)'      // soft white (gray-50)
     },
     'vault': { 
       top: 'rgba(253, 230, 138, 0.5)',     // amber-200 with more opacity (light mode)
@@ -151,9 +151,9 @@ export default function EagleEcosystemWithRoutes({ provider, account, onToast }:
   };
 
   return (
-    <div className="h-full overflow-hidden relative bg-gray-100 dark:bg-[#0a0a0a]">
+    <div className="h-full overflow-hidden relative bg-white dark:bg-[#0a0a0a]">
       {/* Base layer - persistent background */}
-      <div className="absolute inset-0 bg-gray-100 dark:bg-[#0a0a0a]" style={{ height: '300vh' }} />
+      <div className="absolute inset-0 bg-white dark:bg-[#0a0a0a]" style={{ height: '300vh' }} />
       
       {/* Cross-fade backgrounds for each floor - creates seamless transitions */}
       {Object.keys(floorColors).map((floor) => (
@@ -189,7 +189,7 @@ export default function EagleEcosystemWithRoutes({ provider, account, onToast }:
              currentFloor === 'vault' ? 'radial-gradient(ellipse 120% 100% at bottom, rgba(217, 119, 6, 0.16), transparent 60%)' :
              'radial-gradient(ellipse 120% 100% at top right, rgba(168, 85, 247, 0.18), transparent 60%)') :
             (currentFloor === 'lp' ? 'radial-gradient(ellipse 120% 100% at top, rgba(59, 130, 246, 0.15), transparent 70%)' :
-             currentFloor === 'home' ? 'radial-gradient(ellipse 120% 100% at center, rgba(245, 158, 11, 0.18), transparent 70%)' :
+             currentFloor === 'home' ? 'radial-gradient(ellipse 120% 100% at center, rgba(0, 0, 0, 0.02), transparent 80%)' :
              currentFloor === 'vault' ? 'radial-gradient(ellipse 120% 100% at bottom, rgba(217, 119, 6, 0.2), transparent 70%)' :
              'radial-gradient(ellipse 120% 100% at top right, rgba(168, 85, 247, 0.22), transparent 70%)'),
           opacity: 1
@@ -207,11 +207,11 @@ export default function EagleEcosystemWithRoutes({ provider, account, onToast }:
           height: '300vh',
           background: isDarkMode ? 
             'radial-gradient(ellipse 80% 60% at center, transparent 30%, rgba(0, 0, 0, 0.4) 100%)' :
-            'radial-gradient(ellipse 80% 60% at center, transparent 40%, rgba(0, 0, 0, 0.08) 100%)',
+            'radial-gradient(ellipse 80% 60% at center, transparent 60%, rgba(0, 0, 0, 0.03) 100%)',
           willChange: 'opacity'
         }}
         animate={{
-          opacity: isTransitioning ? (isDarkMode ? 0.6 : 0.4) : (isDarkMode ? 0.3 : 0.2)
+          opacity: isTransitioning ? (isDarkMode ? 0.6 : 0.2) : (isDarkMode ? 0.3 : 0.1)
         }}
         transition={{ 
           duration: 3.0,
