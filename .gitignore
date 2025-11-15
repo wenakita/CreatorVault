@@ -98,6 +98,8 @@ bsc-production-ready.json
 eagle-vanity-data.json
 vanity-result-found.json
 scripts/
+!scripts/solana/
+scripts/solana/node_modules/
 
 # Documentation and reference (keep local)
 docs/

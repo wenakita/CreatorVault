@@ -6,13 +6,13 @@ resolution = true
 skip-lint = false
 
 [programs.localnet]
-eagle_registry_solana = "11111111111111111111111111111112"
+eagle_registry_solana = "7wSrZXHF6BguZ1qwkXdZcNf3qyV2MPNvcztQLwrh9qPJ"
 
 [programs.devnet]
-eagle_registry_solana = "11111111111111111111111111111112"
+eagle_registry_solana = "7wSrZXHF6BguZ1qwkXdZcNf3qyV2MPNvcztQLwrh9qPJ"
 
 [programs.mainnet]
-eagle_registry_solana = "11111111111111111111111111111112"
+eagle_registry_solana = "7wSrZXHF6BguZ1qwkXdZcNf3qyV2MPNvcztQLwrh9qPJ"
 
 [registry]
 url = "https://api.apr.dev"
