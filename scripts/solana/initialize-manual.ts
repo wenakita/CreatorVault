@@ -80,7 +80,8 @@ async function initialize() {
 
   // Build instruction data
   const discriminator = getInstructionDiscriminator("initialize");
-  const lzEndpointBuffer = LZ_ENDPOINT.toBuffer();
+  // Encode PublicKey as 32-byte array (Anchor format)
+  const lzEndpointBuffer = Buffer.from(LZ_ENDPOINT.toBytes());
   const data = Buffer.concat([discriminator, lzEndpointBuffer]);
 
   console.log("📦 Instruction discriminator:", discriminator.toString("hex"));
