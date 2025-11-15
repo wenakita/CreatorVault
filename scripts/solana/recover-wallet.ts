@@ -2,6 +2,7 @@
 
 import { Keypair } from "@solana/web3.js";
 import * as bip39 from "bip39";
+import { derivePath } from "ed25519-hd-key";
 import * as fs from "fs";
 import * as os from "os";
 import * as path from "path";
@@ -33,9 +34,11 @@ async function recoverWallet() {
 
     console.log("✅ Seed phrase valid!");
 
-    // Derive keypair from seed phrase
+    // Derive keypair from seed phrase using BIP44 path (same as Phantom)
+    // Path: m/44'/501'/0'/0' (Solana's standard derivation path)
     const seed = await bip39.mnemonicToSeed(seedPhrase.trim());
-    const keypair = Keypair.fromSeed(seed.slice(0, 32));
+    const derivedSeed = derivePath("m/44'/501'/0'/0'", seed.toString("hex")).key;
+    const keypair = Keypair.fromSeed(derivedSeed);
 
     console.log("\n👛 Wallet Address:", keypair.publicKey.toBase58());
 
