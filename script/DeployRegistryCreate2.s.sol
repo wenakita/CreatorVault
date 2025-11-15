@@ -36,11 +36,8 @@ import "../contracts/EagleRegistry.sol";
  *        -vvvv
  */
 
-// Canonical CREATE2 Factory (same address on all chains)
-interface ICREATE2Factory {
-    function deploy(bytes memory bytecode, bytes32 salt) external returns (address);
-    function computeAddress(bytes32 salt, bytes32 bytecodeHash) external view returns (address);
-}
+// Note: Canonical CREATE2 Factory uses raw calldata, not a function call
+// To deploy: send salt + bytecode as calldata
 
 contract DeployRegistryCreate2 is Script {
     // Salt for deterministic address (change this to get different address)
@@ -122,8 +119,11 @@ contract DeployRegistryCreate2 is Script {
         
         vm.startBroadcast(deployerPrivateKey);
         
-        // Deploy via CREATE2 Factory
-        address deployed = ICREATE2Factory(CREATE2_FACTORY).deploy(bytecode, SALT);
+        // Deploy via CREATE2 Factory (canonical factory uses raw calldata: salt + bytecode)
+        (bool success, bytes memory returnData) = CREATE2_FACTORY.call(abi.encodePacked(SALT, bytecode));
+        require(success, "CREATE2 deployment failed");
+        
+        address deployed = predictedAddress;
         EagleRegistry registry = EagleRegistry(deployed);
         
         console.log("[OK] Registry deployed at:", address(registry));
