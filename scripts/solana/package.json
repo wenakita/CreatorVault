@@ -8,6 +8,7 @@
     "airdrop": "tsx airdrop.ts",
     "initialize": "tsx initialize-manual.ts",
     "initialize:anchor": "tsx initialize-anchor.ts",
+    "initialize:anchor-simple": "tsx initialize-anchor-simple.ts",
     "initialize:simple": "tsx initialize-simple.ts",
     "register-chains": "tsx register-chains.ts",
     "test": "tsx test-registry.ts"
