@@ -73,7 +73,7 @@ async function main() {
     const tx = await program.methods
       .initialize(LZ_ENDPOINT)
       .accounts({
-        registry: registryPda,
+        registryConfig: registryPda,
         authority: walletKeypair.publicKey,
         systemProgram: anchor.web3.SystemProgram.programId,
       })
