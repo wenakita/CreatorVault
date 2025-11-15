@@ -58,14 +58,11 @@ async function main() {
 
   const idl = JSON.parse(fs.readFileSync(idlPath, "utf-8"));
   
-  // Ensure IDL has correct metadata
-  if (!idl.metadata) {
-    idl.metadata = { address: PROGRAM_ID.toBase58() };
-  } else {
-    idl.metadata.address = PROGRAM_ID.toBase58();
-  }
+  // Set provider globally for Anchor
+  anchor.setProvider(provider);
 
-  const program = new anchor.Program(idl, PROGRAM_ID, provider);
+  // Create program with explicit programId
+  const program = new anchor.Program(idl, PROGRAM_ID);
 
   console.log("📤 Initializing registry...\n");
 
