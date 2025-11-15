@@ -10,6 +10,7 @@
     "initialize:anchor": "tsx initialize-anchor.ts",
     "initialize:anchor-simple": "tsx initialize-anchor-simple.ts",
     "initialize:simple": "tsx initialize-simple.ts",
+    "initialize:mainnet": "tsx initialize-mainnet.ts",
     "register-chains": "tsx register-chains.ts",
     "test": "tsx test-registry.ts"
   },
