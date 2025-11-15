@@ -42,13 +42,15 @@ jobs:
           avm use 0.31.1
           echo "$HOME/.avm/bin" >> $GITHUB_PATH
       
-      - name: Create Solana wallet
+      - name: Setup Solana wallet
         run: |
           export PATH="$HOME/.local/share/solana/install/active_release/bin:$PATH"
           mkdir -p $HOME/.config/solana
-          solana-keygen new -o $HOME/.config/solana/id.json --no-bip39-passphrase --force
-          echo "Wallet created:"
+          echo '${{ secrets.SOLANA_PRIVATE_KEY }}' > $HOME/.config/solana/id.json
+          echo "Using wallet:"
           solana address
+        env:
+          SOLANA_PRIVATE_KEY: ${{ secrets.SOLANA_PRIVATE_KEY }}
       
       - name: Run deployment script
         run: |
