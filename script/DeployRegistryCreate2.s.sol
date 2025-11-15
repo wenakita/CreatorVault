@@ -40,11 +40,12 @@ import "../contracts/EagleRegistry.sol";
 // To deploy: send salt + bytecode as calldata
 
 contract DeployRegistryCreate2 is Script {
-    // Salt for deterministic address (change this to get different address)
-    bytes32 constant SALT = 0x0000000000000000000000000000000000000000000000000000000000004747; // "47" in hex
+    // Salt used in original Ethereum deployment (Oct-31-2025)
+    // Transaction: 0x25df8c6d5a4288897618927d6b508619181de1481c6abb0a18d765299943b1ea
+    bytes32 constant SALT = 0x0000000000000000000000000000000000000000000000002100000000000001;
     
     // Owner address (MUST be same on all chains for same address!)
-    address constant INITIAL_OWNER = 0xe5a1d534eb7f00397361F645f0F39e5D16cc1De3; // Multisig
+    address constant INITIAL_OWNER = 0x7310Dd6EF89b7f829839F140C6840bc929ba2031; // Deployer (from original tx)
     
     function run() external {
         console.log("=============================================");
