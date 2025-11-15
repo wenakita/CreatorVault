@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "recover": "tsx recover-wallet.ts",
+    "airdrop": "tsx airdrop.ts",
     "initialize": "tsx initialize-devnet.ts",
     "initialize:simple": "tsx initialize-simple.ts",
     "register-chains": "tsx register-chains.ts",
