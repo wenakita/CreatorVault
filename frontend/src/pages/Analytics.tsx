@@ -111,7 +111,7 @@ export default function Analytics({ provider, account, onNavigateUp }: Props) {
           />
         ) : (
           <Link 
-            to="/"
+            to="/app"
             className="flex items-center gap-2 text-gray-500 hover:text-gray-700 mb-6 transition-colors text-sm inline-flex"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">

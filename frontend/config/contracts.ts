@@ -76,10 +76,10 @@ export const SUPPORTED_CHAINS = {
     },
     rpcUrls: {
       default: { 
-        http: [import.meta.env.VITE_ETHEREUM_RPC || 'https://eth.llamarpc.com'] 
+        http: [import.meta.env.VITE_ETHEREUM_RPC || import.meta.env.VITE_ETHEREUM_RPC_URL || 'https://eth-mainnet.g.alchemy.com/v2/YOUR_KEY'] 
       },
       public: { 
-        http: ['https://eth.llamarpc.com'] 
+        http: [import.meta.env.VITE_ETHEREUM_RPC || import.meta.env.VITE_ETHEREUM_RPC_URL || 'https://eth-mainnet.g.alchemy.com/v2/YOUR_KEY'] 
       },
     },
     blockExplorers: {

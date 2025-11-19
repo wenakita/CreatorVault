@@ -7,6 +7,24 @@
     <title>Eagle Vault - Omnichain DeFi Vault</title>
     <meta name="description" content="Professional DeFi vault powered by Charm Finance and LayerZero" />
     
+    <style>
+      html, body {
+        background-color: #0c0a09; /* Default to dark warm to prevent white flash */
+        margin: 0;
+        padding: 0;
+        height: 100%;
+      }
+      @media (prefers-color-scheme: light) {
+        html, body {
+          background-color: #fdfbf7; /* Warm light for light mode */
+        }
+      }
+      /* Override if class is present */
+      html.dark body {
+        background-color: #0c0a09;
+      }
+    </style>
+
     <!-- Prevent flash of wrong theme -->
     <script>
       (function() {
@@ -23,4 +41,3 @@
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
-

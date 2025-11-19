@@ -411,9 +411,10 @@ interface Props {
   onToast: (toast: { message: string; type: 'success' | 'error' | 'info'; txHash?: string }) => void;
   onNavigateUp?: () => void;
   onNavigateToWrapper?: () => void;
+  onNavigateToCrossChain?: () => void;
 }
 
-export default function VaultView({ provider, account, onToast, onNavigateUp, onNavigateToWrapper }: Props) {
+export default function VaultView({ provider, account, onToast, onNavigateUp, onNavigateToWrapper, onNavigateToCrossChain }: Props) {
   const [infoTab, setInfoTab] = useState<'vault' | 'strategies'>('vault');
   const [wlfiAmount, setWlfiAmount] = useState('');
   const [usd1Amount, setUsd1Amount] = useState('');
@@ -1442,7 +1443,7 @@ export default function VaultView({ provider, account, onToast, onNavigateUp, on
             />
           ) : (
             <Link 
-              to="/"
+              to="/app"
               className="flex items-center gap-2 text-gray-500 hover:text-gray-300 transition-colors text-sm inline-flex"
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1451,7 +1452,6 @@ export default function VaultView({ provider, account, onToast, onNavigateUp, on
               Back to vaults
             </Link>
           )}
-          
         </div>
 
         {/* Header */}

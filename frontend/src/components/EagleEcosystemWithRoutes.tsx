@@ -7,8 +7,9 @@ import EagleHomeContent from './EagleHomeContent';
 import VaultView from './VaultView';
 import EagleLPContent from './EagleLPContent';
 import WrapperView from './WrapperView';
+import CrossChainHub from './CrossChainHub';
 
-export type Floor = 'lp' | 'home' | 'vault' | 'wrapper';
+export type Floor = 'lp' | 'home' | 'vault' | 'wrapper' | 'crosschain';
 
 interface Props {
   provider: BrowserProvider | null;
@@ -40,20 +41,22 @@ export default function EagleEcosystemWithRoutes({ provider, account, onToast }:
 
   // Map routes to floors
   const routeToFloor: Record<string, Floor> = {
-    '/': 'home',
-    '/lp': 'lp',
-    '/vault': 'vault',
-    '/wrapper': 'wrapper',
+    '/app': 'home',
+    '/app/lp': 'lp',
+    '/app/vault': 'vault',
+    '/app/wrapper': 'wrapper',
+    '/app/crosschain': 'crosschain',
   };
 
   const currentFloor = routeToFloor[location.pathname] || 'home';
 
   // Floor offsets for animation (y-axis vertical positioning)
   const floorOffsets: Record<Floor, { y: number; x: number }> = {
-    'lp': { y: 0, x: 0 },         // Top floor - EAGLE/ETH LP at 0vh
-    'home': { y: 100, x: 0 },     // Center floor - Home page at 100vh (initial landing)
-    'wrapper': { y: 100, x: 0 },  // Center floor - Eagle Vault Wrapper at 100vh (replaces home after navigation)
-    'vault': { y: 200, x: 0 }     // Bottom floor - Vault at 200vh
+    'lp': { y: 0, x: 0 },           // Top floor - EAGLE/ETH LP at 0vh
+    'crosschain': { y: 150, x: 0 }, // Cross-Chain Hub at 150vh (replaces home after navigation)
+    'home': { y: 150, x: 0 },       // Center floor - Home page at 150vh (initial landing)
+    'wrapper': { y: 250, x: 0 },    // Bottom floor - Eagle Vault Wrapper at 250vh (same as vault)
+    'vault': { y: 250, x: 0 }       // Bottom floor - Vault at 250vh
   };
 
   const navigateToFloor = (floor: Floor) => {
@@ -65,23 +68,40 @@ export default function EagleEcosystemWithRoutes({ provider, account, onToast }:
     }
     
     const floorToRoute: Record<Floor, string> = {
-      'lp': '/lp',
-      'home': '/',
-      'vault': '/vault',
-      'wrapper': '/wrapper',
+      'lp': '/app/lp',
+      'home': '/app',
+      'vault': '/app/vault',
+      'wrapper': '/app/wrapper',
+      'crosschain': '/app/crosschain',
     };
     
+    // Special case: If already on vault and clicking vault again, switch to wrapper in-place
+    if (currentFloor === 'vault' && floor === 'vault') {
+      // Navigate to wrapper without screen movement (same position)
+      navigate(floorToRoute['wrapper']);
+      setIsTransitioning(false);
+      return;
+    }
+    
+    // Special case: If already on wrapper and clicking vault, switch back to vault in-place
+    if (currentFloor === 'wrapper' && floor === 'vault') {
+      // Navigate to vault without screen movement (same position)
+      navigate(floorToRoute['vault']);
+      setIsTransitioning(false);
+      return;
+    }
+    
     // Check if navigating to center from LP/Vault when user has already left home
-    const isReturningToCenter = (currentFloor === 'lp' || currentFloor === 'vault') && 
-                                 (floor === 'home' || floor === 'wrapper') &&
+    const isReturningToCenter = (currentFloor === 'lp' || currentFloor === 'vault' || currentFloor === 'wrapper') && 
+                                 (floor === 'home' || floor === 'crosschain') &&
                                  hasLeftHome;
     
     if (isReturningToCenter) {
       // First fade out home content
       setShowHomeContent(false);
-      // Wait for home to fade out, then navigate to wrapper
+      // Wait for home to fade out, then navigate to crosschain
       setTimeout(() => {
-        navigate(floorToRoute['wrapper']);
+        navigate(floorToRoute['crosschain']);
         setIsTransitioning(false);
       }, 2000); // 800ms fade out + 800ms delay + 400ms buffer
     } else {
@@ -127,6 +147,11 @@ export default function EagleEcosystemWithRoutes({ provider, account, onToast }:
       middle: 'rgba(49, 46, 129, 0.24)',   // indigo-950 with opacity
       bottom: 'rgba(10, 10, 10, 1)' 
     },
+    'crosschain': {
+      top: 'rgba(16, 185, 129, 0.18)',     // emerald-500 with opacity
+      middle: 'rgba(59, 130, 246, 0.15)',  // blue-500 with opacity
+      bottom: 'rgba(10, 10, 10, 1)'
+    },
   } : {
     'lp': { 
       top: 'rgba(191, 219, 254, 0.4)',     // blue-200 with opacity (light mode)
@@ -148,12 +173,30 @@ export default function EagleEcosystemWithRoutes({ provider, account, onToast }:
       middle: 'rgba(199, 210, 254, 0.5)',   // indigo-200 with opacity
       bottom: 'rgba(243, 244, 246, 1)'      // gray-100
     },
+    'crosschain': {
+      top: 'rgba(167, 243, 208, 0.5)',     // emerald-200 with opacity (light mode)
+      middle: 'rgba(191, 219, 254, 0.45)',  // blue-200 with opacity
+      bottom: 'rgba(243, 244, 246, 1)'      // gray-100
+    },
   };
 
   return (
-    <div className="h-full overflow-hidden relative bg-white dark:bg-[#0a0a0a]">
+    <motion.div 
+      className="h-full overflow-hidden relative bg-white dark:bg-[#0a0a0a]"
+      initial={{ scale: 1.05 }}
+      animate={{ scale: 1 }}
+      transition={{ duration: 0.8, ease: "easeOut" }}
+    >
+      {/* Entry Overlay - Warm Fade In */}
+      <motion.div
+        className="absolute inset-0 z-[100] bg-[#fdfbf7] dark:bg-[#0c0a09] pointer-events-none"
+        initial={{ opacity: 1 }}
+        animate={{ opacity: 0 }}
+        transition={{ duration: 0.8, ease: "easeInOut" }}
+      />
+
       {/* Base layer - persistent background */}
-      <div className="absolute inset-0 bg-white dark:bg-[#0a0a0a]" style={{ height: '300vh' }} />
+      <div className="absolute inset-0 bg-white dark:bg-[#0a0a0a]" style={{ height: '350vh' }} />
       
       {/* Cross-fade backgrounds for each floor - creates seamless transitions */}
       {Object.keys(floorColors).map((floor) => (
@@ -161,7 +204,7 @@ export default function EagleEcosystemWithRoutes({ provider, account, onToast }:
           key={`bg-${floor}`}
           className="absolute inset-0"
           style={{ 
-            height: '300vh',
+            height: '350vh',
             background: `linear-gradient(to bottom, ${floorColors[floor as Floor].top}, ${floorColors[floor as Floor].middle}, ${floorColors[floor as Floor].bottom})`,
             willChange: 'opacity'
           }}
@@ -179,7 +222,7 @@ export default function EagleEcosystemWithRoutes({ provider, account, onToast }:
       <motion.div 
         className="absolute inset-0"
         style={{ 
-          height: '300vh',
+          height: '350vh',
           willChange: 'opacity, background'
         }}
         animate={{
@@ -187,10 +230,12 @@ export default function EagleEcosystemWithRoutes({ provider, account, onToast }:
             (currentFloor === 'lp' ? 'radial-gradient(ellipse 120% 100% at top, rgba(59, 130, 246, 0.12), transparent 60%)' :
              currentFloor === 'home' ? 'radial-gradient(ellipse 120% 100% at center, rgba(251, 191, 36, 0.08), transparent 60%)' :
              currentFloor === 'vault' ? 'radial-gradient(ellipse 120% 100% at bottom, rgba(245, 158, 11, 0.10), transparent 60%)' :
+             currentFloor === 'crosschain' ? 'radial-gradient(ellipse 120% 100% at center, rgba(16, 185, 129, 0.15), transparent 60%)' :
              'radial-gradient(ellipse 120% 100% at top right, rgba(168, 85, 247, 0.18), transparent 60%)') :
             (currentFloor === 'lp' ? 'radial-gradient(ellipse 120% 100% at top, rgba(59, 130, 246, 0.15), transparent 70%)' :
              currentFloor === 'home' ? 'radial-gradient(ellipse 120% 100% at center, rgba(0, 0, 0, 0.01), transparent 90%)' :
              currentFloor === 'vault' ? 'radial-gradient(ellipse 120% 100% at bottom, rgba(0, 0, 0, 0.01), transparent 90%)' :
+             currentFloor === 'crosschain' ? 'radial-gradient(ellipse 120% 100% at center, rgba(16, 185, 129, 0.18), transparent 70%)' :
              'radial-gradient(ellipse 120% 100% at top right, rgba(168, 85, 247, 0.22), transparent 70%)'),
           opacity: 1
         }}
@@ -204,7 +249,7 @@ export default function EagleEcosystemWithRoutes({ provider, account, onToast }:
       <motion.div 
         className="absolute inset-0"
         style={{ 
-          height: '300vh',
+          height: '350vh',
           background: isDarkMode ? 
             'radial-gradient(ellipse 80% 60% at center, transparent 30%, rgba(0, 0, 0, 0.4) 100%)' :
             'radial-gradient(ellipse 80% 60% at center, transparent 60%, rgba(0, 0, 0, 0.03) 100%)',
@@ -223,7 +268,7 @@ export default function EagleEcosystemWithRoutes({ provider, account, onToast }:
       <motion.div 
         className="absolute inset-0"
         style={{ 
-          height: '300vh',
+          height: '350vh',
           willChange: 'opacity'
         }}
         initial={{ opacity: 0 }}
@@ -243,8 +288,12 @@ export default function EagleEcosystemWithRoutes({ provider, account, onToast }:
       <motion.div
         className="absolute w-full"
         style={{ 
-          height: '300vh', 
+          height: '350vh', 
           width: '100vw'
+        }}
+        initial={{ 
+          y: `${-currentOffset.y}vh`,
+          x: `${-currentOffset.x}vw`,
         }}
         animate={{ 
           y: `${-currentOffset.y}vh`,
@@ -303,19 +352,20 @@ export default function EagleEcosystemWithRoutes({ provider, account, onToast }:
             style={{ willChange: 'opacity' }}
           >
             <EagleLPContent 
-              onNavigateDown={() => navigateToFloor(hasLeftHome ? 'wrapper' : 'home')}
+              onNavigateDown={() => navigateToFloor(hasLeftHome ? 'crosschain' : 'home')}
+              onNavigateToCrossChain={() => navigateToFloor('crosschain')}
               provider={provider}
             />
           </motion.div>
         </div>
 
-        {/* Wrapper - Middle Floor (between LP and Vault) */}
+        {/* Wrapper - Bottom Floor (same position as Vault) */}
         <motion.div 
           className="h-screen overflow-hidden relative" 
           id="wrapper-floor" 
           style={{ 
             position: 'absolute', 
-            top: '100vh', 
+            top: '250vh',  // Same as vault
             left: 0, 
             width: '100vw',
             zIndex: currentFloor === 'wrapper' ? 15 : 5
@@ -326,8 +376,7 @@ export default function EagleEcosystemWithRoutes({ provider, account, onToast }:
             pointerEvents: currentFloor === 'wrapper' ? 'auto' : 'none'
           }}
           transition={{ 
-            duration: 0.8,
-            delay: currentFloor === 'wrapper' && !showHomeContent ? 1.2 : 0,
+            duration: 0.3,  // Faster transition for in-place swap
             ease: [0.4, 0.0, 0.2, 1.0] 
           }}
         >
@@ -393,8 +442,101 @@ export default function EagleEcosystemWithRoutes({ provider, account, onToast }:
           </motion.div>
         </motion.div>
 
+        {/* Cross-Chain Hub - Center Floor (replaces home after navigation) */}
+        <motion.div 
+          className="h-screen overflow-hidden relative" 
+          id="crosschain-floor" 
+          style={{ 
+            position: 'absolute', 
+            top: '150vh',  // Same as home
+            left: 0, 
+            width: '100vw',
+            zIndex: currentFloor === 'crosschain' ? 15 : 5
+          }}
+          initial={{ opacity: 0 }}
+          animate={{ 
+            opacity: currentFloor === 'crosschain' ? 1 : 0,
+            pointerEvents: currentFloor === 'crosschain' ? 'auto' : 'none'
+          }}
+          transition={{ 
+            duration: 0.8,
+            delay: currentFloor === 'crosschain' && !showHomeContent ? 1.2 : 0,
+            ease: [0.4, 0.0, 0.2, 1.0] 
+          }}
+        >
+          {/* Animated gradient orbs for crosschain */}
+          <motion.div 
+            className="absolute inset-0 overflow-hidden pointer-events-none"
+            style={{ willChange: 'opacity' }}
+            animate={{
+              opacity: currentFloor === 'crosschain' ? 1 : 0.1,
+            }}
+            transition={{ duration: 3.5, ease: [0.19, 1.0, 0.22, 1.0] }}
+          >
+            <motion.div 
+              className="absolute top-1/4 right-1/3 w-[800px] h-[800px] bg-emerald-500/25 rounded-full blur-[120px]"
+              animate={{
+                scale: currentFloor === 'crosschain' ? [1, 1.2, 1] : 0.8,
+                x: currentFloor === 'crosschain' ? [0, -50, 0] : 0,
+                y: currentFloor === 'crosschain' ? [0, 30, 0] : 0,
+              }}
+              transition={{ duration: 13, repeat: Infinity, ease: "easeInOut" }}
+            />
+            <motion.div 
+              className="absolute bottom-1/4 left-1/4 w-[700px] h-[700px] bg-blue-500/20 rounded-full blur-[110px]"
+              animate={{
+                scale: currentFloor === 'crosschain' ? [1, 1.15, 1] : 0.8,
+                x: currentFloor === 'crosschain' ? [0, 40, 0] : 0,
+              }}
+              transition={{ duration: 11, repeat: Infinity, ease: "easeInOut" }}
+            />
+            <motion.div 
+              className="absolute top-1/2 left-1/2 w-[650px] h-[650px] bg-cyan-500/18 rounded-full blur-[100px]"
+              animate={{
+                scale: currentFloor === 'crosschain' ? [1, 1.18, 1] : 0.8,
+                y: currentFloor === 'crosschain' ? [0, -40, 0] : 0,
+              }}
+              transition={{ duration: 10, repeat: Infinity, ease: "easeInOut" }}
+            />
+          </motion.div>
+          <motion.div
+            animate={{
+              opacity: isTransitioning && currentFloor !== 'crosschain' ? 0.4 : 1,
+            }}
+            transition={{ duration: 1.5, ease: [0.19, 1.0, 0.22, 1.0] }}
+            className="h-full overflow-y-auto overflow-x-hidden scroll-smooth relative z-10"
+            style={{ scrollbarGutter: 'stable', willChange: 'opacity' }}
+          >
+            <CrossChainHub 
+              provider={provider}
+              account={account}
+              onToast={onToast}
+              onNavigateToVault={() => navigateToFloor('vault')}
+              onNavigateToLP={() => navigateToFloor('lp')}
+            />
+          </motion.div>
+        </motion.div>
+
         {/* Basement - Vault */}
-        <div className="h-screen overflow-hidden relative" id="vault-floor" style={{ position: 'absolute', top: '200vh', left: 0, width: '100vw' }}>
+        <motion.div 
+          className="h-screen overflow-hidden relative" 
+          id="vault-floor" 
+          style={{ 
+            position: 'absolute', 
+            top: '250vh', 
+            left: 0, 
+            width: '100vw',
+            zIndex: currentFloor === 'vault' ? 15 : 5
+          }}
+          animate={{
+            opacity: currentFloor === 'vault' ? 1 : 0,
+            pointerEvents: currentFloor === 'vault' ? 'auto' : 'none'
+          }}
+          transition={{ 
+            duration: 0.3,  // Faster transition for in-place swap
+            ease: [0.4, 0.0, 0.2, 1.0] 
+          }}
+        >
           {/* Animated gradient orbs */}
           <motion.div 
             className="absolute inset-0 overflow-hidden pointer-events-none"
@@ -442,11 +584,12 @@ export default function EagleEcosystemWithRoutes({ provider, account, onToast }:
               provider={provider}
               account={account}
               onToast={onToast}
-              onNavigateUp={() => navigateToFloor(hasLeftHome ? 'wrapper' : 'home')}
+              onNavigateUp={() => navigateToFloor(hasLeftHome ? 'crosschain' : 'home')}
               onNavigateToWrapper={() => navigateToFloor('wrapper')}
+              onNavigateToCrossChain={() => navigateToFloor('crosschain')}
             />
           </motion.div>
-        </div>
+        </motion.div>
 
         {/* Home Floor - Center (initial landing) */}
         <div 
@@ -454,7 +597,7 @@ export default function EagleEcosystemWithRoutes({ provider, account, onToast }:
           id="home-floor" 
           style={{ 
             position: 'absolute', 
-            top: '100vh', 
+            top: '150vh', 
             left: 0, 
             width: '100vw',
             pointerEvents: currentFloor === 'home' ? 'auto' : 'none',
@@ -518,7 +661,6 @@ export default function EagleEcosystemWithRoutes({ provider, account, onToast }:
         onChange={navigateToFloor}
         isTransitioning={isTransitioning}
       />
-    </div>
+    </motion.div>
   );
 }
-

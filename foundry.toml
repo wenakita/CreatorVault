@@ -15,6 +15,6 @@ evm_version = "paris"
 fs_permissions = [{ access = "read-write", path = "./" }]
 
 [rpc_endpoints]
-ethereum = "https://eth.llamarpc.com"
+ethereum = "${ETHEREUM_RPC_URL}"
 sepolia = "${SEPOLIA_RPC_URL}"
 

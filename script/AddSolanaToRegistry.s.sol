@@ -22,7 +22,7 @@ contract AddSolanaToRegistry is Script {
     
     // LayerZero V2 Solana Endpoint Program ID
     // TODO: Update with actual endpoint address when available
-    address constant SOLANA_LZ_ENDPOINT = 0x76y77prsiCMvXMjuoZ5VRrhG5qYBrUMYTE5WgHqgjEn6; // Placeholder
+    address constant SOLANA_LZ_ENDPOINT = 0x0000000000000000000000000000000000000000; // Placeholder - Solana uses different addressing
 
     function run() external {
         uint256 pk = vm.envUint("PRIVATE_KEY");

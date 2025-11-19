@@ -11,16 +11,19 @@
     "initialize:anchor-simple": "tsx initialize-anchor-simple.ts",
     "initialize:simple": "tsx initialize-simple.ts",
     "initialize:mainnet": "tsx initialize-mainnet.ts",
+    "initialize:oft": "tsx initialize-oft.ts",
     "register-chains": "tsx register-chains.ts",
-    "test": "tsx test-registry.ts"
+    "test": "tsx test-registry.ts",
+    "deploy:vanity-spl": "tsx deploy-vanity-spl.ts"
   },
   "dependencies": {
     "@coral-xyz/anchor": "^0.31.1",
-    "@noble/hashes": "^1.3.3",
-    "@solana/web3.js": "^1.95.8",
     "@layerzerolabs/lz-solana-sdk-v2": "^3.0.12",
     "@metaplex-foundation/umi": "^0.9.2",
     "@metaplex-foundation/umi-bundle-defaults": "^0.9.2",
+    "@noble/hashes": "^1.3.3",
+    "@solana/spl-token": "^0.4.14",
+    "@solana/web3.js": "^1.95.8",
     "bip39": "^3.1.0",
     "bn.js": "^5.2.1",
     "ed25519-hd-key": "^1.3.0"
@@ -32,4 +35,3 @@
     "typescript": "^5.7.2"
   }
 }
-

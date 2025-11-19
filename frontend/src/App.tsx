@@ -6,6 +6,7 @@ import { useAccount } from 'wagmi';
 import ModernHeader from './components/ModernHeader';
 import EagleEcosystemWithRoutes from './components/EagleEcosystemWithRoutes';
 import { Showcase } from './pages/Showcase';
+import LandingPage from './pages/LandingPage';
 import { ICONS } from './config/icons';
 import { SafeProvider } from './components/SafeProvider';
 import { useSafeApp } from './hooks/useSafeApp';
@@ -168,8 +169,10 @@ export default function App() {
         }}
       >
         <Routes>
+          <Route path="/" element={<LandingPage />} />
           <Route path="/showcase" element={<Showcase />} />
-          <Route path="/*" element={<AppContent />} />
+          <Route path="/app/*" element={<AppContent />} />
+          <Route path="/*" element={<LandingPage />} />
         </Routes>
       </BrowserRouter>
     </SafeProvider>

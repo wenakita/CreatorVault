@@ -1,12 +1,13 @@
 import { motion } from 'framer-motion';
 import { BrowserProvider } from 'ethers';
-import { ArrowDown } from 'lucide-react';
+import { ArrowDown, ArrowRight } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { ICONS } from '../config/icons';
 import { NeoButton, NeoStatCard, NeoCard, NeoTaskBadge } from './neumorphic';
 
 interface Props {
   onNavigateDown?: () => void;
+  onNavigateToCrossChain?: () => void;
   provider: BrowserProvider | null;
 }
 
@@ -19,7 +20,7 @@ interface PoolData {
   apr: string;
 }
 
-export default function EagleLPContent({ onNavigateDown }: Props) {
+export default function EagleLPContent({ onNavigateDown, onNavigateToCrossChain }: Props) {
   const [poolData, setPoolData] = useState<PoolData>({
     liquidity: '$6.6K',
     volume24h: '$14.8K',
@@ -90,13 +91,14 @@ export default function EagleLPContent({ onNavigateDown }: Props) {
   return (
     <div className="h-full overflow-y-auto bg-gradient-to-br from-gray-50 via-gray-100 to-gray-50 dark:from-gray-900 dark:via-gray-850 dark:to-gray-900">
       <div className="container mx-auto px-4 sm:px-6 py-6 sm:py-8 md:py-12 max-w-7xl">
-        {/* Back Button */}
-        <NeoButton
-          onClick={onNavigateDown}
-          label="Back to Home"
-          icon={<ArrowDown className="w-4 h-4" />}
-          className="mb-4 sm:mb-6 md:mb-8"
-        />
+        {/* Navigation Button */}
+        <div className="mb-4 sm:mb-6">
+          <NeoButton
+            onClick={onNavigateDown}
+            label="Back to Home"
+            icon={<ArrowDown className="w-4 h-4" />}
+          />
+        </div>
 
         {/* Header */}
         <motion.div 

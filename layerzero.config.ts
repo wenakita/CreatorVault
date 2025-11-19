@@ -1,105 +1,108 @@
 import type { EndpointId } from '@layerzerolabs/lz-definitions'
+import type { OAppOmniGraphHardhat, OmniPointHardhat } from '@layerzerolabs/toolbox-hardhat'
+import { ExecutorOptionType } from '@layerzerolabs/lz-v2-utilities'
 
 // LayerZero OApp Configuration for Eagle OVault
-// This defines the complete omnichain setup
+// Static configuration for Ethereum ↔ Base connections
 
-const BSC_CONTRACTS = {
-    usd1Adapter: '0x283AbE84811318a873FB98242FC0FE008e7036D4',
-    wlfiAdapter: '0x1A66Df0Bd8DBCE7e15e87E4FE7a52Ce6D8e6A688',
+const ETHEREUM_CONTRACT: OmniPointHardhat = {
+    eid: 30101 as EndpointId, // Ethereum
+    contractName: 'OFT',
 }
 
-const ETHEREUM_CONTRACTS = {
-    vault: '0xb751adb8Dd9767309D7a0e328B29909aFd311Dc0',
-    usd1Adapter: '0xba9B60A00fD10323Abbdc1044627B54D3ebF470e',
-    wlfiAdapter: '0x45d452aa571494b896d7926563B41a7b16B74E2F',
-    shareOFT: '0x68cF24743CA335ae3c2e21c2538F4E929224F096',
+const BASE_CONTRACT: OmniPointHardhat = {
+    eid: 30184 as EndpointId, // Base
+    contractName: 'OFT',
 }
 
-const config = {
+const config: OAppOmniGraphHardhat = {
     contracts: [
-        // BSC Contracts
         {
-            contract: { 
-                eid: 30102 as EndpointId, // BSC
-                contractName: 'OFTAdapter',
-                address: BSC_CONTRACTS.usd1Adapter,
-            },
+            contract: ETHEREUM_CONTRACT,
         },
         {
-            contract: { 
-                eid: 30102 as EndpointId, // BSC
-                contractName: 'OFTAdapter', 
-                address: BSC_CONTRACTS.wlfiAdapter,
-            },
-        },
-        // Ethereum Contracts
-        {
-            contract: { 
-                eid: 30101 as EndpointId, // Ethereum
-                contractName: 'OFTAdapter',
-                address: ETHEREUM_CONTRACTS.usd1Adapter,
-            },
-        },
-        {
-            contract: { 
-                eid: 30101 as EndpointId, // Ethereum
-                contractName: 'OFTAdapter',
-                address: ETHEREUM_CONTRACTS.wlfiAdapter,
-            },
-        },
-        {
-            contract: { 
-                eid: 30101 as EndpointId, // Ethereum
-                contractName: 'OFT',
-                address: ETHEREUM_CONTRACTS.shareOFT,
-            },
+            contract: BASE_CONTRACT,
         },
     ],
     connections: [
-        // USD1 Adapter connections
         {
-            from: { 
-                eid: 30102 as EndpointId, // BSC
-                address: BSC_CONTRACTS.usd1Adapter,
-            },
-            to: { 
-                eid: 30101 as EndpointId, // Ethereum
-                address: ETHEREUM_CONTRACTS.usd1Adapter,
+            from: ETHEREUM_CONTRACT,
+            to: BASE_CONTRACT,
+            config: {
+                sendLibrary: '0xbB2Ea70C9E858123480642Cf96acbcCE1372dCe1', // Ethereum send lib
+                receiveLibraryConfig: {
+                    receiveLibrary: '0xc02Ab410f0734EFa3F14628780e6e695156024C2', // Ethereum receive lib
+                    gracePeriod: 0n,
+                },
+                sendConfig: {
+                    executorConfig: {
+                        maxMessageSize: 10000,
+                        executor: '0x173272739Bd7Aa6e4e214714048a9fE699453059', // Ethereum executor
+                    },
+                    ulnConfig: {
+                        confirmations: 15n,
+                        requiredDVNs: ['0x589dedbd617e0cbcb916a9223f4d1300c294236b'], // Ethereum DVN
+                        optionalDVNs: [],
+                        optionalDVNThreshold: 0,
+                    },
+                },
+                receiveConfig: {
+                    ulnConfig: {
+                        confirmations: 15n,
+                        requiredDVNs: ['0x9e059a54699a285714207b43b055483e78faac25'], // Base DVN
+                        optionalDVNs: [],
+                        optionalDVNThreshold: 0,
+                    },
+                },
+                enforcedOptions: [
+                    {
+                        msgType: 1,
+                        optionType: ExecutorOptionType.LZ_RECEIVE,
+                        gas: 200000,
+                        value: 0,
+                    },
+                ],
             },
         },
         {
-            from: { 
-                eid: 30101 as EndpointId, // Ethereum
-                address: ETHEREUM_CONTRACTS.usd1Adapter,
-            },
-            to: { 
-                eid: 30102 as EndpointId, // BSC
-                address: BSC_CONTRACTS.usd1Adapter,
+            from: BASE_CONTRACT,
+            to: ETHEREUM_CONTRACT,
+            config: {
+                sendLibrary: '0xB5320B0B3a13cC860893E2Bd79FCd7e13484Dda2', // Base send lib
+                receiveLibraryConfig: {
+                    receiveLibrary: '0xc70AB6f32772f59fBfc23889Caf4Ba3376C84bAf', // Base receive lib
+                    gracePeriod: 0n,
+                },
+                sendConfig: {
+                    executorConfig: {
+                        maxMessageSize: 10000,
+                        executor: '0x2CCA08ae69E0C44b18a57Ab2A87644234dAebaE4', // Base executor
+                    },
+                    ulnConfig: {
+                        confirmations: 15n,
+                        requiredDVNs: ['0x9e059a54699a285714207b43b055483e78faac25'], // Base DVN
+                        optionalDVNs: [],
+                        optionalDVNThreshold: 0,
+                    },
+                },
+                receiveConfig: {
+                    ulnConfig: {
+                        confirmations: 15n,
+                        requiredDVNs: ['0x589dedbd617e0cbcb916a9223f4d1300c294236b'], // Ethereum DVN
+                        optionalDVNs: [],
+                        optionalDVNThreshold: 0,
+                    },
+                },
+                enforcedOptions: [
+                    {
+                        msgType: 1,
+                        optionType: ExecutorOptionType.LZ_RECEIVE,
+                        gas: 200000,
+                        value: 0,
+                    },
+                ],
             },
         },
-        // WLFI Adapter connections
-        {
-            from: { 
-                eid: 30102 as EndpointId, // BSC
-                address: BSC_CONTRACTS.wlfiAdapter,
-            },
-            to: { 
-                eid: 30101 as EndpointId, // Ethereum
-                address: ETHEREUM_CONTRACTS.wlfiAdapter,
-            },
-        },
-        {
-            from: { 
-                eid: 30101 as EndpointId, // Ethereum
-                address: ETHEREUM_CONTRACTS.wlfiAdapter,
-            },
-            to: { 
-                eid: 30102 as EndpointId, // BSC
-                address: BSC_CONTRACTS.wlfiAdapter,
-            },
-        },
-        // Share OFT connections (future expansion)
-        // ... more connections as needed
     ],
 }
 
