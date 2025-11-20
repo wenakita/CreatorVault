@@ -515,40 +515,72 @@ export default function VaultView({ provider, account, onToast, onNavigateUp, on
   // Fetch Charm Finance historical data
   const fetchCharmStats = useCallback(async () => {
     try {
-      const query = `query GetVault($address: ID!) { vault(id: $address) { snapshot(orderBy: timestamp, orderDirection: desc, first: 100) { timestamp feeApr annualVsHoldPerfSince totalAmount0 totalAmount1 totalSupply } } }`;
+      const query = `query GetVaults {
+        usd1: vault(id: "${CONTRACTS.CHARM_VAULT_USD1.toLowerCase()}") { snapshot(orderBy: timestamp, orderDirection: desc, first: 100) { timestamp feeApr annualVsHoldPerfSince totalAmount0 totalAmount1 totalSupply } }
+        weth: vault(id: "${CONTRACTS.CHARM_VAULT_WETH.toLowerCase()}") { snapshot(orderBy: timestamp, orderDirection: desc, first: 100) { timestamp feeApr annualVsHoldPerfSince totalAmount0 totalAmount1 totalSupply } }
+      }`;
+      
       const response = await fetch('https://stitching-v2.herokuapp.com/1', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ query, variables: { address: CONTRACTS.CHARM_VAULT.toLowerCase() } })
+        body: JSON.stringify({ query })
       });
       const result = await response.json();
-      if (result.data?.vault?.snapshot) {
-        const snapshots = result.data.vault.snapshot;
-        const current = snapshots[0]; // Most recent snapshot (desc order)
+      
+      if (result.data) {
+        const usd1Snapshots = result.data.usd1?.snapshot || [];
+        const wethSnapshots = result.data.weth?.snapshot || [];
         
-        // Check if we have valid APY data
-        const hasApyData = current?.annualVsHoldPerfSince !== null && current?.annualVsHoldPerfSince !== undefined;
-        const hasFeeApr = current?.feeApr !== null && current?.feeApr !== undefined;
+        const usd1Current = usd1Snapshots[0];
+        const wethCurrent = wethSnapshots[0];
+
+        // Calculate TVL for weighting (approximate prices)
+        const WLFI_PRICE = 0.132;
+        const USD1_PRICE = 1.0;
+        const WETH_PRICE = 3500.0;
+
+        let usd1Tvl = 0;
+        let usd1Apy = 0;
+        let usd1FeeApr = 0;
         
-        let weeklyApy = '0';
-        let monthlyApy = '0';
-        let currentFeeApr = '0';
-        
-        if (hasApyData) {
-          weeklyApy = (parseFloat(current.annualVsHoldPerfSince) * 100).toFixed(2);
-          monthlyApy = weeklyApy;
-        } else {
-          // Vault is new - estimate based on 1% fee tier and typical daily volume
-          // Conservative estimate: 0.5-2% APY for new concentrated liquidity positions
-          weeklyApy = 'calculating';
-          monthlyApy = 'calculating';
+        if (usd1Current) {
+             // USD1 Vault: amount0 = WLFI, amount1 = USD1
+             const amount0 = parseFloat(usd1Current.totalAmount0 || '0'); // WLFI
+             const amount1 = parseFloat(usd1Current.totalAmount1 || '0'); // USD1
+             usd1Tvl = (amount0 * WLFI_PRICE) + (amount1 * USD1_PRICE);
+             usd1Apy = parseFloat(usd1Current.annualVsHoldPerfSince || '0') * 100;
+             usd1FeeApr = parseFloat(usd1Current.feeApr || '0') * 100;
         }
+
+        let wethTvl = 0;
+        let wethApy = 0;
+        let wethFeeApr = 0;
         
-        if (hasFeeApr) {
-          currentFeeApr = (parseFloat(current.feeApr) * 100).toFixed(2);
+        if (wethCurrent) {
+            // WETH Vault: amount0 = WETH, amount1 = WLFI
+            const amount0 = parseFloat(wethCurrent.totalAmount0 || '0'); // WETH
+            const amount1 = parseFloat(wethCurrent.totalAmount1 || '0'); // WLFI
+            wethTvl = (amount0 * WETH_PRICE) + (amount1 * WLFI_PRICE);
+            wethApy = parseFloat(wethCurrent.annualVsHoldPerfSince || '0') * 100;
+            wethFeeApr = parseFloat(wethCurrent.feeApr || '0') * 100;
         }
+
+        let weightedApy = 0;
+        let weightedFeeApr = 0;
+        const totalTvl = usd1Tvl + wethTvl;
         
-        const historicalSnapshots = snapshots.map((s: any) => ({ 
+        if (totalTvl > 0) {
+            weightedApy = ((usd1Apy * usd1Tvl) + (wethApy * wethTvl)) / totalTvl;
+            weightedFeeApr = ((usd1FeeApr * usd1Tvl) + (wethFeeApr * wethTvl)) / totalTvl;
+        }
+
+        const weeklyApy = weightedApy.toFixed(2);
+        const monthlyApy = weeklyApy;
+        const currentFeeApr = weightedFeeApr.toFixed(2);
+
+        // For historical chart, we'll use USD1 strategy for now to maintain structure
+        // In a future update we could aggregate these
+        const historicalSnapshots = usd1Snapshots.map((s: any) => ({ 
           timestamp: parseInt(s.timestamp), 
           feeApr: s.feeApr ? (parseFloat(s.feeApr) * 100).toFixed(2) : '0', 
           totalValue: parseFloat(s.totalAmount0 || '0') + parseFloat(s.totalAmount1 || '0') 
@@ -1547,14 +1579,19 @@ export default function VaultView({ provider, account, onToast, onNavigateUp, on
               data.weeklyApy === 'calculating'
                 ? 'New vault - APY calculating...'
                 : data.weeklyApy !== '0' 
-                  ? 'From Charm Finance' 
+                  ? 'Weighted Avg. (TVL)' 
                   : 'Loading...'
             }
           />
           <NeoStatCard
-            label="Your position"
-            value={account ? Number(data.userBalance).toFixed(2) : '0.00'}
-            subtitle={account ? `${Number(data.userBalance).toLocaleString()} vEAGLE` : 'Connect wallet'}
+            label="Circulating / Max Supply"
+            value={`${Number(data.totalSupply).toLocaleString(undefined, { maximumFractionDigits: 0 })} / 50M`}
+            subtitle={(() => {
+               const totalWLFI = Number(data.vaultLiquidWLFI) + Number(data.strategyWLFIinUSD1Pool) + Number(data.strategyWLFIinPool);
+               const totalEagle = Number(data.totalSupply);
+               const ratio = totalEagle > 0 ? (totalWLFI / totalEagle).toFixed(4) : '0.0000';
+               return `Ratio: ${ratio} WLFI / EAGLE`;
+            })()}
           />
         </div>
 

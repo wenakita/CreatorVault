@@ -44,6 +44,12 @@ export const CONTRACTS = {
   MULTISIG: '0xe5a1d534eb7f00397361F645f0F39e5D16cc1De3',   // Multisig (Owner)
 } as const;
 
+// Cross-Chain Configuration
+export const BASE_CONTRACTS = {
+  EAGLE_OFT: '0x474eD38C256A7FA0f3B8c48496CE1102ab0eA91E', // Same address as Mainnet ✨
+  WLFI_OFT: '0x47af3595BFBE6c86E59a13d5db91AEfbFF0eA91e',  // WLFI OFT on Base
+} as const;
+
 // Token metadata for UI
 export const TOKENS = {
   VEAGLE: {

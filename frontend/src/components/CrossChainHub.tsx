@@ -3,7 +3,7 @@ import { BrowserProvider, Contract, formatUnits, parseUnits } from 'ethers';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ArrowDown, Zap, Shield, Clock, ExternalLink, AlertCircle, CheckCircle2 } from 'lucide-react';
 import { NeoButton, NeoCard, NeoInput } from './neumorphic';
-import { CONTRACTS } from '../config/contracts';
+import { CONTRACTS, BASE_CONTRACTS } from '../config/contracts';
 import { ICONS } from '../config/icons';
 
 interface Props {
@@ -37,8 +37,22 @@ const EthereumIcon = ({ className = "w-full h-full" }: { className?: string }) =
 );
 
 const CHAIN_INFO = {
-  base: { name: 'Base', icon: BaseIcon },
-  ethereum: { name: 'Ethereum', icon: EthereumIcon },
+  base: { 
+    name: 'Base', 
+    icon: BaseIcon,
+    contracts: {
+      EAGLE: BASE_CONTRACTS.EAGLE_OFT,
+      WLFI: BASE_CONTRACTS.WLFI_OFT
+    }
+  },
+  ethereum: { 
+    name: 'Ethereum', 
+    icon: EthereumIcon,
+    contracts: {
+      EAGLE: CONTRACTS.OFT,
+      WLFI: CONTRACTS.WLFI
+    }
+  },
 };
 
 export default function CrossChainHub({ provider, account, onToast, onNavigateToVault, onNavigateToLP }: Props) {
@@ -146,6 +160,7 @@ export default function CrossChainHub({ provider, account, onToast, onNavigateTo
               <button 
                 onClick={() => setSourceToken(sourceToken === 'EAGLE' ? 'WLFI' : 'EAGLE')}
                 className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-sm hover:scale-105 transition-transform shrink-0"
+                title={`Contract: ${CHAIN_INFO[sourceChain].contracts[sourceToken]}`}
               >
                 <div className="relative">
                   <img src={sourceToken === 'EAGLE' ? ICONS.EAGLE : ICONS.WLFI} className="w-8 h-8 rounded-full" alt={sourceToken} />
@@ -201,6 +216,7 @@ export default function CrossChainHub({ provider, account, onToast, onNavigateTo
               <button 
                 onClick={() => setDestToken(destToken === 'EAGLE' ? 'WLFI' : 'EAGLE')}
                 className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-sm hover:scale-105 transition-transform shrink-0"
+                title={`Contract: ${CHAIN_INFO[destChain].contracts[destToken]}`}
               >
                 <div className="relative">
                   <img src={destToken === 'EAGLE' ? ICONS.EAGLE : ICONS.WLFI} className="w-8 h-8 rounded-full" alt={destToken} />
