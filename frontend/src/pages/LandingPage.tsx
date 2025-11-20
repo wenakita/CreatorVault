@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { 
   ArrowRight, 
@@ -281,7 +281,7 @@ const YieldEcosystem = () => {
                        <div className="text-[10px] text-gray-500 font-mono">{strat.pool}</div>
                     </div>
                     <div className="text-right">
-                       <div className="text-green-600 dark:text-green-400 font-mono text-sm font-bold">{strat.apy}</div>
+                       <div className="text-green-600 dark:text-green-400 font-mono text-sm font-bold">Live</div>
                        <div className="text-[10px] text-gray-500">APY</div>
                     </div>
                  </div>
@@ -361,13 +361,9 @@ const Addresses = () => (
 
 export default function LandingPage() {
   const navigate = useNavigate();
-  const [isLaunching, setIsLaunching] = useState(false);
 
   const handleLaunch = () => {
-    setIsLaunching(true);
-    setTimeout(() => {
-      navigate('/app');
-    }, 600); // Wait for animation
+    navigate('/app');
   };
 
   return (
@@ -378,31 +374,7 @@ export default function LandingPage() {
         <div className="absolute bottom-[-10%] right-[-10%] w-[60%] h-[60%] bg-blue-200/20 dark:bg-blue-900/10 blur-[120px] rounded-full mix-blend-multiply dark:mix-blend-screen" />
       </div>
 
-      {/* Dive Animation Overlay - Warm Transition */}
-      <AnimatePresence>
-        {isLaunching && (
-          <motion.div
-            className="fixed inset-0 z-[100] bg-[#fdfbf7] dark:bg-[#0c0a09] pointer-events-none"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ duration: 0.6, ease: "easeInOut" }}
-          />
-        )}
-      </AnimatePresence>
-
-      <motion.div
-        animate={isLaunching ? { 
-          scale: 1.1, 
-          opacity: 0,
-          filter: "blur(5px)"
-        } : { 
-          scale: 1, 
-          opacity: 1,
-          filter: "blur(0px)"
-        }}
-        transition={{ duration: 0.6, ease: "easeInOut" }}
-        className="relative z-10"
-      >
+      <div className="relative z-10">
         {/* Navigation */}
         <nav className="fixed w-full z-50 bg-white/80 dark:bg-gray-900/80 backdrop-blur-md border-b border-gray-200/50 dark:border-gray-800/50">
           <div className="container mx-auto px-6 h-20 flex items-center justify-between">
@@ -491,14 +463,14 @@ export default function LandingPage() {
           </div>
         </section>
 
-        {/* Stats Section */}
+        {/* Stats Section - Removed hardcoded stats to avoid inaccuracy */}
         <section className="py-12 border-y border-gray-200/50 dark:border-gray-800/50 bg-gray-50/50 dark:bg-gray-900/50 backdrop-blur-sm">
           <div className="container mx-auto px-6">
             <div className="grid grid-cols-2 md:grid-cols-4 gap-6 md:gap-8">
-              <NeoStatCard label="Total Value Locked" value="$4.2M+" subtitle="Across all chains" />
-              <NeoStatCard label="Current APY" value="42.5%" subtitle="Base WLFI Strategy" highlighted />
-              <NeoStatCard label="Supported Chains" value="4" subtitle="Eth, Base, BNB, Sol" />
-              <NeoStatCard label="Security Score" value="98/100" subtitle="Audited Architecture" />
+              <NeoStatCard label="Total Supply" value="50M" subtitle="Fixed Max Supply" />
+              <NeoStatCard label="Current APY" value="Live" subtitle="View in App" highlighted />
+              <NeoStatCard label="Supported Chains" value="2+" subtitle="Base, Ethereum..." />
+              <NeoStatCard label="Security Score" value="Audit" subtitle="In Progress" />
             </div>
           </div>
         </section>
@@ -605,7 +577,7 @@ export default function LandingPage() {
             </div>
           </div>
         </footer>
-      </motion.div>
+      </div>
     </div>
   );
 }

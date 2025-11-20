@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, useLocation } from 'react-router-dom';
 import { BrowserProvider } from 'ethers';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAccount } from 'wagmi';
@@ -64,7 +64,13 @@ function AppContent() {
   }, [isConnected, wagmiAddress, isSafeApp, safeAddress, account, provider]);
 
   return (
-    <div className="h-screen flex flex-col transition-colors duration-300">
+    <motion.div 
+      className="h-screen flex flex-col transition-colors duration-300 bg-[#0a0a0a]" // Match LandingPage bg
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      transition={{ duration: 0.3 }}
+    >
       {/* Fixed Header */}
       <div className="relative z-20 flex-shrink-0">
         <ModernHeader />
@@ -155,7 +161,30 @@ function AppContent() {
           ))}
         </AnimatePresence>
       </div>
-    </div>
+    </motion.div>
+  );
+}
+
+function AnimatedRoutes() {
+  const location = useLocation();
+  return (
+    <AnimatePresence mode="wait">
+      <Routes location={location} key={location.pathname.split('/')[1] || 'root'}>
+        <Route path="/" element={
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.3 }}
+          >
+            <LandingPage />
+          </motion.div>
+        } />
+        <Route path="/showcase" element={<Showcase />} />
+        <Route path="/app/*" element={<AppContent />} />
+        <Route path="/*" element={<LandingPage />} />
+      </Routes>
+    </AnimatePresence>
   );
 }
 
@@ -168,12 +197,7 @@ export default function App() {
           v7_relativeSplatPath: true,
         }}
       >
-        <Routes>
-          <Route path="/" element={<LandingPage />} />
-          <Route path="/showcase" element={<Showcase />} />
-          <Route path="/app/*" element={<AppContent />} />
-          <Route path="/*" element={<LandingPage />} />
-        </Routes>
+        <AnimatedRoutes />
       </BrowserRouter>
     </SafeProvider>
   );
