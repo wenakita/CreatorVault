@@ -70,6 +70,18 @@ telegram-bot/prisma/data/*.db
 docs-generated/
 docs-export/
 
+# Development and testing directories (excluded from repo)
+scripts/
+script/
+test/
+telegram-bot/
+relayer/
+monitoring/
+infrastructure/
+devtools/
+tasks/
+security-reports/
+
 # Test documentation and scripts (keep local only)
 ARBITRUM_*.md
 ASSET_*.md
@@ -92,25 +104,11 @@ WHEN_*.md
 WHY_*.md
 docs/yearn/
 vanity-generator/
-scripts/test-*.ts
-scripts/check-*.ts
-scripts/deploy-arbitrum-*.ts
-scripts/verify-*.ts
-scripts/trigger-*.ts
-scripts/deposit-*.ts
-scripts/force-*.ts
-scripts/remove-*.ts
 
 # Test and development files (keep local)
 bsc-production-ready.json
 eagle-vanity-data.json
 vanity-result-found.json
-scripts/
-!scripts/solana/
-scripts/solana/node_modules/
-
-# Documentation and reference (keep local)
-docs/
 reference.sol
 
 # Vanity and test JSON files
