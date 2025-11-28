@@ -11,6 +11,9 @@ deployments/
 ├── base/             # Base network deployments
 ├── bsc/              # BNB Smart Chain deployments
 ├── ethereum/         # Ethereum mainnet deployments
+├── monad/            # Monad network deployments
+├── sonic/            # Sonic network deployments
+├── hyperevm/         # HyperEVM (Hyperliquid) deployments
 └── shared/           # Cross-chain configurations
 ```
 
@@ -43,13 +46,29 @@ deployments/
 
 ## Key Addresses
 
-| Network | Contract | Address |
-|---------|----------|---------|
-| Ethereum | EagleOVault | `0x47b3ef629D9cB8DFcF8A6c61058338f4e99d7953` |
-| Ethereum | EagleShareOFT | `0x474eD38C256A7FA0f3B8c48496CE1102ab0eA91E` |
-| Ethereum | EagleRegistry | `0x47c81c9a70CA7518d3b911bC8C8b11000e92F59e` |
-| Base | WLFI OFT | `0x47af3595BFBE6c86E59a13d5db91AEfbFF0eA91e` |
-| Arbitrum | Eagle Share OFT | `0xf83922BcD5a80C07ccb61dbA5E7f7A02cC05a1fD` |
+### ✅ **Deployed Contracts:**
+
+| Network | Contract | Address | Status |
+|---------|----------|---------|--------|
+| **Ethereum** | EagleOVault | [`0x47b3ef629D9cB8DFcF8A6c61058338f4e99d7953`](https://etherscan.io/address/0x47b3ef629D9cB8DFcF8A6c61058338f4e99d7953) | ✅ Active |
+| **Ethereum** | EagleShareOFT | [`0x474eD38C256A7FA0f3B8c48496CE1102ab0eA91E`](https://etherscan.io/address/0x474eD38C256A7FA0f3B8c48496CE1102ab0eA91E) | ✅ Active |
+| **Ethereum** | EagleRegistry | [`0x47c81c9a70CA7518d3b911bC8C8b11000e92F59e`](https://etherscan.io/address/0x47c81c9a70CA7518d3b911bC8C8b11000e92F59e) | ✅ Active |
+| **Base** | WLFI OFT | [`0x47af3595BFBE6c86E59a13d5db91AEfbFF0eA91e`](https://basescan.org/address/0x47af3595BFBE6c86E59a13d5db91AEfbFF0eA91e) | ✅ Active |
+| **Arbitrum** | Eagle Share OFT | [`0xf83922BcD5a80C07ccb61dbA5E7f7A02cC05a1fD`](https://arbiscan.io/address/0xf83922BcD5a80C07ccb61dbA5E7f7A02cC05a1fD) | ✅ Active |
+
+### 🔄 **Configured Networks (Ready for Deployment):**
+
+| Network | Chain ID | LayerZero EID | Status |
+|---------|----------|---------------|--------|
+| **BSC** | 56 | 30102 | Configured |
+| **Avalanche** | 43114 | 30106 | Configured |
+| **Monad** | 10143 | 30390 | Configured |
+| **Sonic** | 146 | 30332 | Configured |
+| **HyperEVM** | 999 | 30275 | Configured |
+
+### 🌐 **Universal Addresses (Same Across All Chains):**
+- **EagleRegistry**: `0x47c81c9a70CA7518d3b911bC8C8b11000e92F59e`
+- **EagleShareOFT**: `0x474eD38C256A7FA0f3B8c48496CE1102ab0eA91E`
 
 ## LayerZero Configuration
 
@@ -62,11 +81,23 @@ Cross-chain messaging is configured via LayerZero V2:
 
 ## Deployment Status
 
-- ✅ **Ethereum**: Fully deployed and operational
-- ✅ **Base**: WLFI OFT deployed and verified
-- ✅ **Arbitrum**: Share OFT deployed
-- 🔄 **BSC/Avalanche**: Configured, pending deployment
-- 🔄 **Cross-chain**: Peer configurations established
+### ✅ **Active Deployments:**
+- **Ethereum**: Fully deployed and operational
+  - EagleOVault, EagleShareOFT, EagleVaultWrapper, EagleOVaultComposer, WLFI Adapter
+- **Base**: WLFI OFT deployed and verified
+- **Arbitrum**: Eagle Share OFT deployed
+
+### 🔄 **Configured Networks (Ready for Deployment):**
+- **BSC (BNB Chain)**: LayerZero configured, contracts ready
+- **Avalanche**: LayerZero configured, contracts ready
+- **Monad**: LayerZero configured, contracts ready
+- **Sonic**: LayerZero configured, contracts ready
+- **HyperEVM**: LayerZero configured, contracts ready
+
+### 🌐 **Cross-Chain Status:**
+- ✅ **Ethereum ↔ Base**: Active peer configurations
+- ✅ **LayerZero V2**: All networks configured with endpoints
+- ✅ **Registry System**: Cross-chain registry deployed on Base & Arbitrum
 
 ## Usage
 
