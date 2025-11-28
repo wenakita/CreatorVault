@@ -11,6 +11,7 @@
     "vercel-build": "npm run build"
   },
   "dependencies": {
+    "@prisma/client": "^7.0.1",
     "@rainbow-me/rainbowkit": "^2.1.0",
     "@react-oauth/google": "^0.12.1",
     "@react-three/drei": "~9.100.0",
@@ -25,6 +26,7 @@
     "ethers": "^6.15.0",
     "framer-motion": "^12.23.24",
     "lucide-react": "^0.400.0",
+    "prisma": "^7.0.1",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "react-router-dom": "^6.30.1",

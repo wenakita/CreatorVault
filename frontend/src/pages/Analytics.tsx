@@ -1,9 +1,10 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { BrowserProvider } from 'ethers';
 import { CONTRACTS } from '../config/contracts';
 import { NeoButton, NeoCard, NeoStatCard } from '../components/neumorphic';
 import { ICONS } from '../config/icons';
+import { useAnalyticsData } from '../hooks/useAnalyticsData';
 
 interface Props {
   provider: BrowserProvider | null;
@@ -12,87 +13,63 @@ interface Props {
 }
 
 export default function Analytics({ provider, account, onNavigateUp }: Props) {
-  const [loading, setLoading] = useState(false);
-  const [stats, setStats] = useState({
-    currentFeeApr: null as string | null,
-    weeklyApy: null as string | null,
-    monthlyApy: null as string | null,
-    inceptionApy: null as string | null,
-    netApy: null as string | null,
-    historicalSnapshots: [] as Array<{ timestamp: number; feeApr: string; totalValue: number }>,
-  });
+  const [selectedVault, setSelectedVault] = useState<'USD1_WLFI' | 'WETH_WLFI' | 'combined'>('combined');
+  const { data, loading, error, refetch, source } = useAnalyticsData(90);
 
-  // Fetch Charm Finance historical data
-  const fetchCharmStats = useCallback(async () => {
-    try {
-      setLoading(true);
-      const query = `query GetVault($address: ID!) { vault(id: $address) { snapshot(orderBy: timestamp, orderDirection: asc, first: 1000) { timestamp feeApr annualVsHoldPerfSince totalAmount0 totalAmount1 totalSupply } } }`;
-      const response = await fetch('https://stitching-v2.herokuapp.com/1', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ query, variables: { address: CONTRACTS.CHARM_VAULT.toLowerCase() } })
-      });
-      const result = await response.json();
+  // Get metrics based on selected vault
+  const getDisplayMetrics = () => {
+    if (!data) return null;
+
+    if (selectedVault === 'combined') {
+      // Average of both vaults
+      const usd1 = data.vaults.USD1_WLFI.metrics;
+      const weth = data.vaults.WETH_WLFI.metrics;
+
+      const avg = (a: string | null, b: string | null) => {
+        const vals = [a, b].filter(Boolean).map(Number);
+        if (vals.length === 0) return null;
+        return (vals.reduce((x, y) => x + y, 0) / vals.length).toFixed(2);
+      };
+
+      return {
+        currentFeeApr: avg(usd1?.currentFeeApr || null, weth?.currentFeeApr || null),
+        weeklyApy: avg(usd1?.weeklyApy || null, weth?.weeklyApy || null),
+        monthlyApy: avg(usd1?.monthlyApy || null, weth?.monthlyApy || null),
+        inceptionApy: avg(usd1?.inceptionApy || null, weth?.inceptionApy || null),
+      };
+    }
+
+    const vault = data.vaults[selectedVault];
+    return vault?.metrics || null;
+  };
+
+  const metrics = getDisplayMetrics();
+
+  // Get historical data for chart
+  const getHistoricalData = () => {
+    if (!data) return [];
+
+    if (selectedVault === 'combined') {
+      // Merge and average both vaults' data
+      const usd1 = data.vaults.USD1_WLFI.historicalSnapshots || [];
+      const weth = data.vaults.WETH_WLFI.historicalSnapshots || [];
       
-      if (result.data?.vault?.snapshot && result.data.vault.snapshot.length > 0) {
-        const snapshots = result.data.vault.snapshot;
-        const current = snapshots[snapshots.length - 1];
-        
-        // Use ONLY real data from Charm's API
-        const currentFeeApr = current?.feeApr ? (parseFloat(current.feeApr) * 100).toFixed(2) : null;
-        const annualVsHoldPerf = current?.annualVsHoldPerfSince ? (parseFloat(current.annualVsHoldPerfSince) * 100).toFixed(2) : null;
-        
-        // Calculate time-weighted APYs from historical data
-        const now = Date.now() / 1000;
-        const oneWeekAgo = now - (7 * 24 * 60 * 60);
-        const oneMonthAgo = now - (30 * 24 * 60 * 60);
-        
-        const weeklySnapshots = snapshots.filter((s: any) => parseInt(s.timestamp) >= oneWeekAgo);
-        const monthlySnapshots = snapshots.filter((s: any) => parseInt(s.timestamp) >= oneMonthAgo);
-        
-        const weeklyApy = weeklySnapshots.length > 0 
-          ? (weeklySnapshots.reduce((sum: number, s: any) => sum + parseFloat(s.annualVsHoldPerfSince || '0'), 0) / weeklySnapshots.length * 100).toFixed(2)
-          : null;
-          
-        const monthlyApy = monthlySnapshots.length > 0
-          ? (monthlySnapshots.reduce((sum: number, s: any) => sum + parseFloat(s.annualVsHoldPerfSince || '0'), 0) / monthlySnapshots.length * 100).toFixed(2)
-          : null;
-        
-        // Inception APY is the average since inception
-        const inceptionApy = snapshots.length > 0
-          ? (snapshots.reduce((sum: number, s: any) => sum + parseFloat(s.annualVsHoldPerfSince || '0'), 0) / snapshots.length * 100).toFixed(2)
-          : null;
-        
-        // Net APY accounts for Eagle's fees (conservative estimate)
-        const netApy = weeklyApy ? Math.max(0, parseFloat(weeklyApy) * 0.923).toFixed(2) : null; // 7.7% reduction
-        
-        const historicalSnapshots = snapshots.map((s: any) => ({
-          timestamp: parseInt(s.timestamp),
-          feeApr: (parseFloat(s.feeApr || '0') * 100).toFixed(2),
-          totalValue: parseFloat(s.totalAmount0 || '0') + parseFloat(s.totalAmount1 || '0')
-        }));
-
-        setStats({
-          currentFeeApr,
-          weeklyApy,
-          monthlyApy,
-          inceptionApy,
-          netApy,
-          historicalSnapshots,
-        });
-      }
-    } catch (error) {
-      console.error('Error fetching Charm stats:', error);
-    } finally {
-      setLoading(false);
+      // Use USD1 as base (usually more data points)
+      return usd1.map(snap => ({
+        ...snap,
+        feeApr: snap.feeApr, // Could average with WETH here
+      }));
     }
-  }, []);
 
-  useEffect(() => {
-    if (provider) {
-      fetchCharmStats();
-    }
-  }, [provider, fetchCharmStats]);
+    return data.vaults[selectedVault]?.historicalSnapshots || [];
+  };
+
+  const historicalData = getHistoricalData();
+
+  // Calculate net APY (after Eagle's fees)
+  const netApy = metrics?.weeklyApy 
+    ? (parseFloat(metrics.weeklyApy) * 0.923).toFixed(2) // 7.7% fee reduction
+    : null;
 
   return (
     <div className="bg-neo-bg min-h-screen pb-24">
@@ -130,10 +107,17 @@ export default function Analytics({ provider, account, onNavigateUp }: Props) {
           />
           <div className="flex-1">
             <h1 className="text-3xl font-bold text-gray-900 mb-1">Vault Analytics</h1>
-            <p className="text-sm text-gray-600">Yield performance and earnings data</p>
+            <p className="text-sm text-gray-600">
+              Yield performance and earnings data
+              {source && (
+                <span className="ml-2 text-xs text-gray-400">
+                  (via {source === 'cache' ? 'cached data' : 'live GraphQL'})
+                </span>
+              )}
+            </p>
           </div>
           <NeoButton
-            onClick={fetchCharmStats}
+            onClick={refetch}
             disabled={loading}
             label=""
             icon={
@@ -150,26 +134,54 @@ export default function Analytics({ provider, account, onNavigateUp }: Props) {
           />
         </div>
 
+        {/* Vault Selector */}
+        <div className="flex gap-2 mb-6">
+          {[
+            { key: 'combined', label: 'Combined' },
+            { key: 'USD1_WLFI', label: 'USD1/WLFI' },
+            { key: 'WETH_WLFI', label: 'WETH/WLFI' },
+          ].map(({ key, label }) => (
+            <button
+              key={key}
+              onClick={() => setSelectedVault(key as any)}
+              className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${
+                selectedVault === key
+                  ? 'bg-amber-500 text-white shadow-lg'
+                  : 'bg-white/50 text-gray-700 hover:bg-white/80 shadow-neo'
+              }`}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+
+        {/* Error State */}
+        {error && (
+          <div className="bg-red-50 border border-red-200 rounded-xl p-4 mb-6">
+            <p className="text-red-700 text-sm">{error}</p>
+          </div>
+        )}
+
         {/* APY Stats */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
           <NeoStatCard
             label="Weekly APY"
-            value={stats.weeklyApy ? `${stats.weeklyApy}%` : 'N/A'}
-            subtitle={stats.weeklyApy ? 'Real-time data' : 'No data yet'}
+            value={metrics?.weeklyApy ? `${metrics.weeklyApy}%` : loading ? '...' : 'N/A'}
+            subtitle={metrics?.weeklyApy ? 'Real-time data' : 'No data yet'}
           />
           <NeoStatCard
             label="Monthly APY"
-            value={stats.monthlyApy ? `${stats.monthlyApy}%` : 'N/A'}
-            subtitle={stats.monthlyApy ? 'Real-time data' : 'No data yet'}
+            value={metrics?.monthlyApy ? `${metrics.monthlyApy}%` : loading ? '...' : 'N/A'}
+            subtitle={metrics?.monthlyApy ? 'Real-time data' : 'No data yet'}
           />
           <NeoStatCard
             label="Inception APY"
-            value={stats.inceptionApy ? `${stats.inceptionApy}%` : 'N/A'}
-            subtitle={stats.inceptionApy ? 'Since deployment' : 'No data yet'}
+            value={metrics?.inceptionApy ? `${metrics.inceptionApy}%` : loading ? '...' : 'N/A'}
+            subtitle={metrics?.inceptionApy ? 'Since deployment' : 'No data yet'}
           />
           <NeoStatCard
             label="Net APY"
-            value={stats.netApy ? `${stats.netApy}%` : 'N/A'}
+            value={netApy ? `${netApy}%` : loading ? '...' : 'N/A'}
             highlighted
             subtitle="After fees"
           />
@@ -178,9 +190,9 @@ export default function Analytics({ provider, account, onNavigateUp }: Props) {
         {/* Cumulative Earnings Chart */}
         <NeoCard className="mb-8">
           <div className="p-6">
-            <h3 className="text-gray-900 font-bold text-xl mb-4">Cumulative Earnings</h3>
+            <h3 className="text-gray-900 font-bold text-xl mb-4">Historical Fee APR</h3>
             <div className="bg-white/30 border border-gray-300 rounded-xl p-6 h-64">
-              {stats.historicalSnapshots.length > 0 ? (
+              {historicalData.length > 0 ? (
                 <svg className="w-full h-full" viewBox="0 0 100 30" preserveAspectRatio="none">
                   <defs>
                     <linearGradient id="earnings-gradient" x1="0%" y1="0%" x2="100%" y2="0%">
@@ -195,9 +207,10 @@ export default function Analytics({ provider, account, onNavigateUp }: Props) {
                   
                   {/* Area under curve */}
                   <polygon
-                    points={`0,30 ${stats.historicalSnapshots.map((_, i) => {
-                      const x = (i / (stats.historicalSnapshots.length - 1)) * 100;
-                      const y = 30 - (parseFloat(stats.historicalSnapshots[i].feeApr) / 5) * 30;
+                    points={`0,30 ${historicalData.map((snap, i) => {
+                      const x = (i / (historicalData.length - 1)) * 100;
+                      const apr = parseFloat(snap.feeApr || '0');
+                      const y = 30 - Math.min((apr / 5) * 30, 30);
                       return `${x},${y}`;
                     }).join(' ')} 100,30`}
                     fill="url(#area-gradient)"
@@ -205,9 +218,10 @@ export default function Analytics({ provider, account, onNavigateUp }: Props) {
                   
                   {/* Line */}
                   <polyline
-                    points={stats.historicalSnapshots.map((snap, i) => {
-                      const x = (i / (stats.historicalSnapshots.length - 1)) * 100;
-                      const y = 30 - (parseFloat(snap.feeApr) / 5) * 30;
+                    points={historicalData.map((snap, i) => {
+                      const x = (i / (historicalData.length - 1)) * 100;
+                      const apr = parseFloat(snap.feeApr || '0');
+                      const y = 30 - Math.min((apr / 5) * 30, 30);
                       return `${x},${y}`;
                     }).join(' ')}
                     fill="none"
@@ -225,6 +239,11 @@ export default function Analytics({ provider, account, onNavigateUp }: Props) {
                 </div>
               )}
             </div>
+            {historicalData.length > 0 && (
+              <p className="text-xs text-gray-500 mt-2">
+                {historicalData.length} snapshots • Last 90 days
+              </p>
+            )}
           </div>
         </NeoCard>
 
@@ -267,18 +286,28 @@ export default function Analytics({ provider, account, onNavigateUp }: Props) {
               </div>
 
               <div>
-                <h4 className="text-gray-700 font-semibold mb-4">Strategy Information</h4>
+                <h4 className="text-gray-700 font-semibold mb-4">Active Strategies</h4>
                 <div className="space-y-3">
                   <div className="bg-white/50 shadow-neo-inset rounded-xl p-4">
-                    <div className="text-xs text-gray-600 uppercase tracking-wider mb-2 font-semibold">Active Strategy</div>
-                    <p className="text-gray-900 font-bold">Charm USD1/WLFI Alpha Vault</p>
-                    <p className="text-xs text-gray-600 mt-1">Uniswap V3 Concentrated Liquidity</p>
+                    <div className="text-xs text-gray-600 uppercase tracking-wider mb-2 font-semibold">Strategy 1 (50%)</div>
+                    <p className="text-gray-900 font-bold">USD1/WLFI Alpha Vault</p>
+                    <p className="text-xs text-gray-600 mt-1">Uniswap V3 • 1% Fee Tier</p>
+                    {data?.vaults.USD1_WLFI.metrics?.weeklyApy && (
+                      <p className="text-xs text-amber-600 mt-1 font-medium">
+                        APY: {data.vaults.USD1_WLFI.metrics.weeklyApy}%
+                      </p>
+                    )}
                   </div>
                   
                   <div className="bg-white/50 shadow-neo-inset rounded-xl p-4">
-                    <div className="text-xs text-gray-600 uppercase tracking-wider mb-2 font-semibold">Pool Composition</div>
-                    <p className="text-gray-900 font-bold">USD1/WLFI</p>
-                    <p className="text-xs text-gray-600 mt-1">1% Fee Tier (10000)</p>
+                    <div className="text-xs text-gray-600 uppercase tracking-wider mb-2 font-semibold">Strategy 2 (50%)</div>
+                    <p className="text-gray-900 font-bold">WETH/WLFI Alpha Vault</p>
+                    <p className="text-xs text-gray-600 mt-1">Uniswap V3 • 1% Fee Tier</p>
+                    {data?.vaults.WETH_WLFI.metrics?.weeklyApy && (
+                      <p className="text-xs text-amber-600 mt-1 font-medium">
+                        APY: {data.vaults.WETH_WLFI.metrics.weeklyApy}%
+                      </p>
+                    )}
                   </div>
                   
                   <div className="bg-white/50 shadow-neo-inset rounded-xl p-4">
@@ -294,18 +323,34 @@ export default function Analytics({ provider, account, onNavigateUp }: Props) {
             <div className="mt-6 pt-6 border-t border-gray-300">
               <p className="text-xs text-gray-600">
                 <span className="font-semibold">Data Source:</span> Charm Finance Subgraph
+                {data?.meta?.totalSnapshots && (
+                  <span className="ml-2">• {data.meta.totalSnapshots} total snapshots</span>
+                )}
               </p>
-              <a 
-                href={`https://alpha.charm.fi/vault/${CONTRACTS.CHARM_VAULT}`}
-                target="_blank" 
-                rel="noopener noreferrer"
-                className="text-xs text-amber-700 hover:text-amber-800 font-medium mt-2 inline-flex items-center gap-1"
-              >
-                View on Charm Finance
-                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-                </svg>
-              </a>
+              <div className="flex gap-4 mt-2">
+                <a 
+                  href={`https://alpha.charm.fi/vault/${CONTRACTS.CHARM_VAULT}`}
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="text-xs text-amber-700 hover:text-amber-800 font-medium inline-flex items-center gap-1"
+                >
+                  USD1/WLFI Vault
+                  <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                  </svg>
+                </a>
+                <a 
+                  href="https://alpha.charm.fi/vault/0x3314e248f3f752cd16939773d83beb3a362f0aef"
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="text-xs text-amber-700 hover:text-amber-800 font-medium inline-flex items-center gap-1"
+                >
+                  WETH/WLFI Vault
+                  <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                  </svg>
+                </a>
+              </div>
             </div>
           </div>
         </NeoCard>
@@ -316,42 +361,10 @@ export default function Analytics({ provider, account, onNavigateUp }: Props) {
             <h3 className="text-gray-900 font-bold text-xl mb-6">Contract Addresses</h3>
             
             <div className="space-y-4">
-              {/* Uniswap V3 Pool */}
+              {/* USD1/WLFI Pool */}
               <div className="bg-white/50 shadow-neo-inset rounded-xl p-4">
                 <div className="text-xs text-gray-600 uppercase tracking-wider mb-2 font-semibold">
-                  Uniswap V3 LP 1% Fee Tier USD1/WLFI
-                </div>
-                <div className="flex items-center gap-2">
-                  <code className="text-gray-900 font-mono text-sm bg-gray-100 px-3 py-2 rounded-lg flex-1 break-all">
-                    {CONTRACTS.UNISWAP_V3_POOL}
-                  </code>
-                  <button
-                    onClick={() => navigator.clipboard.writeText(CONTRACTS.UNISWAP_V3_POOL)}
-                    className="p-2 hover:bg-gray-200 rounded-lg transition-colors flex-shrink-0"
-                    title="Copy to clipboard"
-                  >
-                    <svg className="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                    </svg>
-                  </button>
-                  <a
-                    href={`https://etherscan.io/address/${CONTRACTS.UNISWAP_V3_POOL}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="p-2 hover:bg-gray-200 rounded-lg transition-colors flex-shrink-0"
-                    title="View on Etherscan"
-                  >
-                    <svg className="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-                    </svg>
-                  </a>
-                </div>
-              </div>
-
-              {/* Charm Vault */}
-              <div className="bg-white/50 shadow-neo-inset rounded-xl p-4">
-                <div className="text-xs text-gray-600 uppercase tracking-wider mb-2 font-semibold">
-                  Charm Vault Contract
+                  USD1/WLFI Charm Vault
                 </div>
                 <div className="flex items-center gap-2">
                   <code className="text-gray-900 font-mono text-sm bg-gray-100 px-3 py-2 rounded-lg flex-1 break-all">
@@ -380,17 +393,17 @@ export default function Analytics({ provider, account, onNavigateUp }: Props) {
                 </div>
               </div>
 
-              {/* Strategy Contract */}
+              {/* WETH/WLFI Vault */}
               <div className="bg-white/50 shadow-neo-inset rounded-xl p-4">
                 <div className="text-xs text-gray-600 uppercase tracking-wider mb-2 font-semibold">
-                  Strategy Contract
+                  WETH/WLFI Charm Vault
                 </div>
                 <div className="flex items-center gap-2">
                   <code className="text-gray-900 font-mono text-sm bg-gray-100 px-3 py-2 rounded-lg flex-1 break-all">
-                    {CONTRACTS.STRATEGY}
+                    0x3314e248F3F752Cd16939773D83bEb3a362F0AEF
                   </code>
                   <button
-                    onClick={() => navigator.clipboard.writeText(CONTRACTS.STRATEGY)}
+                    onClick={() => navigator.clipboard.writeText('0x3314e248F3F752Cd16939773D83bEb3a362F0AEF')}
                     className="p-2 hover:bg-gray-200 rounded-lg transition-colors flex-shrink-0"
                     title="Copy to clipboard"
                   >
@@ -399,7 +412,39 @@ export default function Analytics({ provider, account, onNavigateUp }: Props) {
                     </svg>
                   </button>
                   <a
-                    href={`https://etherscan.io/address/${CONTRACTS.STRATEGY}`}
+                    href="https://etherscan.io/address/0x3314e248F3F752Cd16939773D83bEb3a362F0AEF"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="p-2 hover:bg-gray-200 rounded-lg transition-colors flex-shrink-0"
+                    title="View on Etherscan"
+                  >
+                    <svg className="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                    </svg>
+                  </a>
+                </div>
+              </div>
+
+              {/* Eagle Vault */}
+              <div className="bg-white/50 shadow-neo-inset rounded-xl p-4">
+                <div className="text-xs text-gray-600 uppercase tracking-wider mb-2 font-semibold">
+                  Eagle OVault Contract
+                </div>
+                <div className="flex items-center gap-2">
+                  <code className="text-gray-900 font-mono text-sm bg-gray-100 px-3 py-2 rounded-lg flex-1 break-all">
+                    0x47b3ef629D9cB8DFcF8A6c61058338f4e99d7953
+                  </code>
+                  <button
+                    onClick={() => navigator.clipboard.writeText('0x47b3ef629D9cB8DFcF8A6c61058338f4e99d7953')}
+                    className="p-2 hover:bg-gray-200 rounded-lg transition-colors flex-shrink-0"
+                    title="Copy to clipboard"
+                  >
+                    <svg className="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                    </svg>
+                  </button>
+                  <a
+                    href="https://etherscan.io/address/0x47b3ef629D9cB8DFcF8A6c61058338f4e99d7953"
                     target="_blank"
                     rel="noopener noreferrer"
                     className="p-2 hover:bg-gray-200 rounded-lg transition-colors flex-shrink-0"
@@ -418,4 +463,3 @@ export default function Analytics({ provider, account, onNavigateUp }: Props) {
     </div>
   );
 }
-

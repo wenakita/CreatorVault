@@ -1,0 +1,101 @@
+// Prisma schema for Eagle OVault Analytics
+// Using PostgreSQL for Vercel Postgres compatibility
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// Vault snapshot - stores historical data from Charm Finance
+model VaultSnapshot {
+  id            String   @id @default(cuid())
+  vaultAddress  String   @map("vault_address")
+  chainId       Int      @default(1) @map("chain_id")
+  
+  // Timestamp
+  timestamp     DateTime
+  blockNumber   Int?     @map("block_number")
+  
+  // APY/APR data
+  feeApr        Float?   @map("fee_apr")
+  annualVsHold  Float?   @map("annual_vs_hold")
+  
+  // Token amounts
+  totalAmount0  String?  @map("total_amount_0")
+  totalAmount1  String?  @map("total_amount_1")
+  totalSupply   String?  @map("total_supply")
+  
+  // Position data
+  baseLower     Int?     @map("base_lower")
+  baseUpper     Int?     @map("base_upper")
+  limitLower    Int?     @map("limit_lower")
+  limitUpper    Int?     @map("limit_upper")
+  currentTick   Int?     @map("current_tick")
+  
+  // Weights (percentages)
+  baseWeight       Float? @map("base_weight")
+  limitWeight      Float? @map("limit_weight")
+  fullRangeWeight  Float? @map("full_range_weight")
+  
+  // Metadata
+  createdAt     DateTime @default(now()) @map("created_at")
+  
+  @@unique([vaultAddress, timestamp])
+  @@index([vaultAddress])
+  @@index([timestamp])
+  @@index([vaultAddress, chainId])
+  @@map("vault_snapshots")
+}
+
+// Aggregated daily stats for faster queries
+model DailyStats {
+  id            String   @id @default(cuid())
+  vaultAddress  String   @map("vault_address")
+  chainId       Int      @default(1) @map("chain_id")
+  date          DateTime @db.Date
+  
+  // Aggregated APY data
+  avgFeeApr     Float?   @map("avg_fee_apr")
+  minFeeApr     Float?   @map("min_fee_apr")
+  maxFeeApr     Float?   @map("max_fee_apr")
+  
+  // TVL at end of day
+  tvlUsd        Float?   @map("tvl_usd")
+  totalAmount0  String?  @map("total_amount_0")
+  totalAmount1  String?  @map("total_amount_1")
+  
+  // Snapshot count for this day
+  snapshotCount Int      @default(0) @map("snapshot_count")
+  
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+  
+  @@unique([vaultAddress, date])
+  @@index([vaultAddress])
+  @@index([date])
+  @@map("daily_stats")
+}
+
+// Sync status tracking
+model SyncStatus {
+  id              String   @id @default(cuid())
+  vaultAddress    String   @unique @map("vault_address")
+  chainId         Int      @default(1) @map("chain_id")
+  
+  lastSyncAt      DateTime? @map("last_sync_at")
+  lastBlockNumber Int?      @map("last_block_number")
+  lastTimestamp   DateTime? @map("last_timestamp")
+  
+  // Sync health
+  syncErrors      Int       @default(0) @map("sync_errors")
+  lastError       String?   @map("last_error")
+  
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+  
+  @@map("sync_status")
+}

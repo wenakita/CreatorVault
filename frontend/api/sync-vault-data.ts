@@ -1,0 +1,265 @@
+import type { VercelRequest, VercelResponse } from '@vercel/node';
+import { PrismaClient } from '@prisma/client';
+
+const prisma = new PrismaClient();
+
+// Charm Finance Vault addresses
+const VAULTS = {
+  USD1_WLFI: '0x22828dbf15f5fba2394ba7cf8fa9a96bdb444b71',
+  WETH_WLFI: '0x3314e248f3f752cd16939773d83beb3a362f0aef',
+};
+
+// GraphQL query for Charm Finance subgraph
+const SNAPSHOT_QUERY = `
+  query GetVaultSnapshots($address: ID!, $first: Int!, $skip: Int!) {
+    vault(id: $address) {
+      id
+      baseLower
+      baseUpper
+      limitLower
+      limitUpper
+      fullRangeWeight
+      total0
+      total1
+      totalSupply
+      snapshot(orderBy: timestamp, orderDirection: desc, first: $first, skip: $skip) {
+        timestamp
+        feeApr
+        annualVsHoldPerfSince
+        totalAmount0
+        totalAmount1
+        totalSupply
+      }
+    }
+  }
+`;
+
+async function fetchFromCharmGraphQL(vaultAddress: string, first: number = 100, skip: number = 0) {
+  const response = await fetch('https://stitching-v2.herokuapp.com/1', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      query: SNAPSHOT_QUERY,
+      variables: { 
+        address: vaultAddress.toLowerCase(),
+        first,
+        skip,
+      }
+    })
+  });
+
+  const result = await response.json();
+  
+  if (result.errors) {
+    console.error('[sync-vault-data] GraphQL errors:', result.errors);
+    throw new Error('GraphQL query failed');
+  }
+  
+  return result.data?.vault;
+}
+
+async function syncVaultSnapshots(vaultAddress: string) {
+  console.log(`[sync-vault-data] Syncing vault: ${vaultAddress}`);
+  
+  // Get last sync status
+  let syncStatus = await prisma.syncStatus.findUnique({
+    where: { vaultAddress: vaultAddress.toLowerCase() }
+  });
+  
+  const lastTimestamp = syncStatus?.lastTimestamp || new Date(0);
+  
+  try {
+    // Fetch latest snapshots from Charm
+    const vaultData = await fetchFromCharmGraphQL(vaultAddress, 500, 0);
+    
+    if (!vaultData || !vaultData.snapshot) {
+      console.log(`[sync-vault-data] No data for vault ${vaultAddress}`);
+      return { synced: 0, vault: vaultAddress };
+    }
+    
+    const snapshots = vaultData.snapshot;
+    let syncedCount = 0;
+    
+    // Process snapshots
+    for (const snap of snapshots) {
+      const timestamp = new Date(parseInt(snap.timestamp) * 1000);
+      
+      // Skip if already synced
+      if (timestamp <= lastTimestamp) continue;
+      
+      // Upsert snapshot
+      await prisma.vaultSnapshot.upsert({
+        where: {
+          vaultAddress_timestamp: {
+            vaultAddress: vaultAddress.toLowerCase(),
+            timestamp,
+          }
+        },
+        create: {
+          vaultAddress: vaultAddress.toLowerCase(),
+          chainId: 1,
+          timestamp,
+          feeApr: snap.feeApr ? parseFloat(snap.feeApr) : null,
+          annualVsHold: snap.annualVsHoldPerfSince ? parseFloat(snap.annualVsHoldPerfSince) : null,
+          totalAmount0: snap.totalAmount0,
+          totalAmount1: snap.totalAmount1,
+          totalSupply: snap.totalSupply,
+          baseLower: vaultData.baseLower ? parseInt(vaultData.baseLower) : null,
+          baseUpper: vaultData.baseUpper ? parseInt(vaultData.baseUpper) : null,
+          limitLower: vaultData.limitLower ? parseInt(vaultData.limitLower) : null,
+          limitUpper: vaultData.limitUpper ? parseInt(vaultData.limitUpper) : null,
+          fullRangeWeight: vaultData.fullRangeWeight ? parseFloat(vaultData.fullRangeWeight) / 10000 : null,
+        },
+        update: {
+          feeApr: snap.feeApr ? parseFloat(snap.feeApr) : null,
+          annualVsHold: snap.annualVsHoldPerfSince ? parseFloat(snap.annualVsHoldPerfSince) : null,
+          totalAmount0: snap.totalAmount0,
+          totalAmount1: snap.totalAmount1,
+          totalSupply: snap.totalSupply,
+        }
+      });
+      
+      syncedCount++;
+    }
+    
+    // Update sync status
+    const latestSnapshot = snapshots[0];
+    const latestTimestamp = latestSnapshot ? new Date(parseInt(latestSnapshot.timestamp) * 1000) : null;
+    
+    await prisma.syncStatus.upsert({
+      where: { vaultAddress: vaultAddress.toLowerCase() },
+      create: {
+        vaultAddress: vaultAddress.toLowerCase(),
+        chainId: 1,
+        lastSyncAt: new Date(),
+        lastTimestamp: latestTimestamp,
+        syncErrors: 0,
+      },
+      update: {
+        lastSyncAt: new Date(),
+        lastTimestamp: latestTimestamp,
+        syncErrors: 0,
+        lastError: null,
+      }
+    });
+    
+    console.log(`[sync-vault-data] Synced ${syncedCount} snapshots for ${vaultAddress}`);
+    return { synced: syncedCount, vault: vaultAddress };
+    
+  } catch (error: any) {
+    console.error(`[sync-vault-data] Error syncing ${vaultAddress}:`, error);
+    
+    // Update sync status with error
+    await prisma.syncStatus.upsert({
+      where: { vaultAddress: vaultAddress.toLowerCase() },
+      create: {
+        vaultAddress: vaultAddress.toLowerCase(),
+        chainId: 1,
+        lastSyncAt: new Date(),
+        syncErrors: 1,
+        lastError: error.message,
+      },
+      update: {
+        lastSyncAt: new Date(),
+        syncErrors: { increment: 1 },
+        lastError: error.message,
+      }
+    });
+    
+    throw error;
+  }
+}
+
+// Update daily stats after sync
+async function updateDailyStats(vaultAddress: string) {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  
+  // Get today's snapshots
+  const snapshots = await prisma.vaultSnapshot.findMany({
+    where: {
+      vaultAddress: vaultAddress.toLowerCase(),
+      timestamp: { gte: today },
+    },
+    orderBy: { timestamp: 'desc' },
+  });
+  
+  if (snapshots.length === 0) return;
+  
+  const feeAprs = snapshots.filter(s => s.feeApr !== null).map(s => s.feeApr!);
+  const latestSnapshot = snapshots[0];
+  
+  await prisma.dailyStats.upsert({
+    where: {
+      vaultAddress_date: {
+        vaultAddress: vaultAddress.toLowerCase(),
+        date: today,
+      }
+    },
+    create: {
+      vaultAddress: vaultAddress.toLowerCase(),
+      chainId: 1,
+      date: today,
+      avgFeeApr: feeAprs.length > 0 ? feeAprs.reduce((a, b) => a + b, 0) / feeAprs.length : null,
+      minFeeApr: feeAprs.length > 0 ? Math.min(...feeAprs) : null,
+      maxFeeApr: feeAprs.length > 0 ? Math.max(...feeAprs) : null,
+      totalAmount0: latestSnapshot.totalAmount0,
+      totalAmount1: latestSnapshot.totalAmount1,
+      snapshotCount: snapshots.length,
+    },
+    update: {
+      avgFeeApr: feeAprs.length > 0 ? feeAprs.reduce((a, b) => a + b, 0) / feeAprs.length : null,
+      minFeeApr: feeAprs.length > 0 ? Math.min(...feeAprs) : null,
+      maxFeeApr: feeAprs.length > 0 ? Math.max(...feeAprs) : null,
+      totalAmount0: latestSnapshot.totalAmount0,
+      totalAmount1: latestSnapshot.totalAmount1,
+      snapshotCount: snapshots.length,
+    }
+  });
+}
+
+export default async function handler(
+  req: VercelRequest,
+  res: VercelResponse
+) {
+  // Verify cron secret for security (optional but recommended)
+  const cronSecret = req.headers['x-cron-secret'] || req.query.secret;
+  if (process.env.CRON_SECRET && cronSecret !== process.env.CRON_SECRET) {
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
+
+  if (req.method !== 'GET' && req.method !== 'POST') {
+    return res.status(405).json({ error: 'Method not allowed' });
+  }
+
+  try {
+    const results = [];
+    
+    // Sync all vaults
+    for (const [name, address] of Object.entries(VAULTS)) {
+      try {
+        const result = await syncVaultSnapshots(address);
+        await updateDailyStats(address);
+        results.push({ name, ...result, success: true });
+      } catch (error: any) {
+        results.push({ name, vault: address, success: false, error: error.message });
+      }
+    }
+    
+    return res.status(200).json({
+      success: true,
+      syncedAt: new Date().toISOString(),
+      results,
+    });
+    
+  } catch (error: any) {
+    console.error('[sync-vault-data] Fatal error:', error);
+    return res.status(500).json({
+      success: false,
+      error: error.message,
+    });
+  } finally {
+    await prisma.$disconnect();
+  }
+}
+
