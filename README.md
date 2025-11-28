@@ -59,35 +59,35 @@ Eagle OVault is deployed across **8+ blockchains** with full LayerZero V2 integr
 ```mermaid
 graph TB
     %% User Interface
-    subgraph "User Interface"
-        UI[👤 Users<br/>Deposit WLFI + USD1]
+    subgraph UI_LAYER["👤 USER INTERFACE"]
+        UI["<b>Users</b><br/>Deposit WLFI + USD1"]
     end
 
     %% Core Protocol
-    subgraph "Ethereum Mainnet (Hub)"
-        EV[EagleOVault<br/>💰 Main Vault Contract]
-        ES[EagleShareOFT<br/>🌐 LayerZero V2 Bridge]
+    subgraph ETH_LAYER["⟠ ETHEREUM MAINNET - HUB"]
+        EV["<b>EagleOVault</b><br/>Main Vault Contract"]
+        ES["<b>EagleShareOFT</b><br/>LayerZero V2 Bridge"]
 
-        subgraph "Yield Strategies (50/50 Split)"
-            S1[WLFI/USD1 Strategy<br/>📈 50% Allocation]
-            S2[WETH/WLFI Strategy<br/>📈 50% Allocation]
+        subgraph STRATEGIES["📊 YIELD STRATEGIES - 50/50 SPLIT"]
+            S1["<b>WLFI/USD1</b><br/>50% Allocation"]
+            S2["<b>WETH/WLFI</b><br/>50% Allocation"]
         end
     end
 
     %% Cross-Chain Destinations
-    subgraph "Cross-Chain Networks"
-        B[Base<br/>🔄 Spoke Chain]
-        A[Arbitrum<br/>🔄 Spoke Chain]
-        M[Monad<br/>🔄 Spoke Chain]
-        S[Sonic<br/>🔄 Spoke Chain]
-        H[HyperEVM<br/>🔄 Spoke Chain]
-        BSC[BSC<br/>🔄 Spoke Chain]
-        AV[Avalanche<br/>🔄 Spoke Chain]
+    subgraph CHAINS["🌐 CROSS-CHAIN NETWORKS"]
+        B["<b>Base</b>"]
+        A["<b>Arbitrum</b>"]
+        M["<b>Monad</b>"]
+        SC["<b>Sonic</b>"]
+        H["<b>HyperEVM</b>"]
+        BSC["<b>BSC</b>"]
+        AV["<b>Avalanche</b>"]
     end
 
     %% External Protocols
-    subgraph "External Protocols"
-        CV[Charm Alpha Vaults<br/>🎯 Uniswap V3 LP<br/>Yield Generation]
+    subgraph EXTERNAL["🎯 EXTERNAL PROTOCOLS"]
+        CV["<b>Charm Alpha Vaults</b><br/>Uniswap V3 LP"]
     end
 
     %% Connections
@@ -101,23 +101,23 @@ graph TB
     ES --> B
     ES --> A
     ES --> M
-    ES --> S
+    ES --> SC
     ES --> H
     ES --> BSC
     ES --> AV
 
-    %% Styling
-    classDef vault fill:#e1f5fe,stroke:#01579b,stroke-width:2px
-    classDef strategy fill:#f3e5f5,stroke:#4a148c,stroke-width:2px
-    classDef oft fill:#e8f5e8,stroke:#1b5e20,stroke-width:2px
-    classDef network fill:#fff3e0,stroke:#e65100,stroke-width:2px
-    classDef external fill:#fce4ec,stroke:#880e4f,stroke-width:2px
-    classDef ui fill:#f5f5f5,stroke:#424242,stroke-width:2px
+    %% High Contrast Styling with dark text
+    classDef vault fill:#1565C0,stroke:#0D47A1,stroke-width:3px,color:#FFFFFF
+    classDef strategy fill:#7B1FA2,stroke:#4A148C,stroke-width:2px,color:#FFFFFF
+    classDef oft fill:#2E7D32,stroke:#1B5E20,stroke-width:3px,color:#FFFFFF
+    classDef network fill:#E65100,stroke:#BF360C,stroke-width:2px,color:#FFFFFF
+    classDef external fill:#C2185B,stroke:#880E4F,stroke-width:2px,color:#FFFFFF
+    classDef ui fill:#37474F,stroke:#263238,stroke-width:2px,color:#FFFFFF
 
     class EV vault
     class S1,S2 strategy
     class ES oft
-    class B,A,M,S,H,BSC,AV network
+    class B,A,M,SC,H,BSC,AV network
     class CV external
     class UI ui
 ```
