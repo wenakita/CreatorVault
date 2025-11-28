@@ -1,0 +1,8 @@
+{
+  "network": "BSC",
+  "chainId": 56,
+  "eagleOFT": "0x474eD38C256A7FA0f3B8c48496CE1102ab0eA91E",
+  "registry": "0x47c81c9a70CA7518d3b911bC8C8b11000e92F59e",
+  "layerZeroEndpoint": "0x1a44076050125825900e736c501f859c50fE728c",
+  "status": "Configured but not deployed"
+}
