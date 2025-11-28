@@ -21,26 +21,20 @@ export default function Analytics({ provider, account, onNavigateUp }: Props) {
     if (!data) return null;
 
     if (selectedVault === 'combined') {
-      // Average of both vaults
       const usd1 = data.vaults.USD1_WLFI.metrics;
       const weth = data.vaults.WETH_WLFI.metrics;
 
-      const avg = (a: string | null, b: string | null) => {
-        const vals = [a, b].filter(Boolean).map(Number);
-        if (vals.length === 0) return null;
-        return (vals.reduce((x, y) => x + y, 0) / vals.length).toFixed(2);
-      };
-
       return {
-        currentFeeApr: avg(usd1?.currentFeeApr || null, weth?.currentFeeApr || null),
-        weeklyApy: avg(usd1?.weeklyApy || null, weth?.weeklyApy || null),
-        monthlyApy: avg(usd1?.monthlyApy || null, weth?.monthlyApy || null),
-        inceptionApy: avg(usd1?.inceptionApy || null, weth?.inceptionApy || null),
+        tvlToken0: `${usd1?.tvlToken0 || '0'} + ${weth?.tvlToken0 || '0'}`,
+        tvlToken1: `${usd1?.tvlToken1 || '0'} + ${weth?.tvlToken1 || '0'}`,
+        totalSupply: 'Combined',
+        snapshotCount: (usd1?.snapshotCount || 0) + (weth?.snapshotCount || 0),
+        firstSnapshotDate: usd1?.firstSnapshotDate || weth?.firstSnapshotDate,
+        lastSnapshotDate: usd1?.lastSnapshotDate || weth?.lastSnapshotDate,
       };
     }
 
-    const vault = data.vaults[selectedVault];
-    return vault?.metrics || null;
+    return data.vaults[selectedVault]?.metrics || null;
   };
 
   const metrics = getDisplayMetrics();
@@ -50,15 +44,8 @@ export default function Analytics({ provider, account, onNavigateUp }: Props) {
     if (!data) return [];
 
     if (selectedVault === 'combined') {
-      // Merge and average both vaults' data
       const usd1 = data.vaults.USD1_WLFI.historicalSnapshots || [];
-      const weth = data.vaults.WETH_WLFI.historicalSnapshots || [];
-      
-      // Use USD1 as base (usually more data points)
-      return usd1.map(snap => ({
-        ...snap,
-        feeApr: snap.feeApr, // Could average with WETH here
-      }));
+      return usd1; // Use USD1 as primary for combined view
     }
 
     return data.vaults[selectedVault]?.historicalSnapshots || [];
@@ -66,10 +53,20 @@ export default function Analytics({ provider, account, onNavigateUp }: Props) {
 
   const historicalData = getHistoricalData();
 
-  // Calculate net APY (after Eagle's fees)
-  const netApy = metrics?.weeklyApy 
-    ? (parseFloat(metrics.weeklyApy) * 0.923).toFixed(2) // 7.7% fee reduction
-    : null;
+  // Get vault info
+  const getVaultInfo = () => {
+    if (!data || selectedVault === 'combined') {
+      return { token0: 'Token0', token1: 'Token1', name: 'Combined Vaults' };
+    }
+    const vault = data.vaults[selectedVault];
+    return {
+      token0: vault.token0Symbol,
+      token1: vault.token1Symbol,
+      name: vault.name,
+    };
+  };
+
+  const vaultInfo = getVaultInfo();
 
   return (
     <div className="bg-neo-bg min-h-screen pb-24">
@@ -108,7 +105,7 @@ export default function Analytics({ provider, account, onNavigateUp }: Props) {
           <div className="flex-1">
             <h1 className="text-3xl font-bold text-gray-900 mb-1">Vault Analytics</h1>
             <p className="text-sm text-gray-600">
-              Yield performance and earnings data
+              TVL and vault activity data
               {source && (
                 <span className="ml-2 text-xs text-gray-400">
                   (via {source === 'cache' ? 'cached data' : 'live GraphQL'})
@@ -162,86 +159,121 @@ export default function Analytics({ provider, account, onNavigateUp }: Props) {
           </div>
         )}
 
-        {/* APY Stats */}
+        {/* TVL Stats */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
           <NeoStatCard
-            label="Weekly APY"
-            value={metrics?.weeklyApy ? `${metrics.weeklyApy}%` : loading ? '...' : 'N/A'}
-            subtitle={metrics?.weeklyApy ? 'Real-time data' : 'No data yet'}
+            label={selectedVault === 'combined' ? 'USD1 TVL' : `${vaultInfo.token0} TVL`}
+            value={metrics?.tvlToken0 || (loading ? '...' : 'N/A')}
+            subtitle="Token 0 balance"
           />
           <NeoStatCard
-            label="Monthly APY"
-            value={metrics?.monthlyApy ? `${metrics.monthlyApy}%` : loading ? '...' : 'N/A'}
-            subtitle={metrics?.monthlyApy ? 'Real-time data' : 'No data yet'}
+            label={selectedVault === 'combined' ? 'WLFI TVL' : `${vaultInfo.token1} TVL`}
+            value={metrics?.tvlToken1 || (loading ? '...' : 'N/A')}
+            subtitle="Token 1 balance"
           />
           <NeoStatCard
-            label="Inception APY"
-            value={metrics?.inceptionApy ? `${metrics.inceptionApy}%` : loading ? '...' : 'N/A'}
-            subtitle={metrics?.inceptionApy ? 'Since deployment' : 'No data yet'}
+            label="Vault Shares"
+            value={metrics?.totalSupply || (loading ? '...' : 'N/A')}
+            subtitle="Total supply"
           />
           <NeoStatCard
-            label="Net APY"
-            value={netApy ? `${netApy}%` : loading ? '...' : 'N/A'}
+            label="Snapshots"
+            value={metrics?.snapshotCount?.toString() || (loading ? '...' : '0')}
             highlighted
-            subtitle="After fees"
+            subtitle="Data points"
           />
         </div>
 
-        {/* Cumulative Earnings Chart */}
+        {/* Info Banner */}
+        <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 mb-8">
+          <div className="flex items-start gap-3">
+            <svg className="w-5 h-5 text-amber-600 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <div>
+              <p className="text-amber-800 font-semibold text-sm">APY Calculation Note</p>
+              <p className="text-amber-700 text-xs mt-1">
+                Accurate APY calculation requires USD price feeds for both tokens. The TVL shown above is in raw token amounts. 
+                For real-time APY, visit the Charm Finance vaults directly.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* TVL Chart */}
         <NeoCard className="mb-8">
           <div className="p-6">
-            <h3 className="text-gray-900 font-bold text-xl mb-4">Historical Fee APR</h3>
+            <h3 className="text-gray-900 font-bold text-xl mb-4">TVL Over Time</h3>
             <div className="bg-white/30 border border-gray-300 rounded-xl p-6 h-64">
               {historicalData.length > 0 ? (
-                <svg className="w-full h-full" viewBox="0 0 100 30" preserveAspectRatio="none">
-                  <defs>
-                    <linearGradient id="earnings-gradient" x1="0%" y1="0%" x2="100%" y2="0%">
-                      <stop offset="0%" stopColor="#ca8a04" stopOpacity="0.8" />
-                      <stop offset="100%" stopColor="#eab308" stopOpacity="1" />
-                    </linearGradient>
-                    <linearGradient id="area-gradient" x1="0%" y1="0%" x2="0%" y2="100%">
-                      <stop offset="0%" stopColor="#eab308" stopOpacity="0.3" />
-                      <stop offset="100%" stopColor="#eab308" stopOpacity="0" />
-                    </linearGradient>
-                  </defs>
+                <div className="h-full flex flex-col">
+                  <svg className="w-full flex-1" viewBox="0 0 100 30" preserveAspectRatio="none">
+                    <defs>
+                      <linearGradient id="tvl-gradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                        <stop offset="0%" stopColor="#ca8a04" stopOpacity="0.8" />
+                        <stop offset="100%" stopColor="#eab308" stopOpacity="1" />
+                      </linearGradient>
+                      <linearGradient id="area-gradient" x1="0%" y1="0%" x2="0%" y2="100%">
+                        <stop offset="0%" stopColor="#eab308" stopOpacity="0.3" />
+                        <stop offset="100%" stopColor="#eab308" stopOpacity="0" />
+                      </linearGradient>
+                    </defs>
+                    
+                    {/* Calculate max TVL for scaling */}
+                    {(() => {
+                      const maxTvl = Math.max(...historicalData.map(s => s.tvlToken0 + s.tvlToken1));
+                      const minTvl = Math.min(...historicalData.map(s => s.tvlToken0 + s.tvlToken1));
+                      const range = maxTvl - minTvl || 1;
+                      
+                      return (
+                        <>
+                          {/* Area under curve */}
+                          <polygon
+                            points={`0,30 ${historicalData.map((snap, i) => {
+                              const x = (i / Math.max(historicalData.length - 1, 1)) * 100;
+                              const tvl = snap.tvlToken0 + snap.tvlToken1;
+                              const y = 30 - ((tvl - minTvl) / range) * 25;
+                              return `${x},${y}`;
+                            }).join(' ')} 100,30`}
+                            fill="url(#area-gradient)"
+                          />
+                          
+                          {/* Line */}
+                          <polyline
+                            points={historicalData.map((snap, i) => {
+                              const x = (i / Math.max(historicalData.length - 1, 1)) * 100;
+                              const tvl = snap.tvlToken0 + snap.tvlToken1;
+                              const y = 30 - ((tvl - minTvl) / range) * 25;
+                              return `${x},${y}`;
+                            }).join(' ')}
+                            fill="none"
+                            stroke="url(#tvl-gradient)"
+                            strokeWidth="0.5"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                          />
+                        </>
+                      );
+                    })()}
+                  </svg>
                   
-                  {/* Area under curve */}
-                  <polygon
-                    points={`0,30 ${historicalData.map((snap, i) => {
-                      const x = (i / (historicalData.length - 1)) * 100;
-                      const apr = parseFloat(snap.feeApr || '0');
-                      const y = 30 - Math.min((apr / 5) * 30, 30);
-                      return `${x},${y}`;
-                    }).join(' ')} 100,30`}
-                    fill="url(#area-gradient)"
-                  />
-                  
-                  {/* Line */}
-                  <polyline
-                    points={historicalData.map((snap, i) => {
-                      const x = (i / (historicalData.length - 1)) * 100;
-                      const apr = parseFloat(snap.feeApr || '0');
-                      const y = 30 - Math.min((apr / 5) * 30, 30);
-                      return `${x},${y}`;
-                    }).join(' ')}
-                    fill="none"
-                    stroke="url(#earnings-gradient)"
-                    strokeWidth="0.5"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  />
-                </svg>
+                  {/* X-axis labels */}
+                  <div className="flex justify-between text-xs text-gray-500 mt-2">
+                    <span>{historicalData[0]?.date}</span>
+                    <span>{historicalData[historicalData.length - 1]?.date}</span>
+                  </div>
+                </div>
               ) : (
                 <div className="flex items-center justify-center h-full">
                   <p className="text-gray-600">
-                    {loading ? 'Loading earnings data...' : 'No data available yet'}
+                    {loading ? 'Loading TVL data...' : 'No data available yet'}
                   </p>
                 </div>
               )}
             </div>
             {historicalData.length > 0 && (
               <p className="text-xs text-gray-500 mt-2">
-                {historicalData.length} snapshots • Last 90 days
+                {historicalData.length} snapshots • {metrics?.firstSnapshotDate} to {metrics?.lastSnapshotDate}
               </p>
             )}
           </div>
@@ -292,9 +324,9 @@ export default function Analytics({ provider, account, onNavigateUp }: Props) {
                     <div className="text-xs text-gray-600 uppercase tracking-wider mb-2 font-semibold">Strategy 1 (50%)</div>
                     <p className="text-gray-900 font-bold">USD1/WLFI Alpha Vault</p>
                     <p className="text-xs text-gray-600 mt-1">Uniswap V3 • 1% Fee Tier</p>
-                    {data?.vaults.USD1_WLFI.metrics?.weeklyApy && (
+                    {data?.vaults.USD1_WLFI.metrics && (
                       <p className="text-xs text-amber-600 mt-1 font-medium">
-                        APY: {data.vaults.USD1_WLFI.metrics.weeklyApy}%
+                        TVL: {data.vaults.USD1_WLFI.metrics.tvlToken0} USD1 + {data.vaults.USD1_WLFI.metrics.tvlToken1} WLFI
                       </p>
                     )}
                   </div>
@@ -303,9 +335,9 @@ export default function Analytics({ provider, account, onNavigateUp }: Props) {
                     <div className="text-xs text-gray-600 uppercase tracking-wider mb-2 font-semibold">Strategy 2 (50%)</div>
                     <p className="text-gray-900 font-bold">WETH/WLFI Alpha Vault</p>
                     <p className="text-xs text-gray-600 mt-1">Uniswap V3 • 1% Fee Tier</p>
-                    {data?.vaults.WETH_WLFI.metrics?.weeklyApy && (
+                    {data?.vaults.WETH_WLFI.metrics && (
                       <p className="text-xs text-amber-600 mt-1 font-medium">
-                        APY: {data.vaults.WETH_WLFI.metrics.weeklyApy}%
+                        TVL: {data.vaults.WETH_WLFI.metrics.tvlToken0} WETH + {data.vaults.WETH_WLFI.metrics.tvlToken1} WLFI
                       </p>
                     )}
                   </div>
@@ -334,7 +366,7 @@ export default function Analytics({ provider, account, onNavigateUp }: Props) {
                   rel="noopener noreferrer"
                   className="text-xs text-amber-700 hover:text-amber-800 font-medium inline-flex items-center gap-1"
                 >
-                  USD1/WLFI Vault
+                  USD1/WLFI Vault on Charm
                   <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
                   </svg>
@@ -345,7 +377,7 @@ export default function Analytics({ provider, account, onNavigateUp }: Props) {
                   rel="noopener noreferrer"
                   className="text-xs text-amber-700 hover:text-amber-800 font-medium inline-flex items-center gap-1"
                 >
-                  WETH/WLFI Vault
+                  WETH/WLFI Vault on Charm
                   <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
                   </svg>
