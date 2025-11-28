@@ -203,7 +203,7 @@ eagle-ovault/
 | Asset | Base Contract | Spoke Contracts |
 |-------|---------------|-----------------|
 | **EAGLE** | [`0x474eD38C256A7FA0f3B8c48496CE1102ab0eA91E`](https://etherscan.io/address/0x474eD38C256A7FA0f3B8c48496CE1102ab0eA91E) | Base, Arbitrum, Monad, Sonic, HyperEVM, BSC, Avalanche |
-| **WLFI** | [`0xdA5e1988097297dCdc1f90D4dFE7909e847CBeF6`](https://etherscan.io/address/0xdA5e1988097297dCdc1f90D4dFE7909e847CBeF6) | Base |
+| **WLFI OFT** | [`0x47af3595BFBE6c86E59a13d5db91AEfbFF0eA91e`](https://basescan.org/address/0x47af3595BFBE6c86E59a13d5db91AEfbFF0eA91e) | Base |
 
 ## Solana Integration
 
