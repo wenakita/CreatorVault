@@ -13,8 +13,7 @@ deployments/
 ├── ethereum/         # Ethereum mainnet deployments
 ├── monad/            # Monad network deployments
 ├── sonic/            # Sonic network deployments
-├── hyperevm/         # HyperEVM (Hyperliquid) deployments
-└── shared/           # Cross-chain configurations
+└── hyperevm/         # HyperEVM (Hyperliquid) deployments
 ```
 
 ## File Naming Convention
@@ -95,9 +94,9 @@ Cross-chain messaging is configured via LayerZero V2:
 - **HyperEVM**: LayerZero configured, contracts ready
 
 ### 🌐 **Cross-Chain Status:**
-- ✅ **Ethereum ↔ Base**: Active peer configurations
 - ✅ **LayerZero V2**: All networks configured with endpoints
 - ✅ **Registry System**: Cross-chain registry deployed on Base & Arbitrum
+- 🔄 **Peer Configurations**: Managed via LayerZero OApp configuration
 
 ## Usage
 
