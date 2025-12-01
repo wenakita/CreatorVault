@@ -5,11 +5,11 @@ import { BrowserProvider } from 'ethers';
 import FloorIndicator from './FloorIndicator';
 import VaultView from './VaultView';
 import EagleLPContent from './EagleLPContent';
-import WrapperView from './WrapperView';
 import EagleBridge from './EagleBridge';
 import EagleHomeContent from './EagleHomeContent';
+import EagleBridge from './EagleBridge';
 
-export type Floor = 'lp' | 'home' | 'vault';
+export type Floor = 'lp' | 'home' | 'bridge' | 'vault';
 
 interface Props {
   provider: BrowserProvider | null;
@@ -43,6 +43,7 @@ export default function EagleEcosystemWithRoutes({ provider, account, onToast }:
   const routeToFloor: Record<string, Floor> = {
     '/app': 'home',
     '/app/lp': 'lp',
+    '/app/bridge': 'bridge',
     '/app/vault': 'vault',
   };
 
@@ -52,7 +53,8 @@ export default function EagleEcosystemWithRoutes({ provider, account, onToast }:
   const floorOffsets: Record<Floor, { y: number; x: number }> = {
     'lp': { y: 0, x: 0 },           // Top floor - EAGLE/ETH LP at 0vh
     'home': { y: 150, x: 0 },       // Landing page - Home floor at 150vh (default)
-    'vault': { y: 250, x: 0 },      // Main vault interface at 250vh
+    'bridge': { y: 200, x: 0 },     // Cross-Chain Bridge at 200vh
+    'vault': { y: 300, x: 0 },      // Main vault interface at 300vh
   };
 
   const navigateToFloor = (floor: Floor) => {
@@ -67,24 +69,10 @@ export default function EagleEcosystemWithRoutes({ provider, account, onToast }:
     const floorToRoute: Record<Floor, string> = {
       'lp': '/app/lp',
       'home': '/app',
+      'bridge': '/app/bridge',
       'vault': '/app/vault',
     };
     
-    // Special case: If already on vault and clicking vault again, switch to wrapper in-place
-    if (currentFloor === 'vault' && floor === 'vault') {
-      // Navigate to wrapper without screen movement (same position)
-      navigate(floorToRoute['wrapper']);
-      setIsTransitioning(false);
-      return;
-    }
-    
-    // Special case: If already on wrapper and clicking vault, switch back to vault in-place
-    if (currentFloor === 'wrapper' && floor === 'vault') {
-      // Navigate to vault without screen movement (same position)
-      navigate(floorToRoute['vault']);
-      setIsTransitioning(false);
-      return;
-    }
 
     {
       // Normal navigation
@@ -124,11 +112,6 @@ export default function EagleEcosystemWithRoutes({ provider, account, onToast }:
       middle: 'rgba(120, 53, 15, 0.10)',   // amber-900 with refined opacity
       bottom: 'rgba(10, 10, 10, 1)' 
     },
-    'wrapper': { 
-      top: 'rgba(59, 7, 100, 0.28)',       // purple-950 with more opacity
-      middle: 'rgba(49, 46, 129, 0.24)',   // indigo-950 with opacity
-      bottom: 'rgba(10, 10, 10, 1)' 
-    },
     'bridge': {
       top: 'rgba(16, 185, 129, 0.18)',     // emerald-500 with opacity
       middle: 'rgba(59, 130, 246, 0.15)',  // blue-500 with opacity
@@ -149,11 +132,6 @@ export default function EagleEcosystemWithRoutes({ provider, account, onToast }:
       top: 'rgba(255, 255, 255, 1)',        // pure white (light mode)
       middle: 'rgba(252, 252, 253, 1)',     // pearly white
       bottom: 'rgba(249, 250, 251, 1)'      // soft white (gray-50)
-    },
-    'wrapper': { 
-      top: 'rgba(233, 213, 255, 0.55)',    // purple-200 with more opacity (light mode)
-      middle: 'rgba(199, 210, 254, 0.5)',   // indigo-200 with opacity
-      bottom: 'rgba(243, 244, 246, 1)'      // gray-100
     },
     'bridge': {
       top: 'rgba(167, 243, 208, 0.5)',     // emerald-200 with opacity (light mode)
@@ -341,89 +319,6 @@ export default function EagleEcosystemWithRoutes({ provider, account, onToast }:
           </motion.div>
         </div>
 
-        {/* Wrapper - Bottom Floor (same position as Vault) */}
-        <motion.div 
-          className="h-screen overflow-hidden relative" 
-          id="wrapper-floor" 
-          style={{ 
-            position: 'absolute', 
-            top: '250vh',  // Same as vault
-            left: 0, 
-            width: '100vw',
-            zIndex: currentFloor === 'wrapper' ? 15 : 5
-          }}
-          initial={{ opacity: 0 }}
-          animate={{ 
-            opacity: currentFloor === 'wrapper' ? 1 : 0,
-            pointerEvents: currentFloor === 'wrapper' ? 'auto' : 'none'
-          }}
-          transition={{ 
-            duration: 0.3,  // Faster transition for in-place swap
-            ease: [0.4, 0.0, 0.2, 1.0] 
-          }}
-        >
-          {/* Animated gradient orbs for wrapper */}
-          <motion.div 
-            className="absolute inset-0 overflow-hidden pointer-events-none"
-            style={{ willChange: 'opacity' }}
-            animate={{
-              opacity: currentFloor === 'wrapper' ? 1 : 0.1,
-            }}
-            transition={{ duration: 3.5, ease: [0.19, 1.0, 0.22, 1.0] }}
-          >
-            <motion.div 
-              className="absolute top-1/4 right-1/3 w-[850px] h-[850px] bg-purple-500/30 rounded-full blur-[130px]"
-              animate={{
-                scale: currentFloor === 'wrapper' ? [1, 1.25, 1] : 0.8,
-                x: currentFloor === 'wrapper' ? [0, -60, 0] : 0,
-                y: currentFloor === 'wrapper' ? [0, 40, 0] : 0,
-              }}
-              transition={{ duration: 14, repeat: Infinity, ease: "easeInOut" }}
-            />
-            <motion.div 
-              className="absolute bottom-1/4 left-1/4 w-[700px] h-[700px] bg-blue-500/25 rounded-full blur-[110px]"
-              animate={{
-                scale: currentFloor === 'wrapper' ? [1, 1.18, 1] : 0.8,
-                x: currentFloor === 'wrapper' ? [0, 50, 0] : 0,
-              }}
-              transition={{ duration: 11, repeat: Infinity, ease: "easeInOut" }}
-            />
-            <motion.div 
-              className="absolute top-1/2 left-1/2 w-[650px] h-[650px] bg-indigo-500/22 rounded-full blur-[100px]"
-              animate={{
-                scale: currentFloor === 'wrapper' ? [1, 1.15, 1] : 0.8,
-                y: currentFloor === 'wrapper' ? [0, -45, 0] : 0,
-              }}
-              transition={{ duration: 10, repeat: Infinity, ease: "easeInOut" }}
-            />
-            <motion.div 
-              className="absolute top-3/4 right-1/2 w-[550px] h-[550px] bg-violet-500/18 rounded-full blur-[90px]"
-              animate={{
-                scale: currentFloor === 'wrapper' ? [1, 1.2, 1] : 0.8,
-                x: currentFloor === 'wrapper' ? [0, -40, 0] : 0,
-                y: currentFloor === 'wrapper' ? [0, 30, 0] : 0,
-              }}
-              transition={{ duration: 12, repeat: Infinity, ease: "easeInOut" }}
-            />
-          </motion.div>
-          <motion.div
-            animate={{
-              opacity: isTransitioning && currentFloor !== 'wrapper' ? 0.4 : 1,
-            }}
-            transition={{ duration: 1.5, ease: [0.19, 1.0, 0.22, 1.0] }}
-            className="h-full overflow-y-auto overflow-x-hidden scroll-smooth relative z-10 pb-20"
-            style={{ scrollbarGutter: 'stable', willChange: 'opacity' }}
-          >
-            <WrapperView 
-              provider={provider}
-              account={account}
-              onToast={onToast}
-              onNavigateDown={() => navigateToFloor('home')}
-              onNavigateUp={() => navigateToFloor('lp')}
-            />
-          </motion.div>
-        </motion.div>
-
         {/* Cross-Chain Hub - Center Floor */}
         <motion.div 
           className="h-screen overflow-hidden relative" 
@@ -565,7 +460,6 @@ export default function EagleEcosystemWithRoutes({ provider, account, onToast }:
               account={account}
               onToast={onToast}
               onNavigateUp={() => navigateToFloor('home')}
-              onNavigateToWrapper={() => navigateToFloor('wrapper')}
               onNavigateToCrossChain={() => navigateToFloor('bridge')}
               onNavigateToAnalytics={() => navigateToFloor('analytics')}
             />
