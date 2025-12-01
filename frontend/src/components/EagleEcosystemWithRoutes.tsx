@@ -7,9 +7,10 @@ import VaultView from './VaultView';
 import EagleLPContent from './EagleLPContent';
 import WrapperView from './WrapperView';
 import EagleBridge from './EagleBridge';
+import EagleHomeContent from './EagleHomeContent';
 import Analytics from '../pages/Analytics';
 
-export type Floor = 'lp' | 'vault' | 'wrapper' | 'bridge' | 'analytics';
+export type Floor = 'lp' | 'home' | 'vault' | 'wrapper' | 'bridge' | 'analytics';
 
 interface Props {
   provider: BrowserProvider | null;
@@ -21,6 +22,8 @@ export default function EagleEcosystemWithRoutes({ provider, account, onToast }:
   const location = useLocation();
   const navigate = useNavigate();
   const [isTransitioning, setIsTransitioning] = useState(false);
+  const [hasLeftHome, setHasLeftHome] = useState(false);
+  const [showHomeContent, setShowHomeContent] = useState(true);
   const [isDarkMode, setIsDarkMode] = useState(document.documentElement.classList.contains('dark'));
 
   // Listen for dark mode changes
@@ -39,7 +42,7 @@ export default function EagleEcosystemWithRoutes({ provider, account, onToast }:
 
   // Map routes to floors
   const routeToFloor: Record<string, Floor> = {
-    '/app': 'vault',  // Default route goes to vault
+    '/app': 'home',
     '/app/lp': 'lp',
     '/app/vault': 'vault',
     '/app/wrapper': 'wrapper',
@@ -48,23 +51,30 @@ export default function EagleEcosystemWithRoutes({ provider, account, onToast }:
     '/app/analytics': 'analytics',
   };
 
-  const currentFloor = routeToFloor[location.pathname] || 'vault';
+  const currentFloor = routeToFloor[location.pathname] || 'home';
 
   // Floor offsets for animation (y-axis vertical positioning)
   const floorOffsets: Record<Floor, { y: number; x: number }> = {
     'lp': { y: 0, x: 0 },           // Top floor - EAGLE/ETH LP at 0vh
-    'vault': { y: 100, x: 0 },      // Center floor - Vault at 100vh (default landing)
-    'bridge': { y: 200, x: 0 },     // Cross-Chain Hub at 200vh
-    'wrapper': { y: 300, x: 0 },    // Bottom floor - Eagle Vault Wrapper at 300vh
-    'analytics': { y: 400, x: 0 }   // Analytics at 400vh
+    'bridge': { y: 150, x: 0 }, // Cross-Chain Hub at 150vh (replaces home after navigation)
+    'home': { y: 150, x: 0 },       // Center floor - Home page at 150vh (initial landing)
+    'wrapper': { y: 250, x: 0 },    // Bottom floor - Eagle Vault Wrapper at 250vh (same as vault)
+    'vault': { y: 250, x: 0 },      // Bottom floor - Vault at 250vh
+    'analytics': { y: 300, x: 0 }   // Analytics at 300vh
   };
 
   const navigateToFloor = (floor: Floor) => {
     setIsTransitioning(true);
+
+    // Mark that user has left home if navigating away from home
+    if (currentFloor === 'home' && floor !== 'home') {
+      setHasLeftHome(true);
+    }
     
     
     const floorToRoute: Record<Floor, string> = {
       'lp': '/app/lp',
+      'home': '/app',
       'vault': '/app/vault',
       'wrapper': '/app/wrapper',
       'bridge': '/app/bridge',
@@ -86,8 +96,21 @@ export default function EagleEcosystemWithRoutes({ provider, account, onToast }:
       setIsTransitioning(false);
       return;
     }
-    
-    {
+
+    // Check if navigating to center from LP/Vault when user has already left home
+    const isReturningToCenter = (currentFloor === 'lp' || currentFloor === 'vault' || currentFloor === 'wrapper') &&
+                                 (floor === 'home' || floor === 'bridge') &&
+                                 hasLeftHome;
+
+    if (isReturningToCenter) {
+      // First fade out home content
+      setShowHomeContent(false);
+      // Wait for home to fade out, then navigate to bridge
+      setTimeout(() => {
+        navigate(floorToRoute['bridge']);
+        setIsTransitioning(false);
+      }, 2000); // 800ms fade out + 800ms delay + 400ms buffer
+    } else {
       // Normal navigation
       // Scroll floor to top immediately
       const floorEl = document.getElementById(`${floor}-floor`);
@@ -113,7 +136,12 @@ export default function EagleEcosystemWithRoutes({ provider, account, onToast }:
     'lp': { 
       top: 'rgba(30, 58, 138, 0.15)',      // blue-950 with opacity
       middle: 'rgba(59, 7, 100, 0.15)',    // purple-950 with opacity
-      bottom: 'rgba(10, 10, 10, 1)' 
+      bottom: 'rgba(10, 10, 10, 1)'
+    },
+    'home': {
+      top: 'rgba(10, 10, 10, 1)',          // pure dark (no tint)
+      middle: 'rgba(10, 10, 10, 1)',       // pure dark (no tint)
+      bottom: 'rgba(10, 10, 10, 1)'        // pure dark (no tint)
     },
     'vault': { 
       top: 'rgba(69, 26, 3, 0.12)',        // amber-950 with refined opacity
@@ -140,6 +168,11 @@ export default function EagleEcosystemWithRoutes({ provider, account, onToast }:
       top: 'rgba(191, 219, 254, 0.4)',     // blue-200 with opacity (light mode)
       middle: 'rgba(233, 213, 255, 0.35)',  // purple-200 with opacity
       bottom: 'rgba(243, 244, 246, 1)'      // gray-100
+    },
+    'home': {
+      top: 'rgba(255, 255, 255, 1)',        // pure white (light mode)
+      middle: 'rgba(252, 252, 253, 1)',     // pearly white
+      bottom: 'rgba(249, 250, 251, 1)'      // soft white (gray-50)
     },
     'vault': { 
       top: 'rgba(255, 255, 255, 1)',        // pure white (light mode)
@@ -211,10 +244,12 @@ export default function EagleEcosystemWithRoutes({ provider, account, onToast }:
         animate={{
           background: isDarkMode ?
             (currentFloor === 'lp' ? 'radial-gradient(ellipse 120% 100% at top, rgba(59, 130, 246, 0.12), transparent 60%)' :
+             currentFloor === 'home' ? 'radial-gradient(ellipse 120% 100% at center, rgba(251, 191, 36, 0.08), transparent 60%)' :
              currentFloor === 'vault' ? 'radial-gradient(ellipse 120% 100% at bottom, rgba(245, 158, 11, 0.10), transparent 60%)' :
              currentFloor === 'bridge' ? 'radial-gradient(ellipse 120% 100% at center, rgba(16, 185, 129, 0.15), transparent 60%)' :
              'radial-gradient(ellipse 120% 100% at top right, rgba(168, 85, 247, 0.18), transparent 60%)') :
             (currentFloor === 'lp' ? 'radial-gradient(ellipse 120% 100% at top, rgba(59, 130, 246, 0.15), transparent 70%)' :
+             currentFloor === 'home' ? 'radial-gradient(ellipse 120% 100% at center, rgba(0, 0, 0, 0.01), transparent 90%)' :
              currentFloor === 'vault' ? 'radial-gradient(ellipse 120% 100% at bottom, rgba(0, 0, 0, 0.01), transparent 90%)' :
              currentFloor === 'bridge' ? 'radial-gradient(ellipse 120% 100% at center, rgba(16, 185, 129, 0.18), transparent 70%)' :
              'radial-gradient(ellipse 120% 100% at top right, rgba(168, 85, 247, 0.22), transparent 70%)'),
@@ -333,7 +368,7 @@ export default function EagleEcosystemWithRoutes({ provider, account, onToast }:
             style={{ willChange: 'opacity' }}
           >
             <EagleLPContent 
-              onNavigateDown={() => navigateToFloor('vault')}
+              onNavigateDown={() => navigateToFloor(hasLeftHome ? 'bridge' : 'home')}
               onNavigateToCrossChain={() => navigateToFloor('bridge')}
               provider={provider}
             />
@@ -417,7 +452,7 @@ export default function EagleEcosystemWithRoutes({ provider, account, onToast }:
               provider={provider}
               account={account}
               onToast={onToast}
-              onNavigateDown={() => navigateToFloor('vault')}
+              onNavigateDown={() => navigateToFloor(hasLeftHome ? 'bridge' : 'home')}
               onNavigateUp={() => navigateToFloor('lp')}
             />
           </motion.div>
@@ -563,7 +598,7 @@ export default function EagleEcosystemWithRoutes({ provider, account, onToast }:
               provider={provider}
               account={account}
               onToast={onToast}
-                onNavigateUp={() => navigateToFloor('vault')}
+              onNavigateUp={() => navigateToFloor(hasLeftHome ? 'bridge' : 'home')}
               onNavigateToWrapper={() => navigateToFloor('wrapper')}
               onNavigateToCrossChain={() => navigateToFloor('bridge')}
               onNavigateToAnalytics={() => navigateToFloor('analytics')}
@@ -571,13 +606,76 @@ export default function EagleEcosystemWithRoutes({ provider, account, onToast }:
           </motion.div>
         </motion.div>
 
+        {/* Home Floor - Center (initial landing) */}
+        <div
+          className="h-screen overflow-hidden relative"
+          id="home-floor"
+          style={{
+            position: 'absolute',
+            top: '150vh',
+            left: 0,
+            width: '100vw',
+            pointerEvents: currentFloor === 'home' ? 'auto' : 'none',
+            zIndex: currentFloor === 'home' ? 10 : 5
+          }}
+        >
+          {/* Animated gradient orbs */}
+          <motion.div
+            className="absolute inset-0 overflow-hidden pointer-events-none"
+            style={{ willChange: 'opacity' }}
+            animate={{
+              opacity: currentFloor === 'home' ? 1 : 0.1,
+            }}
+            transition={{ duration: 3.5, ease: [0.19, 1.0, 0.22, 1.0] }}
+          >
+            <motion.div
+              className="absolute top-1/4 right-1/3 w-[800px] h-[800px] bg-[#D4B474]/400/15 rounded-full blur-[120px]"
+              animate={{
+                scale: currentFloor === 'home' ? [1, 1.15, 1] : 0.8,
+                x: currentFloor === 'home' ? [0, 60, 0] : 0,
+              }}
+              transition={{ duration: 10, repeat: Infinity, ease: "easeInOut" }}
+            />
+            <motion.div
+              className="absolute bottom-1/3 left-1/4 w-[700px] h-[700px] bg-[#D4B474]/500/12 rounded-full blur-[110px]"
+              animate={{
+                scale: currentFloor === 'home' ? [1, 1.2, 1] : 0.8,
+                y: currentFloor === 'home' ? [0, 40, 0] : 0,
+              }}
+              transition={{ duration: 12, repeat: Infinity, ease: "easeInOut" }}
+            />
+            <motion.div
+              className="absolute top-1/2 left-1/2 w-[600px] h-[600px] bg-orange-500/12 rounded-full blur-[100px]"
+              animate={{
+                scale: currentFloor === 'home' ? [1, 1.1, 1] : 0.8,
+                x: currentFloor === 'home' ? [0, -50, 0] : 0,
+              }}
+              transition={{ duration: 9, repeat: Infinity, ease: "easeInOut" }}
+            />
+          </motion.div>
+          <motion.div
+            animate={{
+              opacity: showHomeContent ? (isTransitioning && currentFloor !== 'home' ? 0.4 : 1) : 0,
+            }}
+            transition={{ duration: 0.8, ease: [0.4, 0.0, 0.2, 1.0] }}
+            className="h-full overflow-hidden relative z-10"
+            style={{ willChange: 'opacity' }}
+          >
+            <EagleHomeContent
+              onNavigateUp={() => navigateToFloor('lp')}
+              onNavigateDown={() => navigateToFloor('vault')}
+              provider={provider}
+            />
+          </motion.div>
+        </div>
+
         {/* Analytics Floor */}
         <motion.div 
           className="h-screen overflow-hidden relative" 
           id="analytics-floor" 
           style={{ 
             position: 'absolute', 
-            top: '400vh', 
+            top: '300vh', 
             left: 0, 
             width: '100vw',
             zIndex: currentFloor === 'analytics' ? 15 : 5
