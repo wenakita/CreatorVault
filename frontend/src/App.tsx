@@ -5,7 +5,6 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useAccount } from 'wagmi';
 import ModernHeader from './components/ModernHeader';
 import EagleEcosystemWithRoutes from './components/EagleEcosystemWithRoutes';
-import LandingPage from './pages/LandingPage';
 import { ICONS } from './config/icons';
 import { SafeProvider } from './components/SafeProvider';
 import { useSafeApp } from './hooks/useSafeApp';
@@ -169,18 +168,7 @@ function AnimatedRoutes() {
   return (
     <AnimatePresence mode="wait">
       <Routes location={location} key={location.pathname.split('/')[1] || 'root'}>
-        <Route path="/" element={
-          <motion.div
-            initial={{ opacity: 0, y: -20 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 20 }}
-            transition={{ duration: 0.5, ease: "easeInOut" }}
-          >
-            <LandingPage />
-          </motion.div>
-        } />
         <Route path="/*" element={<AppContent />} />
-        <Route path="/*" element={<LandingPage />} />
       </Routes>
     </AnimatePresence>
   );
