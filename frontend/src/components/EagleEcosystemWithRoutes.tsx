@@ -563,7 +563,7 @@ export default function EagleEcosystemWithRoutes({ provider, account, onToast }:
               provider={provider}
               account={account}
               onToast={onToast}
-              onNavigateUp(() => navigateToFloor('vault')}
+                onNavigateUp={() => navigateToFloor('vault')}
               onNavigateToWrapper={() => navigateToFloor('wrapper')}
               onNavigateToCrossChain={() => navigateToFloor('bridge')}
               onNavigateToAnalytics={() => navigateToFloor('analytics')}
