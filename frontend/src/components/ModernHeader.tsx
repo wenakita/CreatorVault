@@ -99,7 +99,7 @@ export default function ModernHeader() {
       <div className="container mx-auto px-3 sm:px-4 md:px-6 py-2 sm:py-3 md:py-4">
         <div className="flex items-center justify-between">
           {/* Logo & Title - Changes based on page */}
-          {location.pathname === '/app/vault' || location.pathname === '/app/vault/' ? (
+          {location.pathname === '/vault' || location.pathname === '/vault/' ? (
             /* Eagle Omnichain Vault Info (on vault page only) */
           <motion.div 
             className="flex items-center gap-2 sm:gap-3 md:gap-4"
@@ -136,7 +136,7 @@ export default function ModernHeader() {
                 </a>
               </div>
             </motion.div>
-          ) : location.pathname.startsWith('/app/lp') || location.pathname === '/app/lp/' ? (
+          ) : location.pathname.startsWith('/lp') || location.pathname === '/lp/' ? (
             /* Eagle/ETH Liquidity Pool (on LP page) */
             <motion.div 
               className="flex items-center gap-2 sm:gap-3 md:gap-4 cursor-pointer"
@@ -156,7 +156,7 @@ export default function ModernHeader() {
                 <p className="text-[10px] sm:text-xs text-gray-600 dark:text-gray-400 font-medium truncate hidden sm:block">Provide liquidity and earn fees</p>
               </div>
             </motion.div>
-          ) : location.pathname.startsWith('/app/wrapper') || location.pathname === '/app/wrapper/' ? (
+          ) : location.pathname.startsWith('/wrapper') || location.pathname === '/wrapper/' ? (
             /* Wrapper page */
             <motion.div 
               className="flex items-center gap-2 sm:gap-3 md:gap-4 cursor-pointer"
@@ -176,7 +176,7 @@ export default function ModernHeader() {
                 <p className="text-[10px] sm:text-xs text-gray-600 dark:text-gray-400 font-medium truncate hidden sm:block">Wrap and unwrap vEAGLE tokens</p>
               </div>
             </motion.div>
-          ) : location.pathname.startsWith('/app/bridge') || location.pathname === '/app/bridge/' ? (
+          ) : location.pathname.startsWith('/bridge') || location.pathname === '/bridge/' ? (
             /* Eagle Bridge */
             <motion.div 
               className="flex items-center gap-2 sm:gap-3 md:gap-4 cursor-pointer"
@@ -196,7 +196,7 @@ export default function ModernHeader() {
                 <p className="text-[10px] sm:text-xs text-gray-600 dark:text-gray-400 font-medium truncate hidden sm:block">Soar Across Chains While Earning on Ethereum</p>
               </div>
             </motion.div>
-          ) : location.pathname.startsWith('/app/analytics') || location.pathname === '/app/analytics/' ? (
+          ) : location.pathname.startsWith('/analytics') || location.pathname === '/analytics/' ? (
             /* Analytics page */
             <motion.div 
               className="flex items-center gap-2 sm:gap-3 md:gap-4 cursor-pointer"

@@ -39,9 +39,9 @@ export default function EagleEcosystemWithRoutes({ provider, account, onToast }:
   // Map routes to floors
   const routeToFloor: Record<string, Floor> = {
     '/app': 'vault',
-    '/app/lp': 'lp',
-    '/app/bridge': 'bridge',
-    '/app/vault': 'vault',
+    '/lp': 'lp',
+    '/bridge': 'bridge',
+    '/vault': 'vault',
   };
 
   const currentFloor = routeToFloor[location.pathname] || 'vault';
@@ -59,9 +59,9 @@ export default function EagleEcosystemWithRoutes({ provider, account, onToast }:
     
     
     const floorToRoute: Record<Floor, string> = {
-      'lp': '/app/lp',
-      'bridge': '/app/bridge',
-      'vault': '/app/vault',
+      'lp': '/lp',
+      'bridge': '/bridge',
+      'vault': '/vault',
     };
     
 

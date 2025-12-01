@@ -179,7 +179,7 @@ function AnimatedRoutes() {
             <LandingPage />
           </motion.div>
         } />
-        <Route path="/app/*" element={<AppContent />} />
+        <Route path="/*" element={<AppContent />} />
         <Route path="/*" element={<LandingPage />} />
       </Routes>
     </AnimatePresence>
