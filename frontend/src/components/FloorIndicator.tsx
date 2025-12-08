@@ -133,7 +133,7 @@ export default function FloorIndicator({ current, onChange, isTransitioning }: P
       </div>
 
       {/* Mobile: Horizontal bottom navigation */}
-      <div className="md:hidden fixed bottom-20 left-1/2 -translate-x-1/2 z-50 w-[calc(100%-2rem)] max-w-md">
+      <div className="md:hidden fixed bottom-28 left-1/2 -translate-x-1/2 z-50 w-[calc(100%-2rem)] max-w-md">
         <div className="bg-gradient-to-br from-white to-gray-50 dark:from-gray-800 dark:to-gray-850 backdrop-blur-xl rounded-2xl p-2 border border-gray-200/50 dark:border-gray-600/50 shadow-neo-raised dark:shadow-neo-raised-dark">
           <div className="flex items-center justify-around gap-2">
             {floors.map((floor) => {

@@ -16,6 +16,7 @@ export function ComposerPanel() {
     getBalances,
     checkAllowance,
     approveToken,
+    checkMaxSupply,
     loading,
     error,
     isConnected
@@ -28,6 +29,8 @@ export function ComposerPanel() {
   const [balances, setBalances] = useState({ wlfi: 0n, eagle: 0n });
   const [txStatus, setTxStatus] = useState<string | null>(null);
   const [needsApproval, setNeedsApproval] = useState(false);
+  const [maxSupplyInfo, setMaxSupplyInfo] = useState<any>(null);
+  const [isMaxSupplyReached, setIsMaxSupplyReached] = useState(false);
   
   // Load balances
   useEffect(() => {
@@ -35,6 +38,16 @@ export function ComposerPanel() {
       getBalances().then(setBalances);
     }
   }, [isConnected, getBalances]);
+  
+  // Check max supply on mount and when switching to deposit tab
+  useEffect(() => {
+    if (isConnected && activeTab === 'deposit') {
+      checkMaxSupply().then(info => {
+        setMaxSupplyInfo(info);
+        setIsMaxSupplyReached(info.isMaxReached);
+      });
+    }
+  }, [isConnected, activeTab, checkMaxSupply]);
   
   // Auto-preview when amount changes + check allowance
   useEffect(() => {
@@ -170,6 +183,26 @@ export function ComposerPanel() {
           </div>
         ) : (
           <>
+            {/* Max Supply Warning - only show for deposits */}
+            {activeTab === 'deposit' && isMaxSupplyReached && (
+              <div className="bg-red-50 dark:bg-red-900/20 border-2 border-red-200 dark:border-red-800/50 rounded-xl p-4 animate-pulse">
+                <div className="flex items-start gap-3">
+                  <div className="text-2xl">🚫</div>
+                  <div className="flex-1">
+                    <h4 className="font-bold text-red-800 dark:text-red-200 text-sm mb-1">
+                      Deposits Disabled
+                    </h4>
+                    <p className="text-xs text-red-700 dark:text-red-300">
+                      Maximum supply of {maxSupplyInfo ? (Number(maxSupplyInfo.maxSupply) / 1e18).toLocaleString() : '50,000,000'} EAGLE has been reached.
+                    </p>
+                    <p className="text-xs text-red-600 dark:text-red-400 mt-2">
+                      You can still redeem EAGLE tokens for WLFI.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+            
             {/* Balance Display with Fee */}
             <div className="flex justify-between items-center text-sm">
               <div className="flex items-center gap-2">
@@ -266,16 +299,18 @@ export function ComposerPanel() {
             {/* Action Button */}
             <NeoButton
               onClick={needsApproval ? handleApprove : (activeTab === 'deposit' ? handleDeposit : handleRedeem)}
-              disabled={loading || !inputAmount || parseFloat(inputAmount) <= 0}
+              disabled={loading || !inputAmount || parseFloat(inputAmount) <= 0 || (activeTab === 'deposit' && isMaxSupplyReached)}
               className="w-full"
             >
               {loading 
                 ? 'Processing...'
                 : needsApproval
                   ? `Approve ${activeTab === 'deposit' ? 'WLFI' : 'EAGLE'}`
-                  : activeTab === 'deposit'
-                    ? 'Deposit'
-                    : 'Redeem'
+                  : activeTab === 'deposit' && isMaxSupplyReached
+                    ? 'Deposits Disabled (Max Supply Reached)'
+                    : activeTab === 'deposit'
+                      ? 'Deposit'
+                      : 'Redeem'
               }
             </NeoButton>
             
@@ -286,6 +321,12 @@ export function ComposerPanel() {
                   <p>• Converts WLFI → vEAGLE → EAGLE in one transaction</p>
                   <p>• Includes vault deposit fee + wrapper fee</p>
                   <p>• EAGLE can be used for cross-chain operations</p>
+                  {maxSupplyInfo && !isMaxSupplyReached && (
+                    <p>• Remaining supply: {(Number(maxSupplyInfo.remaining) / 1e18).toLocaleString()} EAGLE</p>
+                  )}
+                  {isMaxSupplyReached && (
+                    <p className="text-red-500 dark:text-red-400">⚠️ Max supply reached - deposits disabled</p>
+                  )}
                 </>
               ) : (
                 <>
