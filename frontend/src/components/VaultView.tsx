@@ -2178,7 +2178,7 @@ export default function VaultView({ provider, account, onToast, onNavigateUp, on
 
 
         {/* Stats - Horizontal scroll on mobile, grid on desktop */}
-        <div className="flex sm:grid sm:grid-cols-3 gap-2 sm:gap-4 mb-4 sm:mb-8 overflow-x-auto pb-2 sm:pb-0 -mx-3 px-3 sm:mx-0 sm:px-0 scrollbar-hide">
+        <div className="flex sm:grid sm:grid-cols-3 gap-1.5 sm:gap-4 mb-4 sm:mb-8 overflow-x-auto pb-2 sm:pb-0 -mx-3 px-3 sm:mx-0 sm:px-0 scrollbar-hide">
           <NeoStatCard
             label="Total deposited"
             value={(() => {
@@ -2192,7 +2192,7 @@ export default function VaultView({ provider, account, onToast, onNavigateUp, on
               const totalUSD1 = Number(data.vaultLiquidUSD1) + Number(data.strategyUSD1InPool);
               return `${totalWLFI.toFixed(2)} WLFI + ${totalUSD1.toFixed(2)} USD1`;
             })()}
-            className="min-w-[140px] sm:min-w-0 flex-shrink-0"
+            className="min-w-[110px] sm:min-w-0 flex-shrink-0"
           />
           <NeoStatCard
             label="Current APY"
@@ -2223,7 +2223,7 @@ export default function VaultView({ provider, account, onToast, onNavigateUp, on
                       ? 'Fee APR (from Charm)'
                   : 'Loading...'
             }
-            className="min-w-[140px] sm:min-w-0 flex-shrink-0"
+            className="min-w-[110px] sm:min-w-0 flex-shrink-0"
           />
           <NeoStatCard
             label="Circulating / Max Supply"
@@ -2234,7 +2234,7 @@ export default function VaultView({ provider, account, onToast, onNavigateUp, on
                const ratio = totalEagle > 0 ? (totalWLFI / totalEagle).toFixed(4) : '0.0000';
                return `Ratio: ${ratio} WLFI / EAGLE`;
             })()}
-            className="min-w-[140px] sm:min-w-0 flex-shrink-0"
+            className="min-w-[110px] sm:min-w-0 flex-shrink-0"
           />
         </div>
 
