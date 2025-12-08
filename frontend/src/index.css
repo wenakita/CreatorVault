@@ -347,16 +347,11 @@ html {
   }
 }
 
-/* Fix for bottom navigation overlap */
+/* Mobile content spacing - no bottom nav needed */
 @media (max-width: 768px) {
-  /* Add extra padding to bottom of scrollable content */
-  .pb-20 {
-    padding-bottom: 7rem !important; /* 112px instead of 80px */
-  }
-  
-  /* Ensure content doesn't hide behind bottom nav */
+  /* Standard bottom padding for mobile */
   main, .main-content, [role="main"] {
-    padding-bottom: 8rem !important; /* 128px for extra safety */
+    padding-bottom: 4rem !important; /* Standard spacing */
   }
 }
 
