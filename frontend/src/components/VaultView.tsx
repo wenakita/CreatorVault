@@ -1294,7 +1294,7 @@ export default function VaultView({ provider, account, onToast, onNavigateUp, on
         const usd1Strategy = new Contract(
           CONTRACTS.STRATEGY_USD1,
           ['function getTotalAmounts() external view returns (uint256 wlfiAmount, uint256 usd1Amount)'],
-          provider
+          activeProvider
         );
         const [usd1Wlfi, usd1Amount] = await usd1Strategy.getTotalAmounts();
         
@@ -1330,7 +1330,7 @@ export default function VaultView({ provider, account, onToast, onNavigateUp, on
             'function totalSupply() external view returns (uint256)',
             'function getTotalAmounts() external view returns (uint256 total0, uint256 total1)'
           ],
-          provider
+          activeProvider
         );
         
         const strategyShares = await charmVault.balanceOf(CONTRACTS.STRATEGY_WETH);
@@ -1356,12 +1356,12 @@ export default function VaultView({ provider, account, onToast, onNavigateUp, on
               const wethToken = new Contract(
                 CONTRACTS.WETH,
                 ['function balanceOf(address) external view returns (uint256)'],
-                provider
+                activeProvider
               );
               const wlfiToken = new Contract(
                 CONTRACTS.WLFI,
                 ['function balanceOf(address) external view returns (uint256)'],
-                provider
+                activeProvider
               );
               
               const [wethBal, wlfiBal] = await Promise.all([
@@ -2309,6 +2309,33 @@ export default function VaultView({ provider, account, onToast, onNavigateUp, on
                   <div className="space-y-4">
                     {/* Asset Deployment Sunburst Chart */}
                     <div className="space-y-3">
+                      {/* Debug: Log the actual values being passed */}
+                      {(() => {
+                        console.log('[VaultView] Sunburst Chart Props:', {
+                          vaultWLFI: Number(data.vaultLiquidWLFI),
+                          vaultUSD1: Number(data.vaultLiquidUSD1),
+                          strategyWLFI: Number(data.strategyWLFI),
+                          strategyUSD1: Number(data.strategyUSD1),
+                          strategyWETH: Number(data.strategyWETH),
+                          strategyWLFIinPool: Number(data.strategyWLFIinPool),
+                          strategyUSD1InPool: Number(data.strategyUSD1InPool),
+                          strategyWLFIinUSD1Pool: Number(data.strategyWLFIinUSD1Pool),
+                          wlfiPrice: Number(data.wlfiPrice),
+                          rawData: data
+                        });
+                        return null;
+                      })()}
+                      
+                      {/* Loading state while data is being fetched */}
+                      {refreshing ? (
+                        <div className="bg-gradient-to-br from-white to-gray-50 dark:from-gray-800 dark:to-gray-850 shadow-neo-raised dark:shadow-neo-raised-dark rounded-2xl sm:rounded-3xl p-8 mb-4 sm:mb-6 md:mb-8 border border-gray-300/50 dark:border-gray-600/40">
+                          <div className="flex flex-col items-center justify-center gap-4">
+                            <div className="w-12 h-12 border-4 border-[#F2D57C] border-t-transparent rounded-full animate-spin"></div>
+                            <p className="text-gray-600 dark:text-gray-400 text-sm">Loading asset allocation...</p>
+                          </div>
+                        </div>
+                      ) : (
+                        <>
                       {/* Sunburst Chart */}
                       <AssetAllocationSunburst
                         vaultWLFI={Number(data.vaultLiquidWLFI)}
@@ -2316,11 +2343,14 @@ export default function VaultView({ provider, account, onToast, onNavigateUp, on
                         strategyWLFI={Number(data.strategyWLFI)}
                         strategyUSD1={Number(data.strategyUSD1)}
                         wlfiPrice={Number(data.wlfiPrice)}
+                        wethPrice={3500}
                         strategyWETH={Number(data.strategyWETH)}
                         strategyWLFIinPool={Number(data.strategyWLFIinPool)}
                         strategyUSD1InPool={Number(data.strategyUSD1InPool)}
                         strategyWLFIinUSD1Pool={Number(data.strategyWLFIinUSD1Pool)}
                       />
+                        </>
+                      )}
                       
                       {/* Assets Display */}
                       <div>
