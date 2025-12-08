@@ -1,4 +1,5 @@
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
+import { useState } from 'react';
 import type { Floor } from './EagleEcosystemWithRoutes';
 
 interface Props {
@@ -49,6 +50,8 @@ const floors: Array<{ id: Floor; label: string; icon: JSX.Element; color: string
 ];
 
 export default function FloorIndicator({ current, onChange, isTransitioning }: Props) {
+  const [isExpanded, setIsExpanded] = useState(true);
+  
   return (
     <>
       {/* Desktop: Vertical sidebar on right */}
@@ -140,50 +143,87 @@ export default function FloorIndicator({ current, onChange, isTransitioning }: P
 
       {/* Mobile: Minimal navigation dots on right side */}
       <div className="md:hidden fixed right-3 top-1/2 -translate-y-1/2 z-50">
-        <div className="flex flex-col items-center gap-2 px-1.5 py-2 bg-black/10 dark:bg-white/5 backdrop-blur-md rounded-full">
-          {floors.map((floor) => {
-            const isActive = current === floor.id;
-            
-            return (
+        <AnimatePresence mode="wait">
+          {isExpanded ? (
+            <motion.div
+              key="expanded"
+              initial={{ x: 100, opacity: 0 }}
+              animate={{ x: 0, opacity: 1 }}
+              exit={{ x: 100, opacity: 0 }}
+              transition={{ duration: 0.2 }}
+              className="flex flex-col items-center gap-2 px-1.5 py-2 bg-black/10 dark:bg-white/5 backdrop-blur-md rounded-full"
+            >
+              {/* Toggle Button - Top */}
               <button
-                key={floor.id}
-                onClick={() => onChange(floor.id)}
-                disabled={isTransitioning}
-                className={`
-                  relative rounded-full transition-all duration-200 touch-manipulation
-                  ${isActive ? 'w-8 h-8' : 'w-6 h-6'}
-                  ${isTransitioning ? 'opacity-30' : ''}
-                `}
-                title={floor.label}
+                onClick={() => setIsExpanded(false)}
+                className="w-6 h-6 rounded-full bg-gray-300/40 dark:bg-gray-600/30 hover:bg-gray-400/60 dark:hover:bg-gray-500/40 transition-all flex items-center justify-center touch-manipulation"
+                title="Minimize"
               >
-                {isActive ? (
-                  <>
-                    <div className={`absolute inset-0 bg-gradient-to-br ${floor.color} rounded-full`} />
-                    <motion.div
-                      className={`absolute inset-0 bg-gradient-to-br ${floor.color} rounded-full opacity-30 blur-md`}
-                      animate={{
-                        scale: [1, 1.2, 1],
-                        opacity: [0.3, 0.5, 0.3]
-                      }}
-                      transition={{
-                        duration: 2,
-                        repeat: Infinity,
-                        ease: "easeInOut"
-                      }}
-                    />
-                    <div className="absolute inset-0 flex items-center justify-center">
-                      <div className="w-3.5 h-3.5 flex items-center justify-center text-white">
-                        {floor.icon}
-                      </div>
-                    </div>
-                  </>
-                ) : (
-                  <div className="absolute inset-0 bg-gray-400/30 dark:bg-gray-500/20 rounded-full hover:bg-gray-500/50 dark:hover:bg-gray-400/30 transition-colors" />
-                )}
+                <svg className="w-3 h-3 text-gray-600 dark:text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2.5}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+                </svg>
               </button>
-            );
-          })}
-        </div>
+              
+              {floors.map((floor) => {
+                const isActive = current === floor.id;
+                
+                return (
+                  <button
+                    key={floor.id}
+                    onClick={() => onChange(floor.id)}
+                    disabled={isTransitioning}
+                    className={`
+                      relative rounded-full transition-all duration-200 touch-manipulation
+                      ${isActive ? 'w-8 h-8' : 'w-6 h-6'}
+                      ${isTransitioning ? 'opacity-30' : ''}
+                    `}
+                    title={floor.label}
+                  >
+                    {isActive ? (
+                      <>
+                        <div className={`absolute inset-0 bg-gradient-to-br ${floor.color} rounded-full`} />
+                        <motion.div
+                          className={`absolute inset-0 bg-gradient-to-br ${floor.color} rounded-full opacity-30 blur-md`}
+                          animate={{
+                            scale: [1, 1.2, 1],
+                            opacity: [0.3, 0.5, 0.3]
+                          }}
+                          transition={{
+                            duration: 2,
+                            repeat: Infinity,
+                            ease: "easeInOut"
+                          }}
+                        />
+                        <div className="absolute inset-0 flex items-center justify-center">
+                          <div className="w-3.5 h-3.5 flex items-center justify-center text-white">
+                            {floor.icon}
+                          </div>
+                        </div>
+                      </>
+                    ) : (
+                      <div className="absolute inset-0 bg-gray-400/30 dark:bg-gray-500/20 rounded-full hover:bg-gray-500/50 dark:hover:bg-gray-400/30 transition-colors" />
+                    )}
+                  </button>
+                );
+              })}
+            </motion.div>
+          ) : (
+            <motion.button
+              key="minimized"
+              initial={{ x: 100, opacity: 0 }}
+              animate={{ x: 0, opacity: 1 }}
+              exit={{ x: 100, opacity: 0 }}
+              transition={{ duration: 0.2 }}
+              onClick={() => setIsExpanded(true)}
+              className="w-8 h-8 rounded-full bg-gradient-to-br from-amber-400 to-yellow-600 flex items-center justify-center shadow-lg hover:scale-110 transition-all touch-manipulation"
+              title="Expand navigation"
+            >
+              <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
+              </svg>
+            </motion.button>
+          )}
+        </AnimatePresence>
       </div>
     </>
   );
