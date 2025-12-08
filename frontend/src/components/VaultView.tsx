@@ -100,27 +100,30 @@ function AnalyticsTabContent({ vaultData }: { vaultData: any }) {
   const historicalData = generateHistoricalData();
 
   return (
-    <div className="space-y-4">
-      {/* Header with View Toggle */}
+    <div className="space-y-6">
+      {/* Neumorphic Header with View Toggle */}
       <div className="flex items-center justify-between">
-        <h4 className="text-sm font-bold text-gray-700 dark:text-gray-300">ERC-4626 Vault Holdings</h4>
-        <div className="flex gap-2">
+        <div>
+          <h4 className="text-xs uppercase tracking-wider text-gray-500 dark:text-gray-500 font-bold mb-1">Analytics</h4>
+          <p className="text-sm text-gray-600 dark:text-gray-400">Vault worth in WLFI terms</p>
+        </div>
+        <div className="flex gap-1.5 p-1 bg-gray-100 dark:bg-gray-800 rounded-2xl shadow-neo-inset dark:shadow-neo-inset-dark">
           <button
             onClick={() => setViewMode('total')}
-            className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+            className={`px-4 py-2 rounded-xl text-xs font-semibold transition-all duration-300 ${
               viewMode === 'total'
-                ? 'bg-amber-500 text-white shadow-lg'
-                : 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'
+                ? 'bg-white dark:bg-gray-700 text-amber-600 dark:text-amber-400 shadow-neo-raised dark:shadow-neo-raised-dark'
+                : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
             }`}
           >
             Total
           </button>
           <button
             onClick={() => setViewMode('breakdown')}
-            className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+            className={`px-4 py-2 rounded-xl text-xs font-semibold transition-all duration-300 ${
               viewMode === 'breakdown'
-                ? 'bg-amber-500 text-white shadow-lg'
-                : 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'
+                ? 'bg-white dark:bg-gray-700 text-amber-600 dark:text-amber-400 shadow-neo-raised dark:shadow-neo-raised-dark'
+                : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
             }`}
           >
             Breakdown
@@ -128,67 +131,127 @@ function AnalyticsTabContent({ vaultData }: { vaultData: any }) {
         </div>
       </div>
 
-      {/* Primary Stat - Total Vault Worth in WLFI */}
-      <div className="bg-gradient-to-br from-amber-500 to-yellow-600 rounded-2xl p-6 shadow-lg border-2 border-amber-300 dark:border-amber-700">
-        <div className="flex items-center justify-between mb-2">
-          <p className="text-sm text-white/90 font-bold uppercase tracking-wide">Total Vault Worth</p>
-          <div className="px-2 py-1 bg-white/20 rounded-lg text-xs text-white font-semibold">
-            in WLFI
+      {/* Neumorphic Primary Stat - Total Vault Worth */}
+      <div className="relative bg-gradient-to-br from-gray-50 to-white dark:from-gray-800 dark:to-gray-850 rounded-3xl p-8 shadow-neo-raised dark:shadow-neo-raised-dark border border-gray-200/50 dark:border-gray-700/50 overflow-hidden">
+        {/* Ambient glow effect */}
+        <div className="absolute top-0 right-0 w-64 h-64 bg-gradient-to-br from-amber-200/20 to-yellow-200/10 dark:from-amber-600/10 dark:to-yellow-600/5 rounded-full blur-3xl"></div>
+        
+        <div className="relative">
+          <div className="flex items-center justify-between mb-6">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-gradient-to-br from-amber-400 to-yellow-600 rounded-2xl shadow-lg flex items-center justify-center">
+                <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              </div>
+              <div>
+                <p className="text-xs uppercase tracking-wider text-gray-500 dark:text-gray-500 font-bold">Total Vault Worth</p>
+                <p className="text-xs text-gray-600 dark:text-gray-400 mt-0.5">All assets in WLFI</p>
+              </div>
+            </div>
           </div>
-        </div>
-        <p className="text-4xl font-bold text-white mb-2">
-          {totalVaultWorthInWLFI.toLocaleString(undefined, { maximumFractionDigits: 2 })}
-        </p>
-        <div className="flex items-center gap-2 text-xs text-white/80">
-          <span>≈ ${(totalVaultWorthInWLFI * wlfiPrice).toLocaleString(undefined, { maximumFractionDigits: 0 })} USD</span>
-          <span>•</span>
-          <span>@ ${wlfiPrice.toFixed(3)}/WLFI</span>
+          
+          <div className="flex items-baseline gap-3 mb-4">
+            <p className="text-5xl font-bold bg-gradient-to-r from-amber-600 to-yellow-600 dark:from-amber-400 dark:to-yellow-400 bg-clip-text text-transparent">
+              {totalVaultWorthInWLFI.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+            </p>
+            <span className="text-xl text-gray-600 dark:text-gray-400 font-medium">WLFI</span>
+          </div>
+          
+          <div className="flex items-center gap-4 text-sm">
+            <div className="px-3 py-1.5 bg-white dark:bg-gray-800 rounded-xl shadow-neo-inset dark:shadow-neo-inset-dark">
+              <span className="text-gray-700 dark:text-gray-300 font-semibold">
+                ${(totalVaultWorthInWLFI * wlfiPrice).toLocaleString(undefined, { maximumFractionDigits: 0 })}
+              </span>
+              <span className="text-gray-500 dark:text-gray-500 ml-1">USD</span>
+            </div>
+            <div className="text-xs text-gray-500 dark:text-gray-500">
+              @ ${wlfiPrice.toFixed(3)} per WLFI
+            </div>
+          </div>
         </div>
       </div>
       
-      {/* Breakdown Stats */}
-      <div className="grid grid-cols-3 gap-2">
-        <div className="bg-gradient-to-br from-amber-50 to-yellow-50 dark:from-amber-900/20 dark:to-yellow-900/20 rounded-lg p-3 border border-amber-200 dark:border-amber-800">
-          <p className="text-[10px] text-gray-600 dark:text-gray-400 mb-1 font-medium uppercase tracking-wide">WLFI Tokens</p>
-          <p className="text-lg font-bold text-amber-700 dark:text-amber-400">
-            {totalWLFI.toFixed(0)}
+      {/* Neumorphic Breakdown Cards */}
+      <div className="grid grid-cols-3 gap-4">
+        {/* WLFI Tokens */}
+        <div className="group bg-gradient-to-br from-gray-50 to-white dark:from-gray-800 dark:to-gray-850 rounded-2xl p-4 shadow-neo-raised dark:shadow-neo-raised-dark hover:shadow-neo-hover dark:hover:shadow-neo-hover-dark border border-gray-200/50 dark:border-gray-700/50 transition-all duration-300">
+          <div className="flex items-center gap-2 mb-3">
+            <div className="w-8 h-8 bg-gradient-to-br from-amber-400 to-yellow-500 rounded-xl flex items-center justify-center shadow-md">
+              <span className="text-white text-sm font-bold">W</span>
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-[10px] uppercase tracking-wider text-gray-500 dark:text-gray-500 font-bold">WLFI</p>
+              <p className="text-xs text-amber-600 dark:text-amber-400 font-semibold">
+                {((totalWLFI / totalVaultWorthInWLFI) * 100).toFixed(1)}%
+              </p>
+            </div>
+          </div>
+          <p className="text-2xl font-bold text-gray-900 dark:text-white mb-1">
+            {totalWLFI.toLocaleString(undefined, { maximumFractionDigits: 0 })}
           </p>
-          <p className="text-[9px] text-gray-500 dark:text-gray-500 mt-0.5">
-            {((totalWLFI / totalVaultWorthInWLFI) * 100).toFixed(1)}% of total
-          </p>
+          <p className="text-xs text-gray-600 dark:text-gray-400">tokens</p>
         </div>
-        <div className="bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 rounded-lg p-3 border border-blue-200 dark:border-blue-800">
-          <p className="text-[10px] text-gray-600 dark:text-gray-400 mb-1 font-medium uppercase tracking-wide">USD1 (as WLFI)</p>
-          <p className="text-lg font-bold text-blue-700 dark:text-blue-400">
-            {wlfiFromUSD1.toFixed(0)}
+
+        {/* USD1 as WLFI */}
+        <div className="group bg-gradient-to-br from-gray-50 to-white dark:from-gray-800 dark:to-gray-850 rounded-2xl p-4 shadow-neo-raised dark:shadow-neo-raised-dark hover:shadow-neo-hover dark:hover:shadow-neo-hover-dark border border-gray-200/50 dark:border-gray-700/50 transition-all duration-300">
+          <div className="flex items-center gap-2 mb-3">
+            <div className="w-8 h-8 bg-gradient-to-br from-blue-400 to-indigo-500 rounded-xl flex items-center justify-center shadow-md">
+              <span className="text-white text-sm font-bold">U</span>
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-[10px] uppercase tracking-wider text-gray-500 dark:text-gray-500 font-bold">USD1</p>
+              <p className="text-xs text-blue-600 dark:text-blue-400 font-semibold">
+                {((wlfiFromUSD1 / totalVaultWorthInWLFI) * 100).toFixed(1)}%
+              </p>
+            </div>
+          </div>
+          <p className="text-2xl font-bold text-gray-900 dark:text-white mb-1">
+            {wlfiFromUSD1.toLocaleString(undefined, { maximumFractionDigits: 0 })}
           </p>
-          <p className="text-[9px] text-gray-500 dark:text-gray-500 mt-0.5">
-            {totalUSD1.toFixed(0)} USD1
-          </p>
+          <p className="text-xs text-gray-600 dark:text-gray-400">{totalUSD1.toFixed(0)} USD1</p>
         </div>
-        <div className="bg-gradient-to-br from-gray-50 to-slate-50 dark:from-gray-900/20 dark:to-slate-900/20 rounded-lg p-3 border border-gray-200 dark:border-gray-800">
-          <p className="text-[10px] text-gray-600 dark:text-gray-400 mb-1 font-medium uppercase tracking-wide">WETH (as WLFI)</p>
-          <p className="text-lg font-bold text-gray-700 dark:text-gray-400">
-            {wlfiFromWETH.toFixed(0)}
+
+        {/* WETH as WLFI */}
+        <div className="group bg-gradient-to-br from-gray-50 to-white dark:from-gray-800 dark:to-gray-850 rounded-2xl p-4 shadow-neo-raised dark:shadow-neo-raised-dark hover:shadow-neo-hover dark:hover:shadow-neo-hover-dark border border-gray-200/50 dark:border-gray-700/50 transition-all duration-300">
+          <div className="flex items-center gap-2 mb-3">
+            <div className="w-8 h-8 bg-gradient-to-br from-gray-500 to-gray-700 rounded-xl flex items-center justify-center shadow-md">
+              <span className="text-white text-sm font-bold">E</span>
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-[10px] uppercase tracking-wider text-gray-500 dark:text-gray-500 font-bold">WETH</p>
+              <p className="text-xs text-gray-600 dark:text-gray-400 font-semibold">
+                {((wlfiFromWETH / totalVaultWorthInWLFI) * 100).toFixed(1)}%
+              </p>
+            </div>
+          </div>
+          <p className="text-2xl font-bold text-gray-900 dark:text-white mb-1">
+            {wlfiFromWETH.toLocaleString(undefined, { maximumFractionDigits: 0 })}
           </p>
-          <p className="text-[9px] text-gray-500 dark:text-gray-500 mt-0.5">
-            {currentStrategyWETH.toFixed(4)} WETH
-          </p>
+          <p className="text-xs text-gray-600 dark:text-gray-400">{currentStrategyWETH.toFixed(4)} WETH</p>
         </div>
       </div>
 
-      {/* Historical Chart */}
-      <div className="bg-gray-50 dark:bg-gray-800/50 rounded-xl p-4 border border-gray-200 dark:border-gray-700">
-        <div className="flex items-center justify-between mb-3">
-          <p className="text-sm font-semibold text-gray-700 dark:text-gray-300">
-            Total Vault Worth in WLFI (30 Days)
-          </p>
-          <p className="text-xs text-gray-500 dark:text-gray-400">
-            All assets converted to WLFI
-          </p>
+      {/* Neumorphic Historical Chart */}
+      <div className="bg-gradient-to-br from-gray-50 to-white dark:from-gray-800 dark:to-gray-850 rounded-3xl p-6 shadow-neo-raised dark:shadow-neo-raised-dark border border-gray-200/50 dark:border-gray-700/50">
+        <div className="flex items-center justify-between mb-6">
+          <div>
+            <p className="text-xs uppercase tracking-wider text-gray-500 dark:text-gray-500 font-bold mb-1">
+              Historical Trend
+            </p>
+            <p className="text-sm text-gray-700 dark:text-gray-300 font-semibold">
+              30-Day Performance
+            </p>
+          </div>
+          <div className="px-3 py-1.5 bg-white dark:bg-gray-800 rounded-xl shadow-neo-inset dark:shadow-neo-inset-dark">
+            <p className="text-xs text-gray-600 dark:text-gray-400">
+              {viewMode === 'total' ? 'Total View' : 'Composition'}
+            </p>
+          </div>
         </div>
         
-        <div className="h-48 relative">
+        {/* Chart container with subtle inner shadow */}
+        <div className="h-56 relative bg-white dark:bg-gray-850 rounded-2xl p-4 shadow-neo-inset dark:shadow-neo-inset-dark">
           <svg className="w-full h-full" viewBox="0 0 100 40" preserveAspectRatio="none">
             <defs>
               {viewMode === 'total' ? (
@@ -275,52 +338,81 @@ function AnalyticsTabContent({ vaultData }: { vaultData: any }) {
           </svg>
           
           {/* Y-axis labels */}
-          <div className="absolute left-0 top-0 bottom-0 flex flex-col justify-between text-[9px] text-gray-500 dark:text-gray-400 -ml-12">
-            <span>{Math.max(...historicalData.map(s => s.totalVaultWorthInWLFI)).toFixed(0)}</span>
-            <span>{(Math.max(...historicalData.map(s => s.totalVaultWorthInWLFI)) / 2).toFixed(0)}</span>
+          <div className="absolute -left-2 top-0 bottom-0 flex flex-col justify-between text-[10px] font-medium text-gray-600 dark:text-gray-400 -translate-x-full pr-2">
+            <span>{Math.max(...historicalData.map(s => s.totalVaultWorthInWLFI)).toLocaleString(undefined, { maximumFractionDigits: 0 })}</span>
+            <span>{(Math.max(...historicalData.map(s => s.totalVaultWorthInWLFI)) / 2).toLocaleString(undefined, { maximumFractionDigits: 0 })}</span>
             <span>0</span>
           </div>
         </div>
         
         {/* X-axis labels */}
-        <div className="flex justify-between text-[9px] text-gray-500 dark:text-gray-400 mt-2">
+        <div className="flex justify-between text-[10px] font-medium text-gray-600 dark:text-gray-400 mt-3 px-4">
           <span>{historicalData[0]?.date}</span>
           <span>{historicalData[Math.floor(historicalData.length / 2)]?.date}</span>
           <span>{historicalData[historicalData.length - 1]?.date}</span>
         </div>
         
-        {/* Legend */}
+        {/* Elegant Legend */}
         {viewMode === 'breakdown' && (
-          <div className="flex items-center justify-center gap-3 mt-3 text-xs flex-wrap">
-            <div className="flex items-center gap-1.5">
-              <div className="w-3 h-3 rounded-sm bg-amber-500"></div>
-              <span className="text-gray-600 dark:text-gray-400">WLFI Tokens</span>
+          <div className="flex items-center justify-center gap-6 mt-6">
+            <div className="flex items-center gap-2">
+              <div className="w-3 h-3 rounded-full bg-gradient-to-br from-amber-400 to-yellow-500 shadow-sm"></div>
+              <span className="text-xs font-medium text-gray-700 dark:text-gray-300">WLFI</span>
             </div>
-            <div className="flex items-center gap-1.5">
-              <div className="w-3 h-3 rounded-sm bg-green-500 opacity-60"></div>
-              <span className="text-gray-600 dark:text-gray-400">USD1 (as WLFI)</span>
+            <div className="flex items-center gap-2">
+              <div className="w-3 h-3 rounded-full bg-gradient-to-br from-green-400 to-emerald-500 opacity-60 shadow-sm"></div>
+              <span className="text-xs font-medium text-gray-700 dark:text-gray-300">USD1</span>
             </div>
-            <div className="flex items-center gap-1.5">
-              <div className="w-3 h-3 rounded-sm bg-gray-500 opacity-30"></div>
-              <span className="text-gray-600 dark:text-gray-400">WETH (as WLFI)</span>
+            <div className="flex items-center gap-2">
+              <div className="w-3 h-3 rounded-full bg-gradient-to-br from-gray-400 to-gray-600 opacity-30 shadow-sm"></div>
+              <span className="text-xs font-medium text-gray-700 dark:text-gray-300">WETH</span>
             </div>
           </div>
         )}
       </div>
       
-      {/* Additional Info */}
-      <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg p-3">
-        <p className="text-xs text-amber-800 dark:text-amber-300">
-          <span className="font-semibold">💎 Total Vault Worth (in WLFI):</span> This metric shows the vault's total value denominated in WLFI tokens. It includes:
-        </p>
-        <ul className="text-xs text-amber-800 dark:text-amber-300 mt-2 space-y-1 ml-4">
-          <li>• <strong>WLFI tokens</strong> held in vault and strategies</li>
-          <li>• <strong>USD1 converted</strong> to WLFI equivalent (USD1 / WLFI price)</li>
-          <li>• <strong>WETH converted</strong> to WLFI equivalent (WETH × ETH price / WLFI price)</li>
-        </ul>
-        <p className="text-xs text-amber-700 dark:text-amber-400 mt-2 italic">
-          This represents the total backing of ERC-4626 vault shares in WLFI terms.
-        </p>
+      {/* Elegant Info Card */}
+      <div className="relative bg-gradient-to-br from-gray-50 to-white dark:from-gray-800 dark:to-gray-850 rounded-2xl p-5 shadow-neo-inset dark:shadow-neo-inset-dark border border-gray-200/50 dark:border-gray-700/50 overflow-hidden">
+        {/* Subtle accent */}
+        <div className="absolute top-0 left-0 w-1 h-full bg-gradient-to-b from-amber-400 to-yellow-600"></div>
+        
+        <div className="ml-3">
+          <div className="flex items-center gap-2 mb-3">
+            <div className="w-6 h-6 bg-gradient-to-br from-amber-400 to-yellow-600 rounded-lg flex items-center justify-center shadow-md">
+              <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            </div>
+            <p className="text-xs uppercase tracking-wider text-gray-600 dark:text-gray-400 font-bold">
+              How it works
+            </p>
+          </div>
+          
+          <p className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed mb-3">
+            Total Vault Worth shows all assets converted to WLFI equivalents using real-time prices.
+          </p>
+          
+          <div className="space-y-2">
+            <div className="flex items-start gap-2">
+              <div className="w-1.5 h-1.5 rounded-full bg-amber-500 mt-1.5 flex-shrink-0"></div>
+              <p className="text-xs text-gray-600 dark:text-gray-400 leading-relaxed">
+                <span className="font-semibold text-gray-700 dark:text-gray-300">WLFI tokens:</span> Direct holdings
+              </p>
+            </div>
+            <div className="flex items-start gap-2">
+              <div className="w-1.5 h-1.5 rounded-full bg-blue-500 mt-1.5 flex-shrink-0"></div>
+              <p className="text-xs text-gray-600 dark:text-gray-400 leading-relaxed">
+                <span className="font-semibold text-gray-700 dark:text-gray-300">USD1:</span> Converted at oracle price
+              </p>
+            </div>
+            <div className="flex items-start gap-2">
+              <div className="w-1.5 h-1.5 rounded-full bg-gray-500 mt-1.5 flex-shrink-0"></div>
+              <p className="text-xs text-gray-600 dark:text-gray-400 leading-relaxed">
+                <span className="font-semibold text-gray-700 dark:text-gray-300">WETH:</span> Converted via market rates
+              </p>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   );
