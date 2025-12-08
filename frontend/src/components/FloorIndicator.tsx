@@ -12,8 +12,8 @@ const floors: Array<{ id: Floor; label: string; icon: JSX.Element; color: string
     id: 'lp',
     label: 'LP Pool',
     icon: (
-      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 6h18M3 12h18M3 18h18" />
+      <svg className="w-full h-full" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M3 6h18M3 12h18M3 18h18" />
         <circle cx="7" cy="6" r="1.5" fill="currentColor" />
         <circle cx="17" cy="12" r="1.5" fill="currentColor" />
         <circle cx="12" cy="18" r="1.5" fill="currentColor" />
@@ -26,9 +26,9 @@ const floors: Array<{ id: Floor; label: string; icon: JSX.Element; color: string
     id: 'bridge',
     label: 'Bridge',
     icon: (
-      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16V8M4 8C4 6.895 4.895 6 6 6h12c1.105 0 2 .895 2 2v8M4 8h16m0 8v-8M4 16h16m0 0v2c0 1.105-.895 2-2 2H6c-1.105 0-2-.895-2-2v-2" />
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 16V8m6 8V8" />
+      <svg className="w-full h-full" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M4 16V8M4 8C4 6.895 4.895 6 6 6h12c1.105 0 2 .895 2 2v8M4 8h16m0 8v-8M4 16h16m0 0v2c0 1.105-.895 2-2 2H6c-1.105 0-2-.895-2-2v-2" />
+        <path strokeLinecap="round" strokeLinejoin="round" d="M9 16V8m6 8V8" />
       </svg>
     ),
     color: 'from-amber-400 to-yellow-600',
@@ -38,8 +38,8 @@ const floors: Array<{ id: Floor; label: string; icon: JSX.Element; color: string
     id: 'vault',
     label: 'Vault',
     icon: (
-      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+      <svg className="w-full h-full" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
         <circle cx="12" cy="13" r="1.5" fill="currentColor" />
       </svg>
     ),
@@ -92,12 +92,13 @@ export default function FloorIndicator({ current, onChange, isTransitioning }: P
                     />
                   )}
                   
-                  <div className={`
-                    absolute inset-0 flex items-center justify-center
-                    ${isActive ? 'text-white' : 'text-gray-400 group-hover:text-gray-200'}
-                    transition-colors
-                  `}>
-                    {floor.icon}
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <div className={`
+                      ${isActive ? 'text-white' : 'text-gray-400 group-hover:text-gray-200'}
+                      transition-colors flex items-center justify-center
+                    `}>
+                      {floor.icon}
+                    </div>
                   </div>
 
                     {/* Label tooltip on hover */}
@@ -170,14 +171,16 @@ export default function FloorIndicator({ current, onChange, isTransitioning }: P
                         ease: "easeInOut"
                       }}
                     />
-                    <div className="absolute inset-0 flex items-center justify-center text-white">
-                      <div className="w-3.5 h-3.5">
+                    <div className="absolute inset-0 flex items-center justify-center">
+                      <div className="w-3.5 h-3.5 flex items-center justify-center text-white">
                         {floor.icon}
                       </div>
                     </div>
                   </>
                 ) : (
-                  <div className="absolute inset-0 bg-gray-400/30 dark:bg-gray-500/20 rounded-full hover:bg-gray-500/50 dark:hover:bg-gray-400/30 transition-colors" />
+                  <div className="absolute inset-0 bg-gray-400/30 dark:bg-gray-500/20 rounded-full hover:bg-gray-500/50 dark:hover:bg-gray-400/30 transition-colors flex items-center justify-center">
+                    <div className="w-2 h-2 rounded-full bg-gray-500/50 dark:bg-gray-400/50"></div>
+                  </div>
                 )}
               </button>
             );
