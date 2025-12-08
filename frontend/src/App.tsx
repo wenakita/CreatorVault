@@ -84,7 +84,7 @@ function AppContent() {
       </div>
 
       {/* Fixed Footer - Ultra Compact on Mobile */}
-      <footer className="relative z-20 flex-shrink-0 border-t border-gray-300/30 dark:border-gray-700/30 bg-neo-bg-light/80 dark:bg-neo-bg-dark/80 backdrop-blur-sm transition-colors duration-300 pb-14 md:pb-0">
+      <footer className="relative z-20 flex-shrink-0 border-t border-gray-300/30 dark:border-gray-700/30 bg-neo-bg-light/80 dark:bg-neo-bg-dark/80 backdrop-blur-sm transition-colors duration-300">
         <div className="container mx-auto px-3 sm:px-6 py-1.5 sm:py-4">
           <div className="flex flex-row justify-between items-center gap-2 sm:gap-3 text-center">
             <div className="flex items-center gap-1.5 sm:gap-3">
