@@ -315,7 +315,7 @@ export function ComposerPanel() {
             </NeoButton>
             
             {/* Info */}
-            <div className="text-xs text-gray-500 dark:text-gray-400 space-y-1">
+            <div className="text-sm sm:text-xs text-gray-500 dark:text-gray-400 space-y-2 sm:space-y-1 leading-relaxed">
               {activeTab === 'deposit' ? (
                 <>
                   <p>• Converts WLFI → vEAGLE → EAGLE in one transaction</p>
@@ -356,7 +356,7 @@ export function ComposerPanel() {
             </NeoButton>
             
             {/* Info */}
-            <div className="text-xs text-gray-500 dark:text-gray-400 space-y-1">
+            <div className="text-sm sm:text-xs text-gray-500 dark:text-gray-400 space-y-2 sm:space-y-1 leading-relaxed">
               {activeTab === 'deposit' ? (
                 <>
                   <p>• Converts WLFI → vEAGLE → EAGLE in one transaction</p>
