@@ -1303,7 +1303,9 @@ export default function VaultView({ provider, account, onToast, onNavigateUp, on
         strategyUSD1InPool = Number(formatEther(usd1Amount)).toFixed(2);
         
         // For USD1 strategy display, show total USD value (USD1 + WLFI converted to USD)
-        const wlfiValueUsd = Number(formatEther(usd1Wlfi)) * 0.132; // WLFI worth ~$0.132
+        // Use actual oracle price from vault
+        const wlfiPriceUsd = Number(formatEther(wlfiPrice));
+        const wlfiValueUsd = Number(formatEther(usd1Wlfi)) * wlfiPriceUsd;
         const usd1ValueUsd = Number(formatEther(usd1Amount)); // USD1 worth ~$1.00
         const usd1Total = wlfiValueUsd + usd1ValueUsd;
         strategyUSD1 = usd1Total.toFixed(2);
@@ -1394,9 +1396,10 @@ export default function VaultView({ provider, account, onToast, onNavigateUp, on
             console.log('[VaultView] Total WLFI in vault:', formatEther(totalWlfi));
             console.log('[VaultView] ============================');
             
-            // For display, show total USD value (WETH worth ~$3500, WLFI worth ~$0.132)
-            const wethValueUsd = Number(strategyWETH) * 3500;
-            const wlfiValueUsd = Number(strategyWLFIinPool) * 0.132;
+            // For display, show total USD value using actual oracle price for WLFI
+            const wlfiPriceUsd = Number(formatEther(wlfiPrice));
+            const wethValueUsd = Number(strategyWETH) * 3500; // TODO: Get WETH price from oracle
+            const wlfiValueUsd = Number(strategyWLFIinPool) * wlfiPriceUsd;
             strategyWLFI = (wethValueUsd + wlfiValueUsd).toFixed(2);
           } else {
             console.log('[VaultView] No assets in Charm vault or invalid share calculation');
@@ -1411,8 +1414,9 @@ export default function VaultView({ provider, account, onToast, onNavigateUp, on
         strategyWLFIinPool = '0';
       }
 
-      // Calculate total USD value of vault reserves (WLFI worth ~$0.132, USD1 worth ~$1.00)
-      const vaultWlfiValueUsd = Number(vaultLiquidWLFI) * 0.132;
+      // Calculate total USD value of vault reserves using actual oracle price
+      const wlfiPriceUsd = Number(formatEther(wlfiPrice));
+      const vaultWlfiValueUsd = Number(vaultLiquidWLFI) * wlfiPriceUsd;
       const vaultUsd1ValueUsd = Number(vaultLiquidUSD1);
       const liquidTotal = (vaultWlfiValueUsd + vaultUsd1ValueUsd).toFixed(2);
       
@@ -1420,12 +1424,16 @@ export default function VaultView({ provider, account, onToast, onNavigateUp, on
       const strategyTotal = (Number(strategyWLFI) + Number(strategyUSD1)).toFixed(2);
 
       console.log('[VaultView] ===== ALL STRATEGY BALANCES =====');
-      console.log('[VaultView] Vault Liquid WLFI:', vaultLiquidWLFI);
-      console.log('[VaultView] Vault Liquid USD1:', vaultLiquidUSD1);
+      console.log('[VaultView] Oracle WLFI Price (USD):', wlfiPriceUsd);
+      console.log('[VaultView] Vault Liquid WLFI:', vaultLiquidWLFI, '= $' + vaultWlfiValueUsd.toFixed(2));
+      console.log('[VaultView] Vault Liquid USD1:', vaultLiquidUSD1, '= $' + vaultUsd1ValueUsd.toFixed(2));
+      console.log('[VaultView] Liquid Total:', liquidTotal);
       console.log('[VaultView] USD1 Strategy Total:', strategyUSD1);
       console.log('[VaultView] WETH Strategy Total Value:', strategyWLFI);
       console.log('[VaultView] WETH Strategy WETH Amount:', strategyWETH);
       console.log('[VaultView] WETH Strategy WLFI in Pool:', strategyWLFIinPool);
+      console.log('[VaultView] Strategy Total:', strategyTotal);
+      console.log('[VaultView] Grand Total (Liquid + Strategies):', (Number(liquidTotal) + Number(strategyTotal)).toFixed(2));
       console.log('[VaultView] ===============================');
 
       // If totalAssets failed to fetch, calculate it manually (in USD)
