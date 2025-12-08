@@ -2176,8 +2176,8 @@ export default function VaultView({ provider, account, onToast, onNavigateUp, on
       <div className="max-w-6xl mx-auto px-3 sm:px-6 pt-3 sm:pt-6 pb-20 sm:pb-24">
 
 
-        {/* Stats */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 sm:gap-4 mb-4 sm:mb-8">
+        {/* Stats - Horizontal scroll on mobile, grid on desktop */}
+        <div className="flex sm:grid sm:grid-cols-3 gap-2 sm:gap-4 mb-4 sm:mb-8 overflow-x-auto pb-2 sm:pb-0 -mx-3 px-3 sm:mx-0 sm:px-0 scrollbar-hide">
           <NeoStatCard
             label="Total deposited"
             value={(() => {
@@ -2191,12 +2191,8 @@ export default function VaultView({ provider, account, onToast, onNavigateUp, on
               const totalUSD1 = Number(data.vaultLiquidUSD1) + Number(data.strategyUSD1InPool);
               return `${totalWLFI.toFixed(2)} WLFI + ${totalUSD1.toFixed(2)} USD1`;
             })()}
+            className="min-w-[140px] sm:min-w-0 flex-shrink-0"
           />
-          <div className="relative">
-          <button 
-            onClick={() => onNavigateToAnalytics?.()}
-            className="w-full text-left transition-all hover:scale-[1.02] active:scale-[0.98]"
-          >
           <NeoStatCard
             label="Current APY"
             value={
@@ -2226,18 +2222,8 @@ export default function VaultView({ provider, account, onToast, onNavigateUp, on
                       ? 'Fee APR (from Charm)'
                   : 'Loading...'
             }
+            className="min-w-[140px] sm:min-w-0 flex-shrink-0"
           />
-          </button>
-            <button
-              onClick={() => onNavigateToAnalytics?.()}
-              className="absolute top-3 right-3 flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all bg-[#D4B474]/10 text-[#D4B474] hover:bg-[#D4B474]/20 hover:scale-105 active:scale-95"
-            >
-              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-              </svg>
-              <span className="hidden sm:inline">Analytics</span>
-            </button>
-          </div>
           <NeoStatCard
             label="Circulating / Max Supply"
             value={`${Number(data.totalSupply).toLocaleString(undefined, { maximumFractionDigits: 0 })} / 50M`}
@@ -2247,6 +2233,7 @@ export default function VaultView({ provider, account, onToast, onNavigateUp, on
                const ratio = totalEagle > 0 ? (totalWLFI / totalEagle).toFixed(4) : '0.0000';
                return `Ratio: ${ratio} WLFI / EAGLE`;
             })()}
+            className="min-w-[140px] sm:min-w-0 flex-shrink-0"
           />
         </div>
 
