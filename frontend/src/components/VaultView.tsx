@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useMemo, Suspense, lazy } from 'react';
-import { BrowserProvider, Contract, formatEther, parseEther } from 'ethers';
+import { BrowserProvider, Contract, formatEther, parseEther, JsonRpcProvider } from 'ethers';
 import { CONTRACTS } from '../config/contracts';
 import { ICONS } from '../config/icons';
 import { TokenIcon } from './TokenIcon';
@@ -14,6 +14,9 @@ import { useSafeApp } from '../hooks/useSafeApp';
 import { ComposerPanel } from './ComposerPanel';
 import { useCharmStats } from '../context/CharmStatsContext';
 import { useAnalyticsData } from '../hooks/useAnalyticsData';
+
+// Read-only provider for fetching data when wallet is not connected
+const readOnlyProvider = new JsonRpcProvider('https://eth.llamarpc.com');
 
 // Lazy load 3D visualization
 const VaultVisualization = lazy(() => import('./VaultVisualization'));
@@ -1225,17 +1228,15 @@ export default function VaultView({ provider, account, onToast, onNavigateUp, on
   }, []);
 
   const fetchData = useCallback(async () => {
-    console.log('[VaultView] fetchData called', { provider: !!provider, account });
-    if (!provider) {
-      console.warn('[VaultView] No provider available');
-      return;
-    }
+    // Use read-only provider if user's provider is not available (allows viewing stats without connecting)
+    const activeProvider = provider || readOnlyProvider;
+    console.log('[VaultView] fetchData called', { hasUserProvider: !!provider, account, usingReadOnly: !provider });
 
     try {
       console.log('[VaultView] Starting data fetch...');
-      const vault = new Contract(CONTRACTS.VAULT, VAULT_ABI, provider);
-      const wlfi = new Contract(CONTRACTS.WLFI, ERC20_ABI, provider);
-      const usd1 = new Contract(CONTRACTS.USD1, ERC20_ABI, provider);
+      const vault = new Contract(CONTRACTS.VAULT, VAULT_ABI, activeProvider);
+      const wlfi = new Contract(CONTRACTS.WLFI, ERC20_ABI, activeProvider);
+      const usd1 = new Contract(CONTRACTS.USD1, ERC20_ABI, activeProvider);
 
       // Fetch vault data with individual error handling for totalAssets (may revert due to stale oracles)
       let totalAssets = 0n;
