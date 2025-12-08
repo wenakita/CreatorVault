@@ -132,57 +132,45 @@ export default function FloorIndicator({ current, onChange, isTransitioning }: P
         </div>
       </div>
 
-      {/* Mobile: Minimized bottom navigation - Compact dots */}
-      <div className="md:hidden fixed bottom-4 left-1/2 -translate-x-1/2 z-50">
-        <div className="bg-gradient-to-br from-white/80 to-gray-50/80 dark:from-gray-800/80 dark:to-gray-850/80 backdrop-blur-xl rounded-full px-3 py-2 border border-gray-200/30 dark:border-gray-600/30 shadow-lg">
-          <div className="flex items-center gap-2">
-            {floors.map((floor) => {
-              const isActive = current === floor.id;
-              
-              return (
-                <button
-                  key={floor.id}
-                  onClick={() => onChange(floor.id)}
-                  disabled={isTransitioning}
-                  className={`
-                    relative rounded-full transition-all duration-300 touch-manipulation
-                    ${isActive 
-                      ? 'w-8 h-8' 
-                      : 'w-6 h-6 opacity-50 hover:opacity-100'
-                    }
-                    ${isTransitioning ? 'opacity-30' : ''}
-                  `}
-                  title={floor.label}
-                >
-                  {/* Active indicator with gradient */}
-                  {isActive ? (
-                    <>
-                      <div className={`absolute inset-0 bg-gradient-to-br ${floor.color} rounded-full shadow-lg`} />
-                      <motion.div
-                        className={`absolute inset-0 bg-gradient-to-br ${floor.color} rounded-full opacity-40 blur-md -z-10`}
-                        animate={{
-                          scale: [1, 1.3, 1],
-                          opacity: [0.4, 0.2, 0.4]
-                        }}
-                        transition={{
-                          duration: 2,
-                          repeat: Infinity,
-                          ease: "easeInOut"
-                        }}
-                      />
-                      <div className="absolute inset-0 flex items-center justify-center text-white">
-                        <div className="w-3 h-3">
-                          {floor.icon}
-                        </div>
-                      </div>
-                    </>
-                  ) : (
-                    <div className="absolute inset-0 bg-gray-300 dark:bg-gray-600 rounded-full" />
-                  )}
-                </button>
-              );
-            })}
-          </div>
+      {/* Mobile: Ultra-minimal navigation dots */}
+      <div className="md:hidden fixed bottom-3 left-1/2 -translate-x-1/2 z-50">
+        <div className="flex items-center gap-1.5 px-2 py-1.5 bg-black/10 dark:bg-white/5 backdrop-blur-md rounded-full">
+          {floors.map((floor) => {
+            const isActive = current === floor.id;
+            
+            return (
+              <button
+                key={floor.id}
+                onClick={() => onChange(floor.id)}
+                disabled={isTransitioning}
+                className={`
+                  relative rounded-full transition-all duration-200 touch-manipulation
+                  ${isActive ? 'w-6 h-1.5' : 'w-1.5 h-1.5'}
+                  ${isTransitioning ? 'opacity-30' : ''}
+                `}
+                title={floor.label}
+              >
+                {isActive ? (
+                  <>
+                    <div className={`absolute inset-0 bg-gradient-to-r ${floor.color} rounded-full`} />
+                    <motion.div
+                      className={`absolute inset-0 bg-gradient-to-r ${floor.color} rounded-full opacity-30 blur-sm`}
+                      animate={{
+                        opacity: [0.3, 0.6, 0.3]
+                      }}
+                      transition={{
+                        duration: 2,
+                        repeat: Infinity,
+                        ease: "easeInOut"
+                      }}
+                    />
+                  </>
+                ) : (
+                  <div className="absolute inset-0 bg-gray-400/40 dark:bg-gray-500/30 rounded-full hover:bg-gray-500/60 dark:hover:bg-gray-400/40 transition-colors" />
+                )}
+              </button>
+            );
+          })}
         </div>
       </div>
     </>
