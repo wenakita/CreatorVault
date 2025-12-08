@@ -563,6 +563,7 @@ const VAULT_ABI = [
   'function redeem(uint256 shares, address receiver, address owner) returns (uint256)',
   'function getWLFIPrice() view returns (uint256)',
   'function getUSD1Price() view returns (uint256)',
+  'function getWETHPrice() view returns (uint256)', // Added ETH price oracle
   'function convertToShares(uint256 assets) view returns (uint256)',
   'function convertToAssets(uint256 shares) view returns (uint256)',
   'function maxWithdraw(address owner) view returns (uint256)',
@@ -646,6 +647,31 @@ export default function VaultView({ provider, account, onToast, onNavigateUp, on
   const revertData = useRevertFinanceData();
 
   // PRODUCTION: All values reset to 0 - fresh deployment
+  // Fetch ETH price with fallback to CoinGecko API
+  const fetchETHPrice = useCallback(async (vault: Contract): Promise<number> => {
+    try {
+      // Try to get from vault oracle first
+      const ethPrice = await vault.getWETHPrice();
+      const ethPriceUsd = Number(formatEther(ethPrice));
+      console.log('[VaultView] ETH price from vault oracle:', ethPriceUsd);
+      if (ethPriceUsd > 0) return ethPriceUsd;
+    } catch (error) {
+      console.warn('[VaultView] Vault ETH price oracle failed, using CoinGecko fallback:', error);
+    }
+    
+    // Fallback to CoinGecko API
+    try {
+      const response = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=ethereum&vs_currencies=usd');
+      const data = await response.json();
+      const ethPrice = data.ethereum?.usd || 3500;
+      console.log('[VaultView] ETH price from CoinGecko:', ethPrice);
+      return ethPrice;
+    } catch (error) {
+      console.error('[VaultView] CoinGecko API failed, using default:', error);
+      return 3500; // Final fallback
+    }
+  }, []);
+
   const [data, setData] = useState({
     totalAssets: '0',
     totalSupply: '0',
@@ -654,6 +680,7 @@ export default function VaultView({ provider, account, onToast, onNavigateUp, on
     usd1Balance: '0',
     wlfiPrice: '0.132',
     usd1Price: '1.000',
+    wethPrice: '3500',
     userBalanceUSD: '0',
     expectedShares: '0',
     expectedWithdrawWLFI: '0',
@@ -1244,12 +1271,15 @@ export default function VaultView({ provider, account, onToast, onNavigateUp, on
       let wlfiPrice = 0n;
       let usd1Price = 0n;
 
+      let wethPrice = 3500; // Default fallback
       try {
         [totalSupply, wlfiPrice, usd1Price] = await Promise.all([
           vault.totalSupply(),
           vault.getWLFIPrice(),
           vault.getUSD1Price(),
         ]);
+        // Fetch WETH price (with fallback to CoinGecko)
+        wethPrice = await fetchETHPrice(vault);
       } catch (error: any) {
         console.error('[VaultView] Error fetching basic vault data:', error);
         throw error; // This is critical, can't continue
@@ -1396,9 +1426,9 @@ export default function VaultView({ provider, account, onToast, onNavigateUp, on
             console.log('[VaultView] Total WLFI in vault:', formatEther(totalWlfi));
             console.log('[VaultView] ============================');
             
-            // For display, show total USD value using actual oracle price for WLFI
+            // For display, show total USD value using actual oracle prices
             const wlfiPriceUsd = Number(formatEther(wlfiPrice));
-            const wethValueUsd = Number(strategyWETH) * 3500; // TODO: Get WETH price from oracle
+            const wethValueUsd = Number(strategyWETH) * wethPrice; // Now uses fetched ETH price
             const wlfiValueUsd = Number(strategyWLFIinPool) * wlfiPriceUsd;
             strategyWLFI = (wethValueUsd + wlfiValueUsd).toFixed(2);
           } else {
@@ -1425,12 +1455,13 @@ export default function VaultView({ provider, account, onToast, onNavigateUp, on
 
       console.log('[VaultView] ===== ALL STRATEGY BALANCES =====');
       console.log('[VaultView] Oracle WLFI Price (USD):', wlfiPriceUsd);
+      console.log('[VaultView] Oracle/API WETH Price (USD):', wethPrice);
       console.log('[VaultView] Vault Liquid WLFI:', vaultLiquidWLFI, '= $' + vaultWlfiValueUsd.toFixed(2));
       console.log('[VaultView] Vault Liquid USD1:', vaultLiquidUSD1, '= $' + vaultUsd1ValueUsd.toFixed(2));
       console.log('[VaultView] Liquid Total:', liquidTotal);
       console.log('[VaultView] USD1 Strategy Total:', strategyUSD1);
       console.log('[VaultView] WETH Strategy Total Value:', strategyWLFI);
-      console.log('[VaultView] WETH Strategy WETH Amount:', strategyWETH);
+      console.log('[VaultView] WETH Strategy WETH Amount:', strategyWETH, '@ $' + wethPrice);
       console.log('[VaultView] WETH Strategy WLFI in Pool:', strategyWLFIinPool);
       console.log('[VaultView] Strategy Total:', strategyTotal);
       console.log('[VaultView] Grand Total (Liquid + Strategies):', (Number(liquidTotal) + Number(strategyTotal)).toFixed(2));
@@ -1499,6 +1530,7 @@ export default function VaultView({ provider, account, onToast, onNavigateUp, on
         usd1Balance,
         wlfiPrice: Number(formatEther(wlfiPrice)).toFixed(3),
         usd1Price: Number(formatEther(usd1Price)).toFixed(3),
+        wethPrice: wethPrice.toFixed(2),
         userBalanceUSD,
         maxRedeemable,
         vaultLiquidWLFI,
@@ -2351,7 +2383,7 @@ export default function VaultView({ provider, account, onToast, onNavigateUp, on
                         strategyWLFI={Number(data.strategyWLFI)}
                         strategyUSD1={Number(data.strategyUSD1)}
                         wlfiPrice={Number(data.wlfiPrice)}
-                        wethPrice={3500}
+                        wethPrice={Number(data.wethPrice)}
                         strategyWETH={Number(data.strategyWETH)}
                         strategyWLFIinPool={Number(data.strategyWLFIinPool)}
                         strategyUSD1InPool={Number(data.strategyUSD1InPool)}
