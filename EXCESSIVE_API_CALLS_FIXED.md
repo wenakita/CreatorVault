@@ -185,3 +185,4 @@ This is a common React performance pitfall:
 
 This is now a **healthy, sustainable pattern** for a production dApp! 🎉
 
+

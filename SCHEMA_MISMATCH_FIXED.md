@@ -156,3 +156,4 @@ The frontend should now successfully query the subgraph. Once the subgraph has i
 - **Network**: Ethereum Mainnet
 - **Status**: ✅ Deployed and syncing
 
+

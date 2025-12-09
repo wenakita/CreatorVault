@@ -355,3 +355,4 @@ export function handleCharmWithdraw(event: CharmWithdrawEvent): void {
   createVaultSnapshot(vault, event.block.timestamp, event.block.number)
 }
 
+
