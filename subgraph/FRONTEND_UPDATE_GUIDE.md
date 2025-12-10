@@ -215,3 +215,4 @@ After updating the frontend:
 **The subgraph is ready - just deploy it and update the frontend URLs!** 🚀
 
 
+

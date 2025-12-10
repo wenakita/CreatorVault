@@ -157,3 +157,4 @@ The frontend should now successfully query the subgraph. Once the subgraph has i
 - **Status**: ✅ Deployed and syncing
 
 
+

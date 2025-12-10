@@ -251,27 +251,22 @@ export function ComposerPanel() {
             
             {/* Preview */}
             {preview && (
-              <div className="bg-gray-50 dark:bg-gray-900/50 rounded-xl p-4 sm:p-4 space-y-3 sm:space-y-2">
-                <div className="flex justify-between items-baseline">
-                  <span className="text-sm sm:text-sm text-gray-600 dark:text-gray-400">You'll receive:</span>
-                  <span className="font-bold text-lg sm:text-base text-gray-900 dark:text-white tabular-nums">
-                    {Number(formatEther(preview.outputAmount)).toLocaleString('en-US', { maximumFractionDigits: 2 })}{' '}
-                    {activeTab === 'deposit' ? 'EAGLE' : 'WLFI'}
-                  </span>
-                </div>
-                
-                <div className="flex justify-between text-sm sm:text-xs pt-2 sm:pt-0 border-t sm:border-t-0 border-gray-200 dark:border-gray-800">
-                  <span className="text-gray-500 dark:text-gray-500">Conversion rate:</span>
-                  <span className="text-gray-700 dark:text-gray-300 font-medium">
-                    {preview.conversionRate.toFixed(2)}%
-                  </span>
-                </div>
-                
-                <div className="flex justify-between text-sm sm:text-xs">
-                  <span className="text-gray-500 dark:text-gray-500">Fees:</span>
-                  <span className="text-gray-700 dark:text-gray-300 font-medium">
-                    ~{preview.feePercentage.toFixed(2)}%
-                  </span>
+              <div className="bg-gray-50 dark:bg-gray-900/50 rounded-xl p-4 sm:p-4">
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-gray-600 dark:text-gray-400">You'll receive:</span>
+                  <div className="flex items-center gap-2">
+                    <span className="font-bold text-lg sm:text-base text-gray-900 dark:text-white tabular-nums">
+                      {Number(formatEther(preview.outputAmount)).toLocaleString('en-US', { maximumFractionDigits: 2 })}{' '}
+                      {activeTab === 'deposit' ? 'EAGLE' : 'WLFI'}
+                    </span>
+                    <span className={`text-xs font-medium px-2 py-0.5 rounded ${
+                      activeTab === 'deposit'
+                        ? 'text-blue-600 dark:text-blue-400 bg-blue-100 dark:bg-blue-900/30'
+                        : 'text-orange-600 dark:text-orange-400 bg-orange-100 dark:bg-orange-900/30'
+                    }`}>
+                      -{activeTab === 'deposit' ? '1' : '2'}%
+                    </span>
+                  </div>
                 </div>
               </div>
             )}

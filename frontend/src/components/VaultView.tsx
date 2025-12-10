@@ -432,26 +432,26 @@ function AnalyticsTabContent({ vaultData }: { vaultData: any }) {
           <p className="text-sm text-gray-500 dark:text-gray-400">Vault performance and composition</p>
         </div>
         <div className="flex gap-0.5 p-0.5 bg-gray-100 dark:bg-gray-800 rounded-lg">
-          <button
-            onClick={() => setViewMode('total')}
+        <button
+          onClick={() => setViewMode('total')}
             className={`px-4 py-1.5 text-xs font-semibold rounded-md transition-all ${
-              viewMode === 'total'
+            viewMode === 'total'
                 ? 'bg-white dark:bg-gray-900 text-gray-900 dark:text-white shadow-sm'
                 : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
-            }`}
-          >
-            Total
-          </button>
-          <button
-            onClick={() => setViewMode('breakdown')}
+          }`}
+        >
+          Total
+        </button>
+        <button
+          onClick={() => setViewMode('breakdown')}
             className={`px-4 py-1.5 text-xs font-semibold rounded-md transition-all ${
-              viewMode === 'breakdown'
+            viewMode === 'breakdown'
                 ? 'bg-white dark:bg-gray-900 text-gray-900 dark:text-white shadow-sm'
                 : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
-            }`}
-          >
-            Breakdown
-          </button>
+          }`}
+        >
+          Breakdown
+        </button>
         </div>
       </div>
 
@@ -479,15 +479,15 @@ function AnalyticsTabContent({ vaultData }: { vaultData: any }) {
             
             <div className="flex items-baseline justify-center gap-3 mb-3">
               <div className="text-7xl font-black bg-gradient-to-br from-amber-600 via-amber-500 to-yellow-600 dark:from-amber-400 dark:via-amber-300 dark:to-yellow-400 bg-clip-text text-transparent animate-in">
-                {totalVaultWorthInWLFI.toLocaleString(undefined, { maximumFractionDigits: 0 })}
-              </div>
+            {totalVaultWorthInWLFI.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+        </div>
               <span className="text-2xl font-bold text-gray-600 dark:text-gray-400">WLFI</span>
-            </div>
-            
+      </div>
+      
             <div className="text-xl font-bold text-gray-700 dark:text-gray-300 mb-2">
               ${(totalVaultWorthInWLFI * wlfiPrice).toLocaleString(undefined, { maximumFractionDigits: 0 })}
-            </div>
-            
+        </div>
+
             <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
               <span className="text-xs text-gray-500 dark:text-gray-400">1 WLFI =</span>
               <span className="text-xs font-bold font-mono text-amber-600 dark:text-amber-400">${wlfiPrice.toFixed(4)}</span>
@@ -530,8 +530,8 @@ function AnalyticsTabContent({ vaultData }: { vaultData: any }) {
                     } transition-all duration-1000 ease-out`}
                     style={{ width: `${asset.percentage}%` }}
                   ></div>
-                </div>
-                
+        </div>
+
                 <div className="relative p-5 pb-6 rounded-2xl bg-white/50 dark:bg-gray-800/50 border border-gray-200/50 dark:border-gray-700/50 hover:bg-white/80 dark:hover:bg-gray-800/80 transition-all duration-300 hover:-translate-y-1 hover:shadow-xl">
                   <div className="flex items-start justify-between mb-3">
                     <span className={`text-xs font-bold uppercase tracking-wider ${
@@ -548,12 +548,12 @@ function AnalyticsTabContent({ vaultData }: { vaultData: any }) {
                     }`}>
                       {asset.percentage.toFixed(0)}%
                     </span>
-                  </div>
+        </div>
                   
                   <div className="text-3xl font-black text-gray-900 dark:text-white mb-1 group-hover:scale-105 transition-transform duration-300">
                     {asset.amount.toLocaleString(undefined, { maximumFractionDigits: 0 })}
-                  </div>
-                  
+      </div>
+
                   <div className="text-xs font-semibold text-gray-600 dark:text-gray-400">
                     {asset.suffix || `$${asset.value.toLocaleString(undefined, { maximumFractionDigits: 0 })}`}
                   </div>
@@ -924,13 +924,13 @@ function AnalyticsTabContent({ vaultData }: { vaultData: any }) {
                   {/* Gradient Header */}
                   <div className="bg-gradient-to-r from-amber-500 to-yellow-500 px-4 py-3">
                     <div className="text-sm font-black text-white uppercase tracking-wider">
-                      {new Date(tooltip.data.timestamp).toLocaleDateString('en-US', {
-                        month: 'short',
-                        day: 'numeric',
-                        year: 'numeric'
-                      })}
-                    </div>
-                  </div>
+                {new Date(tooltip.data.timestamp).toLocaleDateString('en-US', {
+                  month: 'short',
+                  day: 'numeric',
+                  year: 'numeric'
+                })}
+              </div>
+                </div>
                   
                   <div className="p-4">
                     {/* Main Value */}
@@ -948,7 +948,7 @@ function AnalyticsTabContent({ vaultData }: { vaultData: any }) {
                     </div>
                     
                     {/* Asset Breakdown */}
-                    {viewMode === 'breakdown' && (
+                {viewMode === 'breakdown' && (
                       <div className="space-y-2 mb-4">
                         <div className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2">Asset Breakdown</div>
                         {[
@@ -964,22 +964,22 @@ function AnalyticsTabContent({ vaultData }: { vaultData: any }) {
                                 'bg-gradient-to-b from-gray-500 to-slate-500'
                               }`}></div>
                               <span className="text-xs font-bold text-gray-700 dark:text-gray-300">{asset.name}</span>
-                            </div>
+                    </div>
                             <span className="text-sm font-black text-gray-900 dark:text-white font-mono">
                               {asset.value.toLocaleString(undefined, { maximumFractionDigits: 0 })}
                             </span>
-                          </div>
+                    </div>
                         ))}
-                      </div>
-                    )}
+                    </div>
+                )}
                   
                     {/* Event Information */}
-                    {(() => {
-                      const nearbyEvent = vaultEvents.find(e => 
+              {(() => {
+                const nearbyEvent = vaultEvents.find(e => 
                         Math.abs(tooltip.data.timestamp - e.timestamp) < 86400000
-                      );
-                      if (nearbyEvent) {
-                        return (
+                );
+                if (nearbyEvent) {
+                  return (
                           <div className="pt-3 border-t border-gray-200 dark:border-gray-700">
                             <div className="flex items-start gap-3 p-3 rounded-lg bg-gray-50 dark:bg-gray-800">
                               <div className={`w-1 h-full rounded-full ${
@@ -999,20 +999,20 @@ function AnalyticsTabContent({ vaultData }: { vaultData: any }) {
                                   <span className="text-xs font-bold text-gray-900 dark:text-white truncate">
                                     {nearbyEvent.label}
                                   </span>
-                                </div>
-                                {nearbyEvent.amount && (
+                      </div>
+                      {nearbyEvent.amount && (
                                   <div className="text-sm font-bold text-gray-900 dark:text-white mb-1">{nearbyEvent.amount}</div>
-                                )}
-                                {nearbyEvent.description && (
+                      )}
+                      {nearbyEvent.description && (
                                   <div className="text-[10px] text-gray-600 dark:text-gray-400 leading-relaxed">{nearbyEvent.description}</div>
-                                )}
+                      )}
                               </div>
                             </div>
-                          </div>
-                        );
-                      }
-                      return null;
-                    })()}
+                    </div>
+                  );
+                }
+                return null;
+              })()}
                   </div>
                 </div>
                 
@@ -1038,41 +1038,41 @@ function AnalyticsTabContent({ vaultData }: { vaultData: any }) {
               </span>
             </div>
           )}
-          </div>
+        </div>
         
           {/* Enhanced X-axis labels */}
-          {historicalData.length > 0 && (
+        {historicalData.length > 0 && (
             <div className="flex justify-between text-[10px] mt-4 font-bold">
               <span className="text-gray-600 dark:text-gray-400 px-2 py-1 rounded-lg bg-gray-100/50 dark:bg-gray-800/50">{historicalData[0]?.date}</span>
               <span className="text-gray-600 dark:text-gray-400 px-2 py-1 rounded-lg bg-gray-100/50 dark:bg-gray-800/50">{historicalData[Math.floor(historicalData.length / 3)]?.date}</span>
               <span className="text-gray-600 dark:text-gray-400 px-2 py-1 rounded-lg bg-gray-100/50 dark:bg-gray-800/50">{historicalData[Math.floor(2 * historicalData.length / 3)]?.date}</span>
               <span className="text-gray-600 dark:text-gray-400 px-2 py-1 rounded-lg bg-gray-100/50 dark:bg-gray-800/50">{historicalData[historicalData.length - 1]?.date}</span>
-            </div>
-          )}
+          </div>
+        )}
         
           {/* Minimal Modern Legend */}
           <div className="flex items-center justify-center gap-6 mt-5 text-xs flex-wrap">
-            {viewMode === 'breakdown' && (
-              <>
+          {viewMode === 'breakdown' && (
+            <>
                 <div className="flex items-center gap-2">
                   <div className="w-8 h-0.5 bg-gradient-to-r from-amber-400 to-amber-600"></div>
                   <span className="font-semibold text-gray-700 dark:text-gray-300">WLFI</span>
-                </div>
+              </div>
                 <div className="flex items-center gap-2">
                   <div className="w-8 h-0.5 bg-gradient-to-r from-blue-400 to-blue-600"></div>
                   <span className="font-semibold text-gray-700 dark:text-gray-300">USD1</span>
-                </div>
+              </div>
                 <div className="flex items-center gap-2">
                   <div className="w-8 h-0.5 bg-gradient-to-r from-gray-400 to-gray-600"></div>
                   <span className="font-semibold text-gray-700 dark:text-gray-300">WETH</span>
-                </div>
+              </div>
                 <div className="w-px h-4 bg-gray-300 dark:bg-gray-600"></div>
-              </>
-            )}
+            </>
+          )}
             <div className="flex items-center gap-2">
               <div className="w-8 h-0.5 bg-gradient-to-r from-green-400 to-emerald-600"></div>
               <span className="font-semibold text-gray-700 dark:text-gray-300">Injection</span>
-            </div>
+          </div>
             <div className="flex items-center gap-2">
               <div className="w-8 h-0.5 bg-gradient-to-r from-blue-400 to-cyan-600"></div>
               <span className="font-semibold text-gray-700 dark:text-gray-300">Rebalance</span>
@@ -1086,7 +1086,7 @@ function AnalyticsTabContent({ vaultData }: { vaultData: any }) {
         <div className="mb-6">
           <h4 className="text-lg font-black text-gray-900 dark:text-white mb-1">
             Activity
-          </h4>
+        </h4>
           <p className="text-sm text-gray-500 dark:text-gray-400">
             {vaultEvents.length > 0 ? `${vaultEvents.length} recent events` : 'No activity yet'}
           </p>
@@ -1136,23 +1136,23 @@ function AnalyticsTabContent({ vaultData }: { vaultData: any }) {
                               : 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400'
                           }`}>
                             {event.type === 'injection' ? 'Injection' : 'Rebalance'}
-                          </span>
+                      </span>
                           {event.amount && (
                             <span className="text-sm font-black text-green-600 dark:text-green-400">
                               {event.amount}
-                            </span>
+                      </span>
                           )}
-                        </div>
+                    </div>
                         <h5 className="text-sm font-bold text-gray-900 dark:text-white mb-1">
                           {event.label}
                         </h5>
                         <p className="text-xs text-gray-600 dark:text-gray-400 leading-relaxed">
-                          {event.description}
-                        </p>
-                      </div>
+                      {event.description}
+                    </p>
+                  </div>
                       <span className="text-xs font-medium text-gray-500 dark:text-gray-400 whitespace-nowrap">
                         {event.date}
-                      </span>
+                    </span>
                     </div>
                   </div>
                 </div>

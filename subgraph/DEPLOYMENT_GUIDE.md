@@ -438,3 +438,4 @@ graph deploy --node http://localhost:8020/ eagle-ovault
 Congratulations! Your Eagle OVault subgraph is now live! 🎉
 
 
+

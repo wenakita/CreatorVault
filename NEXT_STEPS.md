@@ -184,3 +184,4 @@ npm run deploy
 **The subgraph is ready. Just follow the steps above!** 🚀
 
 
+
