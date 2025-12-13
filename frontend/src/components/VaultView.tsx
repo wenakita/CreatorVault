@@ -1641,37 +1641,7 @@ export default function VaultView({ provider, account, onToast, onNavigateUp, on
       console.warn('[VaultView] Vault ETH price oracle failed, trying external APIs:', error);
     }
     
-    // Try Binance API (no rate limit for public endpoints)
-    try {
-      const response = await fetch('https://api.binance.com/api/v3/ticker/price?symbol=ETHUSDT', {
-        signal: AbortSignal.timeout(3000) // 3 second timeout
-      });
-      const data = await response.json();
-      const ethPrice = parseFloat(data.price);
-      if (ethPrice > 0) {
-        console.log('[VaultView] ETH price from Binance:', ethPrice);
-        return ethPrice;
-      }
-    } catch (error) {
-      console.warn('[VaultView] Binance API failed, trying next source');
-    }
-    
-    // Try Crypto.com API
-    try {
-      const response = await fetch('https://api.crypto.com/v2/public/get-ticker?instrument_name=ETH_USD', {
-        signal: AbortSignal.timeout(3000)
-      });
-      const data = await response.json();
-      const ethPrice = parseFloat(data.result?.data?.a || 0); // 'a' is ask price
-      if (ethPrice > 0) {
-        console.log('[VaultView] ETH price from Crypto.com:', ethPrice);
-        return ethPrice;
-      }
-    } catch (error) {
-      console.warn('[VaultView] Crypto.com API failed, trying next source');
-    }
-    
-    // Try CoinGecko API (has rate limits but still try)
+    // Try CoinGecko API first (supports CORS)
     try {
       const response = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=ethereum&vs_currencies=usd', {
         signal: AbortSignal.timeout(3000)
@@ -3982,32 +3952,32 @@ export default function VaultView({ provider, account, onToast, onNavigateUp, on
                       return [
                         {
                           id: 1,
-                          name: 'Charm USD1/WLFI Alpha Vault',
+                          name: 'Charm USD1/WLFI Alpha Vault V2',
                           protocol: 'Charm Finance',
                           pool: 'USD1/WLFI',
-                          feeTier: '1%',
+                          feeTier: '0.3%',
                           allocation: `${usd1Allocation}%`,
                           status: 'active',
-                          description: 'Actively managed concentrated liquidity position on Uniswap V3, optimized for the USD1/WLFI 1% fee tier pool.',
-                          analytics: 'https://alpha.charm.fi/vault/1/0x47b2f57fb48177c02e9e219ad4f4e42d5f4f1a0c',
+                          description: 'V2 strategy with improved slippage protection and graceful failure handling. Manages concentrated liquidity on Uniswap V3 USD1/WLFI pool.',
+                          analytics: 'https://alpha.charm.fi/vault/0x22828Dbf15f5FBa2394Ba7Cf8fA9A96BdB444B71',
                           revertAnalytics: 'https://revert.finance/#/pool/mainnet/uniswapv3/0xf9f5e6f7a44ee10c72e67bded6654afaf4d0c85d',
-                          contract: '0x47B2659747d6A7E00c8251c3C3f7e92625a8cf6f',
-                          charmVault: '0x22828Dbf15f5FBa2394Ba7Cf8fA9A96BdB444B71',
-                          uniswapPool: '0xf9f5E6f7A44Ee10c72E67Bded6654afAf4D0c85d', // USD1/WLFI 1% pool
+                          contract: CONTRACTS.STRATEGY_USD1,
+                          charmVault: CONTRACTS.CHARM_VAULT_USD1,
+                          uniswapPool: '0xf9f5E6f7A44Ee10c72E67Bded6654afAf4D0c85d', // USD1/WLFI pool
                           deployed: data.strategyUSD1,
                           usd1Amount: data.strategyUSD1InPool, // Add USD1 amount for display
                           wlfiAmount: data.strategyWLFIinUSD1Pool // Add WLFI amount for display
                         },
                         {
                           id: 2,
-                          name: 'Charm WETH/WLFI Alpha Vault',
+                          name: 'Charm WETH/WLFI Alpha Vault V2',
                           protocol: 'Charm Finance',
                           pool: 'WETH/WLFI',
                           feeTier: '1%',
                           allocation: `${wethAllocation}%`,
                           status: 'active',
-                          description: 'Actively managed concentrated liquidity position on Uniswap V3, optimized for the WETH/WLFI 1% fee tier pool. Features 24-hour oracle support for stable operations.',
-                          analytics: 'https://alpha.charm.fi/vault/1/0x3314e248F3F752Cd16939773D83bEb3a362F0AEF',
+                          description: 'V2 strategy with improved slippage protection and graceful failure handling. Manages concentrated liquidity on Uniswap V3 WETH/WLFI pool.',
+                          analytics: 'https://alpha.charm.fi/vault/0x3314e248F3F752Cd16939773D83bEb3a362F0AEF',
                           contract: CONTRACTS.STRATEGY_WETH,
                           charmVault: CONTRACTS.CHARM_VAULT_WETH,
                           uniswapPool: CONTRACTS.UNISWAP_V3_POOL_WETH_1PCT, // WETH/WLFI 1% pool

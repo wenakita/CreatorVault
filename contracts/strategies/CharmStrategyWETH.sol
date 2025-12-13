@@ -416,8 +416,8 @@ contract CharmStrategyWETH is IStrategy, ReentrancyGuard, Ownable {
         }
         
         // BATCH DEPOSIT: Split into smaller deposits to avoid Charm liquidity issues
-        // Max 300 WLFI per batch to prevent "cross" errors
-        uint256 maxBatchSize = 300e18; // 300 WLFI
+        // Max 50 WLFI per batch to prevent "cross" errors at tick boundaries
+        uint256 maxBatchSize = 50e18; // 50 WLFI (reduced from 300)
         uint256 amount0Used;
         uint256 amount1Used;
         

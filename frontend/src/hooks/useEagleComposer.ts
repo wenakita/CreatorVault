@@ -91,10 +91,15 @@ export function useEagleComposer() {
     try {
       // First check if max supply would be exceeded
       const eagle = new Contract(ADDRESSES.EAGLE, EAGLE_ABI, provider);
-      const [currentSupply, contractMaxSupply] = await Promise.all([
-        eagle.totalSupply(),
-        eagle.MAX_SUPPLY()
-      ]);
+      
+      // Get current supply (required) and max supply (optional - may not exist on contract)
+      const currentSupply = await eagle.totalSupply();
+      let contractMaxSupply: bigint | null = null;
+      try {
+        contractMaxSupply = await eagle.MAX_SUPPLY();
+      } catch (e) {
+        console.log('MAX_SUPPLY not available on contract, using fallback constant');
+      }
       
       const maxSupply = contractMaxSupply || MAX_SUPPLY;
       const remaining = maxSupply - currentSupply;
@@ -213,11 +218,14 @@ export function useEagleComposer() {
     try {
       const eagle = new Contract(ADDRESSES.EAGLE, EAGLE_ABI, provider);
       
-      // Read both values from the contract
-      const [currentSupply, contractMaxSupply] = await Promise.all([
-        eagle.totalSupply(),
-        eagle.MAX_SUPPLY()
-      ]);
+      // Get current supply (required) and max supply (optional - may not exist on contract)
+      const currentSupply = await eagle.totalSupply();
+      let contractMaxSupply: bigint | null = null;
+      try {
+        contractMaxSupply = await eagle.MAX_SUPPLY();
+      } catch (e) {
+        // MAX_SUPPLY function may not exist on contract, use fallback
+      }
       
       const maxSupply = contractMaxSupply || MAX_SUPPLY; // Fallback to constant if contract call fails
       const isMaxReached = currentSupply >= maxSupply;
