@@ -2755,6 +2755,8 @@ export default function VaultView({ provider, account, onToast, onNavigateUp, on
       console.log('[VaultView] ===== FETCHING WETH STRATEGY DATA =====');
       console.log('[VaultView] WETH Strategy Address:', CONTRACTS.STRATEGY_WETH);
       console.log('[VaultView] WETH Charm Vault Address:', CONTRACTS.CHARM_VAULT_WETH);
+      console.log('[VaultView] Expected WETH Strategy: 0xCe1884B2dC7A2980d401C9C568CD59B2Eaa07338');
+      console.log('[VaultView] Address match:', CONTRACTS.STRATEGY_WETH.toLowerCase() === '0xce1884b2dc7a2980d401c9c568cd59b2eaa07338');
       try {
         // Get strategy's share balance in Charm vault
         const charmVault = new Contract(
@@ -2768,7 +2770,9 @@ export default function VaultView({ provider, account, onToast, onNavigateUp, on
         );
         
         const strategyShares = await charmVault.balanceOf(CONTRACTS.STRATEGY_WETH);
-        console.log('[VaultView] WETH strategy Charm shares:', formatEther(strategyShares));
+        console.log('[VaultView] WETH strategy Charm shares (raw):', strategyShares.toString());
+        console.log('[VaultView] WETH strategy Charm shares (formatted):', formatEther(strategyShares));
+        console.log('[VaultView] WETH strategy shares > 0n:', strategyShares > 0n);
         
         if (strategyShares > 0n) {
           const totalShares = await charmVault.totalSupply();
