@@ -2769,7 +2769,9 @@ export default function VaultView({ provider, account, onToast, onNavigateUp, on
           activeProvider
         );
         
+        (window as any).__wethDebugError = 'fetching shares...';
         const strategyShares = await charmVault.balanceOf(CONTRACTS.STRATEGY_WETH);
+        (window as any).__wethDebugError = `shares: ${strategyShares.toString()}`;
         console.log('[VaultView] WETH strategy Charm shares (raw):', strategyShares.toString());
         console.log('[VaultView] WETH strategy Charm shares (formatted):', formatEther(strategyShares));
         console.log('[VaultView] WETH strategy shares > 0n:', strategyShares > 0n);
@@ -2842,9 +2844,12 @@ export default function VaultView({ provider, account, onToast, onNavigateUp, on
           }
         } else {
           console.log('[VaultView] Strategy has no shares in Charm vault');
+          (window as any).__wethDebugError = 'no shares found (shares=0)';
         }
       } catch (error: any) {
-        console.warn('WETH strategy Charm vault query failed:', error?.reason || error?.message || error);
+        const errorMsg = error?.reason || error?.message || String(error);
+        console.warn('WETH strategy Charm vault query failed:', errorMsg);
+        (window as any).__wethDebugError = errorMsg;
         strategyWLFI = '0';
         strategyWETH = '0';
         strategyWLFIinPool = '0';
@@ -3831,9 +3836,11 @@ export default function VaultView({ provider, account, onToast, onNavigateUp, on
                       {/* Debug Info - REMOVE AFTER DEBUGGING */}
                       <div className="bg-red-500/20 border border-red-500 rounded p-2 mb-4 text-xs font-mono">
                         <div>WETH Strategy: {CONTRACTS.STRATEGY_WETH}</div>
+                        <div>Charm Vault: {CONTRACTS.CHARM_VAULT_WETH}</div>
                         <div>data.strategyWETH: {data.strategyWETH}</div>
                         <div>data.strategyWLFIinPool: {data.strategyWLFIinPool}</div>
                         <div>data.wethPrice: {data.wethPrice}</div>
+                        <div>Error: {(window as any).__wethDebugError || 'none'}</div>
                       </div>
                       {/* Sunburst Chart */}
                       <AssetAllocationSunburst
