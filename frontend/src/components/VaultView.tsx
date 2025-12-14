@@ -3828,6 +3828,13 @@ export default function VaultView({ provider, account, onToast, onNavigateUp, on
                         </div>
                       ) : (
                         <>
+                      {/* Debug Info - REMOVE AFTER DEBUGGING */}
+                      <div className="bg-red-500/20 border border-red-500 rounded p-2 mb-4 text-xs font-mono">
+                        <div>WETH Strategy: {CONTRACTS.STRATEGY_WETH}</div>
+                        <div>data.strategyWETH: {data.strategyWETH}</div>
+                        <div>data.strategyWLFIinPool: {data.strategyWLFIinPool}</div>
+                        <div>data.wethPrice: {data.wethPrice}</div>
+                      </div>
                       {/* Sunburst Chart */}
                       <AssetAllocationSunburst
                         vaultWLFI={Number(data.vaultLiquidWLFI)}
