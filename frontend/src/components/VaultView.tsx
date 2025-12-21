@@ -14,6 +14,7 @@ import { useSafeApp } from '../hooks/useSafeApp';
 import { ComposerPanel } from './ComposerPanel';
 import { useCharmStats } from '../context/CharmStatsContext';
 import { useAnalyticsData } from '../hooks/useAnalyticsData';
+import { StrategiesTab } from './StrategiesTab';
 
 // Read-only provider for fetching data when wallet is not connected
 // Multiple RPC endpoints for fallback reliability (use public ones that support CORS)
@@ -3942,72 +3943,11 @@ export default function VaultView({ provider, account, onToast, onNavigateUp, on
                 )}
 
                 {infoTab === 'strategies' && (
-                  <div className="space-y-5">
-                    {/* All 5 Strategies as Expandable Rows */}
-                    {(() => {
-                      // Calculate actual allocation percentages
-                      const totalDeployed = Number(data.strategyTotal) || 1; // Avoid division by zero
-                      const usd1Deployed = Number(data.strategyUSD1) || 0;
-                      const wethDeployed = Number(data.strategyWLFI) || 0; // This is the WETH strategy total value
-                      
-                      const usd1Allocation = totalDeployed > 0 ? ((usd1Deployed / totalDeployed) * 100).toFixed(1) : '0.0';
-                      const wethAllocation = totalDeployed > 0 ? ((wethDeployed / totalDeployed) * 100).toFixed(1) : '0.0';
-                      
-                      return [
-                        {
-                          id: 1,
-                          name: 'Charm USD1/WLFI Alpha Vault V2',
-                          protocol: 'Charm Finance',
-                          pool: 'USD1/WLFI',
-                          feeTier: '0.3%',
-                          allocation: `${usd1Allocation}%`,
-                          status: 'active',
-                          description: 'V2 strategy with improved slippage protection and graceful failure handling. Manages concentrated liquidity on Uniswap V3 USD1/WLFI pool.',
-                          analytics: 'https://alpha.charm.fi/vault/0x22828Dbf15f5FBa2394Ba7Cf8fA9A96BdB444B71',
-                          revertAnalytics: 'https://revert.finance/#/pool/mainnet/uniswapv3/0xf9f5e6f7a44ee10c72e67bded6654afaf4d0c85d',
-                          contract: CONTRACTS.STRATEGY_USD1,
-                          charmVault: CONTRACTS.CHARM_VAULT_USD1,
-                          uniswapPool: '0xf9f5E6f7A44Ee10c72E67Bded6654afAf4D0c85d', // USD1/WLFI pool
-                          deployed: data.strategyUSD1,
-                          usd1Amount: data.strategyUSD1InPool, // Add USD1 amount for display
-                          wlfiAmount: data.strategyWLFIinUSD1Pool // Add WLFI amount for display
-                        },
-                        {
-                          id: 2,
-                          name: 'Charm WETH/WLFI Alpha Vault V2',
-                          protocol: 'Charm Finance',
-                          pool: 'WETH/WLFI',
-                          feeTier: '1%',
-                          allocation: `${wethAllocation}%`,
-                          status: 'active',
-                          description: 'V2 strategy with improved slippage protection and graceful failure handling. Manages concentrated liquidity on Uniswap V3 WETH/WLFI pool.',
-                          analytics: 'https://alpha.charm.fi/vault/0x3314e248F3F752Cd16939773D83bEb3a362F0AEF',
-                          contract: CONTRACTS.STRATEGY_WETH,
-                          charmVault: CONTRACTS.CHARM_VAULT_WETH,
-                          uniswapPool: CONTRACTS.UNISWAP_V3_POOL_WETH_1PCT, // WETH/WLFI 1% pool
-                          deployed: data.strategyWLFI,
-                          wethAmount: data.strategyWETH, // Add WETH amount for display
-                          wlfiAmount: data.strategyWLFIinPool // Add WLFI in pool for display
-                        },
-                        {
-                          id: 3,
-                          name: 'Additional Strategies',
-                          protocol: 'Coming Soon',
-                          description: 'More yield optimization strategies are in development. Stay tuned for announcements about additional DeFi integrations and liquidity opportunities.',
-                          status: 'coming-soon',
-                          allocation: 'TBD'
-                        }
-                      ];
-                    })().map((strategy) => (
-                      <StrategyRow 
-                        key={strategy.id} 
-                        strategy={strategy} 
-                        wlfiPrice={data.wlfiPrice} 
-                        revertData={revertData}
-                        onToast={onToast}
-                      />
-                    ))}
-                  </div>
+                  <StrategiesTab 
+                    vaultData={data}
+                    revertData={revertData}
+                    onToast={onToast}
+                  />
                 )}
 
                 {infoTab === 'analytics' && (
