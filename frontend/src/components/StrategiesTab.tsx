@@ -98,8 +98,13 @@ export function StrategiesTab({ vaultData, revertData, onToast }: StrategiesTabP
 
   return (
     <div className="p-4 sm:p-6">
+      {/* Neumorphic Container */}
+      <div className="rounded-2xl overflow-hidden
+        bg-gradient-to-br from-gray-900 via-gray-850 to-gray-900
+        shadow-[8px_8px_16px_rgba(0,0,0,0.4),-4px_-4px_12px_rgba(255,255,255,0.05)]
+        border border-gray-700/30">
       {/* Strategy Selector Tabs */}
-      <div className="flex gap-[2px] mb-[2px] bg-[#2a2a30]">
+      <div className="flex gap-[2px] bg-[#2a2a30]">
         <button
           onClick={() => setSelectedStrategy(1)}
           className={`flex-1 py-3 px-4 text-left transition-all duration-300 ${
@@ -373,9 +378,13 @@ export function StrategiesTab({ vaultData, revertData, onToast }: StrategiesTabP
           </div>
         </div>
       </div>
+      </div>{/* End Neumorphic Container */}
 
       {/* Coming Soon Strategy */}
-      <div className="mt-4 bg-[#0a0a0b] border border-[#222] p-4 opacity-40">
+      <div className="mt-4 rounded-xl overflow-hidden
+        bg-gradient-to-br from-gray-900/50 to-gray-800/30
+        shadow-[4px_4px_8px_rgba(0,0,0,0.3),-2px_-2px_6px_rgba(255,255,255,0.03)]
+        border border-gray-700/20 p-4 opacity-50">
         <div className="flex items-center justify-between">
           <div>
             <div className="text-[9px] text-[#71717a] font-bold tracking-[0.2em] uppercase">Strategy #3</div>

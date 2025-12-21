@@ -139,7 +139,13 @@ export function AnalyticsTab({ vaultData }: AnalyticsTabProps) {
   };
 
   return (
-    <div className="p-4 sm:p-6 space-y-[2px] bg-[#2a2a30]">
+    <div className="p-4 sm:p-6">
+      {/* Neumorphic Container */}
+      <div className="rounded-2xl overflow-hidden
+        bg-gradient-to-br from-gray-900 via-gray-850 to-gray-900
+        shadow-[8px_8px_16px_rgba(0,0,0,0.4),-4px_-4px_12px_rgba(255,255,255,0.05)]
+        border border-gray-700/30 p-1">
+      <div className="space-y-[2px] bg-[#2a2a30] rounded-xl overflow-hidden">
       {/* SVG Grain Texture Overlay */}
       <svg className="fixed inset-0 w-full h-full pointer-events-none opacity-[0.03] z-50">
         <filter id='noiseFilter'>
@@ -429,6 +435,8 @@ export function AnalyticsTab({ vaultData }: AnalyticsTabProps) {
           WLFI: ${wlfiPrice.toFixed(4)} // ETH: ${formatNumber(wethPrice)}
         </span>
       </div>
+      </div>{/* End inner bg */}
+      </div>{/* End Neumorphic Container */}
     </div>
   );
 }
