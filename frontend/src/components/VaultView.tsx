@@ -15,6 +15,7 @@ import { ComposerPanel } from './ComposerPanel';
 import { useCharmStats } from '../context/CharmStatsContext';
 import { useAnalyticsData } from '../hooks/useAnalyticsData';
 import { StrategiesTab } from './StrategiesTab';
+import { AnalyticsTab } from './AnalyticsTab';
 
 // Read-only provider for fetching data when wallet is not connected
 // Multiple RPC endpoints for fallback reliability (use public ones that support CORS)
@@ -3951,7 +3952,7 @@ export default function VaultView({ provider, account, onToast, onNavigateUp, on
                 )}
 
                 {infoTab === 'analytics' && (
-                  <AnalyticsTabContent vaultData={data} />
+                  <AnalyticsTab vaultData={data} />
                 )}
               </div>
             </NeoCard>

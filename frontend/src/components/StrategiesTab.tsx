@@ -59,7 +59,7 @@ export function StrategiesTab({ vaultData, revertData, onToast }: StrategiesTabP
       token1Amount: wlfiInUSD1Pool,
       totalValue: usd1StrategyValue,
       allocation: usd1Allocation,
-      feeTier: '0.3%',
+      feeTier: '1.0%',
       contract: CONTRACTS.STRATEGY_USD1,
       charmVault: CONTRACTS.CHARM_VAULT_USD1,
       charmLink: 'https://alpha.charm.fi/ethereum/vault/0x22828Dbf15f5FBa2394Ba7Cf8fA9A96BdB444B71',
@@ -104,20 +104,20 @@ export function StrategiesTab({ vaultData, revertData, onToast }: StrategiesTabP
           onClick={() => setSelectedStrategy(1)}
           className={`flex-1 py-3 px-4 text-left transition-all duration-300 ${
             selectedStrategy === 1 
-              ? 'bg-[#1a1b1e] border-t-2 border-t-[#ff5f1f]' 
+              ? 'bg-[#1a1b1e] border-t-2 border-t-[#F2D57C]' 
               : 'bg-[#0a0a0b] hover:bg-[#141517] border-t-2 border-t-transparent'
           }`}
         >
           <div className="flex items-center justify-between">
             <div>
-              <div className="text-[9px] text-[#ff5f1f] font-bold tracking-[0.2em] uppercase">Strategy #1</div>
+              <div className="text-[9px] text-[#F2D57C] font-bold tracking-[0.2em] uppercase">Strategy #1</div>
               <div className={`text-sm font-bold ${selectedStrategy === 1 ? 'text-white' : 'text-[#71717a]'}`}>
                 USD1/WLFI
               </div>
             </div>
             <div className="text-right">
               <div className="text-[10px] text-[#71717a] font-mono">{formatNumber(usd1Allocation, 1)}%</div>
-              <div className={`text-sm font-mono ${selectedStrategy === 1 ? 'text-[#ff5f1f]' : 'text-[#71717a]'}`}>
+              <div className={`text-sm font-mono ${selectedStrategy === 1 ? 'text-[#F2D57C]' : 'text-[#71717a]'}`}>
                 {formatUSD(usd1StrategyValue)}
               </div>
             </div>
@@ -127,20 +127,20 @@ export function StrategiesTab({ vaultData, revertData, onToast }: StrategiesTabP
           onClick={() => setSelectedStrategy(2)}
           className={`flex-1 py-3 px-4 text-left transition-all duration-300 ${
             selectedStrategy === 2 
-              ? 'bg-[#1a1b1e] border-t-2 border-t-[#ff5f1f]' 
+              ? 'bg-[#1a1b1e] border-t-2 border-t-[#F2D57C]' 
               : 'bg-[#0a0a0b] hover:bg-[#141517] border-t-2 border-t-transparent'
           }`}
         >
           <div className="flex items-center justify-between">
             <div>
-              <div className="text-[9px] text-[#ff5f1f] font-bold tracking-[0.2em] uppercase">Strategy #2</div>
+              <div className="text-[9px] text-[#F2D57C] font-bold tracking-[0.2em] uppercase">Strategy #2</div>
               <div className={`text-sm font-bold ${selectedStrategy === 2 ? 'text-white' : 'text-[#71717a]'}`}>
                 WETH/WLFI
               </div>
             </div>
             <div className="text-right">
               <div className="text-[10px] text-[#71717a] font-mono">{formatNumber(wethAllocation, 1)}%</div>
-              <div className={`text-sm font-mono ${selectedStrategy === 2 ? 'text-[#ff5f1f]' : 'text-[#71717a]'}`}>
+              <div className={`text-sm font-mono ${selectedStrategy === 2 ? 'text-[#F2D57C]' : 'text-[#71717a]'}`}>
                 {formatUSD(wethStrategyValue)}
               </div>
             </div>
@@ -181,7 +181,7 @@ export function StrategiesTab({ vaultData, revertData, onToast }: StrategiesTabP
             <div className="absolute bottom-[-3px] left-0 w-full h-[1px] bg-white/10" />
             <div className="flex flex-col sm:flex-row justify-between sm:items-end gap-4">
               <div>
-                <span className="text-[10px] tracking-[0.4em] text-[#ff5f1f] font-black uppercase">
+                <span className="text-[10px] tracking-[0.4em] text-[#F2D57C] font-black uppercase">
                   Strategic Liquidity Vault
                 </span>
                 <h1 className="text-2xl sm:text-3xl font-black text-white tracking-tight mt-1">
@@ -225,7 +225,7 @@ export function StrategiesTab({ vaultData, revertData, onToast }: StrategiesTabP
                 </div>
                 <div className="mt-5 pt-4 border-t border-[#222] flex justify-between items-center">
                   <span className="text-[12px] text-[#71717a]">TOTAL VALUE (USD)</span>
-                  <span className="font-mono font-bold text-[#ff5f1f] text-lg">{formatUSD(currentStrategy.totalValue)}</span>
+                  <span className="font-mono font-bold text-[#F2D57C] text-lg">{formatUSD(currentStrategy.totalValue)}</span>
                 </div>
               </div>
 
@@ -322,7 +322,7 @@ export function StrategiesTab({ vaultData, revertData, onToast }: StrategiesTabP
                   </div>
                   <div className="flex justify-between items-center pb-2 border-b border-[#222]">
                     <span className="text-[11px] text-[#71717a] uppercase">Allocation</span>
-                    <span className="font-mono text-[#ff5f1f] text-[13px]">{formatNumber(currentStrategy.allocation, 1)}%</span>
+                    <span className="font-mono text-[#F2D57C] text-[13px]">{formatNumber(currentStrategy.allocation, 1)}%</span>
                   </div>
                 </div>
               </div>
