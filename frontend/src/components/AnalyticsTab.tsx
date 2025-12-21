@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useMemo } from 'react';
+import { useState, useRef, useMemo } from 'react';
 
 interface AnalyticsTabProps {
   vaultData: any;
@@ -28,6 +28,13 @@ export function AnalyticsTab({ vaultData }: AnalyticsTabProps) {
   const totalValue = totalWLFI + wlfiFromUSD1 + wlfiFromWETH;
   const totalValueUSD = totalValue * wlfiPrice;
 
+  // Strategy breakdown
+  const strategyUSD1Value = Number(vaultData.strategyUSD1) || 0;
+  const strategyWETHValue = (Number(vaultData.strategyWETH) || 0) * wethPrice + 
+                            (Number(vaultData.strategyWLFIinPool) || 0) * wlfiPrice;
+  const vaultReserves = (Number(vaultData.vaultLiquidUSD1) || 0) + 
+                        (Number(vaultData.vaultLiquidWLFI) || 0) * wlfiPrice;
+
   // Asset breakdown
   const assets = useMemo(() => {
     if (totalValue === 0) return [];
@@ -36,19 +43,19 @@ export function AnalyticsTab({ vaultData }: AnalyticsTabProps) {
         name: 'WLFI', 
         amount: totalWLFI, 
         percentage: (totalWLFI / totalValue) * 100,
-        color: '#F59E0B'
+        color: '#F2D57C' // Gold
       },
       { 
         name: 'USD1', 
         amount: wlfiFromUSD1, 
         percentage: (wlfiFromUSD1 / totalValue) * 100,
-        color: '#3B82F6'
+        color: '#a8c0ff' // Crystal blue
       },
       { 
         name: 'WETH', 
         amount: wlfiFromWETH, 
         percentage: (wlfiFromWETH / totalValue) * 100,
-        color: '#6B7280'
+        color: '#5e6d8a' // Slate accent
       }
     ].filter(a => a.percentage > 0);
   }, [totalWLFI, wlfiFromUSD1, wlfiFromWETH, totalValue]);
@@ -114,244 +121,314 @@ export function AnalyticsTab({ vaultData }: AnalyticsTabProps) {
     return n.toFixed(1);
   };
 
+  const formatUSD = (n: number) => {
+    if (isNaN(n) || !isFinite(n)) return '$0';
+    return '$' + n.toLocaleString(undefined, { maximumFractionDigits: 2 });
+  };
+
+  // Basalt design styles
+  const basaltStyles = {
+    panel: "bg-[#0a0a0b] border border-[#2a2a30]",
+    panelHover: "hover:border-[#5e6d8a] transition-all duration-300",
+    label: "text-[0.7rem] text-[#5e6d8a] uppercase tracking-[0.15em] font-medium",
+    mono: "font-mono text-[#5e6d8a]",
+    value: "text-white font-light",
+    gold: "text-[#F2D57C]",
+    crystalBlue: "text-[#a8c0ff]",
+    divider: "border-[#2a2a30]",
+  };
+
   return (
-    <div className="space-y-6 p-4 sm:p-6">
-      {/* Total Value - Neumorphic Card */}
-      <div className="rounded-2xl p-6 sm:p-8
-        bg-gradient-to-br from-white to-gray-50 dark:from-gray-800 dark:to-gray-850
-        shadow-neo-raised dark:shadow-neo-raised-dark
-        border border-gray-200/50 dark:border-gray-700/50">
-        <div className="text-center">
-          <p className="text-xs uppercase tracking-widest text-gray-400 dark:text-gray-500 mb-3">
-            Total Value Locked
-          </p>
-          <div className="flex items-baseline justify-center gap-2">
-            <span className="text-5xl sm:text-6xl font-light text-gray-900 dark:text-white tabular-nums">
+    <div className="p-4 sm:p-6 space-y-[2px] bg-[#2a2a30]">
+      {/* SVG Grain Texture Overlay */}
+      <svg className="fixed inset-0 w-full h-full pointer-events-none opacity-[0.03] z-50">
+        <filter id='noiseFilter'>
+          <feTurbulence type='fractalNoise' baseFrequency='0.6' numOctaves='3' stitchTiles='stitch'/>
+        </filter>
+        <rect width='100%' height='100%' filter='url(#noiseFilter)'/>
+      </svg>
+
+      {/* Main Grid - Chronostructure */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-[2px]">
+        
+        {/* LEFT: Total Value Monolith */}
+        <div className={`${basaltStyles.panel} p-6 relative`}>
+          <div className="border-b border-[#2a2a30] pb-4 mb-6">
+            <span className={basaltStyles.label}>Vault Analytics</span>
+            <div className="flex items-center gap-2 mt-2">
+              <div className="w-2 h-2 rounded-full bg-[#00ff80] animate-pulse" />
+              <span className="text-[0.65rem] text-[#00ff80] uppercase tracking-wider">Live Data</span>
+            </div>
+          </div>
+
+          <div className="mb-8">
+            <p className={basaltStyles.label}>Total Value Locked</p>
+            <h2 className="text-4xl text-white font-light mt-2 tabular-nums">
               {formatNumber(totalValue)}
-            </span>
-            <span className="text-xl text-gray-400 dark:text-gray-500">WLFI</span>
+            </h2>
+            <p className={`text-lg mt-1 ${basaltStyles.gold}`}>
+              WLFI Equivalent
+            </p>
           </div>
-          <p className="text-lg text-gray-500 dark:text-gray-400 mt-2">
-            ${formatNumber(totalValueUSD)} USD
-          </p>
-        </div>
-      </div>
 
-      {/* Asset Breakdown - Neumorphic Pills */}
-      <div className="flex justify-center gap-4 sm:gap-6 flex-wrap">
-        {assets.map((asset, i) => (
-          <div key={i} className="text-center px-5 py-3 rounded-xl
-            bg-gradient-to-br from-white to-gray-50 dark:from-gray-800 dark:to-gray-850
-            shadow-neo-raised dark:shadow-neo-raised-dark
-            border border-gray-200/50 dark:border-gray-700/50">
-            <div className="flex items-center justify-center gap-2 mb-1">
+          <div className="mb-8">
+            <p className={basaltStyles.label}>USD Value</p>
+            <h2 className="text-3xl text-white font-light mt-2 tabular-nums">
+              {formatUSD(totalValueUSD)}
+            </h2>
+          </div>
+
+          {/* Chrono Bar */}
+          <div className="mt-auto">
+            <div className="flex justify-between text-[0.65rem] mb-2">
+              <span className={basaltStyles.label}>Strategy Allocation</span>
+              <span className={basaltStyles.mono}>{formatPercent(((strategyUSD1Value + strategyWETHValue) / (totalValueUSD || 1)) * 100)}%</span>
+            </div>
+            <div className="h-1 bg-[#2a2a30] w-full">
               <div 
-                className="w-2 h-2 rounded-full" 
-                style={{ backgroundColor: asset.color }}
-              />
-              <span className="text-xs font-medium text-gray-500 dark:text-gray-400">
-                {asset.name}
-              </span>
-            </div>
-            <p className="text-2xl font-light text-gray-900 dark:text-white tabular-nums">
-              {formatPercent(asset.percentage)}%
-            </p>
-          </div>
-        ))}
-      </div>
-
-      {/* Chart - Premium Design */}
-      <div className="mt-6 rounded-2xl overflow-hidden
-        bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900
-        shadow-neo-raised dark:shadow-neo-raised-dark
-        border border-slate-700/50">
-        
-        {/* Chart Header */}
-        <div className="px-5 sm:px-6 pt-5 sm:pt-6 pb-4 flex items-center justify-between">
-          <div>
-            <span className="text-xs font-medium text-slate-400 uppercase tracking-wider">
-              Performance
-            </span>
-            <p className="text-2xl font-light text-white mt-1 tabular-nums">
-              {formatNumber(totalValue)} <span className="text-sm text-slate-500">WLFI</span>
-            </p>
-          </div>
-          
-          {hoveredIndex !== null && chartData[hoveredIndex] ? (
-            <div className="text-right">
-              <p className="text-xs text-slate-400">
-                {chartData[hoveredIndex].date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-              </p>
-              <p className="text-lg font-medium text-white tabular-nums">
-                {formatNumber(chartData[hoveredIndex].value)}
-              </p>
-            </div>
-          ) : (
-            <div className="text-right">
-              <p className="text-xs text-slate-400">Last 30 days</p>
-              <p className="text-sm text-emerald-400 font-medium">+{formatPercent(((chartData[chartData.length - 1]?.value || 0) / (chartData[0]?.value || 1) - 1) * 100)}%</p>
-            </div>
-          )}
-        </div>
-        
-        {/* Chart Area */}
-        <div 
-          ref={chartRef}
-          className="relative h-40 sm:h-48 cursor-crosshair"
-          onMouseMove={(e) => {
-            if (!chartRef.current) return;
-            const rect = chartRef.current.getBoundingClientRect();
-            const x = (e.clientX - rect.left) / rect.width;
-            const index = Math.round(x * (chartData.length - 1));
-            setHoveredIndex(Math.max(0, Math.min(chartData.length - 1, index)));
-          }}
-          onMouseLeave={() => setHoveredIndex(null)}
-        >
-          {chartData.length > 0 ? (
-            <svg 
-              viewBox="0 0 100 100" 
-              preserveAspectRatio="none" 
-              className="w-full h-full"
-            >
-              <defs>
-                {/* Gradient fill */}
-                <linearGradient id="chartFill" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="#10B981" stopOpacity="0.3" />
-                  <stop offset="50%" stopColor="#10B981" stopOpacity="0.1" />
-                  <stop offset="100%" stopColor="#10B981" stopOpacity="0" />
-                </linearGradient>
-                
-                {/* Glow effect */}
-                <filter id="lineGlow" x="-50%" y="-50%" width="200%" height="200%">
-                  <feGaussianBlur stdDeviation="2" result="blur" />
-                  <feMerge>
-                    <feMergeNode in="blur" />
-                    <feMergeNode in="SourceGraphic" />
-                  </feMerge>
-                </filter>
-              </defs>
-              
-              {/* Horizontal grid lines */}
-              {[20, 40, 60, 80].map((y) => (
-                <line
-                  key={y}
-                  x1="0" y1={y} x2="100" y2={y}
-                  stroke="#334155"
-                  strokeWidth="0.15"
-                  vectorEffect="non-scaling-stroke"
-                />
-              ))}
-              
-              {/* Area fill */}
-              <path 
-                d={`${chartPath} L 100,100 L 0,100 Z`}
-                fill="url(#chartFill)"
-              />
-              
-              {/* Main line with glow */}
-              <path 
-                d={chartPath}
-                fill="none"
-                stroke="#10B981"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                vectorEffect="non-scaling-stroke"
-                filter="url(#lineGlow)"
-              />
-              
-              {/* Hover elements */}
-              {hoveredIndex !== null && chartData[hoveredIndex] && (() => {
-                const x = (hoveredIndex / (chartData.length - 1)) * 100;
-                const y = 100 - ((chartData[hoveredIndex].value - chartStats.min) / chartStats.range) * 80 - 10;
-                return (
-                  <>
-                    {/* Vertical line */}
-                    <line
-                      x1={x} y1="0" x2={x} y2="100"
-                      stroke="#10B981"
-                      strokeWidth="1"
-                      strokeOpacity="0.3"
-                      vectorEffect="non-scaling-stroke"
-                    />
-                    
-                    {/* Horizontal line to value */}
-                    <line
-                      x1="0" y1={y} x2={x} y2={y}
-                      stroke="#10B981"
-                      strokeWidth="1"
-                      strokeOpacity="0.2"
-                      strokeDasharray="2,2"
-                      vectorEffect="non-scaling-stroke"
-                    />
-                    
-                    {/* Outer glow ring */}
-                    <circle cx={x} cy={y} r="8" fill="#10B981" fillOpacity="0.15" />
-                    <circle cx={x} cy={y} r="5" fill="#10B981" fillOpacity="0.3" />
-                    
-                    {/* Center dot */}
-                    <circle cx={x} cy={y} r="3" fill="#10B981" />
-                    <circle cx={x} cy={y} r="1.5" fill="white" />
-                  </>
-                );
-              })()}
-            </svg>
-          ) : (
-            <div className="h-full flex items-center justify-center text-slate-500">
-              No data available
-            </div>
-          )}
-        </div>
-        
-        {/* X-axis labels */}
-        <div className="px-5 sm:px-6 pb-4 pt-2 flex justify-between text-xs text-slate-500">
-          <span>30 days ago</span>
-          <span>15 days</span>
-          <span>Today</span>
-        </div>
-      </div>
-
-      {/* Composition Bar - Neumorphic */}
-      {assets.length > 0 && (
-        <div className="rounded-2xl p-5 sm:p-6
-          bg-gradient-to-br from-white to-gray-50 dark:from-gray-800 dark:to-gray-850
-          shadow-neo-raised dark:shadow-neo-raised-dark
-          border border-gray-200/50 dark:border-gray-700/50">
-          <p className="text-xs font-medium text-gray-400 dark:text-gray-500 uppercase tracking-wider mb-4">
-            Asset Composition
-          </p>
-          <div className="h-3 rounded-full overflow-hidden flex 
-            bg-gray-100 dark:bg-gray-700
-            shadow-neo-pressed dark:shadow-neo-pressed-dark">
-            {assets.map((asset, i) => (
-              <div
-                key={i}
-                className="h-full transition-all duration-500 first:rounded-l-full last:rounded-r-full"
+                className="h-full bg-[#F2D57C]" 
                 style={{ 
-                  width: `${asset.percentage}%`,
-                  backgroundColor: asset.color
+                  width: `${Math.min(100, ((strategyUSD1Value + strategyWETHValue) / (totalValueUSD || 1)) * 100)}%`,
+                  boxShadow: '0 0 15px rgba(242, 213, 124, 0.4)'
                 }}
               />
-            ))}
-          </div>
-          <div className="flex justify-between mt-4 flex-wrap gap-2">
-            {assets.map((asset, i) => (
-              <div key={i} className="flex items-center gap-2">
-                <div 
-                  className="w-2.5 h-2.5 rounded-full" 
-                  style={{ backgroundColor: asset.color }}
-                />
-                <span className="text-sm text-gray-600 dark:text-gray-300">
-                  {asset.name}
-                </span>
-                <span className="text-sm font-medium text-gray-900 dark:text-white tabular-nums">
-                  {formatNumber(asset.amount)}
-                </span>
-              </div>
-            ))}
+            </div>
           </div>
         </div>
-      )}
+
+        {/* CENTER: Performance Chart */}
+        <div className={`${basaltStyles.panel} p-6 lg:col-span-2`}>
+          <div className="flex items-center justify-between mb-6">
+            <div>
+              <span className={basaltStyles.label}>Performance // 30D</span>
+              <p className="text-2xl text-white font-light mt-2 tabular-nums">
+                {formatNumber(totalValue)} <span className="text-sm text-[#5e6d8a]">WLFI</span>
+              </p>
+            </div>
+            
+            {hoveredIndex !== null && chartData[hoveredIndex] ? (
+              <div className="text-right">
+                <p className={basaltStyles.mono} style={{ fontSize: '0.7rem' }}>
+                  {chartData[hoveredIndex].date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                </p>
+                <p className="text-xl text-white font-light tabular-nums">
+                  {formatNumber(chartData[hoveredIndex].value)}
+                </p>
+              </div>
+            ) : (
+              <div className="text-right">
+                <p className={basaltStyles.mono} style={{ fontSize: '0.7rem' }}>30 Day Change</p>
+                <p className={`text-lg font-medium ${basaltStyles.gold}`}>
+                  +{formatPercent(((chartData[chartData.length - 1]?.value || 0) / (chartData[0]?.value || 1) - 1) * 100)}%
+                </p>
+              </div>
+            )}
+          </div>
+          
+          {/* Chart Area */}
+          <div 
+            ref={chartRef}
+            className="relative h-48 cursor-crosshair"
+            onMouseMove={(e) => {
+              if (!chartRef.current) return;
+              const rect = chartRef.current.getBoundingClientRect();
+              const x = (e.clientX - rect.left) / rect.width;
+              const index = Math.round(x * (chartData.length - 1));
+              setHoveredIndex(Math.max(0, Math.min(chartData.length - 1, index)));
+            }}
+            onMouseLeave={() => setHoveredIndex(null)}
+          >
+            {chartData.length > 0 ? (
+              <svg 
+                viewBox="0 0 100 100" 
+                preserveAspectRatio="none" 
+                className="w-full h-full"
+              >
+                <defs>
+                  <linearGradient id="basaltChartFill" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="#F2D57C" stopOpacity="0.2" />
+                    <stop offset="50%" stopColor="#F2D57C" stopOpacity="0.05" />
+                    <stop offset="100%" stopColor="#F2D57C" stopOpacity="0" />
+                  </linearGradient>
+                  
+                  <filter id="basaltGlow" x="-50%" y="-50%" width="200%" height="200%">
+                    <feGaussianBlur stdDeviation="2" result="blur" />
+                    <feMerge>
+                      <feMergeNode in="blur" />
+                      <feMergeNode in="SourceGraphic" />
+                    </feMerge>
+                  </filter>
+                </defs>
+                
+                {/* Grid lines */}
+                {[20, 40, 60, 80].map((y) => (
+                  <line
+                    key={y}
+                    x1="0" y1={y} x2="100" y2={y}
+                    stroke="#2a2a30"
+                    strokeWidth="0.5"
+                    vectorEffect="non-scaling-stroke"
+                  />
+                ))}
+                
+                {/* Area fill */}
+                <path 
+                  d={`${chartPath} L 100,100 L 0,100 Z`}
+                  fill="url(#basaltChartFill)"
+                />
+                
+                {/* Main line */}
+                <path 
+                  d={chartPath}
+                  fill="none"
+                  stroke="#F2D57C"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  vectorEffect="non-scaling-stroke"
+                  filter="url(#basaltGlow)"
+                />
+                
+                {/* Hover elements */}
+                {hoveredIndex !== null && chartData[hoveredIndex] && (() => {
+                  const x = (hoveredIndex / (chartData.length - 1)) * 100;
+                  const y = 100 - ((chartData[hoveredIndex].value - chartStats.min) / chartStats.range) * 80 - 10;
+                  return (
+                    <>
+                      <line
+                        x1={x} y1="0" x2={x} y2="100"
+                        stroke="#F2D57C"
+                        strokeWidth="1"
+                        strokeOpacity="0.3"
+                        vectorEffect="non-scaling-stroke"
+                      />
+                      <circle cx={x} cy={y} r="6" fill="#F2D57C" fillOpacity="0.2" />
+                      <circle cx={x} cy={y} r="3" fill="#F2D57C" />
+                      <circle cx={x} cy={y} r="1.5" fill="#0a0a0b" />
+                    </>
+                  );
+                })()}
+              </svg>
+            ) : (
+              <div className="h-full flex items-center justify-center text-[#5e6d8a]">
+                No data available
+              </div>
+            )}
+          </div>
+          
+          {/* X-axis */}
+          <div className="flex justify-between mt-3 text-[0.65rem] text-[#5e6d8a]">
+            <span>30D AGO</span>
+            <span>15D</span>
+            <span>NOW</span>
+          </div>
+        </div>
+      </div>
+
+      {/* Strategy Breakdown Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-[2px]">
+        {/* USD1/WLFI Strategy */}
+        <div className={`${basaltStyles.panel} ${basaltStyles.panelHover} p-5`}>
+          <div className="flex items-center justify-between mb-4">
+            <span className={basaltStyles.label}>USD1/WLFI Strategy</span>
+            <span className="text-[0.65rem] px-2 py-0.5 bg-[#1c1c21] text-[#5e6d8a] font-mono">50%</span>
+          </div>
+          <div className="text-2xl text-white font-light tabular-nums">
+            {formatUSD(strategyUSD1Value)}
+          </div>
+          <a 
+            href="https://alpha.charm.fi/ethereum/vault/0x22828Dbf15f5FBa2394Ba7Cf8fA9A96BdB444B71" 
+            target="_blank" 
+            rel="noopener noreferrer"
+            className="text-[0.65rem] text-[#5e6d8a] hover:text-[#F2D57C] transition-colors mt-2 inline-block"
+          >
+            CHARM_ALPHA ↗
+          </a>
+        </div>
+
+        {/* WETH/WLFI Strategy */}
+        <div className={`${basaltStyles.panel} ${basaltStyles.panelHover} p-5`}>
+          <div className="flex items-center justify-between mb-4">
+            <span className={basaltStyles.label}>WETH/WLFI Strategy</span>
+            <span className="text-[0.65rem] px-2 py-0.5 bg-[#1c1c21] text-[#5e6d8a] font-mono">50%</span>
+          </div>
+          <div className="text-2xl text-white font-light tabular-nums">
+            {formatUSD(strategyWETHValue)}
+          </div>
+          <a 
+            href="https://alpha.charm.fi/ethereum/vault/0x3314e248F3F752Cd16939773D83bEb3a362F0AEF" 
+            target="_blank" 
+            rel="noopener noreferrer"
+            className="text-[0.65rem] text-[#5e6d8a] hover:text-[#F2D57C] transition-colors mt-2 inline-block"
+          >
+            CHARM_ALPHA ↗
+          </a>
+        </div>
+
+        {/* Vault Reserves */}
+        <div className={`${basaltStyles.panel} ${basaltStyles.panelHover} p-5`}>
+          <div className="flex items-center justify-between mb-4">
+            <span className={basaltStyles.label}>Vault Reserves</span>
+            <span className="text-[0.65rem] px-2 py-0.5 bg-[#1c1c21] text-[#00ff80] font-mono">LIQUID</span>
+          </div>
+          <div className="text-2xl text-white font-light tabular-nums">
+            {formatUSD(vaultReserves)}
+          </div>
+          <span className="text-[0.65rem] text-[#5e6d8a] mt-2 inline-block">
+            AVAILABLE_NOW
+          </span>
+        </div>
+      </div>
+
+      {/* Asset Composition */}
+      <div className={`${basaltStyles.panel} p-5`}>
+        <p className={`${basaltStyles.label} mb-4`}>Asset Composition</p>
+        
+        {/* Composition Bar */}
+        <div className="h-2 bg-[#1c1c21] w-full flex overflow-hidden">
+          {assets.map((asset, i) => (
+            <div
+              key={i}
+              className="h-full transition-all duration-500"
+              style={{ 
+                width: `${asset.percentage}%`,
+                backgroundColor: asset.color
+              }}
+            />
+          ))}
+        </div>
+        
+        {/* Legend */}
+        <div className="flex flex-wrap gap-6 mt-4">
+          {assets.map((asset, i) => (
+            <div key={i} className="flex items-center gap-3">
+              <div 
+                className="w-3 h-3" 
+                style={{ backgroundColor: asset.color }}
+              />
+              <div>
+                <span className="text-sm text-white font-light">{asset.name}</span>
+                <span className="text-sm text-[#5e6d8a] ml-2 font-mono">
+                  {formatPercent(asset.percentage)}%
+                </span>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Oracle Status */}
+      <div className={`${basaltStyles.panel} p-4 flex items-center justify-between`}>
+        <div className="flex items-center gap-3">
+          <div className="w-2 h-2 rounded-full bg-[#F2D57C] animate-pulse" />
+          <span className="text-[0.65rem] text-[#5e6d8a] font-mono uppercase">
+            Oracle: Uniswap V3 TWAP // 1800s Interval
+          </span>
+        </div>
+        <span className="text-[0.65rem] text-[#5e6d8a] font-mono">
+          WLFI: ${wlfiPrice.toFixed(4)} // ETH: ${formatNumber(wethPrice)}
+        </span>
+      </div>
     </div>
   );
 }

@@ -1,0 +1,494 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EagleOVault | Sintered Basalt Interface</title>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;700&family=JetBrains+Mono:wght@300;500&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --basalt-900: #0a0a0b;
+            --basalt-800: #141417;
+            --basalt-700: #1c1c21;
+            --basalt-600: #2a2a30;
+            --magma-glow: rgba(255, 77, 0, 0.15);
+            --crystal-blue: #a8c0ff;
+            --slate-300: #cbd5e0;
+            --accent: #5e6d8a;
+            --gold: #F2D57C;
+            --transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background-color: var(--basalt-900);
+            color: var(--slate-300);
+            font-family: 'Space Grotesk', sans-serif;
+            line-height: 1.6;
+            overflow-x: hidden;
+            min-height: 100vh;
+        }
+
+        /* SVG Grain Texture */
+        .basalt-texture {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            opacity: 0.04;
+            z-index: 1000;
+        }
+
+        /* Layout Structure */
+        .chronostructure {
+            display: grid;
+            grid-template-columns: 350px 1fr 300px;
+            gap: 2px;
+            background: var(--basalt-600);
+            min-height: 100vh;
+            border: 1px solid var(--basalt-600);
+        }
+
+        .panel {
+            background: var(--basalt-900);
+            padding: 2.5rem;
+            position: relative;
+            overflow-y: auto;
+        }
+
+        /* Typography */
+        h1, h2, h3 {
+            text-transform: uppercase;
+            letter-spacing: 0.15em;
+            font-weight: 500;
+        }
+
+        .mono {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.85rem;
+            color: var(--accent);
+        }
+
+        /* Header / Logo Section */
+        .vault-identity {
+            border-bottom: 1px solid var(--basalt-600);
+            padding-bottom: 2rem;
+            margin-bottom: 2rem;
+        }
+
+        .vault-title {
+            font-size: 1.8rem;
+            color: #fff;
+            margin-bottom: 0.5rem;
+        }
+
+        .vault-title span {
+            color: var(--gold);
+        }
+
+        .status-tag {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 0.7rem;
+            padding: 0.25rem 0.75rem;
+            background: rgba(0, 255, 128, 0.05);
+            color: #00ff80;
+            border: 1px solid rgba(0, 255, 128, 0.2);
+            border-radius: 2px;
+        }
+
+        /* Hero Statistics */
+        .metric-monolith {
+            margin-bottom: 3rem;
+        }
+
+        .metric-label {
+            font-size: 0.75rem;
+            color: var(--accent);
+            text-transform: uppercase;
+            margin-bottom: 0.5rem;
+        }
+
+        .metric-value {
+            font-size: 2.4rem;
+            color: #fff;
+            font-weight: 300;
+        }
+
+        .metric-sub {
+            font-size: 0.9rem;
+            color: var(--gold);
+            margin-top: 0.25rem;
+        }
+
+        /* Action Blocks */
+        .action-container {
+            background: var(--basalt-800);
+            border: 1px solid var(--basalt-700);
+            padding: 1.5rem;
+            margin-bottom: 1rem;
+            transition: var(--transition);
+        }
+
+        .action-container:hover {
+            border-color: var(--accent);
+            background: var(--basalt-700);
+        }
+
+        input {
+            width: 100%;
+            background: transparent;
+            border: none;
+            border-bottom: 1px solid var(--basalt-600);
+            color: #fff;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 1.2rem;
+            padding: 0.75rem 0;
+            margin-bottom: 1rem;
+            outline: none;
+            transition: var(--transition);
+        }
+
+        input:focus {
+            border-bottom-color: var(--gold);
+        }
+
+        .dual-deposit-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+        }
+
+        .btn-primary {
+            width: 100%;
+            padding: 1rem;
+            background: var(--basalt-600);
+            border: 1px solid transparent;
+            color: #fff;
+            text-transform: uppercase;
+            letter-spacing: 0.1rem;
+            cursor: pointer;
+            transition: var(--transition);
+            font-weight: 600;
+        }
+
+        .btn-primary:hover {
+            background: var(--gold);
+            color: var(--basalt-900);
+        }
+
+        /* Chrono Elements (Progress/Time) */
+        .chrono-bar-container {
+            margin-top: 2rem;
+        }
+
+        .chrono-label-row {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.7rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .chrono-bar-bg {
+            height: 4px;
+            background: var(--basalt-600);
+            width: 100%;
+            position: relative;
+        }
+
+        .chrono-bar-fill {
+            height: 100%;
+            background: var(--gold);
+            width: 71%;
+            box-shadow: 0 0 15px rgba(242, 213, 124, 0.4);
+        }
+
+        /* Strategy Array */
+        .strategy-list {
+            display: flex;
+            flex-direction: column;
+            gap: 1px;
+            background: var(--basalt-600);
+        }
+
+        .strategy-item {
+            background: var(--basalt-900);
+            padding: 1.25rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .strategy-info h4 {
+            font-size: 0.9rem;
+            color: #fff;
+        }
+
+        .strategy-weight {
+            font-family: 'JetBrains Mono', monospace;
+            background: var(--basalt-800);
+            padding: 0.2rem 0.5rem;
+            font-size: 0.75rem;
+        }
+
+        .strategy-value {
+            font-family: 'JetBrains Mono', monospace;
+            color: var(--gold);
+            font-size: 0.85rem;
+        }
+
+        /* Oracle Pulse */
+        .oracle-pulse {
+            position: absolute;
+            bottom: 2.5rem;
+            left: 2.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .pulse-dot {
+            width: 8px;
+            height: 8px;
+            background: var(--gold);
+            border-radius: 50%;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.5); opacity: 0.4; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+
+        /* Contract Links */
+        .contract-link {
+            color: var(--accent);
+            text-decoration: none;
+            transition: var(--transition);
+        }
+
+        .contract-link:hover {
+            color: var(--gold);
+        }
+
+        /* Scrollbar */
+        ::-webkit-scrollbar { width: 4px; }
+        ::-webkit-scrollbar-track { background: var(--basalt-900); }
+        ::-webkit-scrollbar-thumb { background: var(--basalt-600); }
+
+        @media (max-width: 1200px) {
+            .chronostructure {
+                grid-template-columns: 1fr;
+            }
+            .panel { min-height: auto; }
+        }
+
+        /* Loading state */
+        .loading {
+            opacity: 0.5;
+            animation: blink 1s infinite;
+        }
+
+        @keyframes blink {
+            0%, 100% { opacity: 0.5; }
+            50% { opacity: 1; }
+        }
+    </style>
+</head>
+<body>
+
+    <svg class="basalt-texture">
+        <filter id='noiseFilter'>
+            <feTurbulence type='fractalNoise' baseFrequency='0.6' numOctaves='3' stitchTiles='stitch'/>
+        </filter>
+        <rect width='100%' height='100%' filter='url(#noiseFilter)'/>
+    </svg>
+
+    <main class="chronostructure">
+        <!-- LEFT PANEL: Navigation & Global Stats -->
+        <section class="panel">
+            <div class="vault-identity">
+                <h1 class="vault-title"><span>47</span>EAGLE</h1>
+                <p class="mono">ERC-4626 VAULT // v2.0</p>
+                <div class="status-tag">
+                    <span class="pulse-dot"></span>
+                    MAINNET_OPERATIONAL
+                </div>
+            </div>
+
+            <div class="metric-monolith">
+                <p class="metric-label">Total Vault Value (USD)</p>
+                <h2 class="metric-value" id="totalValue">$1,468.00</h2>
+                <p class="metric-sub">Strategies + Reserves</p>
+            </div>
+
+            <div class="metric-monolith">
+                <p class="metric-label">Vault Reserves</p>
+                <h2 class="metric-value" id="vaultReserves">$329.15</h2>
+                <p class="metric-sub">USD1 Available</p>
+            </div>
+
+            <div class="chrono-bar-container">
+                <div class="chrono-label-row">
+                    <span>STRATEGY ALLOCATION</span>
+                    <span class="mono">71%</span>
+                </div>
+                <div class="chrono-bar-bg">
+                    <div class="chrono-bar-fill"></div>
+                </div>
+                <div class="chrono-label-row" style="margin-top: 0.5rem; opacity: 0.5;">
+                    <span>DEPLOYED TO CHARM</span>
+                    <span class="mono">$1,139</span>
+                </div>
+            </div>
+
+            <div class="oracle-pulse">
+                <div class="pulse-dot"></div>
+                <span class="mono" style="font-size: 0.7rem;">TWAP: UNISWAP_V3</span>
+            </div>
+        </section>
+
+        <!-- CENTER PANEL: Core Actions -->
+        <section class="panel" style="background: var(--basalt-800);">
+            <h3 style="margin-bottom: 2rem;">Vault Transactions</h3>
+
+            <div class="action-container">
+                <p class="metric-label">Dual Deposit (Synchronous Swap)</p>
+                <div class="dual-deposit-grid">
+                    <div>
+                        <span class="mono">WLFI AMOUNT</span>
+                        <input type="number" placeholder="0.00" id="wlfiInput">
+                    </div>
+                    <div>
+                        <span class="mono">USD1 AMOUNT</span>
+                        <input type="number" placeholder="0.00" id="usd1Input">
+                    </div>
+                </div>
+                <p class="mono" style="margin-bottom: 1.5rem; font-size: 0.7rem;">
+                    *USD1 will be converted to WLFI at 0.5% slippage tolerance.
+                </p>
+                <button class="btn-primary" onclick="openApp()">Launch App Interface</button>
+            </div>
+
+            <div style="margin-top: 3rem;">
+                <h3 style="margin-bottom: 1rem; font-size: 0.9rem;">Active Strategies</h3>
+                <div class="strategy-list">
+                    <div class="strategy-item">
+                        <div class="strategy-info">
+                            <h4>USD1/WLFI Charm Alpha</h4>
+                            <a href="https://etherscan.io/address/0x47B2659747d6A7E00c8251c3C3f7e92625a8cf6f" target="_blank" class="mono contract-link">0x47B2...cf6f</a>
+                        </div>
+                        <div style="text-align: right;">
+                            <span class="strategy-weight">50.00%</span>
+                            <div class="strategy-value">$806.05</div>
+                        </div>
+                    </div>
+                    <div class="strategy-item">
+                        <div class="strategy-info">
+                            <h4>WETH/WLFI Charm Alpha V2</h4>
+                            <a href="https://etherscan.io/address/0xCe1884B2dC7A2980d401C9C568CD59B2Eaa07338" target="_blank" class="mono contract-link">0xCe18...7338</a>
+                        </div>
+                        <div style="text-align: right;">
+                            <span class="strategy-weight">50.00%</span>
+                            <div class="strategy-value">$333.13</div>
+                        </div>
+                    </div>
+                    <div class="strategy-item">
+                        <div class="strategy-info">
+                            <h4>Vault Reserves</h4>
+                            <span class="mono">IDLE_USD1</span>
+                        </div>
+                        <div style="text-align: right;">
+                            <span class="strategy-weight">LIQUID</span>
+                            <div class="strategy-value">$329.15</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- RIGHT PANEL: Parameters & Controls -->
+        <section class="panel">
+            <h3 style="margin-bottom: 2rem; font-size: 0.9rem;">Contracts</h3>
+
+            <div style="margin-bottom: 2rem;">
+                <div class="metric-label">EagleOVault</div>
+                <a href="https://etherscan.io/address/0x47b3ef629D9cB8DFcF8A6c61058338f4e99d7953" target="_blank" class="mono contract-link" style="color: #fff; font-size: 0.9rem;">0x47b3...7953</a>
+            </div>
+
+            <div style="margin-bottom: 2rem;">
+                <div class="metric-label">EagleShareOFT</div>
+                <a href="https://etherscan.io/address/0x474eD38C256A7FA0f3B8c48496CE1102ab0eA91E" target="_blank" class="mono contract-link" style="color: #fff; font-size: 0.9rem;">0x474e...A91E</a>
+            </div>
+
+            <div style="margin-bottom: 2rem;">
+                <div class="metric-label">Vault Wrapper</div>
+                <a href="https://etherscan.io/address/0x47dAc5063c526dBc6f157093DD1D62d9DE8891c5" target="_blank" class="mono contract-link" style="color: #fff; font-size: 0.9rem;">0x47dA...91c5</a>
+            </div>
+
+            <div style="margin-top: 3rem; border-top: 1px solid var(--basalt-600); padding-top: 2rem;">
+                <h3 style="font-size: 0.8rem; margin-bottom: 1rem;">Charm Vaults</h3>
+                
+                <div style="margin-bottom: 1.5rem;">
+                    <div class="metric-label">USD1/WLFI Alpha Vault</div>
+                    <a href="https://alpha.charm.fi/ethereum/vault/0x22828Dbf15f5FBa2394Ba7Cf8fA9A96BdB444B71" target="_blank" class="mono contract-link" style="font-size: 0.8rem;">View on Charm ↗</a>
+                </div>
+
+                <div style="margin-bottom: 1.5rem;">
+                    <div class="metric-label">WETH/WLFI Alpha Vault</div>
+                    <a href="https://alpha.charm.fi/ethereum/vault/0x3314e248F3F752Cd16939773D83bEb3a362F0AEF" target="_blank" class="mono contract-link" style="font-size: 0.8rem;">View on Charm ↗</a>
+                </div>
+            </div>
+
+            <div style="margin-top: 2rem; opacity: 0.3;">
+                <p class="mono" style="font-size: 0.6rem;">
+                    DEPLOYED_BY: 47EAGLE<br>
+                    NETWORK: ETHEREUM MAINNET<br>
+                    TWAP_INTERVAL: 1800s
+                </p>
+            </div>
+        </section>
+    </main>
+
+    <script>
+        // Launch main app
+        function openApp() {
+            window.location.href = '/';
+        }
+
+        // Subtle interaction: input focus effects
+        const inputs = document.querySelectorAll('input');
+        inputs.forEach(input => {
+            input.addEventListener('focus', () => {
+                input.parentElement.style.transition = '0.3s';
+                input.parentElement.style.borderLeft = '2px solid var(--gold)';
+                input.parentElement.style.paddingLeft = '1rem';
+            });
+            input.addEventListener('blur', () => {
+                input.parentElement.style.borderLeft = '0px solid transparent';
+                input.parentElement.style.paddingLeft = '0';
+            });
+        });
+
+        // Simulating metric update
+        setInterval(() => {
+            const metrics = document.querySelectorAll('.metric-value');
+            metrics.forEach(m => {
+                if(Math.random() > 0.8) {
+                    m.style.opacity = '0.5';
+                    setTimeout(() => m.style.opacity = '1', 50);
+                }
+            });
+        }, 3000);
+    </script>
+</body>
+</html>
