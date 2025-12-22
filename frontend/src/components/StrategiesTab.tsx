@@ -48,11 +48,12 @@ export function StrategiesTab({ vaultData, revertData, onToast }: StrategiesTabP
     return addr.slice(0, 6) + '...' + addr.slice(-4);
   };
 
-  // Strategy configs
+  // Strategy configs - V2 Strategies
   const strategies = {
     1: {
       name: 'CHARM_V2.USD1_WLFI',
-      fullName: 'Charm USD1/WLFI Alpha Vault',
+      fullName: 'Charm USD1/WLFI Alpha Vault V2',
+      version: 'V2',
       token0: 'USD1',
       token1: 'WLFI',
       token0Amount: usd1InPool,
@@ -60,7 +61,7 @@ export function StrategiesTab({ vaultData, revertData, onToast }: StrategiesTabP
       totalValue: usd1StrategyValue,
       allocation: usd1Allocation,
       feeTier: '1.0%',
-      contract: CONTRACTS.STRATEGY_USD1,
+      contract: CONTRACTS.STRATEGY_USD1, // V2: 0xa7F6F4b1134c0aD4646AB18240a19f01e08Ba90E
       charmVault: CONTRACTS.CHARM_VAULT_USD1,
       charmLink: 'https://alpha.charm.fi/ethereum/vault/0x22828Dbf15f5FBa2394Ba7Cf8fA9A96BdB444B71',
       poolPrice: wlfiPrice > 0 ? (1 / wlfiPrice).toFixed(4) : '0',
@@ -69,7 +70,8 @@ export function StrategiesTab({ vaultData, revertData, onToast }: StrategiesTabP
     },
     2: {
       name: 'CHARM_V2.WETH_WLFI',
-      fullName: 'Charm WETH/WLFI Alpha Vault',
+      fullName: 'Charm WETH/WLFI Alpha Vault V2',
+      version: 'V2',
       token0: 'WETH',
       token1: 'WLFI',
       token0Amount: wethInPool,
@@ -77,7 +79,7 @@ export function StrategiesTab({ vaultData, revertData, onToast }: StrategiesTabP
       totalValue: wethStrategyValue,
       allocation: wethAllocation,
       feeTier: '1.0%',
-      contract: CONTRACTS.STRATEGY_WETH,
+      contract: CONTRACTS.STRATEGY_WETH, // V2: 0xCe1884B2dC7A2980d401C9C568CD59B2Eaa07338
       charmVault: CONTRACTS.CHARM_VAULT_WETH,
       charmLink: 'https://alpha.charm.fi/ethereum/vault/0x3314e248F3F752Cd16939773D83bEb3a362F0AEF',
       poolPrice: (wethPrice / wlfiPrice).toFixed(2),
@@ -186,9 +188,14 @@ export function StrategiesTab({ vaultData, revertData, onToast }: StrategiesTabP
             <div className="absolute bottom-[-3px] left-0 w-full h-[1px] bg-white/10" />
             <div className="flex flex-col sm:flex-row justify-between sm:items-end gap-4">
               <div>
-                <span className="text-[10px] tracking-[0.4em] text-[#F2D57C] font-black uppercase">
-                  Strategic Liquidity Vault
-                </span>
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] tracking-[0.4em] text-[#F2D57C] font-black uppercase">
+                    Strategic Liquidity Vault
+                  </span>
+                  <span className="text-[9px] px-1.5 py-0.5 bg-[#F2D57C]/20 text-[#F2D57C] font-bold rounded border border-[#F2D57C]/30">
+                    V2
+                  </span>
+                </div>
                 <h1 className="text-2xl sm:text-3xl font-black text-white tracking-tight mt-1">
                   {currentStrategy.name}
                 </h1>
@@ -397,3 +404,4 @@ export function StrategiesTab({ vaultData, revertData, onToast }: StrategiesTabP
     </div>
   );
 }
+
