@@ -2,7 +2,7 @@ import { Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { 
   Rocket, ArrowRight, TrendingDown, TrendingUp, 
-  Sparkles, Shield, Zap, Users, ChevronRight,
+  Shield, Zap, Users, ChevronRight,
   Coins, Gift, Lock
 } from 'lucide-react'
 import { JackpotSunburst } from '../components/JackpotSunburst'
@@ -238,9 +238,11 @@ export function Home() {
         <div className="flex flex-col sm:flex-row items-center justify-between gap-6">
           <div className="flex items-center gap-4">
             <div className="flex -space-x-2">
-              <div className="w-10 h-10 rounded-full bg-brand-500 flex items-center justify-center border-2 border-slate-900">
-                <Sparkles className="w-5 h-5 text-white" />
-              </div>
+              <img 
+                src="/base-logo.svg" 
+                alt="Base" 
+                className="w-10 h-10 border-2 border-slate-900 rounded-lg"
+              />
               <img 
                 src="https://raw.githubusercontent.com/solana-labs/token-list/main/assets/mainnet/So11111111111111111111111111111111111111112/logo.png" 
                 alt="Solana" 

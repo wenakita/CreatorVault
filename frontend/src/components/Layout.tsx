@@ -1,6 +1,6 @@
 import { Outlet, Link, useLocation } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { Wallet, Home, Rocket, LayoutDashboard } from 'lucide-react'
+import { Home, Rocket, LayoutDashboard } from 'lucide-react'
 import { ConnectButton } from './ConnectButton'
 
 const navItems = [
@@ -9,26 +9,50 @@ const navItems = [
   { path: '/dashboard', icon: LayoutDashboard, label: 'Vaults' },
 ]
 
+// Base brand motion: cubic-bezier(0.4, 0, 0.2, 1), 120-240ms
+const baseTransition = { duration: 0.2, ease: [0.4, 0, 0.2, 1] }
+
 export function Layout() {
   const location = useLocation()
 
   return (
     <div className="min-h-screen flex flex-col">
       {/* Header */}
-      <header className="sticky top-0 z-50 glass-card border-x-0 border-t-0 rounded-none">
+      <header className="sticky top-0 z-50 bg-slate-950/80 backdrop-blur-xl border-b border-white/[0.06]">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-3 flex items-center justify-between">
-          <Link to="/" className="flex items-center gap-2">
+          <Link to="/" className="flex items-center gap-2.5 group">
+            {/* Base Logo - The Square */}
             <motion.div
-              className="w-9 h-9 rounded-xl bg-brand-500 flex items-center justify-center"
-              whileHover={{ scale: 1.05, rotate: 5 }}
+              className="relative"
+              whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
+              transition={baseTransition}
             >
-              <Wallet className="w-5 h-5 text-white" />
+              <img 
+                src="/base-logo.svg" 
+                alt="Base" 
+                className="w-8 h-8"
+              />
             </motion.div>
-            <span className="font-display font-bold text-lg hidden sm:block">
-              Creator<span className="text-brand-500">Vault</span>
-            </span>
+            <div className="hidden sm:flex items-baseline gap-1">
+              <span className="font-semibold text-white tracking-tight">Creator</span>
+              <span className="font-semibold text-[#0052FF] tracking-tight">Vault</span>
+            </div>
           </Link>
+
+          {/* Built on Base badge */}
+          <div className="hidden md:flex items-center gap-4">
+            <a 
+              href="https://base.org" 
+              target="_blank" 
+              rel="noopener noreferrer"
+              className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-white/[0.04] border border-white/[0.06] text-slate-400 text-xs hover:text-white hover:border-white/10 transition-colors"
+            >
+              <span>Built on</span>
+              <img src="/base-logo.svg" alt="Base" className="w-3.5 h-3.5" />
+              <span className="text-white font-medium">Base</span>
+            </a>
+          </div>
 
           <ConnectButton />
         </div>
@@ -40,7 +64,7 @@ export function Layout() {
       </main>
 
       {/* Mobile bottom nav */}
-      <nav className="fixed bottom-0 left-0 right-0 z-50 glass-card border-x-0 border-b-0 rounded-none rounded-t-2xl safe-area-bottom sm:hidden">
+      <nav className="fixed bottom-0 left-0 right-0 z-50 bg-slate-950/90 backdrop-blur-xl border-t border-white/[0.06] safe-area-bottom sm:hidden">
         <div className="flex items-center justify-around py-2 px-4">
           {navItems.map(({ path, icon: Icon, label }) => {
             const isActive = location.pathname === path
@@ -53,18 +77,18 @@ export function Layout() {
                 {isActive && (
                   <motion.div
                     layoutId="nav-indicator"
-                    className="absolute inset-0 bg-brand-500/20 rounded-xl"
+                    className="absolute inset-0 bg-[#0052FF]/15 rounded-xl"
                     transition={{ type: 'spring', bounce: 0.2, duration: 0.6 }}
                   />
                 )}
                 <Icon
                   className={`w-5 h-5 transition-colors ${
-                    isActive ? 'text-brand-500' : 'text-surface-400'
+                    isActive ? 'text-[#0052FF]' : 'text-slate-500'
                   }`}
                 />
                 <span
                   className={`text-xs font-medium transition-colors ${
-                    isActive ? 'text-brand-500' : 'text-surface-400'
+                    isActive ? 'text-[#0052FF]' : 'text-slate-500'
                   }`}
                 >
                   {label}
@@ -77,21 +101,21 @@ export function Layout() {
 
       {/* Desktop sidebar nav */}
       <nav className="hidden sm:flex fixed left-4 top-1/2 -translate-y-1/2 z-50">
-        <div className="glass-card p-2 flex flex-col gap-2">
+        <div className="bg-slate-900/90 backdrop-blur-xl border border-white/[0.06] rounded-2xl p-2 flex flex-col gap-1">
           {navItems.map(({ path, icon: Icon, label }) => {
             const isActive = location.pathname === path
             return (
               <Link
                 key={path}
                 to={path}
-                className={`relative group p-3 rounded-xl transition-colors ${
+                className={`relative group p-3 rounded-xl transition-all ${
                   isActive
-                    ? 'bg-brand-500/20 text-brand-500'
-                    : 'text-surface-400 hover:bg-surface-800/50 hover:text-white'
+                    ? 'bg-[#0052FF]/15 text-[#0052FF]'
+                    : 'text-slate-500 hover:bg-white/[0.04] hover:text-white'
                 }`}
               >
                 <Icon className="w-5 h-5" />
-                <span className="absolute left-full ml-3 px-2 py-1 rounded-lg bg-surface-800 text-white text-sm font-medium whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+                <span className="absolute left-full ml-3 px-2.5 py-1.5 rounded-lg bg-slate-800 border border-white/[0.06] text-white text-xs font-medium whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none shadow-lg">
                   {label}
                 </span>
               </Link>
@@ -102,4 +126,3 @@ export function Layout() {
     </div>
   )
 }
-
