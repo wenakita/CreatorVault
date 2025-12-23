@@ -10,3 +10,6 @@ export { FeatureCard, FeatureGrid, CommandDisplay, HighlightCard } from './Featu
 // Solana bridge components
 export { SolanaConnect, SolanaBridgeCard, TwinAddressDisplay } from './SolanaConnect'
 
+// Charts
+export { DistributionChart, LotteryDistributionChart, LotteryDistributionCompact } from './DistributionChart'
+

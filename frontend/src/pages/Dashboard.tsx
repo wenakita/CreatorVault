@@ -16,6 +16,7 @@ import {
 } from 'lucide-react'
 import { AKITA } from '../config/contracts'
 import { TokenImage } from '../components/TokenImage'
+import { LotteryDistributionCompact } from '../components/DistributionChart'
 
 // CCA Strategy ABI for reading auction status
 const CCA_STRATEGY_ABI = [
@@ -213,37 +214,26 @@ export function Dashboard() {
         ))}
       </motion.div>
 
-      {/* Lottery Card */}
+      {/* Lottery Card with Distribution Chart */}
       <motion.div
         initial={{ opacity: 0, y: 12 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.3 }}
         className="glass-card p-4"
       >
-        <div className="flex items-center justify-between mb-3">
-          <div className="flex items-center gap-2">
-            <Gift className="w-4 h-4 text-yellow-500" />
-            <span className="font-medium text-sm">Jackpot Pool</span>
-            <span className="px-1.5 py-0.5 rounded bg-yellow-500/10 text-yellow-500 text-[10px] font-medium">
-              VRF
-            </span>
-          </div>
-          <span className="font-bold text-yellow-400">{sharedLottery.jackpot}</span>
+        <div className="flex items-center gap-2 mb-4">
+          <Gift className="w-4 h-4 text-yellow-500" />
+          <span className="font-medium text-sm">Jackpot Distribution</span>
+          <span className="px-1.5 py-0.5 rounded bg-yellow-500/10 text-yellow-500 text-[10px] font-medium">
+            VRF
+          </span>
         </div>
         
-        <div className="h-1.5 rounded-full bg-surface-800 overflow-hidden mb-2">
-          <motion.div
-            className="h-full bg-gradient-to-r from-yellow-500 to-orange-500"
-            initial={{ width: 0 }}
-            animate={{ width: `${sharedLottery.progress}%` }}
-            transition={{ duration: 0.8, ease: 'easeOut' }}
-          />
-        </div>
+        <LotteryDistributionCompact jackpotAmount={sharedLottery.jackpot} />
         
-        <div className="flex items-center justify-between text-[10px] text-surface-500">
-          <span>6.9% trade fees fund the pool</span>
-          <span>90% winner · 5% burn · 5% protocol</span>
-        </div>
+        <p className="text-[10px] text-surface-500 mt-3 pt-3 border-t border-surface-800">
+          6.9% trade fees fund the pool • Every buy = lottery entry
+        </p>
       </motion.div>
 
       {/* Empty State */}

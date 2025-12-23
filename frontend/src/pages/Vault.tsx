@@ -5,8 +5,6 @@ import { useAccount, useReadContract, useWriteContract, useWaitForTransactionRec
 import { formatUnits, parseUnits, erc20Abi } from 'viem'
 import {
   TrendingUp,
-  Gift,
-  Flame,
   ArrowDownToLine,
   ArrowUpFromLine,
   Loader2,
@@ -16,9 +14,10 @@ import {
   Zap,
   Trophy,
 } from 'lucide-react'
-import { AKITA, CONTRACTS } from '../config/contracts'
+import { AKITA } from '../config/contracts'
 import { ConnectButton } from '../components/ConnectButton'
 import { TokenImage } from '../components/TokenImage'
+import { LotteryDistributionChart } from '../components/DistributionChart'
 
 // Wrapper ABI - users deposit AKITA, get wsAKITA directly
 const WRAPPER_ABI = [
@@ -418,61 +417,33 @@ export function Vault() {
         </motion.div>
       </div>
 
-      {/* Buy-To-Win Lottery Info */}
+      {/* Buy-To-Win Lottery Info with Distribution Chart */}
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ delay: 0.5 }}
         className="glass-card p-6"
       >
-        <h3 className="font-semibold mb-4 flex items-center gap-2">
-          <Zap className="w-5 h-5 text-yellow-500" />
-          Buy-To-Win Lottery
-          <span className="ml-2 px-2 py-0.5 rounded-full bg-yellow-500/10 text-yellow-400 text-xs font-medium">
+        <div className="flex items-center justify-between mb-6">
+          <h3 className="font-semibold flex items-center gap-2">
+            <Trophy className="w-5 h-5 text-yellow-500" />
+            Jackpot Distribution
+          </h3>
+          <span className="px-2 py-0.5 rounded-full bg-yellow-500/10 text-yellow-400 text-xs font-medium">
             Chainlink VRF
           </span>
-        </h3>
-        
-        <p className="text-surface-400 text-sm mb-4">
-          Every <span className="text-white font-medium">BUY</span> of wsAKITA on Uniswap V4 is an entry to win! 
-          The 6.9% trade fee (on buys AND sells) funds the prize pool shared across all Creator Vaults.
-          Winners selected randomly via Chainlink VRF v2.5.
-        </p>
-
-        <div className="grid sm:grid-cols-3 gap-4">
-          <div className="p-4 rounded-xl bg-yellow-500/5 border border-yellow-500/20">
-            <div className="flex items-center gap-2 mb-2">
-              <Trophy className="w-5 h-5 text-yellow-500" />
-              <span className="font-medium">90% Jackpot</span>
-            </div>
-            <p className="text-surface-400 text-sm">
-              Random VRF draw. Buy wsAKITA = lottery entry!
-            </p>
-          </div>
-          <div className="p-4 rounded-xl bg-red-500/5 border border-red-500/20">
-            <div className="flex items-center gap-2 mb-2">
-              <Flame className="w-5 h-5 text-red-500" />
-              <span className="font-medium">5% Burn</span>
-            </div>
-            <p className="text-surface-400 text-sm">
-              Permanently removed. Deflationary across all vaults.
-            </p>
-          </div>
-          <div className="p-4 rounded-xl bg-brand-500/5 border border-brand-500/20">
-            <div className="flex items-center gap-2 mb-2">
-              <Coins className="w-5 h-5 text-brand-500" />
-              <span className="font-medium">5% Protocol</span>
-            </div>
-            <p className="text-surface-400 text-sm">
-              Sustains CreatorVault development.
-            </p>
-          </div>
         </div>
 
-        <div className="mt-4 p-3 rounded-lg bg-surface-900/50 text-center">
-          <p className="text-surface-500 text-xs uppercase tracking-wider mb-1">How to enter</p>
+        <LotteryDistributionChart jackpotAmount="0.1 ETH" />
+
+        <div className="mt-6 pt-4 border-t border-surface-800">
+          <div className="flex items-center gap-2 text-sm text-surface-400 mb-2">
+            <Zap className="w-4 h-4 text-yellow-500" />
+            <span>How to enter</span>
+          </div>
           <p className="text-surface-300 text-sm">
-            Simply <span className="text-brand-400 font-medium">BUY wsAKITA</span> on Uniswap after CCA graduation. Every purchase is an entry!
+            Every <span className="text-white font-medium">BUY</span> of wsAKITA on Uniswap V4 = lottery entry.
+            6.9% trade fee (buys & sells) funds the pool.
           </p>
         </div>
       </motion.div>
