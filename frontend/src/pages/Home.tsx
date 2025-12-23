@@ -1,9 +1,10 @@
 import { Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { Rocket, Globe, Zap, ArrowRight, Users, Heart, Sparkles, Trophy, Flame, Shield } from 'lucide-react'
+import { Rocket, Globe, Zap, ArrowRight, Users, Heart, Sparkles, Trophy, Flame, Shield, ArrowLeftRight } from 'lucide-react'
 import { TechScramble } from '../components/TechScramble'
 import { BaseStep, BaseStepList } from '../components/BaseStep'
 import { FeatureCard, FeatureGrid, HighlightCard } from '../components/FeatureCard'
+import { SolanaConnect } from '../components/SolanaConnect'
 
 // Base motion timing
 const baseEase = [0.4, 0, 0.2, 1] as const
@@ -22,7 +23,7 @@ export function Home() {
       <section className="text-center space-y-6">
         {/* Live badge */}
         <motion.div
-          className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-surface-900 border border-surface-800 text-sm"
+          className="inline-flex items-center gap-3 px-4 py-2 rounded-full bg-surface-900 border border-surface-800 text-sm"
           initial={{ opacity: 0, y: -8 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.24, ease: baseEase }}
@@ -31,7 +32,12 @@ export function Home() {
             <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-brand-400 opacity-75" />
             <span className="relative inline-flex rounded-full h-2 w-2 bg-brand-500" />
           </span>
-          <span className="text-surface-300">Now live on Base</span>
+          <span className="text-surface-300">Live on</span>
+          <div className="flex items-center gap-2">
+            <span className="px-2 py-0.5 rounded bg-brand-500/20 text-brand-400 font-medium">Base</span>
+            <span className="text-surface-600">+</span>
+            <span className="px-2 py-0.5 rounded bg-purple-500/20 text-purple-400 font-medium">Solana</span>
+          </div>
         </motion.div>
 
         {/* Headline with tech scramble effect */}
@@ -131,7 +137,7 @@ export function Home() {
           </div>
           <div className="flex items-center gap-2 text-sm">
             <Globe className="w-4 h-4 text-brand-500" />
-            <span className="text-surface-300">Omnichain</span>
+            <span className="text-surface-300">Base + Solana</span>
           </div>
         </div>
       </HighlightCard>
@@ -157,8 +163,8 @@ export function Home() {
           />
           <FeatureCard
             icon={<Globe className="w-6 h-6" />}
-            title="Omnichain"
-            description="Bridge to any chain via LayerZero. One vault, everywhere."
+            title="Base + Solana"
+            description="Native on Base with Solana bridge. SOL users can participate in CCA & lottery!"
             delay={0.05}
           />
           <FeatureCard
@@ -262,6 +268,72 @@ export function Home() {
         </div>
       </motion.section>
 
+      {/* Solana Bridge Section */}
+      <motion.section
+        initial={{ opacity: 0, y: 12 }}
+        whileInView={{ opacity: 1, y: 0 }}
+        viewport={{ once: true }}
+        transition={{ duration: 0.32, ease: baseEase }}
+        className="glass-card p-6 sm:p-8 border-purple-500/20"
+      >
+        <div className="flex flex-col lg:flex-row gap-8 items-center">
+          {/* Left: Info */}
+          <div className="flex-1 space-y-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-purple-500/10 flex items-center justify-center">
+                <ArrowLeftRight className="w-5 h-5 text-purple-500" />
+              </div>
+              <div>
+                <h3 className="font-semibold text-lg">Bridge from Solana</h3>
+                <p className="text-surface-500 text-sm">Powered by Base-Solana Bridge</p>
+              </div>
+            </div>
+
+            <p className="text-surface-400">
+              SOL holders can participate in <span className="text-white font-medium">CCA auctions</span> and{' '}
+              <span className="text-white font-medium">Buy-To-Win lottery</span> directly from Solana!
+            </p>
+
+            <div className="grid grid-cols-3 gap-4 pt-2">
+              <div className="text-center p-3 rounded-lg bg-surface-900/50">
+                <span className="text-2xl">🏷️</span>
+                <p className="text-xs text-surface-400 mt-1">CCA Bidding</p>
+              </div>
+              <div className="text-center p-3 rounded-lg bg-surface-900/50">
+                <span className="text-2xl">🎰</span>
+                <p className="text-xs text-surface-400 mt-1">Lottery Entry</p>
+              </div>
+              <div className="text-center p-3 rounded-lg bg-surface-900/50">
+                <span className="text-2xl">🏦</span>
+                <p className="text-xs text-surface-400 mt-1">Vault Deposit</p>
+              </div>
+            </div>
+
+            {/* Flow indicator */}
+            <div className="flex items-center justify-center gap-2 text-xs pt-2">
+              <span className="px-2 py-1 rounded bg-purple-500/10 text-purple-400 font-mono">Solana</span>
+              <span className="text-surface-600">→</span>
+              <span className="px-2 py-1 rounded bg-brand-500/10 text-brand-400 font-mono">Base</span>
+              <span className="text-surface-600">→</span>
+              <span className="px-2 py-1 rounded bg-yellow-500/10 text-yellow-400 font-mono">Jackpot 🎉</span>
+            </div>
+          </div>
+
+          {/* Right: Connect */}
+          <div className="flex flex-col items-center gap-4 p-6 rounded-2xl bg-surface-900/50 border border-surface-800">
+            <img 
+              src="https://raw.githubusercontent.com/solana-labs/token-list/main/assets/mainnet/So11111111111111111111111111111111111111112/logo.png" 
+              alt="Solana" 
+              className="w-12 h-12"
+            />
+            <p className="text-surface-400 text-sm text-center">
+              Connect your Phantom wallet<br />to bridge SOL and participate
+            </p>
+            <SolanaConnect />
+          </div>
+        </div>
+      </motion.section>
+
       {/* Final CTA */}
       <motion.section
         initial={{ opacity: 0, y: 12 }}
@@ -279,20 +351,39 @@ export function Home() {
             Ready to <span className="text-gradient">Earn Together</span>?
           </h2>
           <p className="text-surface-400 max-w-md mx-auto">
-            Be the next creator to unlock omnichain yield for your community.
+            Be the next creator to unlock cross-chain yield for your community.
+            Base + Solana, day one.
           </p>
-          <Link to="/launch">
-            <motion.button
-              className="btn-primary flex items-center gap-2 mx-auto text-lg px-8 py-4"
+          <div className="flex flex-col sm:flex-row gap-4 justify-center">
+            <Link to="/launch">
+              <motion.button
+                className="btn-primary flex items-center gap-2 text-lg px-8 py-4"
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.97 }}
+                transition={{ duration: 0.12, ease: baseEase }}
+              >
+                <Rocket className="w-5 h-5" />
+                Launch on Base
+                <ArrowRight className="w-5 h-5" />
+              </motion.button>
+            </Link>
+            <motion.a
+              href="https://docs.base.org/guides/base-solana-bridge"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="btn-secondary flex items-center gap-2 px-6 py-4"
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.97 }}
               transition={{ duration: 0.12, ease: baseEase }}
             >
-              <Rocket className="w-5 h-5" />
-              Get Started
-              <ArrowRight className="w-5 h-5" />
-            </motion.button>
-          </Link>
+              <img 
+                src="https://raw.githubusercontent.com/solana-labs/token-list/main/assets/mainnet/So11111111111111111111111111111111111111112/logo.png" 
+                alt="Solana" 
+                className="w-5 h-5"
+              />
+              Bridge from Solana
+            </motion.a>
+          </div>
         </div>
       </motion.section>
     </div>
