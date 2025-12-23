@@ -5,6 +5,18 @@ import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
+import {IPoolManager} from "@uniswap/v4-core/src/interfaces/IPoolManager.sol";
+import {PoolKey} from "@uniswap/v4-core/src/types/PoolKey.sol";
+import {Currency} from "@uniswap/v4-core/src/types/Currency.sol";
+import {IHooks} from "@uniswap/v4-core/src/interfaces/IHooks.sol";
+
+/**
+ * @title ICreatorChainlinkOracle
+ * @notice Interface for oracle V4 pool configuration
+ */
+interface ICreatorChainlinkOracle {
+    function setV4Pool(IPoolManager _poolManager, PoolKey calldata _poolKey) external;
+}
 
 /**
  * @title IContinuousClearingAuctionFactory
@@ -99,6 +111,21 @@ contract CCALaunchStrategy is Ownable, ReentrancyGuard {
     
     /// @notice Unsold tokens recipient
     address public tokensRecipient;
+    
+    /// @notice Oracle to configure with V4 pool on graduation
+    address public oracle;
+    
+    /// @notice V4 PoolManager (Base: 0x498581fF718922c3f8e6A244956aF099B2652b2b)
+    IPoolManager public poolManager;
+    
+    /// @notice Tax hook for the V4 pool
+    address public taxHook;
+    
+    /// @notice Fee tier for V4 pool (default 3000 = 0.3%)
+    uint24 public poolFeeTier = 3000;
+    
+    /// @notice Tick spacing for V4 pool
+    int24 public poolTickSpacing = 60;
 
     // ================================
     // AUCTION CONFIG
@@ -134,6 +161,8 @@ contract CCALaunchStrategy is Ownable, ReentrancyGuard {
     
     event ConfigUpdated(string param, uint256 value);
     event RecipientsUpdated(address fundsRecipient, address tokensRecipient);
+    event OracleConfigured(address indexed oracle, address poolManager, address hook);
+    event V4PoolConfigured(address indexed oracle, address token0, address token1);
 
     // ================================
     // ERRORS
@@ -270,6 +299,7 @@ contract CCALaunchStrategy is Ownable, ReentrancyGuard {
 
     /**
      * @notice Sweep raised currency after auction graduates
+     * @dev Also configures the oracle with the V4 pool if oracle is set
      */
     function sweepCurrency() external nonReentrant {
         if (currentAuction == address(0)) revert NoActiveAuction();
@@ -284,8 +314,64 @@ contract CCALaunchStrategy is Ownable, ReentrancyGuard {
         
         auction.sweepCurrency();
         
+        // Configure oracle with V4 pool if all components are set
+        if (oracle != address(0) && address(poolManager) != address(0)) {
+            _configureOracleV4Pool();
+        }
+        
         emit AuctionGraduated(currentAuction, raised, finalPrice);
         emit FundsSwept(currentAuction, raised);
+    }
+    
+    /**
+     * @notice Configure oracle with V4 pool details
+     * @dev Called automatically on graduation if oracle is set
+     */
+    function _configureOracleV4Pool() internal {
+        // Sort tokens for pool key (token0 < token1)
+        address token0;
+        address token1;
+        
+        // currency = address(0) means ETH, which is Currency.wrap(address(0)) in V4
+        address tokenAddr = address(auctionToken);
+        address currencyAddr = currency; // address(0) for ETH
+        
+        if (tokenAddr < currencyAddr || currencyAddr == address(0)) {
+            // ETH (address(0)) is always token0 in Uniswap V4
+            if (currencyAddr == address(0)) {
+                token0 = currencyAddr;
+                token1 = tokenAddr;
+            } else {
+                token0 = tokenAddr;
+                token1 = currencyAddr;
+            }
+        } else {
+            token0 = currencyAddr;
+            token1 = tokenAddr;
+        }
+        
+        // Build pool key
+        PoolKey memory poolKey = PoolKey({
+            currency0: Currency.wrap(token0),
+            currency1: Currency.wrap(token1),
+            fee: poolFeeTier,
+            tickSpacing: poolTickSpacing,
+            hooks: IHooks(taxHook)
+        });
+        
+        // Configure oracle
+        ICreatorChainlinkOracle(oracle).setV4Pool(poolManager, poolKey);
+        
+        emit V4PoolConfigured(oracle, token0, token1);
+    }
+    
+    /**
+     * @notice Manually configure oracle V4 pool (if not done on graduation)
+     */
+    function configureOracleV4Pool() external onlyOwner {
+        if (oracle == address(0)) revert ZeroAddress();
+        if (address(poolManager) == address(0)) revert ZeroAddress();
+        _configureOracleV4Pool();
     }
 
     /**
@@ -421,11 +507,44 @@ contract CCALaunchStrategy is Ownable, ReentrancyGuard {
     function setRecipients(address _fundsRecipient, address _tokensRecipient) external onlyOwner {
         if (_fundsRecipient == address(0)) revert ZeroAddress();
         if (_tokensRecipient == address(0)) revert ZeroAddress();
-        
         fundsRecipient = _fundsRecipient;
         tokensRecipient = _tokensRecipient;
-        
         emit RecipientsUpdated(_fundsRecipient, _tokensRecipient);
+    }
+    
+    /**
+     * @notice Configure oracle for V4 pool setup on graduation
+     * @param _oracle Oracle address to configure
+     * @param _poolManager V4 PoolManager address
+     * @param _taxHook Tax hook address for the pool
+     */
+    function setOracleConfig(
+        address _oracle,
+        address _poolManager,
+        address _taxHook
+    ) external onlyOwner {
+        oracle = _oracle;
+        poolManager = IPoolManager(_poolManager);
+        taxHook = _taxHook;
+        emit OracleConfigured(_oracle, _poolManager, _taxHook);
+    }
+    
+    /**
+     * @notice Update V4 pool fee tier
+     * @param _feeTier Fee in hundredths of bips (3000 = 0.3%)
+     */
+    function setPoolFeeTier(uint24 _feeTier) external onlyOwner {
+        poolFeeTier = _feeTier;
+        emit ConfigUpdated("poolFeeTier", _feeTier);
+    }
+    
+    /**
+     * @notice Update V4 pool tick spacing
+     * @param _tickSpacing Tick spacing for the pool
+     */
+    function setPoolTickSpacing(int24 _tickSpacing) external onlyOwner {
+        poolTickSpacing = _tickSpacing;
+        emit ConfigUpdated("poolTickSpacing", uint256(int256(_tickSpacing)));
     }
 
     // ================================

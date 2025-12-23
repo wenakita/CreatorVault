@@ -424,6 +424,19 @@ contract DeployCreatorVault is Script {
         shareOFT.setMinter(address(wrapper), true);
         console.log("       ShareOFT: setMinter(wrapper)");
         
+        // ============ CONFIGURE CCA STRATEGY ============
+        
+        console.log("\n=== Configuring CCA Strategy ===");
+        
+        // V4 PoolManager on Base
+        address V4_POOL_MANAGER = 0x498581fF718922c3f8e6A244956aF099B2652b2b;
+        // Tax Hook (6.9% sell fees)
+        address TAX_HOOK = 0xca975B9dAF772C71161f3648437c3616E5Be0088;
+        
+        // Configure oracle settings for automatic V4 pool setup on CCA graduation
+        ccaStrategy.setOracleConfig(address(oracle), V4_POOL_MANAGER, TAX_HOOK);
+        console.log("       CCA: setOracleConfig (oracle, poolManager, taxHook)");
+        
         // ============ CONFIGURE ORACLE ============
         
         console.log("\n=== Configuring Oracle ===");
