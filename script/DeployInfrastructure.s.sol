@@ -457,9 +457,22 @@ contract DeployCreatorVault is Script {
             console.log("       GaugeController: SKIPPED setLotteryManager (not in env)");
         }
         
+        // ============ REGISTER WITH MAIN REGISTRY ============
+        
+        console.log("\n=== Registering with CreatorRegistry ===");
+        
+        CreatorRegistry registry = CreatorRegistry(registryAddr);
+        
+        // Register oracle and gauge controller for this creator coin
+        registry.setCreatorOracle(creatorCoin, address(oracle));
+        console.log("       Registry: setCreatorOracle");
+        
+        registry.setCreatorGaugeController(creatorCoin, address(gaugeController));
+        console.log("       Registry: setCreatorGaugeController");
+        
         // ============ REGISTER WITH FACTORY ============
         
-        console.log("\n=== Registering Deployment ===");
+        console.log("\n=== Registering with Factory ===");
         
         CreatorOVaultFactory factory = CreatorOVaultFactory(factoryAddr);
         
@@ -475,9 +488,9 @@ contract DeployCreatorVault is Script {
                 address(oracle),
                 deployer
             );
-            console.log("       Registered with factory");
+            console.log("       Factory: registerDeployment");
         } else {
-            console.log("       SKIPPED: Already registered (using new contracts anyway)");
+            console.log("       Factory: SKIPPED (already registered)");
         }
         
         vm.stopBroadcast();
