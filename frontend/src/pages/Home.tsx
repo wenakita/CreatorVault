@@ -54,8 +54,7 @@ export function Home() {
           {/* Subtitle - fades in after scramble */}
           <FadeIn delay={0.8}>
             <p className="text-slate-400 text-lg max-w-lg mx-auto leading-relaxed">
-              Stop holding bags. Deposit your creator coins into vaults 
-              and earn from every trade — including a shot at the jackpot.
+              Deposit creator coins. Earn from every trade. Win the jackpot.
             </p>
           </FadeIn>
 
@@ -103,8 +102,9 @@ export function Home() {
               Creator Coins Only Benefit Creators
             </h3>
             <p className="text-slate-400 text-sm leading-relaxed">
-              You buy the hype. Creator sells. You're left holding the bag. 
-              It's the same pump-and-dump cycle as memecoins — dressed up with a face.
+              You buy. Creator sells. You hold the bag.
+              <br />
+              Same cycle as memecoins, different face.
             </p>
           </div>
         </StaggerItem>
@@ -117,11 +117,12 @@ export function Home() {
               <span className="text-sm font-semibold uppercase tracking-wider">The Solution</span>
             </div>
             <h3 className="text-xl font-bold text-white mb-2">
-              Vaults That Share The Upside
+              Vaults That Share the Upside
             </h3>
             <p className="text-slate-400 text-sm leading-relaxed">
-              Deposit your creator coins into CreatorVault. Every trade pays a 6.9% fee 
-              that goes back to holders — 90% to a random winner, the rest burned.
+              Deposit creator coins. Earn from every trade.
+              <br />
+              6.9% fee split: 90% to holders, 5% burned, 5% protocol.
             </p>
           </div>
         </StaggerItem>
@@ -161,7 +162,7 @@ export function Home() {
         <section>
           <div className="text-center mb-6">
             <h2 className="text-2xl font-bold text-white">Live Jackpot</h2>
-            <p className="text-slate-500 text-sm mt-1">Every buy is a lottery entry. Winners picked by Chainlink VRF.</p>
+            <p className="text-slate-500 text-sm mt-1">Buy. Enter. Win. All onchain.</p>
           </div>
           <JackpotSunburst
             tokens={[
@@ -184,28 +185,28 @@ export function Home() {
               {
                 icon: Zap,
                 title: 'Fair Launch',
-                desc: 'CCA auctions prevent sniping and front-running',
+                desc: 'No snipers. No front-running. Just fair price discovery.',
                 color: 'text-yellow-400',
                 bg: 'bg-yellow-400/10',
               },
               {
                 icon: Gift,
-                title: 'Buy-To-Win',
-                desc: 'Every purchase is a lottery entry via Chainlink VRF',
+                title: 'Every Trade = Entry',
+                desc: 'Buy to enter. Random winner via Chainlink VRF.',
                 color: 'text-purple-400',
                 bg: 'bg-purple-400/10',
               },
               {
                 icon: Shield,
-                title: 'Transparent',
-                desc: '90% to winner, 5% burned, 5% to protocol',
+                title: 'Clear Split',
+                desc: '90% winner. 5% burned. 5% protocol.',
                 color: 'text-green-400',
                 bg: 'bg-green-400/10',
               },
               {
                 icon: Users,
-                title: 'Community First',
-                desc: 'Holders earn together instead of competing',
+                title: 'Built for Holders',
+                desc: 'Earn together. Not against each other.',
                 color: 'text-blue-400',
                 bg: 'bg-blue-400/10',
               },
@@ -262,8 +263,8 @@ export function Home() {
       {/* Final CTA */}
       <FadeIn delay={0.1}>
         <section className="text-center py-8">
-          <h2 className="text-2xl font-bold text-white mb-3">Ready to earn together?</h2>
-          <p className="text-slate-400 mb-6">Turn your creator coins into yield-generating assets.</p>
+          <h2 className="text-2xl font-bold text-white mb-3">Turn Creator Coins Into Earnings</h2>
+          <p className="text-slate-400 mb-6">Launch your vault. Reward your holders. Build onchain.</p>
           <Link to="/launch">
             <motion.button 
               className="group px-8 py-4 rounded-xl bg-[#0052FF] hover:bg-[#0052FF]/90 text-white font-semibold text-lg transition-colors shadow-lg shadow-[#0052FF]/25 hover:shadow-[#0052FF]/40 flex items-center gap-2 mx-auto"

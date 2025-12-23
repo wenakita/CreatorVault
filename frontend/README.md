@@ -1,14 +1,16 @@
-# CreatorVault Mini App
+# CreatorVault
 
-A Base Mini App for launching and managing omnichain Creator Coin vaults. Built for the [Base App](https://docs.base.org/mini-apps/quickstart/building-for-the-base-app).
+Turn creator coins into earnings. Built on Base.
 
-## Features
+Launch vaults. Reward holders. Win jackpots. All onchain.
 
-- 🚀 **One-Click Launch** - Deploy your vault in a single transaction
-- 🌐 **Omnichain** - Cross-chain via LayerZero
-- 🎰 **Weekly Lottery** - 90% jackpot for holders
-- 🔥 **Auto-Burns** - 5% of fees burned
-- 📱 **Mobile-First** - Designed for Base App
+## What It Does
+
+- **Launch Vaults** - One transaction deploys your vault
+- **Cross-Chain** - Works on Base + Solana via bridge
+- **Earn From Trades** - 6.9% fee: 90% to holders, 5% burned, 5% protocol
+- **Verifiable Randomness** - Chainlink VRF for fair winner selection
+- **Mobile-First** - Built for [Base App](https://docs.base.org/mini-apps)
 
 ## Quick Start
 

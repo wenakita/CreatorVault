@@ -1,7 +1,7 @@
 {
   "name": "CreatorVault",
   "short_name": "Vault",
-  "description": "Launch your Creator Coin vault in one click. Earn yield, build community, go omnichain.",
+  "description": "Turn creator coins into earnings. Launch vaults. Reward holders. All onchain.",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#020617",
