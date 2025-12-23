@@ -4,6 +4,7 @@ pragma solidity ^0.8.20;
 import {OApp, Origin, MessagingFee, MessagingReceipt} from "@layerzerolabs/oapp-evm/contracts/oapp/OApp.sol";
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import {IPoolManager} from "@uniswap/v4-core/src/interfaces/IPoolManager.sol";
+import {ICreatorRegistry} from "../interfaces/core/ICreatorRegistry.sol";
 import {PoolId, PoolIdLibrary} from "@uniswap/v4-core/src/types/PoolId.sol";
 import {PoolKey} from "@uniswap/v4-core/src/types/PoolKey.sol";
 import {StateLibrary} from "@uniswap/v4-core/src/libraries/StateLibrary.sol";
@@ -199,18 +200,23 @@ contract CreatorChainlinkOracle is OApp {
     
     /**
      * @notice Deploy oracle for a Creator Coin
-     * @param _lzEndpoint LayerZero endpoint
+     * @param _registry CreatorRegistry address (same on all chains for deterministic addresses)
      * @param _chainlinkFeed Chainlink ETH/USD feed address
-     * @param _creatorSymbol Creator token symbol (e.g., "AKITA")
+     * @param _creatorSymbol Creator token symbol (e.g., "wsAKITA")
      * @param _owner Owner address
+     * 
+     * @dev DETERMINISTIC DEPLOYMENT:
+     *      Registry address is same on all chains via CREATE2.
+     *      LayerZero endpoint is looked up from registry at construction.
+     *      This allows same constructor args → same CREATE2 address on all chains.
      */
     constructor(
-        address _lzEndpoint,
+        address _registry,
         address _chainlinkFeed,
         string memory _creatorSymbol,
         address _owner
-    ) OApp(_lzEndpoint, _owner) Ownable(_owner) {
-        if (_lzEndpoint == address(0)) revert ZeroAddress();
+    ) OApp(ICreatorRegistry(_registry).getLayerZeroEndpoint(uint16(block.chainid)), _owner) Ownable(_owner) {
+        if (_registry == address(0)) revert ZeroAddress();
         
         chainlinkFeed = _chainlinkFeed;
         creatorSymbol = _creatorSymbol;

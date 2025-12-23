@@ -132,19 +132,25 @@ contract CreatorShareOFT is OFT, ReentrancyGuard {
     
     /**
      * @notice Deploy chain-specific share token
-     * @param _name Token name (e.g., "akita Share Token")
-     * @param _symbol Token symbol (e.g., "stkmaakita")
-     * @param _lzEndpoint LayerZero endpoint address
+     * @param _name Token name (e.g., "AKITA Shares")
+     * @param _symbol Token symbol (e.g., "wsAKITA")
+     * @param _registry CreatorRegistry address (same on all chains for deterministic addresses)
      * @param _owner Owner address
+     * 
+     * @dev DETERMINISTIC DEPLOYMENT:
+     *      Registry address is same on all chains via CREATE2.
+     *      LayerZero endpoint is looked up from registry at construction.
+     *      This allows same constructor args → same CREATE2 address on all chains.
      */
     constructor(
         string memory _name,
         string memory _symbol,
-        address _lzEndpoint,
+        address _registry,
         address _owner
-    ) OFT(_name, _symbol, _lzEndpoint, _owner) Ownable(_owner) {
-        if (_lzEndpoint == address(0)) revert ZeroAddress();
+    ) OFT(_name, _symbol, ICreatorRegistry(_registry).getLayerZeroEndpoint(uint16(block.chainid)), _owner) Ownable(_owner) {
+        if (_registry == address(0)) revert ZeroAddress();
         
+        registry = ICreatorRegistry(_registry);
         chainEid = uint32(block.chainid);
         addressType[address(this)] = OperationType.NoFees;
     }

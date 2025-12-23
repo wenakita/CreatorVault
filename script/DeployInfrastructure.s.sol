@@ -2,6 +2,7 @@
 pragma solidity ^0.8.20;
 
 import {Script, console} from "forge-std/Script.sol";
+import {IERC20Metadata} from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 
 // Core Infrastructure
 import {CreatorRegistry} from "../contracts/core/CreatorRegistry.sol";
@@ -11,6 +12,14 @@ import {PayoutRouterFactory} from "../contracts/factories/PayoutRouterFactory.so
 // Shared Services
 import {CreatorLotteryManager} from "../contracts/lottery/CreatorLotteryManager.sol";
 import {CreatorVRFConsumerV2_5} from "../contracts/vrf/CreatorVRFConsumerV2_5.sol";
+
+// Per-Creator Contracts (deployed by DeployCreatorVault)
+import {CreatorOVault} from "../contracts/vault/CreatorOVault.sol";
+import {CreatorOVaultWrapper} from "../contracts/vault/CreatorOVaultWrapper.sol";
+import {CreatorShareOFT} from "../contracts/layerzero/CreatorShareOFT.sol";
+import {CreatorGaugeController} from "../contracts/governance/CreatorGaugeController.sol";
+import {CCALaunchStrategy} from "../contracts/strategies/CCALaunchStrategy.sol";
+import {CreatorChainlinkOracle} from "../contracts/oracles/CreatorChainlinkOracle.sol";
 
 /**
  * @title DeployInfrastructure
@@ -281,10 +290,18 @@ contract DeployInfrastructure is Script {
 
 /**
  * @title DeployCreatorVault
- * @notice Deploy infrastructure for a specific Creator Coin
+ * @notice Deploy infrastructure for a specific Creator Coin (deploys contracts directly)
  * @dev Run with: 
  *      CREATOR_COIN_ADDRESS=0x... forge script script/DeployInfrastructure.s.sol:DeployCreatorVault \
  *          --rpc-url base --broadcast -vvvv
+ * 
+ * @dev DEPLOYS 6 CONTRACTS DIRECTLY:
+ *      1. CreatorOVault - ERC-4626 vault
+ *      2. CreatorOVaultWrapper - Stake/wrap interface
+ *      3. CreatorShareOFT - Cross-chain OFT
+ *      4. CreatorGaugeController - Fee distribution
+ *      5. CCALaunchStrategy - Fair launch
+ *      6. CreatorChainlinkOracle - Price oracle
  */
 contract DeployCreatorVault is Script {
     
@@ -293,6 +310,7 @@ contract DeployCreatorVault is Script {
         address deployer = vm.addr(deployerPrivateKey);
         
         // Load addresses from environment
+        address registryAddr = vm.envAddress("CREATOR_REGISTRY");
         address factoryAddr = vm.envAddress("CREATOR_FACTORY");
         address creatorCoin = vm.envAddress("CREATOR_COIN_ADDRESS");
         
@@ -301,15 +319,129 @@ contract DeployCreatorVault is Script {
         console.log(unicode"║              Deploy Creator Vault Infrastructure               ║");
         console.log(unicode"╚════════════════════════════════════════════════════════════════╝");
         console.log("\n");
+        console.log("Registry:     ", registryAddr);
         console.log("Factory:      ", factoryAddr);
         console.log("Creator Coin: ", creatorCoin);
         console.log("Creator:      ", deployer);
         
+        // Get token symbol for naming (UPPERCASE for consistency)
+        string memory symbol = _toUpperCase(IERC20Metadata(creatorCoin).symbol());
+        string memory vaultName = string(abi.encodePacked(symbol, " Shares"));
+        string memory vaultSymbol = string(abi.encodePacked("s", symbol));
+        string memory oftName = string(abi.encodePacked("Wrapped ", symbol, " Shares"));
+        string memory oftSymbol = string(abi.encodePacked("ws", symbol));
+        
+        console.log("\n");
+        console.log("Vault Name:   ", vaultName);
+        console.log("Vault Symbol: ", vaultSymbol);
+        console.log("OFT Name:     ", oftName);
+        console.log("OFT Symbol:   ", oftSymbol);
+        
         vm.startBroadcast(deployerPrivateKey);
+        
+        // ============ DEPLOY CONTRACTS DIRECTLY ============
+        
+        // 1. Deploy Vault
+        console.log("\n[1/6] Deploying CreatorOVault...");
+        CreatorOVault vault = new CreatorOVault(
+            creatorCoin,
+            deployer,
+            vaultName,
+            vaultSymbol
+        );
+        console.log("       Address:", address(vault));
+        
+        // 2. Deploy Wrapper
+        console.log("\n[2/6] Deploying CreatorOVaultWrapper...");
+        CreatorOVaultWrapper wrapper = new CreatorOVaultWrapper(
+            creatorCoin,
+            address(vault),
+            deployer
+        );
+        console.log("       Address:", address(wrapper));
+        
+        // 3. Deploy ShareOFT (uses registry for LZ endpoint lookup)
+        console.log("\n[3/6] Deploying CreatorShareOFT...");
+        CreatorShareOFT shareOFT = new CreatorShareOFT(
+            oftName,
+            oftSymbol,
+            registryAddr,  // Registry looks up LZ endpoint for this chain
+            deployer
+        );
+        console.log("       Address:", address(shareOFT));
+        
+        // 4. Deploy GaugeController
+        console.log("\n[4/6] Deploying CreatorGaugeController...");
+        CreatorGaugeController gaugeController = new CreatorGaugeController(
+            address(shareOFT),
+            deployer,  // creator treasury
+            deployer,  // protocol treasury
+            deployer   // owner
+        );
+        gaugeController.setVault(address(vault));
+        gaugeController.setWrapper(address(wrapper));
+        console.log("       Address:", address(gaugeController));
+        
+        // 5. Deploy CCA Strategy
+        // CCA = Continuous Clearing Auction for fair token distribution
+        console.log("\n[5/6] Deploying CCALaunchStrategy...");
+        CCALaunchStrategy ccaStrategy = new CCALaunchStrategy(
+            address(shareOFT),   // auctionToken - what we're selling
+            address(0),          // currency - native ETH
+            address(vault),      // fundsRecipient - raised ETH goes to vault
+            address(vault),      // tokensRecipient - unsold tokens return to vault
+            deployer             // owner
+        );
+        console.log("       Address:", address(ccaStrategy));
+        
+        // 6. Deploy Oracle (uses registry for LZ endpoint lookup)
+        console.log("\n[6/6] Deploying CreatorChainlinkOracle...");
+        CreatorChainlinkOracle oracle = new CreatorChainlinkOracle(
+            registryAddr,  // Registry looks up LZ endpoint for this chain
+            address(0),    // chainlinkFeed - configure after deployment
+            oftSymbol,
+            deployer
+        );
+        console.log("       Address:", address(oracle));
+        
+        // ============ CONFIGURE PERMISSIONS ============
+        
+        console.log("\n=== Configuring Permissions ===");
+        
+        // Set gauge controller on vault
+        vault.setGaugeController(address(gaugeController));
+        
+        // Whitelist wrapper on vault
+        vault.setWhitelist(address(wrapper), true);
+        
+        // Set ShareOFT on wrapper
+        wrapper.setShareOFT(address(shareOFT));
+        
+        // Grant minter role to wrapper on ShareOFT (minters can also burn)
+        shareOFT.setMinter(address(wrapper), true);
+        
+        // ============ REGISTER WITH FACTORY ============
+        
+        console.log("\n=== Registering Deployment ===");
         
         CreatorOVaultFactory factory = CreatorOVaultFactory(factoryAddr);
         
-        CreatorOVaultFactory.DeploymentInfo memory info = factory.deploy(creatorCoin);
+        // Skip registration if already deployed (allows redeployment with new params)
+        if (!factory.isDeployed(creatorCoin)) {
+            factory.registerDeployment(
+                creatorCoin,
+                address(vault),
+                address(wrapper),
+                address(shareOFT),
+                address(gaugeController),
+                address(ccaStrategy),
+                address(oracle),
+                deployer
+            );
+            console.log("       Registered with factory");
+        } else {
+            console.log("       SKIPPED: Already registered (using new contracts anyway)");
+        }
         
         vm.stopBroadcast();
         
@@ -317,12 +449,12 @@ contract DeployCreatorVault is Script {
         console.log(unicode"┌─────────────────────────────────────────────────────────────────┐");
         console.log(unicode"│  DEPLOYED CONTRACTS                                             │");
         console.log(unicode"├─────────────────────────────────────────────────────────────────┤");
-        console.log("   Vault:           ", info.vault);
-        console.log("   Wrapper:         ", info.wrapper);
-        console.log("   ShareOFT:        ", info.shareOFT);
-        console.log("   GaugeController: ", info.gaugeController);
-        console.log("   CCAStrategy:     ", info.ccaStrategy);
-        console.log("   Oracle:          ", info.oracle);
+        console.log("   Vault:           ", address(vault));
+        console.log("   Wrapper:         ", address(wrapper));
+        console.log("   ShareOFT:        ", address(shareOFT));
+        console.log("   GaugeController: ", address(gaugeController));
+        console.log("   CCAStrategy:     ", address(ccaStrategy));
+        console.log("   Oracle:          ", address(oracle));
         console.log(unicode"└─────────────────────────────────────────────────────────────────┘");
         
         console.log("\n");
@@ -339,6 +471,21 @@ contract DeployCreatorVault is Script {
         console.log(unicode"│  Wrapped Shares (wsAKITA) ← Trades on DEX with 6.9% fees        │");
         console.log(unicode"│                                                                 │");
         console.log(unicode"└─────────────────────────────────────────────────────────────────┘");
+    }
+    
+    /// @dev Convert string to uppercase
+    function _toUpperCase(string memory str) internal pure returns (string memory) {
+        bytes memory bStr = bytes(str);
+        bytes memory bUpper = new bytes(bStr.length);
+        for (uint i = 0; i < bStr.length; i++) {
+            // If lowercase letter (a-z), convert to uppercase
+            if (bStr[i] >= 0x61 && bStr[i] <= 0x7A) {
+                bUpper[i] = bytes1(uint8(bStr[i]) - 32);
+            } else {
+                bUpper[i] = bStr[i];
+            }
+        }
+        return string(bUpper);
     }
 }
 
