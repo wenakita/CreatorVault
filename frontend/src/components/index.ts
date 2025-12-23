@@ -12,4 +12,5 @@ export { SolanaConnect, SolanaBridgeCard, TwinAddressDisplay } from './SolanaCon
 
 // Charts
 export { DistributionChart, LotteryDistributionChart, LotteryDistributionCompact } from './DistributionChart'
+export { JackpotSunburst } from './JackpotSunburst'
 

@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { Rocket, ArrowRight, Zap, Gift, Shield, Sparkles, Coins, Vault, TrendingUp, Ticket } from 'lucide-react'
 import { TechScramble } from '../components/TechScramble'
+import { JackpotSunburst } from '../components/JackpotSunburst'
 
 // Base motion timing
 const baseEase = [0.4, 0, 0.2, 1] as const
@@ -79,23 +80,21 @@ export function Home() {
         </motion.div>
       </section>
 
-      {/* Stats */}
+      {/* Jackpot Pool Sunburst */}
       <motion.section
-        className="grid grid-cols-3 gap-2"
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ duration: 0.2, delay: 0.5, ease: baseEase }}
+        initial={{ opacity: 0, y: 12 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.3, delay: 0.5, ease: baseEase }}
       >
-        {[
-          { value: '$420K', label: 'TVL' },
-          { value: '6.9%', label: 'Trade Fee' },
-          { value: '0.1 ETH', label: 'Jackpot' },
-        ].map((stat) => (
-          <div key={stat.label} className="text-center p-3 rounded-xl bg-surface-900/50 border border-surface-800/50">
-            <p className="text-lg font-bold text-white">{stat.value}</p>
-            <p className="text-[10px] text-surface-500 uppercase tracking-wider">{stat.label}</p>
-          </div>
-        ))}
+        <JackpotSunburst
+          tokens={[
+            { symbol: 'wsAKITA', name: 'Wrapped Staked AKITA', value: 280, color: '#f97316' },
+            { symbol: 'wsCREATOR', name: 'Wrapped Staked CREATOR', value: 50, color: '#8b5cf6' },
+            { symbol: 'wsDAWG', name: 'Wrapped Staked DAWG', value: 20, color: '#06b6d4' },
+          ]}
+          totalEth="0.1 ETH"
+          totalUsd={350}
+        />
       </motion.section>
 
       {/* Flow - Professional with icons */}
