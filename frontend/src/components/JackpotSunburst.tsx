@@ -8,13 +8,12 @@ interface HierarchyNode {
   value?: number
   children?: HierarchyNode[]
   color?: string
-  description?: string
 }
 
 interface JackpotToken {
   symbol: string
   name: string
-  value: number // in USD
+  value: number
   color: string
 }
 
@@ -26,15 +25,12 @@ interface JackpotSunburstProps {
 
 const DEFAULT_TOKENS: JackpotToken[] = [
   { symbol: 'wsAKITA', name: 'Wrapped Staked AKITA', value: 280, color: '#f97316' },
-  { symbol: 'wsCREATOR', name: 'Wrapped Staked CREATOR', value: 50, color: '#8b5cf6' },
+  { symbol: 'wsCREATOR', name: 'Wrapped Staked CREATOR', value: 50, color: '#a855f7' },
   { symbol: 'wsDAWG', name: 'Wrapped Staked DAWG', value: 20, color: '#06b6d4' },
 ]
 
 /**
- * Looker-style Zoomable Sunburst for Jackpot Pool
- * - Click slice → zoom into that node
- * - Click center → zoom back out
- * - Labels appear when arc space is sufficient
+ * 3D-style Zoomable Sunburst with gradients and depth
  */
 export function JackpotSunburst({
   tokens = DEFAULT_TOKENS,
@@ -42,194 +38,198 @@ export function JackpotSunburst({
   totalUsd = 350,
 }: JackpotSunburstProps) {
   const svgRef = useRef<SVGSVGElement>(null)
-  
-  // Build hierarchical data
+
   const data: HierarchyNode = useMemo(() => {
     const tokenChildren = tokens.map((token) => ({
       name: token.symbol,
       color: token.color,
-      description: token.name,
       children: [
-        { name: 'Winner', value: token.value * 0.9, color: '#eab308' },
-        { name: 'Burn', value: token.value * 0.05, color: '#ef4444' },
-        { name: 'Protocol', value: token.value * 0.05, color: '#0052FF' },
+        { name: 'Winner', value: token.value * 0.9, color: '#facc15' },
+        { name: 'Burn', value: token.value * 0.05, color: '#f87171' },
+        { name: 'Protocol', value: token.value * 0.05, color: '#60a5fa' },
       ],
     }))
-
-    return {
-      name: 'Jackpot',
-      children: tokenChildren,
-    }
+    return { name: 'Jackpot', children: tokenChildren }
   }, [tokens])
 
-  // Sizing
   const isMobile = typeof window !== 'undefined' && window.innerWidth < 640
-  const size = isMobile ? 300 : 380
+  const size = isMobile ? 320 : 400
   const radius = size / 2
 
-  // Build partition layout
   const root = useMemo(() => {
     const r = d3
       .hierarchy<HierarchyNode>(data)
       .sum((d) => d.value ?? 0)
       .sort((a, b) => (b.value ?? 0) - (a.value ?? 0))
-
     return d3.partition<HierarchyNode>().size([2 * Math.PI, radius])(r)
   }, [data, radius])
 
-  // Current focus node (zoom state)
   const [focus, setFocus] = useState(root)
-
-  // Reset focus when data changes
   useEffect(() => setFocus(root), [root])
 
-  // D3 rendering
   useEffect(() => {
     const svg = d3.select(svgRef.current)
     svg.selectAll('*').remove()
-
     svg.attr('viewBox', `${-radius} ${-radius} ${size} ${size}`)
 
-    // Color scale based on token colors or category
-    const tokenColorMap: Record<string, string> = {}
-    tokens.forEach((t) => {
-      tokenColorMap[t.symbol] = t.color
-    })
+    // Gradients for 3D effect
+    const defs = svg.append('defs')
 
-    const getColor = (d: d3.HierarchyRectangularNode<HierarchyNode>) => {
-      // If it's a leaf (Winner/Burn/Protocol), use its color
+    // Radial gradient for depth
+    const radialGrad = defs.append('radialGradient')
+      .attr('id', 'depthGradient')
+      .attr('cx', '30%')
+      .attr('cy', '30%')
+    radialGrad.append('stop').attr('offset', '0%').attr('stop-color', 'rgba(255,255,255,0.15)')
+    radialGrad.append('stop').attr('offset', '100%').attr('stop-color', 'rgba(0,0,0,0.3)')
+
+    // Drop shadow filter
+    const filter = defs.append('filter')
+      .attr('id', 'dropShadow')
+      .attr('x', '-50%').attr('y', '-50%')
+      .attr('width', '200%').attr('height', '200%')
+    filter.append('feDropShadow')
+      .attr('dx', '0').attr('dy', '4')
+      .attr('stdDeviation', '8')
+      .attr('flood-color', 'rgba(0,0,0,0.5)')
+
+    // Glow filter
+    const glow = defs.append('filter').attr('id', 'glow')
+    glow.append('feGaussianBlur').attr('stdDeviation', '4').attr('result', 'blur')
+    glow.append('feMerge').html('<feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/>')
+
+    // Token colors
+    const tokenColorMap: Record<string, string> = {}
+    tokens.forEach((t) => { tokenColorMap[t.symbol] = t.color })
+
+    const getColor = (d: any) => {
       if (d.data.color && d.depth > 1) return d.data.color
-      // If it's a token, use token color
       if (tokenColorMap[d.data.name]) return tokenColorMap[d.data.name]
-      // Find ancestor token
-      const tokenAncestor = d.ancestors().find((a) => tokenColorMap[a.data.name])
-      if (tokenAncestor) return tokenColorMap[tokenAncestor.data.name]
-      return '#64748b'
+      const ancestor = d.ancestors().find((a: any) => tokenColorMap[a.data.name])
+      return ancestor ? tokenColorMap[ancestor.data.name] : '#64748b'
     }
 
-    const arc = d3
-      .arc<d3.HierarchyRectangularNode<HierarchyNode>>()
+    // Create gradient for each token
+    tokens.forEach((token) => {
+      const grad = defs.append('linearGradient')
+        .attr('id', `grad-${token.symbol}`)
+        .attr('x1', '0%').attr('y1', '0%')
+        .attr('x2', '100%').attr('y2', '100%')
+      grad.append('stop').attr('offset', '0%').attr('stop-color', d3.color(token.color)?.brighter(0.5)?.toString() || token.color)
+      grad.append('stop').attr('offset', '100%').attr('stop-color', d3.color(token.color)?.darker(0.5)?.toString() || token.color)
+    })
+
+    const arc = d3.arc<any>()
       .startAngle((d) => d.x0)
       .endAngle((d) => d.x1)
-      .padAngle((d) => Math.min((d.x1 - d.x0) / 2, 0.01))
-      .padRadius(radius)
+      .padAngle(0.01)
+      .padRadius(radius * 0.5)
       .innerRadius((d) => d.y0)
-      .outerRadius((d) => Math.max(d.y0, d.y1 - 1))
+      .outerRadius((d) => Math.max(d.y0, d.y1 - 2))
+      .cornerRadius(4)
 
-    // Scale functions for zoom
     let x = d3.scaleLinear().domain([focus.x0, focus.x1]).range([0, 2 * Math.PI])
     let y = d3.scaleLinear().domain([focus.y0, radius]).range([0, radius])
 
-    function arcVisible(d: d3.HierarchyRectangularNode<HierarchyNode>) {
-      return d.y1 <= radius && d.y0 >= 0 && d.x1 > d.x0
-    }
+    const g = svg.append('g').attr('filter', 'url(#dropShadow)')
 
-    function labelVisible(d: d3.HierarchyRectangularNode<HierarchyNode>) {
-      const a = x(d.x1) - x(d.x0)
-      const rMid = (y(d.y0) + y(d.y1)) / 2
-      return arcVisible(d) && a * rMid > 12
-    }
+    // Center glow circle
+    g.append('circle')
+      .attr('r', y(focus.y0) + 5 || 55)
+      .attr('fill', 'none')
+      .attr('stroke', 'rgba(234, 179, 8, 0.2)')
+      .attr('stroke-width', 2)
+      .attr('filter', 'url(#glow)')
 
-    function labelTransform(d: d3.HierarchyRectangularNode<HierarchyNode>) {
-      const angle = ((x(d.x0) + x(d.x1)) / 2) * (180 / Math.PI)
-      const r = (y(d.y0) + y(d.y1)) / 2
-      return `rotate(${angle - 90}) translate(${r},0) rotate(${angle < 180 ? 0 : 180})`
-    }
-
-    const g = svg.append('g')
-
-    // Center circle (click to zoom out)
-    const centerRadius = y(focus.y0) || 50
-    const center = g
-      .append('circle')
-      .attr('r', centerRadius)
-      .attr('fill', 'rgba(15, 23, 42, 0.8)')
-      .attr('stroke', 'rgba(234, 179, 8, 0.3)')
-      .attr('stroke-width', 1.5)
-      .attr('pointer-events', 'all')
+    // Center circle
+    const centerR = y(focus.y0) || 50
+    const center = g.append('circle')
+      .attr('r', centerR)
+      .attr('fill', 'url(#centerGrad)')
+      .attr('stroke', 'rgba(255,255,255,0.1)')
+      .attr('stroke-width', 1)
       .style('cursor', focus.parent ? 'pointer' : 'default')
-      .on('click', () => {
-        if (focus.parent) setFocus(focus.parent)
-      })
+      .on('click', () => { if (focus.parent) setFocus(focus.parent) })
+
+    // Center gradient
+    const centerGrad = defs.append('radialGradient')
+      .attr('id', 'centerGrad')
+      .attr('cx', '35%').attr('cy', '35%')
+    centerGrad.append('stop').attr('offset', '0%').attr('stop-color', 'rgba(30,41,59,1)')
+    centerGrad.append('stop').attr('offset', '100%').attr('stop-color', 'rgba(15,23,42,1)')
 
     // Center text
-    const centerGroup = g.append('g').attr('pointer-events', 'none')
-
-    centerGroup
-      .append('text')
+    const centerText = g.append('g').attr('pointer-events', 'none')
+    centerText.append('text')
       .attr('text-anchor', 'middle')
-      .attr('y', -8)
+      .attr('y', -12)
       .style('font-size', '10px')
-      .style('fill', '#64748b')
+      .style('fill', '#94a3b8')
       .style('text-transform', 'uppercase')
-      .style('letter-spacing', '1px')
+      .style('letter-spacing', '2px')
       .text(focus.depth === 0 ? 'Jackpot' : focus.data.name)
 
-    centerGroup
-      .append('text')
+    centerText.append('text')
       .attr('text-anchor', 'middle')
-      .attr('y', 14)
-      .style('font-size', '18px')
+      .attr('y', 12)
+      .style('font-size', '22px')
       .style('font-weight', '700')
-      .style('fill', '#eab308')
+      .style('fill', '#fbbf24')
+      .style('text-shadow', '0 0 20px rgba(251,191,36,0.5)')
       .text(focus.depth === 0 ? totalEth : `$${(focus.value || 0).toFixed(0)}`)
 
     if (focus.parent) {
-      centerGroup
-        .append('text')
+      centerText.append('text')
         .attr('text-anchor', 'middle')
         .attr('y', 32)
         .style('font-size', '9px')
-        .style('fill', '#94a3b8')
-        .text('← click to zoom out')
+        .style('fill', '#64748b')
+        .text('tap to zoom out')
     } else {
-      centerGroup
-        .append('text')
+      centerText.append('text')
         .attr('text-anchor', 'middle')
         .attr('y', 32)
-        .style('font-size', '9px')
-        .style('fill', '#94a3b8')
-        .text(`≈ $${totalUsd.toFixed(0)}`)
+        .style('font-size', '10px')
+        .style('fill', '#64748b')
+        .text(`≈ $${totalUsd.toFixed(0)} USD`)
     }
 
-    // Arc paths
+    // Arcs
     const nodes = root.descendants().filter((d) => d.depth)
-
-    const path = g
-      .selectAll('path')
+    const path = g.selectAll('path')
       .data(nodes)
       .join('path')
-      .attr('fill', (d: any) => getColor(d))
-      .attr('fill-opacity', (d: any) => (arcVisible(d) ? 0.85 : 0))
-      .attr('pointer-events', (d: any) => (arcVisible(d) ? 'auto' : 'none'))
-      .attr('d', (d: any) =>
-        arc({
-          ...d,
-          x0: x(d.x0),
-          x1: x(d.x1),
-          y0: y(d.y0),
-          y1: y(d.y1),
-        } as any)
-      )
-      .style('cursor', 'pointer')
-      .style('transition', 'filter 0.2s')
-      .on('mouseenter', function () {
-        d3.select(this).style('filter', 'brightness(1.2)')
+      .attr('fill', (d: any) => {
+        const color = getColor(d)
+        // Use gradient for depth 1 (tokens)
+        if (d.depth === 1) {
+          return `url(#grad-${d.data.name})`
+        }
+        return color
       })
-      .on('mouseleave', function () {
-        d3.select(this).style('filter', 'none')
+      .attr('fill-opacity', (d: any) => d.y1 <= radius && d.y0 >= 0 && d.x1 > d.x0 ? 0.9 : 0)
+      .attr('stroke', 'rgba(255,255,255,0.15)')
+      .attr('stroke-width', 0.5)
+      .attr('d', (d: any) => arc({ ...d, x0: x(d.x0), x1: x(d.x1), y0: y(d.y0), y1: y(d.y1) }))
+      .style('cursor', 'pointer')
+      .on('mouseenter', function() {
+        d3.select(this)
+          .transition().duration(150)
+          .attr('fill-opacity', 1)
+          .attr('stroke-width', 1.5)
+      })
+      .on('mouseleave', function() {
+        d3.select(this)
+          .transition().duration(150)
+          .attr('fill-opacity', 0.9)
+          .attr('stroke-width', 0.5)
       })
       .on('click', (_: any, d: any) => setFocus(d))
 
     // Tooltips
     path.append('title').text((d: any) => {
-      const label = d
-        .ancestors()
-        .reverse()
-        .map((n: any) => n.data.name)
-        .join(' → ')
-      const pct = totalUsd > 0 ? (((d.value || 0) / totalUsd) * 100).toFixed(1) : '0'
-      return `${label}\n$${(d.value || 0).toFixed(2)} (${pct}%)`
+      const label = d.ancestors().reverse().map((n: any) => n.data.name).join(' → ')
+      return `${label}\n$${(d.value || 0).toFixed(2)} (${totalUsd > 0 ? ((d.value || 0) / totalUsd * 100).toFixed(1) : 0}%)`
     })
 
     // Labels
@@ -239,23 +239,28 @@ export function JackpotSunburst({
       .attr('class', 'label')
       .attr('pointer-events', 'none')
       .attr('text-anchor', 'middle')
-      .attr('font-size', 10)
+      .attr('font-size', 9)
+      .attr('font-weight', '600')
       .attr('dy', '0.35em')
       .attr('fill', 'white')
-      .attr('fill-opacity', (d: any) => (labelVisible(d) ? 1 : 0))
-      .attr('transform', (d: any) => labelTransform(d))
+      .attr('fill-opacity', (d: any) => {
+        const a = x(d.x1) - x(d.x0)
+        const rMid = (y(d.y0) + y(d.y1)) / 2
+        return a * rMid > 14 ? 1 : 0
+      })
+      .attr('transform', (d: any) => {
+        const angle = ((x(d.x0) + x(d.x1)) / 2) * (180 / Math.PI)
+        const r = (y(d.y0) + y(d.y1)) / 2
+        return `rotate(${angle - 90}) translate(${r},0) rotate(${angle < 180 ? 0 : 180})`
+      })
+      .style('text-shadow', '0 1px 2px rgba(0,0,0,0.8)')
       .text((d: any) => d.data.name)
 
-    // Zoom transition function
-    function zoomTo(newFocus: d3.HierarchyRectangularNode<HierarchyNode>) {
-      const xNew = d3
-        .scaleLinear()
-        .domain([newFocus.x0, newFocus.x1])
-        .range([0, 2 * Math.PI])
-
+    // Zoom function
+    function zoomTo(newFocus: any) {
+      const xNew = d3.scaleLinear().domain([newFocus.x0, newFocus.x1]).range([0, 2 * Math.PI])
       const yNew = d3.scaleLinear().domain([newFocus.y0, radius]).range([0, radius])
-
-      const t = g.transition().duration(600)
+      const t = g.transition().duration(750).ease(d3.easeCubicInOut)
 
       center
         .style('cursor', newFocus.parent ? 'pointer' : 'default')
@@ -263,63 +268,37 @@ export function JackpotSunburst({
         .attr('r', yNew(newFocus.y0) || 50)
 
       // Update center text
-      centerGroup.selectAll('*').remove()
-
-      centerGroup
-        .append('text')
-        .attr('text-anchor', 'middle')
-        .attr('y', -8)
-        .style('font-size', '10px')
-        .style('fill', '#64748b')
-        .style('text-transform', 'uppercase')
-        .style('letter-spacing', '1px')
+      centerText.selectAll('*').remove()
+      centerText.append('text')
+        .attr('text-anchor', 'middle').attr('y', -12)
+        .style('font-size', '10px').style('fill', '#94a3b8')
+        .style('text-transform', 'uppercase').style('letter-spacing', '2px')
         .text(newFocus.depth === 0 ? 'Jackpot' : newFocus.data.name)
-
-      centerGroup
-        .append('text')
-        .attr('text-anchor', 'middle')
-        .attr('y', 14)
-        .style('font-size', '18px')
-        .style('font-weight', '700')
-        .style('fill', '#eab308')
+      centerText.append('text')
+        .attr('text-anchor', 'middle').attr('y', 12)
+        .style('font-size', '22px').style('font-weight', '700')
+        .style('fill', '#fbbf24').style('text-shadow', '0 0 20px rgba(251,191,36,0.5)')
         .text(newFocus.depth === 0 ? totalEth : `$${(newFocus.value || 0).toFixed(0)}`)
+      centerText.append('text')
+        .attr('text-anchor', 'middle').attr('y', 32)
+        .style('font-size', newFocus.parent ? '9px' : '10px').style('fill', '#64748b')
+        .text(newFocus.parent ? 'tap to zoom out' : `≈ $${totalUsd.toFixed(0)} USD`)
 
-      if (newFocus.parent) {
-        centerGroup
-          .append('text')
-          .attr('text-anchor', 'middle')
-          .attr('y', 32)
-          .style('font-size', '9px')
-          .style('fill', '#94a3b8')
-          .text('← click to zoom out')
-      } else {
-        centerGroup
-          .append('text')
-          .attr('text-anchor', 'middle')
-          .attr('y', 32)
-          .style('font-size', '9px')
-          .style('fill', '#94a3b8')
-          .text(`≈ $${totalUsd.toFixed(0)}`)
-      }
-
-      path
-        .transition(t as any)
-        .attr('fill-opacity', (d: any) => (arcVisible(d) ? 0.85 : 0))
-        .attr('pointer-events', (d: any) => (arcVisible(d) ? 'auto' : 'none'))
+      path.transition(t as any)
+        .attr('fill-opacity', (d: any) => d.y1 <= radius && d.y0 >= 0 && d.x1 > d.x0 ? 0.9 : 0)
         .attrTween('d', (d: any) => {
           const i = d3.interpolate(
             { x0: x(d.x0), x1: x(d.x1), y0: y(d.y0), y1: y(d.y1) },
             { x0: xNew(d.x0), x1: xNew(d.x1), y0: yNew(d.y0), y1: yNew(d.y1) }
           )
-          return (tt: number) => arc({ ...d, ...i(tt) } as any) as string
+          return (tt: number) => arc({ ...d, ...i(tt) }) as string
         })
 
-      g.selectAll('text.label')
-        .transition(t as any)
+      g.selectAll('text.label').transition(t as any)
         .attr('fill-opacity', (d: any) => {
           const a = xNew(d.x1) - xNew(d.x0)
           const rMid = (yNew(d.y0) + yNew(d.y1)) / 2
-          return a * rMid > 12 ? 1 : 0
+          return a * rMid > 14 ? 1 : 0
         })
         .attrTween('transform', (d: any) => {
           const i = d3.interpolate(
@@ -334,108 +313,83 @@ export function JackpotSunburst({
           }
         })
 
-      // Update scales for next transition
-      x = xNew
-      y = yNew
+      x = xNew; y = yNew
     }
 
     zoomTo(focus)
-
-    return () => {
-      svg.selectAll('*').remove()
-    }
+    return () => { svg.selectAll('*').remove() }
   }, [root, focus, radius, size, tokens, totalEth, totalUsd])
 
   return (
-    <div className="relative bg-gradient-to-br from-surface-900 to-surface-950 rounded-2xl p-4 sm:p-5 overflow-hidden border border-surface-800/50">
-      {/* Background glow */}
-      <div className="absolute top-0 right-0 w-40 h-40 bg-gradient-to-br from-yellow-500/5 to-transparent rounded-full blur-3xl" />
+    <div className="relative">
+      {/* Ambient glow behind chart */}
+      <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+        <div className="w-64 h-64 bg-yellow-500/10 rounded-full blur-3xl" />
+      </div>
 
-      <div className="relative">
+      <div className="relative bg-gradient-to-br from-slate-900/90 via-slate-900/95 to-slate-950/90 backdrop-blur-xl rounded-3xl p-5 sm:p-6 border border-white/5 shadow-2xl">
         {/* Header */}
-        <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center justify-between mb-5">
           <div>
-            <h3 className="text-white font-bold text-sm sm:text-base">Jackpot Pool</h3>
-            <p className="text-[10px] text-surface-500">
-              Click to drill down • Center to zoom out
-            </p>
+            <h3 className="text-white font-semibold text-base tracking-tight">Live Jackpot Pool</h3>
+            <p className="text-slate-500 text-xs mt-0.5">Tap to explore • Center to zoom out</p>
           </div>
-          <div className="flex items-center gap-2">
-            {focus.parent && (
-              <button
-                onClick={() => setFocus(root)}
-                className="p-1.5 rounded-md bg-surface-800/50 text-surface-400 hover:text-white hover:bg-surface-700 transition-colors"
-                title="Reset zoom"
-              >
-                <RotateCcw className="w-3.5 h-3.5" />
-              </button>
-            )}
-            <span className="px-2 py-1 rounded-md bg-yellow-500/10 text-yellow-500 text-[10px] font-medium">
-              Live
-            </span>
-          </div>
+          {focus.parent && (
+            <button
+              onClick={() => setFocus(root)}
+              className="p-2 rounded-lg bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white transition-all"
+            >
+              <RotateCcw className="w-4 h-4" />
+            </button>
+          )}
         </div>
 
-        <div className="flex flex-col lg:flex-row items-center gap-5">
-          {/* Zoomable Sunburst */}
-          <div className="flex-shrink-0 relative">
-            <div className="absolute inset-0 bg-gradient-to-br from-yellow-500/5 to-blue-500/5 rounded-full blur-xl" />
-            <svg ref={svgRef} width={size} height={size} className="relative" />
+        <div className="flex flex-col lg:flex-row items-center gap-6">
+          {/* Chart */}
+          <div className="relative">
+            <svg ref={svgRef} width={size} height={size} />
           </div>
 
           {/* Legend */}
-          <div className="flex-1 w-full space-y-3">
-            {/* Token Composition */}
-            <div className="space-y-1.5">
-              <p className="text-[10px] text-surface-500 uppercase tracking-wider font-medium">
-                Pool Composition
-              </p>
-              {tokens.map((token) => (
-                <button
-                  key={token.symbol}
-                  onClick={() => {
-                    const node = root.descendants().find((d) => d.data.name === token.symbol)
-                    if (node) setFocus(node)
-                  }}
-                  className="w-full flex items-center justify-between p-2 rounded-lg bg-surface-900/50 border border-transparent hover:bg-surface-800/50 hover:border-surface-700 transition-all text-left"
-                >
-                  <div className="flex items-center gap-2">
-                    <div
-                      className="w-2.5 h-2.5 rounded-full flex-shrink-0"
-                      style={{ backgroundColor: token.color }}
-                    />
-                    <span className="text-xs font-medium text-white">{token.symbol}</span>
-                  </div>
-                  <span className="text-xs font-mono text-surface-400">${token.value.toFixed(0)}</span>
-                </button>
-              ))}
+          <div className="flex-1 w-full space-y-4">
+            <div>
+              <p className="text-slate-500 text-[10px] uppercase tracking-widest font-medium mb-2">Pool Assets</p>
+              <div className="space-y-1.5">
+                {tokens.map((token) => (
+                  <button
+                    key={token.symbol}
+                    onClick={() => {
+                      const node = root.descendants().find((d) => d.data.name === token.symbol)
+                      if (node) setFocus(node)
+                    }}
+                    className="w-full flex items-center justify-between p-2.5 rounded-xl bg-white/[0.02] hover:bg-white/[0.05] border border-white/5 hover:border-white/10 transition-all group"
+                  >
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-3 h-3 rounded-full shadow-lg" style={{ backgroundColor: token.color, boxShadow: `0 0 12px ${token.color}50` }} />
+                      <span className="text-sm font-medium text-white/90 group-hover:text-white">{token.symbol}</span>
+                    </div>
+                    <span className="text-sm font-mono text-slate-400">${token.value}</span>
+                  </button>
+                ))}
+              </div>
             </div>
 
-            {/* Distribution */}
-            <div className="pt-2 border-t border-surface-800/50 space-y-1.5">
-              <p className="text-[10px] text-surface-500 uppercase tracking-wider font-medium">
-                Distribution
-              </p>
-              <div className="flex items-center justify-between text-xs">
-                <div className="flex items-center gap-1.5">
-                  <Trophy className="w-3 h-3 text-yellow-500" />
-                  <span className="text-surface-300">Winner</span>
-                </div>
-                <span className="font-bold text-yellow-500">90%</span>
-              </div>
-              <div className="flex items-center justify-between text-xs">
-                <div className="flex items-center gap-1.5">
-                  <Flame className="w-3 h-3 text-red-500" />
-                  <span className="text-surface-300">Burn</span>
-                </div>
-                <span className="font-bold text-red-500">5%</span>
-              </div>
-              <div className="flex items-center justify-between text-xs">
-                <div className="flex items-center gap-1.5">
-                  <Building2 className="w-3 h-3 text-brand-500" />
-                  <span className="text-surface-300">Protocol</span>
-                </div>
-                <span className="font-bold text-brand-500">5%</span>
+            <div className="pt-3 border-t border-white/5">
+              <p className="text-slate-500 text-[10px] uppercase tracking-widest font-medium mb-2">Distribution</p>
+              <div className="space-y-2">
+                {[
+                  { icon: Trophy, label: 'Winner', pct: '90%', color: 'text-yellow-400' },
+                  { icon: Flame, label: 'Burn', pct: '5%', color: 'text-red-400' },
+                  { icon: Building2, label: 'Protocol', pct: '5%', color: 'text-blue-400' },
+                ].map(({ icon: Icon, label, pct, color }) => (
+                  <div key={label} className="flex items-center justify-between text-sm">
+                    <div className="flex items-center gap-2">
+                      <Icon className={`w-3.5 h-3.5 ${color}`} />
+                      <span className="text-slate-400">{label}</span>
+                    </div>
+                    <span className={`font-semibold ${color}`}>{pct}</span>
+                  </div>
+                ))}
               </div>
             </div>
           </div>
