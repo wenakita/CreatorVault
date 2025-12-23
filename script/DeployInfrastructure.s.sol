@@ -7,7 +7,6 @@ import {Script, console} from "forge-std/Script.sol";
 import {CreatorRegistry} from "../contracts/core/CreatorRegistry.sol";
 import {CreatorOVaultFactory} from "../contracts/factories/CreatorOVaultFactory.sol";
 import {PayoutRouterFactory} from "../contracts/factories/PayoutRouterFactory.sol";
-import {CreatorDeploymentBatcher} from "../contracts/helpers/CreatorDeploymentBatcher.sol";
 
 // Shared Services
 import {CreatorLotteryManager} from "../contracts/lottery/CreatorLotteryManager.sol";
@@ -25,9 +24,8 @@ import {CreatorVRFConsumerV2_5} from "../contracts/vrf/CreatorVRFConsumerV2_5.so
  *      │  1. CreatorRegistry         - Central registry for all data    │
  *      │  2. CreatorOVaultFactory    - Deploys per-creator contracts    │
  *      │  3. PayoutRouterFactory     - Deploys PayoutRouters            │
- *      │  4. CreatorDeploymentBatcher- ERC-4337 batch helper            │
- *      │  5. CreatorLotteryManager   - Shared lottery service           │
- *      │  6. CreatorVRFConsumerV2_5  - Chainlink VRF hub                │
+ *      │  4. CreatorLotteryManager   - Shared lottery service           │
+ *      │  5. CreatorVRFConsumerV2_5  - Chainlink VRF hub                │
  *      └─────────────────────────────────────────────────────────────────┘
  *      
  *      ┌─────────────────────────────────────────────────────────────────┐
@@ -88,7 +86,6 @@ contract DeployInfrastructure is Script {
     CreatorRegistry public registry;
     CreatorOVaultFactory public vaultFactory;
     PayoutRouterFactory public payoutRouterFactory;
-    CreatorDeploymentBatcher public deploymentBatcher;
     CreatorLotteryManager public lotteryManager;
     CreatorVRFConsumerV2_5 public vrfConsumer;
     
@@ -114,38 +111,30 @@ contract DeployInfrastructure is Script {
         console.log(unicode"╚════════════════════════════════════════════════════════════════╝");
         
         // 1. CreatorRegistry
-        console.log("\n[1/6] Deploying CreatorRegistry...");
+        console.log("\n[1/5] Deploying CreatorRegistry...");
         registry = new CreatorRegistry(deployer);
         console.log("       Address:", address(registry));
         
         // 2. CreatorOVaultFactory
-        console.log("\n[2/6] Deploying CreatorOVaultFactory...");
+        console.log("\n[2/5] Deploying CreatorOVaultFactory...");
         vaultFactory = new CreatorOVaultFactory(address(registry), deployer);
         console.log("       Address:", address(vaultFactory));
         
         // 3. PayoutRouterFactory
-        console.log("\n[3/6] Deploying PayoutRouterFactory...");
+        console.log("\n[3/5] Deploying PayoutRouterFactory...");
         payoutRouterFactory = new PayoutRouterFactory(deployer);
         console.log("       Address:", address(payoutRouterFactory));
         
-        // 4. CreatorDeploymentBatcher
-        console.log("\n[4/6] Deploying CreatorDeploymentBatcher...");
-        deploymentBatcher = new CreatorDeploymentBatcher(
-            address(vaultFactory),
-            address(payoutRouterFactory)
-        );
-        console.log("       Address:", address(deploymentBatcher));
-        
-        // 5. CreatorLotteryManager (shared service)
-        console.log("\n[5/6] Deploying CreatorLotteryManager...");
+        // 4. CreatorLotteryManager (shared service)
+        console.log("\n[4/5] Deploying CreatorLotteryManager...");
         lotteryManager = new CreatorLotteryManager(
             address(registry),
             deployer
         );
         console.log("       Address:", address(lotteryManager));
         
-        // 6. CreatorVRFConsumerV2_5 (VRF hub)
-        console.log("\n[6/6] Deploying CreatorVRFConsumerV2_5...");
+        // 5. CreatorVRFConsumerV2_5 (VRF hub)
+        console.log("\n[5/5] Deploying CreatorVRFConsumerV2_5...");
         vrfConsumer = new CreatorVRFConsumerV2_5(
             address(registry),
             deployer
@@ -232,7 +221,6 @@ contract DeployInfrastructure is Script {
         console.log("   CreatorRegistry:        ", address(registry));
         console.log("   CreatorOVaultFactory:   ", address(vaultFactory));
         console.log("   PayoutRouterFactory:    ", address(payoutRouterFactory));
-        console.log("   CreatorDeploymentBatcher:", address(deploymentBatcher));
         console.log("   CreatorLotteryManager:  ", address(lotteryManager));
         console.log("   CreatorVRFConsumerV2_5: ", address(vrfConsumer));
         console.log(unicode"│                                                                 │");
@@ -256,7 +244,6 @@ contract DeployInfrastructure is Script {
         console.log("   # Add to your .env file:");
         console.log("   CREATOR_FACTORY=", address(vaultFactory));
         console.log("   PAYOUT_ROUTER_FACTORY=", address(payoutRouterFactory));
-        console.log("   DEPLOYMENT_BATCHER=", address(deploymentBatcher));
         console.log("   CREATOR_REGISTRY=", address(registry));
         console.log("   LOTTERY_MANAGER=", address(lotteryManager));
         console.log(unicode"│                                                                 │");
@@ -271,10 +258,7 @@ contract DeployInfrastructure is Script {
         console.log("   1. CreatorOVaultFactory:    ", address(vaultFactory));
         console.log("      Function: deploy(address)");
         console.log(unicode"│                                                                 │");
-        console.log("   2. CreatorDeploymentBatcher:", address(deploymentBatcher));
-        console.log("      Function: deployAll(address,bool,bool)");
-        console.log(unicode"│                                                                 │");
-        console.log("   3. PayoutRouterFactory:     ", address(payoutRouterFactory));
+        console.log("   2. PayoutRouterFactory:     ", address(payoutRouterFactory));
         console.log("      Function: deploy(address,address)");
         console.log(unicode"│                                                                 │");
         console.log(unicode"└─────────────────────────────────────────────────────────────────┘");

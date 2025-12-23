@@ -48,7 +48,6 @@ const CONFIG = {
         entryPoint: '0x5FF137D4b0FDCD49DcA30c7CF57E578a026d2789' as Address, // v0.6
         factory: process.env.CREATOR_FACTORY as Address,
         payoutRouterFactory: process.env.PAYOUT_ROUTER_FACTORY as Address,
-        deploymentBatcher: process.env.DEPLOYMENT_BATCHER as Address,
     },
     
     // Your Smart Account address
@@ -123,37 +122,6 @@ const ZORA_COIN_ABI = [
         inputs: [],
         outputs: [{ name: '', type: 'address' }],
         stateMutability: 'view',
-    },
-] as const;
-
-const DEPLOYMENT_BATCHER_ABI = [
-    {
-        name: 'deployAll',
-        type: 'function',
-        inputs: [
-            { name: '_creatorCoin', type: 'address' },
-            { name: '_deployPayoutRouter', type: 'bool' },
-            { name: '_redirectPayoutRecipient', type: 'bool' },
-        ],
-        outputs: [
-            {
-                name: 'info',
-                type: 'tuple',
-                components: [
-                    { name: 'creatorCoin', type: 'address' },
-                    { name: 'vault', type: 'address' },
-                    { name: 'wrapper', type: 'address' },
-                    { name: 'shareOFT', type: 'address' },
-                    { name: 'gaugeController', type: 'address' },
-                    { name: 'ccaStrategy', type: 'address' },
-                    { name: 'oracle', type: 'address' },
-                    { name: 'creator', type: 'address' },
-                    { name: 'deployedAt', type: 'uint256' },
-                    { name: 'exists', type: 'bool' },
-                ],
-            },
-            { name: 'payoutRouter', type: 'address' },
-        ],
     },
 ] as const;
 
@@ -236,27 +204,7 @@ function buildDeploymentCalls(
 ): Call[] {
     const calls: Call[] = [];
     
-    // Option A: Use DeploymentBatcher (single call, simpler)
-    if (CONFIG.contracts.deploymentBatcher) {
-        calls.push({
-            target: CONFIG.contracts.deploymentBatcher,
-            data: encodeFunctionData({
-                abi: DEPLOYMENT_BATCHER_ABI,
-                functionName: 'deployAll',
-                args: [
-                    creatorCoin,
-                    options.deployPayoutRouter,
-                    options.redirectPayoutRecipient,
-                ],
-            }),
-        });
-        
-        return calls;
-    }
-    
-    // Option B: Individual calls (more control)
-    
-    // Call 1: Deploy core infrastructure
+    // Call 1: Deploy core infrastructure via factory
     calls.push({
         target: CONFIG.contracts.factory,
         data: encodeFunctionData({
@@ -613,7 +561,6 @@ async function main() {
 ║    BASE_RPC_URL       - Base RPC (default: mainnet.base.org)               ║
 ║    BUNDLER_URL        - Coinbase bundler endpoint                          ║
 ║    PAYMASTER_URL      - Coinbase paymaster endpoint                        ║
-║    DEPLOYMENT_BATCHER - CreatorDeploymentBatcher address                   ║
 ║                                                                            ║
 ║  Coinbase Developer Platform:                                              ║
 ║    https://api.developer.coinbase.com/rpc/v1/base/<YOUR_API_KEY>           ║
