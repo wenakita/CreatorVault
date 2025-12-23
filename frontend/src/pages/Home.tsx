@@ -1,390 +1,227 @@
 import { Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { Rocket, Globe, Zap, ArrowRight, Users, Heart, Sparkles, Trophy, Flame, Shield, ArrowLeftRight } from 'lucide-react'
+import { Rocket, ArrowRight, Zap, Gift, Shield, Sparkles } from 'lucide-react'
 import { TechScramble } from '../components/TechScramble'
-import { BaseStep, BaseStepList } from '../components/BaseStep'
-import { FeatureCard, FeatureGrid, HighlightCard } from '../components/FeatureCard'
-import { SolanaConnect } from '../components/SolanaConnect'
 
 // Base motion timing
 const baseEase = [0.4, 0, 0.2, 1] as const
 
-// Stats
-const stats = [
-  { label: 'Total Value Locked', value: '$420.69K', color: 'text-white' },
-  { label: 'Creators', value: '1', color: 'text-brand-400' },
-  { label: 'Jackpot Pool', value: '0.1 ETH', color: 'text-yellow-400' },
-]
-
 export function Home() {
   return (
-    <div className="space-y-16 py-8">
-      {/* Hero - Base-style with tech scramble */}
-      <section className="text-center space-y-6">
-        {/* Live badge */}
+    <div className="space-y-12 py-6">
+      {/* Hero - Clean & focused */}
+      <section className="text-center space-y-6 pt-8">
+        {/* Chain badges */}
         <motion.div
-          className="inline-flex items-center gap-3 px-4 py-2 rounded-full bg-surface-900 border border-surface-800 text-sm"
+          className="inline-flex items-center gap-2"
           initial={{ opacity: 0, y: -8 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.24, ease: baseEase }}
+          transition={{ duration: 0.2, ease: baseEase }}
         >
-          <span className="relative flex h-2 w-2">
-            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-brand-400 opacity-75" />
-            <span className="relative inline-flex rounded-full h-2 w-2 bg-brand-500" />
+          <span className="px-3 py-1.5 rounded-full bg-brand-500/10 border border-brand-500/30 text-brand-400 text-sm font-medium">
+            Base
           </span>
-          <span className="text-surface-300">Live on</span>
-          <div className="flex items-center gap-2">
-            <span className="px-2 py-0.5 rounded bg-brand-500/20 text-brand-400 font-medium">Base</span>
-            <span className="text-surface-600">+</span>
-            <span className="px-2 py-0.5 rounded bg-purple-500/20 text-purple-400 font-medium">Solana</span>
-          </div>
+          <span className="text-surface-600">+</span>
+          <span className="px-3 py-1.5 rounded-full bg-purple-500/10 border border-purple-500/30 text-purple-400 text-sm font-medium">
+            Solana
+          </span>
         </motion.div>
 
-        {/* Headline with tech scramble effect */}
+        {/* Headline */}
         <motion.h1
-          className="font-display text-4xl sm:text-6xl font-black tracking-tight"
+          className="font-display text-4xl sm:text-5xl lg:text-6xl font-black tracking-tight"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
-          transition={{ duration: 0.32, delay: 0.1, ease: baseEase }}
+          transition={{ duration: 0.3, delay: 0.1, ease: baseEase }}
         >
           <span className="text-gradient">
-            <TechScramble text="Earn Together" delay={200} duration={600} />
+            <TechScramble text="Earn Together" delay={150} duration={500} />
           </span>
-          <br />
-          <motion.span
-            initial={{ opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.32, delay: 0.4, ease: baseEase }}
-          >
-            Creator Vaults
-          </motion.span>
         </motion.h1>
 
         {/* Subtitle */}
         <motion.p
-          className="text-surface-400 text-lg max-w-xl mx-auto"
-          initial={{ opacity: 0, y: 8 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.24, delay: 0.5, ease: baseEase }}
+          className="text-surface-400 text-lg max-w-md mx-auto"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.2, delay: 0.3, ease: baseEase }}
         >
-          One click to launch. Creators & communities aligned.
-          Every trade builds the jackpot. Every buy is a chance to win.
+          Creator Vaults with shared jackpots.
+          <br />
+          <span className="text-white">Every buy is a lottery entry.</span>
         </motion.p>
 
-        {/* CTA Buttons */}
+        {/* CTA */}
         <motion.div
-          className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-4"
+          className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-2"
           initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.24, delay: 0.6, ease: baseEase }}
+          transition={{ duration: 0.2, delay: 0.4, ease: baseEase }}
         >
           <Link to="/launch">
             <motion.button
-              className="btn-primary flex items-center gap-2 text-lg px-8 py-4"
+              className="btn-primary flex items-center gap-2 px-6 py-3"
               whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.97 }}
-              transition={{ duration: 0.12, ease: baseEase }}
+              whileTap={{ scale: 0.98 }}
             >
-              <Rocket className="w-5 h-5" />
-              Launch Your Vault
-              <ArrowRight className="w-5 h-5" />
+              <Rocket className="w-4 h-4" />
+              Launch Vault
+              <ArrowRight className="w-4 h-4" />
             </motion.button>
           </Link>
           <Link to="/dashboard">
             <motion.button
-              className="btn-secondary flex items-center gap-2"
+              className="btn-secondary flex items-center gap-2 px-6 py-3"
               whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.97 }}
-              transition={{ duration: 0.12, ease: baseEase }}
+              whileTap={{ scale: 0.98 }}
             >
-              <Users className="w-5 h-5" />
-              Explore Vaults
+              Explore
             </motion.button>
           </Link>
         </motion.div>
       </section>
 
-      {/* Stats - OnchainKit style */}
-      <section className="grid grid-cols-3 gap-4">
-        {stats.map((stat, index) => (
+      {/* Stats - Minimal */}
+      <motion.section
+        className="grid grid-cols-3 gap-3"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 0.2, delay: 0.5, ease: baseEase }}
+      >
+        {[
+          { value: '$420K', label: 'TVL' },
+          { value: '6.9%', label: 'Fee' },
+          { value: '0.1 ETH', label: 'Jackpot' },
+        ].map((stat) => (
+          <div key={stat.label} className="text-center p-4 rounded-xl bg-surface-900/50 border border-surface-800/50">
+            <p className="text-xl font-bold text-white">{stat.value}</p>
+            <p className="text-xs text-surface-500 uppercase tracking-wider">{stat.label}</p>
+          </div>
+        ))}
+      </motion.section>
+
+      {/* How it works - Visual & compact */}
+      <motion.section
+        initial={{ opacity: 0, y: 12 }}
+        whileInView={{ opacity: 1, y: 0 }}
+        viewport={{ once: true }}
+        transition={{ duration: 0.3, ease: baseEase }}
+        className="glass-card p-6"
+      >
+        <div className="flex items-center justify-between gap-4 overflow-x-auto pb-2">
+          {[
+            { icon: '🪙', label: 'Deposit', sub: 'Creator Coin' },
+            { icon: '→', label: '', sub: '' },
+            { icon: '🏦', label: 'Vault', sub: 'wsToken' },
+            { icon: '→', label: '', sub: '' },
+            { icon: '📈', label: 'Trade', sub: '6.9% fee' },
+            { icon: '→', label: '', sub: '' },
+            { icon: '🎰', label: 'Lottery', sub: 'VRF draw' },
+          ].map((step, i) => (
+            <div key={i} className={`flex-shrink-0 text-center ${step.icon === '→' ? 'text-surface-600' : ''}`}>
+              <span className="text-2xl">{step.icon}</span>
+              {step.label && (
+                <>
+                  <p className="text-sm font-medium mt-1">{step.label}</p>
+                  <p className="text-xs text-surface-500">{step.sub}</p>
+                </>
+              )}
+            </div>
+          ))}
+        </div>
+      </motion.section>
+
+      {/* Features - Clean grid */}
+      <section className="grid sm:grid-cols-2 gap-4">
+        {[
+          {
+            icon: <Zap className="w-5 h-5 text-yellow-500" />,
+            title: 'Fair Launch',
+            desc: 'CCA auctions prevent sniping & front-running',
+          },
+          {
+            icon: <Gift className="w-5 h-5 text-brand-500" />,
+            title: 'Buy-To-Win',
+            desc: 'Every purchase = VRF lottery entry',
+          },
+          {
+            icon: <Shield className="w-5 h-5 text-green-500" />,
+            title: 'Transparent',
+            desc: '90% winner • 5% burn • 5% protocol',
+          },
+          {
+            icon: <Sparkles className="w-5 h-5 text-purple-500" />,
+            title: 'Cross-Chain',
+            desc: 'Base native + Solana bridge support',
+          },
+        ].map((feature, i) => (
           <motion.div
-            key={stat.label}
-            className="glass-card p-4 text-center"
-            initial={{ opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.24, delay: 0.1 * index, ease: baseEase }}
+            key={feature.title}
+            initial={{ opacity: 0, y: 8 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.2, delay: i * 0.05, ease: baseEase }}
+            className="flex items-start gap-3 p-4 rounded-xl bg-surface-900/30 border border-surface-800/50 hover:border-surface-700/50 transition-colors"
           >
-            <p className={`text-2xl font-bold ${stat.color}`}>{stat.value}</p>
-            <p className="text-xs text-surface-500 uppercase tracking-wider mt-1">{stat.label}</p>
+            <div className="p-2 rounded-lg bg-surface-800/50">{feature.icon}</div>
+            <div>
+              <h3 className="font-medium">{feature.title}</h3>
+              <p className="text-sm text-surface-500">{feature.desc}</p>
+            </div>
           </motion.div>
         ))}
       </section>
 
-      {/* Earn Together Highlight - Base Account style */}
-      <HighlightCard
-        subtitle="The Vision"
-        title="What is 'Earn Together'?"
-        description="Traditional creator tokens pit communities against each other. CreatorVault flips the script: 6.9% of every trade goes to a shared jackpot pool. Every buy is a lottery entry. Winners are picked randomly via Chainlink VRF."
-      >
-        <div className="flex flex-wrap gap-4">
-          <div className="flex items-center gap-2 text-sm">
-            <Heart className="w-4 h-4 text-brand-500" />
-            <span className="text-surface-300">Aligned incentives</span>
-          </div>
-          <div className="flex items-center gap-2 text-sm">
-            <Shield className="w-4 h-4 text-brand-500" />
-            <span className="text-surface-300">Fair & verifiable</span>
-          </div>
-          <div className="flex items-center gap-2 text-sm">
-            <Globe className="w-4 h-4 text-brand-500" />
-            <span className="text-surface-300">Base + Solana</span>
-          </div>
-        </div>
-      </HighlightCard>
-
-      {/* Features - OnchainKit style grid */}
-      <section className="space-y-8">
-        <motion.h2
-          className="font-display text-2xl font-bold text-center"
-          initial={{ opacity: 0 }}
-          whileInView={{ opacity: 1 }}
-          viewport={{ once: true }}
-          transition={{ duration: 0.24, ease: baseEase }}
-        >
-          Why CreatorVault?
-        </motion.h2>
-
-        <FeatureGrid columns={2}>
-          <FeatureCard
-            icon={<Heart className="w-6 h-6" />}
-            title="Earn Together"
-            description="Creators & communities share in every trade. Aligned incentives from day one."
-            delay={0}
-          />
-          <FeatureCard
-            icon={<Globe className="w-6 h-6" />}
-            title="Base + Solana"
-            description="Native on Base with Solana bridge. SOL users can participate in CCA & lottery!"
-            delay={0.05}
-          />
-          <FeatureCard
-            icon={<Zap className="w-6 h-6" />}
-            title="6.9% Trade Fee"
-            description="Every buy AND sell funds the jackpot pool & token burns."
-            delay={0.1}
-          />
-          <FeatureCard
-            icon={<Sparkles className="w-6 h-6" />}
-            title="Buy-To-Win"
-            description="Every purchase = VRF lottery entry. Random draws, fair odds."
-            delay={0.15}
-          />
-        </FeatureGrid>
-      </section>
-
-      {/* How it Works - Base Account numbered steps */}
-      <section className="space-y-8">
-        <motion.h2
-          className="font-display text-2xl font-bold text-center"
-          initial={{ opacity: 0 }}
-          whileInView={{ opacity: 1 }}
-          viewport={{ once: true }}
-          transition={{ duration: 0.24, ease: baseEase }}
-        >
-          How It Works
-        </motion.h2>
-
-        <BaseStepList>
-          <BaseStep
-            number={1}
-            title="Connect & Deposit"
-            description="Connect your wallet, enter your Creator Coin address, and deposit tokens. Everything deploys in a single gasless transaction via ERC-4337."
-            icon={<Rocket className="w-5 h-5" />}
-            delay={0}
-          />
-          <BaseStep
-            number={2}
-            title="Fair Launch via CCA"
-            description="Your wrapped shares (wsToken) go live via Continuous Clearing Auction. No sniping, no front-running. Early participants get the best prices."
-            icon={<Shield className="w-5 h-5" />}
-            delay={0.1}
-          />
-          <BaseStep
-            number={3}
-            title="Earn Together"
-            description="6.9% trade fee on buys AND sells. Every buy = VRF lottery entry. 90% to winner, 5% burned, 5% protocol. Random winners, fair odds."
-            icon={<Trophy className="w-5 h-5" />}
-            delay={0.2}
-          />
-        </BaseStepList>
-      </section>
-
-      {/* Buy-To-Win Explainer */}
+      {/* Solana bridge - Compact */}
       <motion.section
         initial={{ opacity: 0, y: 12 }}
         whileInView={{ opacity: 1, y: 0 }}
         viewport={{ once: true }}
-        transition={{ duration: 0.32, ease: baseEase }}
-        className="glass-card p-6 sm:p-8 border-yellow-500/20"
+        transition={{ duration: 0.3, ease: baseEase }}
+        className="p-4 rounded-xl bg-purple-500/5 border border-purple-500/20"
       >
-        <div className="flex items-center gap-3 mb-6">
-          <div className="w-10 h-10 rounded-xl bg-yellow-500/10 flex items-center justify-center">
-            <Sparkles className="w-5 h-5 text-yellow-500" />
-          </div>
-          <div>
-            <h3 className="font-semibold text-lg">Buy-To-Win Lottery</h3>
-            <p className="text-surface-500 text-sm">Powered by Chainlink VRF v2.5</p>
-          </div>
-        </div>
-
-        <div className="grid sm:grid-cols-3 gap-6">
-          <div className="space-y-2">
-            <div className="flex items-center gap-2">
-              <span className="text-xl">🎫</span>
-              <span className="font-medium text-yellow-400">Entry</span>
-            </div>
-            <p className="text-surface-400 text-sm">
-              Every wsToken <span className="text-white font-medium">BUY</span> on Uniswap V4 enters you into the jackpot draw.
-            </p>
-          </div>
-          <div className="space-y-2">
-            <div className="flex items-center gap-2">
-              <span className="text-xl">🎲</span>
-              <span className="font-medium text-yellow-400">Random Draw</span>
-            </div>
-            <p className="text-surface-400 text-sm">
-              Chainlink VRF picks winners at random. Verifiably fair, no manipulation possible.
-            </p>
-          </div>
-          <div className="space-y-2">
-            <div className="flex items-center gap-2">
-              <span className="text-xl">💰</span>
-              <span className="font-medium text-yellow-400">Distribution</span>
-            </div>
-            <p className="text-surface-400 text-sm">
-              <span className="text-yellow-400">90%</span> winner • <span className="text-red-400">5%</span> burned • <span className="text-brand-400">5%</span> protocol
-            </p>
-          </div>
-        </div>
-      </motion.section>
-
-      {/* Solana Bridge Section */}
-      <motion.section
-        initial={{ opacity: 0, y: 12 }}
-        whileInView={{ opacity: 1, y: 0 }}
-        viewport={{ once: true }}
-        transition={{ duration: 0.32, ease: baseEase }}
-        className="glass-card p-6 sm:p-8 border-purple-500/20"
-      >
-        <div className="flex flex-col lg:flex-row gap-8 items-center">
-          {/* Left: Info */}
-          <div className="flex-1 space-y-4">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-purple-500/10 flex items-center justify-center">
-                <ArrowLeftRight className="w-5 h-5 text-purple-500" />
-              </div>
-              <div>
-                <h3 className="font-semibold text-lg">Bridge from Solana</h3>
-                <p className="text-surface-500 text-sm">Powered by Base-Solana Bridge</p>
-              </div>
-            </div>
-
-            <p className="text-surface-400">
-              SOL holders can participate in <span className="text-white font-medium">CCA auctions</span> and{' '}
-              <span className="text-white font-medium">Buy-To-Win lottery</span> directly from Solana!
-            </p>
-
-            <div className="grid grid-cols-3 gap-4 pt-2">
-              <div className="text-center p-3 rounded-lg bg-surface-900/50">
-                <span className="text-2xl">🏷️</span>
-                <p className="text-xs text-surface-400 mt-1">CCA Bidding</p>
-              </div>
-              <div className="text-center p-3 rounded-lg bg-surface-900/50">
-                <span className="text-2xl">🎰</span>
-                <p className="text-xs text-surface-400 mt-1">Lottery Entry</p>
-              </div>
-              <div className="text-center p-3 rounded-lg bg-surface-900/50">
-                <span className="text-2xl">🏦</span>
-                <p className="text-xs text-surface-400 mt-1">Vault Deposit</p>
-              </div>
-            </div>
-
-            {/* Flow indicator */}
-            <div className="flex items-center justify-center gap-2 text-xs pt-2">
-              <span className="px-2 py-1 rounded bg-purple-500/10 text-purple-400 font-mono">Solana</span>
-              <span className="text-surface-600">→</span>
-              <span className="px-2 py-1 rounded bg-brand-500/10 text-brand-400 font-mono">Base</span>
-              <span className="text-surface-600">→</span>
-              <span className="px-2 py-1 rounded bg-yellow-500/10 text-yellow-400 font-mono">Jackpot 🎉</span>
-            </div>
-          </div>
-
-          {/* Right: Connect */}
-          <div className="flex flex-col items-center gap-4 p-6 rounded-2xl bg-surface-900/50 border border-surface-800">
+        <div className="flex items-center justify-between gap-4 flex-wrap">
+          <div className="flex items-center gap-3">
             <img 
               src="https://raw.githubusercontent.com/solana-labs/token-list/main/assets/mainnet/So11111111111111111111111111111111111111112/logo.png" 
               alt="Solana" 
-              className="w-12 h-12"
+              className="w-8 h-8"
             />
-            <p className="text-surface-400 text-sm text-center">
-              Connect your Phantom wallet<br />to bridge SOL and participate
-            </p>
-            <SolanaConnect />
+            <div>
+              <p className="font-medium">SOL Users Welcome</p>
+              <p className="text-sm text-surface-400">Bridge & enter lottery from Solana</p>
+            </div>
           </div>
+          <a
+            href="https://docs.base.org/guides/base-solana-bridge"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="px-4 py-2 rounded-lg bg-purple-500/10 text-purple-400 text-sm font-medium hover:bg-purple-500/20 transition-colors"
+          >
+            Learn More →
+          </a>
         </div>
       </motion.section>
 
-      {/* Final CTA */}
+      {/* Final CTA - Minimal */}
       <motion.section
-        initial={{ opacity: 0, y: 12 }}
-        whileInView={{ opacity: 1, y: 0 }}
+        initial={{ opacity: 0 }}
+        whileInView={{ opacity: 1 }}
         viewport={{ once: true }}
-        transition={{ duration: 0.32, ease: baseEase }}
-        className="relative overflow-hidden rounded-3xl"
+        transition={{ duration: 0.3, ease: baseEase }}
+        className="text-center py-8"
       >
-        {/* Background gradient */}
-        <div className="absolute inset-0 bg-gradient-to-br from-brand-500/20 via-surface-900 to-surface-900" />
-        <div className="absolute top-0 right-0 w-64 h-64 bg-brand-500/10 rounded-full blur-3xl" />
-        
-        <div className="relative p-8 sm:p-12 text-center space-y-6">
-          <h2 className="font-display text-3xl font-bold">
-            Ready to <span className="text-gradient">Earn Together</span>?
-          </h2>
-          <p className="text-surface-400 max-w-md mx-auto">
-            Be the next creator to unlock cross-chain yield for your community.
-            Base + Solana, day one.
-          </p>
-          <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Link to="/launch">
-              <motion.button
-                className="btn-primary flex items-center gap-2 text-lg px-8 py-4"
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.97 }}
-                transition={{ duration: 0.12, ease: baseEase }}
-              >
-                <Rocket className="w-5 h-5" />
-                Launch on Base
-                <ArrowRight className="w-5 h-5" />
-              </motion.button>
-            </Link>
-            <motion.a
-              href="https://docs.base.org/guides/base-solana-bridge"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="btn-secondary flex items-center gap-2 px-6 py-4"
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.97 }}
-              transition={{ duration: 0.12, ease: baseEase }}
-            >
-              <img 
-                src="https://raw.githubusercontent.com/solana-labs/token-list/main/assets/mainnet/So11111111111111111111111111111111111111112/logo.png" 
-                alt="Solana" 
-                className="w-5 h-5"
-              />
-              Bridge from Solana
-            </motion.a>
-          </div>
-        </div>
+        <p className="text-surface-500 mb-4">Ready to launch?</p>
+        <Link to="/launch">
+          <motion.button
+            className="btn-primary inline-flex items-center gap-2 px-8 py-4 text-lg"
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
+          >
+            <Rocket className="w-5 h-5" />
+            Create Your Vault
+          </motion.button>
+        </Link>
       </motion.section>
     </div>
   )
