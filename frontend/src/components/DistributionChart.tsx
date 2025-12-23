@@ -28,6 +28,7 @@ export function LotteryDistributionChart({
   const [selectedPath, setSelectedPath] = useState<string | null>(null)
 
   // Hierarchical data for lottery distribution
+  // 69% jackpot, 21.4% burn (31% * 0.69), 9.6% treasury (31% * 0.31)
   const data: HierarchyNode = useMemo(
     () => ({
       name: 'Jackpot Pool',
@@ -38,7 +39,7 @@ export function LotteryDistributionChart({
           children: [
             {
               name: 'Random VRF Draw',
-              value: jackpotUsd * 0.9,
+              value: jackpotUsd * 0.69,
               color: '#fbbf24',
               description: 'Chainlink VRF v2.5',
             },
@@ -50,19 +51,19 @@ export function LotteryDistributionChart({
           children: [
             {
               name: 'Token Burn',
-              value: jackpotUsd * 0.05,
+              value: jackpotUsd * 0.214,
               color: '#f87171',
               description: 'Permanently removed',
             },
           ],
         },
         {
-          name: 'Protocol',
+          name: 'Treasury',
           color: '#0052FF', // Base blue
           children: [
             {
               name: 'Development',
-              value: jackpotUsd * 0.05,
+              value: jackpotUsd * 0.096,
               color: '#3b82f6',
               description: 'Platform sustainability',
             },
@@ -423,21 +424,21 @@ export function LotteryDistributionCompact({
   jackpotAmount?: string
 }) {
   const data = [
-    { name: 'Winner', value: 90, color: '#eab308' },
-    { name: 'Burn', value: 5, color: '#ef4444' },
-    { name: 'Protocol', value: 5, color: '#0052FF' },
+    { name: 'Winner', value: 69, color: '#eab308' },
+    { name: 'Burn', value: 21.4, color: '#ef4444' },
+    { name: 'Treasury', value: 9.6, color: '#0052FF' },
   ]
 
   return (
     <div className="flex items-center gap-4">
-      {/* Simple donut using CSS */}
+      {/* Simple donut using CSS - 69% winner, 21.4% burn, 9.6% treasury */}
       <div
         className="w-[80px] h-[80px] rounded-full flex-shrink-0 relative"
         style={{
           background: `conic-gradient(
-            #eab308 0deg 324deg,
-            #ef4444 324deg 342deg,
-            #0052FF 342deg 360deg
+            #eab308 0deg 248.4deg,
+            #ef4444 248.4deg 325.44deg,
+            #0052FF 325.44deg 360deg
           )`,
         }}
       >

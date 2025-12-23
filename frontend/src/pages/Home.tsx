@@ -122,7 +122,7 @@ export function Home() {
             <p className="text-slate-400 text-sm leading-relaxed">
               Deposit creator coins. Earn from every trade.
               <br />
-              6.9% fee split: 90% to holders, 5% burned, 5% protocol.
+              6.9% fee split: 69% jackpot, 21% burned, 10% treasury.
             </p>
           </div>
         </StaggerItem>
@@ -180,9 +180,9 @@ export function Home() {
             
             <div className="mt-4 pt-4 border-t border-white/[0.04] space-y-2">
               {[
-                { icon: Trophy, label: 'Winner', pct: '90%', color: 'text-yellow-400' },
-                { icon: Flame, label: 'Burn', pct: '5%', color: 'text-red-400' },
-                { icon: Building2, label: 'Protocol', pct: '5%', color: 'text-blue-400' },
+                { icon: Trophy, label: 'Winner', pct: '69%', color: 'text-yellow-400' },
+                { icon: Flame, label: 'Burn', pct: '21.4%', color: 'text-red-400' },
+                { icon: Building2, label: 'Treasury', pct: '9.6%', color: 'text-blue-400' },
               ].map(({ icon: Icon, label, pct, color }) => (
                 <div key={label} className="flex items-center justify-between text-sm">
                   <div className="flex items-center gap-2">
@@ -224,7 +224,7 @@ export function Home() {
               {
                 icon: Shield,
                 title: 'Clear Split',
-                desc: '90% winner. 5% burned. 5% protocol.',
+                desc: '69% jackpot. 21% burned. 10% treasury.',
                 color: 'text-green-400',
                 bg: 'bg-green-400/10',
               },

@@ -389,13 +389,13 @@ export function CompleteAuction() {
                 {/* Fee breakdown */}
                 <div className="flex gap-4 mt-3 text-xs">
                   <span className="flex items-center gap-1 text-yellow-400">
-                    <Trophy className="w-3 h-3" /> 90% Jackpot
+                    <Trophy className="w-3 h-3" /> 69% Jackpot
                   </span>
                   <span className="flex items-center gap-1 text-red-400">
-                    <Flame className="w-3 h-3" /> 5% Burn
+                    <Flame className="w-3 h-3" /> 21% Burn
                   </span>
                   <span className="flex items-center gap-1 text-brand-400">
-                    <Zap className="w-3 h-3" /> 5% Protocol
+                    <Zap className="w-3 h-3" /> 10% Treasury
                   </span>
                 </div>
 
