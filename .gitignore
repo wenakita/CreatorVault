@@ -77,7 +77,11 @@ docs-export/
 
 # Development and testing directories (excluded from repo)
 scripts/
-script/
+# script/ - Keep deployment scripts
+!script/DeployBase.s.sol
+!script/DeployInfrastructure.s.sol
+!script/deploy-with-aa.ts
+!script/deploy.sh
 test/
 telegram-bot/
 relayer/
