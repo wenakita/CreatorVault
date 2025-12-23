@@ -10,6 +10,7 @@ import {
   Flame,
 } from 'lucide-react'
 import { AKITA } from '../config/contracts'
+import { TokenImage } from '../components/TokenImage'
 
 // Example vault data - in production this comes from the registry
 const vaults = [
@@ -123,13 +124,14 @@ export function Dashboard() {
             <motion.div key={vault.id} variants={item}>
               <Link to={`/vault/${vault.vault}`}>
                 <div className="glass-card p-6 hover:border-brand-500/50 transition-all group">
-                  <div className="flex items-start justify-between">
+                    <div className="flex items-start justify-between">
                     <div className="flex items-center gap-4">
-                      <div
-                        className={`w-14 h-14 rounded-xl bg-gradient-to-br ${vault.color} flex items-center justify-center font-display font-bold text-xl text-white`}
-                      >
-                        {vault.symbol[0]}
-                      </div>
+                      <TokenImage
+                        tokenAddress={vault.token as `0x${string}`}
+                        symbol={vault.symbol}
+                        size="lg"
+                        fallbackColor={vault.color}
+                      />
                       <div>
                         <h3 className="font-semibold text-lg flex items-center gap-2">
                           {vault.name}

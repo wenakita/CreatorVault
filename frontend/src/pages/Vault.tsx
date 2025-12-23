@@ -18,6 +18,7 @@ import {
 } from 'lucide-react'
 import { AKITA } from '../config/contracts'
 import { ConnectButton } from '../components/ConnectButton'
+import { TokenImage } from '../components/TokenImage'
 
 // Simplified vault ABI
 const VAULT_ABI = [
@@ -139,9 +140,13 @@ export function Vault() {
         className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4"
       >
         <div className="flex items-center gap-4">
-          <div className="w-16 h-16 rounded-xl bg-gradient-to-br from-orange-500 to-red-600 flex items-center justify-center font-display font-bold text-2xl text-white">
-            A
-          </div>
+          <TokenImage
+            tokenAddress={tokenAddress as `0x${string}`}
+            symbol="AKITA"
+            size="lg"
+            className="w-16 h-16"
+            fallbackColor="from-orange-500 to-red-600"
+          />
           <div>
             <h1 className="font-display text-2xl font-bold">AKITA Vault</h1>
             <p className="text-surface-400">sAKITA • Base</p>
