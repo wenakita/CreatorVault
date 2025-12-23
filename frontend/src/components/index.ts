@@ -7,3 +7,6 @@ export { TechScramble, ScrambleHeadline } from './TechScramble'
 export { BaseStep, BaseStepList, StepIndicator } from './BaseStep'
 export { FeatureCard, FeatureGrid, CommandDisplay, HighlightCard } from './FeatureCard'
 
+// Solana bridge components
+export { SolanaConnect, SolanaBridgeCard, TwinAddressDisplay } from './SolanaConnect'
+
