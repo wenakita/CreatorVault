@@ -1,103 +1,106 @@
+import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts'
 import { motion } from 'framer-motion'
 
-interface Segment {
-  label: string
+interface DistributionData {
+  name: string
   value: number
   color: string
-  icon?: React.ReactNode
+  description?: string
 }
 
 interface DistributionChartProps {
-  segments: Segment[]
-  size?: number
-  strokeWidth?: number
+  data: DistributionData[]
   centerLabel?: string
   centerValue?: string
+  height?: number
   className?: string
 }
 
+const CustomTooltip = ({ active, payload }: any) => {
+  if (active && payload && payload.length) {
+    const data = payload[0].payload
+    return (
+      <div className="bg-surface-900 border border-surface-700 rounded-xl p-4 shadow-2xl backdrop-blur-xl">
+        <div className="flex items-center gap-2 mb-2">
+          <div
+            className="w-3 h-3 rounded-full"
+            style={{ backgroundColor: data.color }}
+          />
+          <span className="font-semibold text-white">{data.name}</span>
+        </div>
+        <div className="space-y-1 text-sm">
+          <div className="flex justify-between gap-6">
+            <span className="text-surface-400">Share:</span>
+            <span className="font-bold" style={{ color: data.color }}>
+              {data.value}%
+            </span>
+          </div>
+          {data.description && (
+            <p className="text-surface-500 text-xs pt-1 border-t border-surface-800">
+              {data.description}
+            </p>
+          )}
+        </div>
+      </div>
+    )
+  }
+  return null
+}
+
 export function DistributionChart({
-  segments,
-  size = 180,
-  strokeWidth = 24,
+  data,
   centerLabel,
   centerValue,
+  height = 220,
   className = '',
 }: DistributionChartProps) {
-  const radius = (size - strokeWidth) / 2
-  const circumference = 2 * Math.PI * radius
-  const center = size / 2
-
-  // Calculate cumulative offsets for each segment
-  let cumulativePercent = 0
-  const segmentData = segments.map((segment) => {
-    const startPercent = cumulativePercent
-    cumulativePercent += segment.value
-    return {
-      ...segment,
-      startPercent,
-      dashArray: `${(segment.value / 100) * circumference} ${circumference}`,
-      dashOffset: -((startPercent / 100) * circumference),
-    }
-  })
-
   return (
-    <div className={`relative ${className}`} style={{ width: size, height: size }}>
-      <svg width={size} height={size} className="transform -rotate-90">
-        {/* Background circle */}
-        <circle
-          cx={center}
-          cy={center}
-          r={radius}
-          fill="none"
-          stroke="currentColor"
-          strokeWidth={strokeWidth}
-          className="text-surface-800/50"
-        />
-        
-        {/* Animated segments */}
-        {segmentData.map((segment, index) => (
-          <motion.circle
-            key={segment.label}
-            cx={center}
-            cy={center}
-            r={radius}
-            fill="none"
-            stroke={segment.color}
-            strokeWidth={strokeWidth}
-            strokeLinecap="round"
-            strokeDasharray={segment.dashArray}
-            strokeDashoffset={segment.dashOffset}
-            initial={{ strokeDasharray: `0 ${circumference}` }}
-            animate={{ strokeDasharray: segment.dashArray }}
-            transition={{
-              duration: 0.8,
-              delay: index * 0.15,
-              ease: [0.4, 0, 0.2, 1],
-            }}
-          />
-        ))}
-      </svg>
+    <div className={`relative ${className}`}>
+      <ResponsiveContainer width="100%" height={height}>
+        <PieChart>
+          <Pie
+            data={data}
+            cx="50%"
+            cy="50%"
+            innerRadius={55}
+            outerRadius={85}
+            paddingAngle={2}
+            dataKey="value"
+            stroke="none"
+            animationBegin={0}
+            animationDuration={800}
+          >
+            {data.map((entry, index) => (
+              <Cell
+                key={`cell-${index}`}
+                fill={entry.color}
+                className="hover:opacity-80 transition-opacity cursor-pointer"
+              />
+            ))}
+          </Pie>
+          <Tooltip content={<CustomTooltip />} />
+        </PieChart>
+      </ResponsiveContainer>
 
       {/* Center content */}
       {(centerLabel || centerValue) && (
-        <div className="absolute inset-0 flex flex-col items-center justify-center">
+        <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
           {centerValue && (
             <motion.span
-              className="text-2xl font-bold text-white"
+              className="text-xl font-bold text-white"
               initial={{ opacity: 0, scale: 0.8 }}
               animate={{ opacity: 1, scale: 1 }}
-              transition={{ duration: 0.4, delay: 0.5 }}
+              transition={{ duration: 0.4, delay: 0.3 }}
             >
               {centerValue}
             </motion.span>
           )}
           {centerLabel && (
             <motion.span
-              className="text-xs text-surface-500 uppercase tracking-wider"
+              className="text-[10px] text-surface-500 uppercase tracking-wider"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
-              transition={{ duration: 0.4, delay: 0.6 }}
+              transition={{ duration: 0.4, delay: 0.4 }}
             >
               {centerLabel}
             </motion.span>
@@ -110,104 +113,121 @@ export function DistributionChart({
 
 interface LegendItemProps {
   color: string
-  label: string
+  name: string
   value: string
   description?: string
 }
 
-function LegendItem({ color, label, value, description }: LegendItemProps) {
+function LegendItem({ color, name, value, description }: LegendItemProps) {
   return (
-    <div className="flex items-center gap-3">
-      <div
-        className="w-3 h-3 rounded-full flex-shrink-0"
-        style={{ backgroundColor: color }}
-      />
-      <div className="flex-1 min-w-0">
-        <div className="flex items-center justify-between">
-          <span className="font-medium text-sm">{label}</span>
-          <span className="text-sm text-surface-400">{value}</span>
+    <div className="flex items-center justify-between py-2 border-b border-surface-800/50 last:border-0">
+      <div className="flex items-center gap-2.5">
+        <div
+          className="w-2.5 h-2.5 rounded-full flex-shrink-0"
+          style={{ backgroundColor: color }}
+        />
+        <div>
+          <span className="text-sm font-medium text-white">{name}</span>
+          {description && (
+            <p className="text-xs text-surface-500">{description}</p>
+          )}
         </div>
-        {description && (
-          <p className="text-xs text-surface-500 truncate">{description}</p>
-        )}
       </div>
+      <span className="text-sm font-bold" style={{ color }}>
+        {value}
+      </span>
     </div>
   )
 }
 
 // Pre-built lottery distribution chart
-export function LotteryDistributionChart({ jackpotAmount = '0.1 ETH' }: { jackpotAmount?: string }) {
-  const segments: Segment[] = [
-    { label: 'Winner', value: 90, color: '#eab308' }, // yellow-500
-    { label: 'Burn', value: 5, color: '#ef4444' },    // red-500
-    { label: 'Protocol', value: 5, color: '#0052FF' }, // brand blue
+export function LotteryDistributionChart({
+  jackpotAmount = '0.1 ETH',
+}: {
+  jackpotAmount?: string
+}) {
+  const data: DistributionData[] = [
+    {
+      name: 'Winner',
+      value: 90,
+      color: '#eab308',
+      description: 'Random VRF draw',
+    },
+    {
+      name: 'Burn',
+      value: 5,
+      color: '#ef4444',
+      description: 'Permanently removed',
+    },
+    {
+      name: 'Protocol',
+      value: 5,
+      color: '#0052FF',
+      description: 'Development fund',
+    },
   ]
 
   return (
     <div className="flex flex-col sm:flex-row items-center gap-6">
-      <DistributionChart
-        segments={segments}
-        size={160}
-        strokeWidth={20}
-        centerValue={jackpotAmount}
-        centerLabel="Jackpot"
-      />
-      
-      <div className="flex-1 space-y-3 min-w-0">
-        <LegendItem
-          color="#eab308"
-          label="Winner"
-          value="90%"
-          description="Random VRF draw"
-        />
-        <LegendItem
-          color="#ef4444"
-          label="Burn"
-          value="5%"
-          description="Permanently removed"
-        />
-        <LegendItem
-          color="#0052FF"
-          label="Protocol"
-          value="5%"
-          description="Development fund"
+      <div className="flex-shrink-0">
+        <DistributionChart
+          data={data}
+          centerValue={jackpotAmount}
+          centerLabel="Jackpot"
+          height={180}
         />
       </div>
-    </div>
-  )
-}
 
-// Compact version for dashboard
-export function LotteryDistributionCompact({ jackpotAmount = '0.1 ETH' }: { jackpotAmount?: string }) {
-  const segments: Segment[] = [
-    { label: 'Winner', value: 90, color: '#eab308' },
-    { label: 'Burn', value: 5, color: '#ef4444' },
-    { label: 'Protocol', value: 5, color: '#0052FF' },
-  ]
-
-  return (
-    <div className="flex items-center gap-4">
-      <DistributionChart
-        segments={segments}
-        size={80}
-        strokeWidth={10}
-        centerValue={jackpotAmount}
-        className="flex-shrink-0"
-      />
-      
-      <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs">
-        {segments.map((seg) => (
-          <div key={seg.label} className="flex items-center gap-1.5">
-            <div
-              className="w-2 h-2 rounded-full"
-              style={{ backgroundColor: seg.color }}
-            />
-            <span className="text-surface-400">{seg.label}</span>
-            <span className="font-medium">{seg.value}%</span>
-          </div>
+      <div className="flex-1 w-full sm:max-w-[200px]">
+        {data.map((item) => (
+          <LegendItem
+            key={item.name}
+            color={item.color}
+            name={item.name}
+            value={`${item.value}%`}
+            description={item.description}
+          />
         ))}
       </div>
     </div>
   )
 }
 
+// Compact version for dashboard
+export function LotteryDistributionCompact({
+  jackpotAmount = '0.1 ETH',
+}: {
+  jackpotAmount?: string
+}) {
+  const data: DistributionData[] = [
+    { name: 'Winner', value: 90, color: '#eab308' },
+    { name: 'Burn', value: 5, color: '#ef4444' },
+    { name: 'Protocol', value: 5, color: '#0052FF' },
+  ]
+
+  return (
+    <div className="flex items-center gap-4">
+      <div className="flex-shrink-0">
+        <DistributionChart
+          data={data}
+          centerValue={jackpotAmount}
+          height={100}
+          className="w-[100px]"
+        />
+      </div>
+
+      <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs">
+        {data.map((item) => (
+          <div key={item.name} className="flex items-center gap-1.5">
+            <div
+              className="w-2 h-2 rounded-full"
+              style={{ backgroundColor: item.color }}
+            />
+            <span className="text-surface-400">{item.name}</span>
+            <span className="font-medium text-white">{item.value}%</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}

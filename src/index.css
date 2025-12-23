@@ -1,0 +1,435 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  /* 🌟 Refined Web3-Friendly Gold Palette */
+  --eagle-gold: #F2D57C;        /* Primary Gold (Bright, Clean) */
+  --eagle-gold-soft: #C9A854;   /* Secondary Gold (Softer Token Gold) */
+  --eagle-gold-light: #FFE7A3;  /* Highlight Gold (for glows, edges) */
+  --eagle-gold-dark: #A69348;   /* Shadow Gold (depth without brown) */
+  
+  /* 🎨 Premium UI Colors */
+  --ui-bg: #0C0F14;             /* Background Deep */
+  --ui-surface: #161A21;        /* Surface */
+  --ui-card: #1E222C;           /* Card */
+  --ui-border: #2F3742;         /* Border Subtle */
+  --ui-text: #FFFFFF;           /* Text Primary */
+  --ui-text-soft: #C9CED7;      /* Text Secondary */
+  
+  /* Light Mode (Default) */
+  --bg-light: #e8ebef;
+  --text-light: #1a1a1a;
+  --text-secondary-light: #4b5563;
+  
+  font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  line-height: 1.75;
+  font-weight: 400;
+
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  font-feature-settings: 'kern' 1, 'liga' 1;
+  letter-spacing: -0.01em;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+/* Light mode (default) */
+body {
+  min-height: 100vh;
+  background-color: #e8ebef;
+  color: #1a1a1a;
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+/* Dark mode - Using new deep background */
+body.dark {
+  background-color: #0C0F14;
+  color: #C9CED7;
+}
+
+.dark {
+  color-scheme: dark;
+}
+
+/* Custom scrollbar - Light mode */
+::-webkit-scrollbar {
+  width: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: #d1d5db;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #9ca3af;
+  border-radius: 5px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #6b7280;
+}
+
+/* Custom scrollbar - Dark mode */
+.dark ::-webkit-scrollbar-track {
+  background: #1a1a1a;
+}
+
+.dark ::-webkit-scrollbar-thumb {
+  background: #404040;
+}
+
+.dark ::-webkit-scrollbar-thumb:hover {
+  background: #525252;
+}
+
+/* Typography */
+h1, h2, h3, h4, h5, h6 {
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  color: #ffffff;
+}
+
+/* Animations */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes shimmer {
+  0%, 100% { 
+    background-position: 0% 50%; 
+  }
+  50% { 
+    background-position: 100% 50%; 
+  }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.3s ease-out;
+}
+
+.shimmer-effect {
+  background-size: 200% 200%;
+  animation: shimmer 3s ease-in-out infinite;
+}
+
+/* Glassmorphism - Using new Web3-friendly gold */
+.glass-card {
+  background: rgba(255, 255, 255, 0.03);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(242, 213, 124, 0.2);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.glass-card:hover {
+  border-color: rgba(242, 213, 124, 0.4);
+  box-shadow: 0 0 12px rgba(242, 213, 124, 0.18), 0 0 18px rgba(242, 213, 124, 0.12);
+  transform: translateY(-2px);
+}
+
+/* Focus styles */
+input:focus, 
+textarea:focus, 
+button:focus {
+  outline: 2px solid var(--eagle-gold);
+  outline-offset: 2px;
+}
+
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* Bridge-specific styles */
+.bridge-card {
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.02));
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+}
+
+/* Glow effect for chain icons */
+.chain-glow {
+  filter: drop-shadow(0 0 10px currentColor);
+}
+
+/* Smooth number transitions */
+input[type="number"] {
+  -moz-appearance: textfield;
+}
+
+input[type="number"]::-webkit-outer-spin-button,
+input[type="number"]::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+/* Custom selection colors */
+::selection {
+  background: rgba(139, 92, 246, 0.3);
+  color: white;
+}
+
+/* Smooth scrolling */
+html {
+  scroll-behavior: smooth;
+}
+
+/* Animated gradient text */
+@keyframes gradient-shift {
+  0%, 100% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+}
+
+.gradient-text {
+  background: linear-gradient(135deg, #8B5CF6, #06B6D4, #8B5CF6);
+  background-size: 200% 200%;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  animation: gradient-shift 8s ease infinite;
+}
+
+/* Pulse animation for loading states */
+@keyframes pulse-glow {
+  0%, 100% {
+    box-shadow: 0 0 20px rgba(139, 92, 246, 0.3);
+  }
+  50% {
+    box-shadow: 0 0 40px rgba(139, 92, 246, 0.6);
+  }
+}
+
+.pulse-glow {
+  animation: pulse-glow 2s ease-in-out infinite;
+}
+
+/* ================================================ */
+/* Mobile Optimizations */
+/* ================================================ */
+
+/* iOS Safe Areas */
+@supports (padding: env(safe-area-inset-bottom)) {
+  .pb-safe {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  .pt-safe {
+    padding-top: env(safe-area-inset-top);
+  }
+}
+
+/* Mobile: Better Touch Targets (min 44px) */
+@media (max-width: 768px) {
+  /* Buttons */
+  button {
+    min-height: 44px;
+    min-width: 44px;
+  }
+  
+  /* Input fields */
+  input, select, textarea {
+    min-height: 48px;
+    font-size: 16px; /* Prevents iOS zoom on focus */
+  }
+  
+  /* Increase font sizes for better readability */
+  .text-xs { font-size: 13px !important; }
+  .text-sm { font-size: 15px !important; }
+  .text-base { font-size: 17px !important; }
+  
+  /* Better padding for cards */
+  .p-4 { padding: 1.25rem !important; } /* 20px instead of 16px */
+  .p-6 { padding: 1.75rem !important; } /* 28px instead of 24px */
+  .px-4 { padding-left: 1.25rem !important; padding-right: 1.25rem !important; }
+  .px-6 { padding-left: 1.75rem !important; padding-right: 1.75rem !important; }
+  
+  /* Better spacing between elements */
+  .space-y-2 > * + * { margin-top: 0.75rem !important; } /* 12px instead of 8px */
+  .space-y-4 > * + * { margin-top: 1.25rem !important; } /* 20px instead of 16px */
+  .gap-2 { gap: 0.75rem !important; } /* 12px instead of 8px */
+  .gap-4 { gap: 1.25rem !important; } /* 20px instead of 16px */
+  
+  /* Optimize stat cards for mobile */
+  h1 { font-size: 2rem !important; } /* 32px */
+  h2 { font-size: 1.5rem !important; } /* 24px */
+  h3 { font-size: 1.25rem !important; } /* 20px */
+  h4 { font-size: 1.125rem !important; } /* 18px */
+  
+  /* Better line height for readability */
+  p { line-height: 1.6 !important; }
+  
+  /* Larger icons */
+  svg {
+    min-width: 20px;
+    min-height: 20px;
+  }
+}
+
+/* Specific mobile optimizations for stat cards */
+@media (max-width: 768px) {
+  /* Make stat numbers bigger */
+  .stat-value {
+    font-size: 2rem !important;
+    font-weight: 700;
+    line-height: 1.2;
+  }
+  
+  /* Make labels clearer */
+  .stat-label {
+    font-size: 0.875rem !important;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    font-weight: 600;
+  }
+}
+
+/* MetaMask Mobile Browser Specific */
+@media (max-width: 480px) {
+  /* Smaller padding for very small screens */
+  .p-6 { padding: 1.25rem !important; }
+  
+  /* Prevent text overflow */
+  h1, h2, h3, h4 {
+    word-break: break-word;
+    hyphens: auto;
+  }
+  
+  /* Better button spacing */
+  button {
+    padding-left: 1rem !important;
+    padding-right: 1rem !important;
+  }
+}
+
+/* Improve touch feedback */
+@media (hover: none) and (pointer: coarse) {
+  /* Better touch feedback for mobile */
+  button:active {
+    transform: scale(0.98);
+    transition: transform 0.1s;
+  }
+  
+  /* Remove hover states on touch devices */
+  button:hover {
+    transform: none;
+  }
+  
+  /* Larger tap targets */
+  a, button, [role="button"] {
+    min-height: 44px;
+    min-width: 44px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+}
+
+/* Mobile content spacing - minimized nav + footer */
+@media (max-width: 768px) {
+  /* Bottom padding for mobile to clear minimized nav and footer */
+  main, .main-content, [role="main"] {
+    padding-bottom: 5rem !important; /* Space for footer + minimized nav */
+  }
+}
+
+/* Optimize modals for mobile */
+@media (max-width: 768px) {
+  .modal-content, [role="dialog"] {
+    max-height: 85vh !important;
+    overflow-y: auto;
+    border-radius: 20px 20px 0 0 !important; /* Bottom sheet style */
+  }
+}
+
+/* Better number input on mobile */
+@media (max-width: 768px) {
+  input[type="number"],
+  input[type="text"].amount-input {
+    font-size: 24px !important;
+    font-weight: 600;
+    text-align: center;
+  }
+}
+
+/* Hide scrollbar but keep functionality */
+.scrollbar-hide {
+  -ms-overflow-style: none;  /* IE and Edge */
+  scrollbar-width: none;  /* Firefox */
+}
+
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;  /* Chrome, Safari, Opera */
+}
+
+/* Custom Neumorphic Scrollbar for Analytics */
+.custom-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(217, 119, 6, 0.3) transparent;
+}
+
+.custom-scrollbar::-webkit-scrollbar {
+  width: 6px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: linear-gradient(135deg, rgba(217, 119, 6, 0.4), rgba(251, 191, 36, 0.4));
+  border-radius: 10px;
+  border: 1px solid rgba(217, 119, 6, 0.1);
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(135deg, rgba(217, 119, 6, 0.6), rgba(251, 191, 36, 0.6));
+}
+
+.dark .custom-scrollbar::-webkit-scrollbar-thumb {
+  background: linear-gradient(135deg, rgba(251, 191, 36, 0.3), rgba(252, 211, 77, 0.3));
+  border: 1px solid rgba(251, 191, 36, 0.1);
+}
+
+.dark .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(135deg, rgba(251, 191, 36, 0.5), rgba(252, 211, 77, 0.5));
+}
+
+/* Smooth transitions for analytics components */
+@keyframes slideInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-in {
+  animation: slideInUp 0.3s ease-out forwards;
+}
+
