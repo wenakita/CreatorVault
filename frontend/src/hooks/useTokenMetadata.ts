@@ -47,12 +47,14 @@ export function useTokenMetadata(tokenAddress: `0x${string}` | undefined) {
   const [error, setError] = useState<string | null>(null)
 
   // Fetch tokenURI from contract
-  const { data: tokenURI } = useReadContract({
+  const { data: tokenURI, refetch } = useReadContract({
     address: tokenAddress,
     abi: tokenURIAbi,
     functionName: 'tokenURI',
     query: {
       enabled: !!tokenAddress,
+      staleTime: 1000 * 60 * 5, // Consider stale after 5 minutes
+      gcTime: 1000 * 60 * 10, // Garbage collect after 10 minutes
     },
   })
 
@@ -65,12 +67,35 @@ export function useTokenMetadata(tokenAddress: `0x${string}` | undefined) {
 
       try {
         const metadataUrl = ipfsToHttp(tokenURI)
+        
+        // First, check if the URI is a direct image link
+        const isImageExtension = /\.(jpg|jpeg|png|gif|webp|svg)$/i.test(metadataUrl)
+        const isDataUri = metadataUrl.startsWith('data:image/')
+        
+        if (isImageExtension || isDataUri) {
+          // tokenURI points directly to an image
+          setImageUrl(metadataUrl)
+          setMetadata({ image: metadataUrl })
+          return
+        }
+
+        // Try to fetch and check content type
         const response = await fetch(metadataUrl)
         
         if (!response.ok) {
           throw new Error(`Failed to fetch metadata: ${response.status}`)
         }
 
+        const contentType = response.headers.get('content-type') || ''
+        
+        // If it's an image, use the URL directly
+        if (contentType.startsWith('image/')) {
+          setImageUrl(metadataUrl)
+          setMetadata({ image: metadataUrl })
+          return
+        }
+
+        // Otherwise, parse as JSON metadata
         const data: TokenMetadata = await response.json()
         setMetadata(data)
 
@@ -79,8 +104,12 @@ export function useTokenMetadata(tokenAddress: `0x${string}` | undefined) {
           setImageUrl(ipfsToHttp(data.image))
         }
       } catch (err) {
-        console.error('Error fetching token metadata:', err)
-        setError(err instanceof Error ? err.message : 'Failed to fetch metadata')
+        // If JSON parse fails, the URI might be a direct image link
+        // Try using the tokenURI directly as an image
+        const directUrl = ipfsToHttp(tokenURI)
+        setImageUrl(directUrl)
+        setMetadata({ image: directUrl })
+        console.log('Using tokenURI directly as image:', directUrl)
       } finally {
         setIsLoading(false)
       }
@@ -95,6 +124,7 @@ export function useTokenMetadata(tokenAddress: `0x${string}` | undefined) {
     tokenURI,
     isLoading,
     error,
+    refetch, // Allow manual refresh
   }
 }
 
