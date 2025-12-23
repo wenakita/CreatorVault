@@ -3,9 +3,9 @@ import { motion } from 'framer-motion'
 import { 
   Rocket, ArrowRight, TrendingDown, TrendingUp, 
   Shield, Zap, Users, ChevronRight,
-  Coins, Gift, Lock
+  Coins, Gift, Lock, Trophy, Flame, Building2
 } from 'lucide-react'
-import { JackpotSunburst } from '../components/JackpotSunburst'
+import { LotteryDistributionCompact } from '../components/DistributionChart'
 import { 
   TechScramble, 
   SlideUp, 
@@ -157,22 +157,47 @@ export function Home() {
         </section>
       </FadeIn>
 
-      {/* Jackpot Sunburst */}
+      {/* Live Jackpot */}
       <FadeIn delay={0.1}>
-        <section>
+        <section className="max-w-xl mx-auto">
           <div className="text-center mb-6">
             <h2 className="text-2xl font-bold text-white">Live Jackpot</h2>
             <p className="text-slate-500 text-sm mt-1">Buy. Enter. Win. All onchain.</p>
           </div>
-          <JackpotSunburst
-            tokens={[
-              { symbol: 'wsAKITA', name: 'Wrapped Staked AKITA', value: 280, color: '#f97316' },
-              { symbol: 'wsCREATOR', name: 'Wrapped Staked CREATOR', value: 50, color: '#a855f7' },
-              { symbol: 'wsDAWG', name: 'Wrapped Staked DAWG', value: 20, color: '#06b6d4' },
-            ]}
-            totalEth="0.1 ETH"
-            totalUsd={350}
-          />
+          
+          <div className="bg-gradient-to-b from-slate-900/95 to-slate-950/95 backdrop-blur-xl rounded-2xl border border-white/[0.06] p-6">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2">
+                <Gift className="w-5 h-5 text-yellow-500" />
+                <h3 className="font-semibold text-white">Prize Pool</h3>
+              </div>
+              <span className="px-2 py-0.5 rounded-full bg-yellow-500/10 text-yellow-400 text-xs font-medium">
+                VRF
+              </span>
+            </div>
+            
+            <LotteryDistributionCompact jackpotAmount="0.1 ETH" />
+            
+            <div className="mt-4 pt-4 border-t border-white/[0.04] space-y-2">
+              {[
+                { icon: Trophy, label: 'Winner', pct: '90%', color: 'text-yellow-400' },
+                { icon: Flame, label: 'Burn', pct: '5%', color: 'text-red-400' },
+                { icon: Building2, label: 'Protocol', pct: '5%', color: 'text-blue-400' },
+              ].map(({ icon: Icon, label, pct, color }) => (
+                <div key={label} className="flex items-center justify-between text-sm">
+                  <div className="flex items-center gap-2">
+                    <Icon className={`w-4 h-4 ${color}`} />
+                    <span className="text-slate-400">{label}</span>
+                  </div>
+                  <span className={`font-semibold ${color}`}>{pct}</span>
+                </div>
+              ))}
+            </div>
+            
+            <p className="text-[10px] text-slate-500 mt-4 pt-4 border-t border-white/[0.04] text-center">
+              6.9% trade fees fund the pool • Every buy = lottery entry
+            </p>
+          </div>
         </section>
       </FadeIn>
 
