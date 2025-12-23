@@ -46,11 +46,13 @@ export function Layout() {
               href="https://base.org" 
               target="_blank" 
               rel="noopener noreferrer"
-              className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-white/[0.04] border border-white/[0.06] text-slate-400 text-xs hover:text-white hover:border-white/10 transition-colors"
+              className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/[0.04] border border-white/[0.06] hover:bg-white/[0.06] hover:border-white/10 transition-all group"
             >
-              <span>Built on</span>
-              <img src="/base-logo.svg" alt="Base" className="w-3.5 h-3.5" />
-              <span className="text-white font-medium">Base</span>
+              <span className="text-slate-400 text-xs">Built on</span>
+              <div className="flex items-center gap-1.5">
+                <img src="/base-logo.svg" alt="Base" className="w-4 h-4" />
+                <span className="text-white font-semibold text-sm">base</span>
+              </div>
             </a>
           </div>
 

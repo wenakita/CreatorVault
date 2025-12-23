@@ -13,8 +13,7 @@ import {
   Stagger, 
   StaggerItem,
   BASE_EASE,
-  DURATION,
-  BaseSquare
+  DURATION
 } from '../components/BaseMotion'
 
 export function Home() {
@@ -34,9 +33,12 @@ export function Home() {
             <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/5 border border-white/10 text-sm">
               <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
               <span className="text-slate-400">Now live on</span>
-              <span className="text-white font-medium">Base</span>
+              <div className="flex items-center gap-1">
+                <img src="/base-logo.svg" alt="Base" className="w-3.5 h-3.5" />
+                <span className="text-white font-semibold">base</span>
+              </div>
               <span className="text-slate-600">+</span>
-              <span className="text-purple-400 font-medium">Solana</span>
+              <span className="text-purple-400 font-medium">solana</span>
             </div>
           </FadeIn>
 
@@ -259,18 +261,24 @@ export function Home() {
         <section className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-purple-500/10 via-transparent to-[#0052FF]/10 border border-white/5 p-6 sm:p-8">
           <div className="flex flex-col sm:flex-row items-center justify-between gap-6">
             <div className="flex items-center gap-4">
-              <div className="flex -space-x-2">
-                <BaseSquare size={40} className="border-2 border-slate-900 rounded-lg" />
-                <img 
-                  src="https://raw.githubusercontent.com/solana-labs/token-list/main/assets/mainnet/So11111111111111111111111111111111111111112/logo.png" 
-                  alt="Solana" 
-                  className="w-10 h-10 rounded-full border-2 border-slate-900"
-                />
+              <div className="flex items-center gap-3">
+                <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-white/5 border border-white/10">
+                  <img src="/base-logo.svg" alt="Base" className="w-5 h-5" />
+                  <span className="text-white font-semibold text-sm">base</span>
+                </div>
+                <span className="text-slate-500 font-medium">+</span>
+                <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-white/5 border border-white/10">
+                  <img 
+                    src="https://raw.githubusercontent.com/solana-labs/token-list/main/assets/mainnet/So11111111111111111111111111111111111111112/logo.png" 
+                    alt="Solana" 
+                    className="w-5 h-5 rounded-full"
+                  />
+                  <span className="text-white font-semibold text-sm">solana</span>
+                </div>
               </div>
-              <div>
-                <h3 className="text-white font-semibold">Base + Solana</h3>
-                <p className="text-slate-400 text-sm">Bridge and participate from either chain</p>
-              </div>
+            </div>
+            <div className="text-center sm:text-left">
+              <p className="text-slate-400 text-sm">Bridge and participate from either chain</p>
             </div>
             <a
               href="https://docs.base.org/guides/base-solana-bridge"
