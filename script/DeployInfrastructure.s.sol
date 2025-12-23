@@ -410,15 +410,52 @@ contract DeployCreatorVault is Script {
         
         // Set gauge controller on vault
         vault.setGaugeController(address(gaugeController));
+        console.log("       Vault: setGaugeController");
         
         // Whitelist wrapper on vault
         vault.setWhitelist(address(wrapper), true);
+        console.log("       Vault: whitelist wrapper");
         
         // Set ShareOFT on wrapper
         wrapper.setShareOFT(address(shareOFT));
+        console.log("       Wrapper: setShareOFT");
         
         // Grant minter role to wrapper on ShareOFT (minters can also burn)
         shareOFT.setMinter(address(wrapper), true);
+        console.log("       ShareOFT: setMinter(wrapper)");
+        
+        // ============ CONFIGURE ORACLE ============
+        
+        console.log("\n=== Configuring Oracle ===");
+        
+        // Set Chainlink ETH/USD feed (Base Mainnet)
+        address CHAINLINK_ETH_USD = 0x71041dddad3595F9CEd3DcCFBe3D1F4b0a16Bb70;
+        oracle.setChainlinkFeed(CHAINLINK_ETH_USD);
+        console.log("       Oracle: setChainlinkFeed (ETH/USD)");
+        
+        // Note: V4 Pool configuration must be done AFTER pool creation
+        // oracle.setV4Pool(poolManager, poolKey) - call separately after creating V4 pool
+        
+        // ============ CONFIGURE GAUGE CONTROLLER ============
+        
+        console.log("\n=== Configuring GaugeController ===");
+        
+        // Set the creator coin for swaps
+        gaugeController.setCreatorCoin(creatorCoin);
+        console.log("       GaugeController: setCreatorCoin");
+        
+        // Set the oracle for price lookups
+        gaugeController.setOracle(address(oracle));
+        console.log("       GaugeController: setOracle");
+        
+        // Connect to shared lottery manager (from infrastructure deployment)
+        address lotteryManager = vm.envOr("CREATOR_LOTTERY_MANAGER", address(0));
+        if (lotteryManager != address(0)) {
+            gaugeController.setLotteryManager(lotteryManager);
+            console.log("       GaugeController: setLotteryManager");
+        } else {
+            console.log("       GaugeController: SKIPPED setLotteryManager (not in env)");
+        }
         
         // ============ REGISTER WITH FACTORY ============
         
