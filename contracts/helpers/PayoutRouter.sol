@@ -6,6 +6,26 @@ import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
+// =================================
+// INTERFACES
+// =================================
+
+interface ICreatorOVaultRouter {
+    function deposit(uint256 assets, address receiver) external returns (uint256);
+    function asset() external view returns (address);
+}
+
+interface ICreatorOVaultWrapperRouter {
+    function depositAndWrap(uint256 creatorCoinAmount) external returns (uint256 wsTokenOut);
+    function vault() external view returns (address);
+    function shareOFT() external view returns (address);
+}
+
+interface IBurnableRouter {
+    function burn(uint256 amount) external;
+    function burn(address from, uint256 amount) external;
+}
+
 /**
  * @title PayoutRouter
  * @author 0xakita.eth (CreatorVault)
@@ -42,34 +62,14 @@ contract PayoutRouter is Ownable, ReentrancyGuard {
     using SafeERC20 for IERC20;
     
     // =================================
-    // INTERFACES
-    // =================================
-    
-    interface ICreatorOVault {
-        function deposit(uint256 assets, address receiver) external returns (uint256);
-        function asset() external view returns (address);
-    }
-    
-    interface ICreatorOVaultWrapper {
-        function depositAndWrap(uint256 creatorCoinAmount) external returns (uint256 wsTokenOut);
-        function vault() external view returns (address);
-        function shareOFT() external view returns (address);
-    }
-    
-    interface IBurnable {
-        function burn(uint256 amount) external;
-        function burn(address from, uint256 amount) external;
-    }
-    
-    // =================================
     // STATE
     // =================================
     
     /// @notice The CreatorOVaultWrapper (immutable)
-    ICreatorOVaultWrapper public immutable wrapper;
+    ICreatorOVaultWrapperRouter public immutable wrapper;
     
     /// @notice The vault (cached from wrapper)
-    ICreatorOVault public immutable vault;
+    ICreatorOVaultRouter public immutable vault;
     
     /// @notice The underlying Creator Coin
     IERC20 public immutable creatorCoin;
@@ -134,13 +134,13 @@ contract PayoutRouter is Ownable, ReentrancyGuard {
     constructor(address _wrapper, address _owner) Ownable(_owner) {
         if (_wrapper == address(0) || _owner == address(0)) revert ZeroAddress();
         
-        wrapper = ICreatorOVaultWrapper(_wrapper);
-        vault = ICreatorOVault(wrapper.vault());
+        wrapper = ICreatorOVaultWrapperRouter(_wrapper);
+        vault = ICreatorOVaultRouter(wrapper.vault());
         creatorCoin = IERC20(vault.asset());
         wsToken = wrapper.shareOFT();
         
         // Pre-approve for deposits
-        creatorCoin.safeApprove(address(wrapper), type(uint256).max);
+        creatorCoin.forceApprove(address(wrapper), type(uint256).max);
     }
     
     // =================================
@@ -247,7 +247,7 @@ contract PayoutRouter is Ownable, ReentrancyGuard {
         if (canBurnNow == 0) revert NothingToDrip();
         
         // Burn the tokens
-        IBurnable(wsToken).burn(canBurnNow);
+        IBurnableRouter(wsToken).burn(canBurnNow);
         
         burnedThisWeek += canBurnNow;
         totalBurned += canBurnNow;
