@@ -1,0 +1,49 @@
+[
+  {
+    "type": "function",
+    "name": "activate",
+    "inputs": [
+      { "name": "vault", "type": "address" },
+      { "name": "wrapper", "type": "address" },
+      { "name": "ccaStrategy", "type": "address" },
+      { "name": "depositAmount", "type": "uint256" },
+      { "name": "auctionPercent", "type": "uint256" },
+      { "name": "requiredRaise", "type": "uint256" }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "activateSimple",
+    "inputs": [
+      { "name": "vault", "type": "address" },
+      { "name": "wrapper", "type": "address" },
+      { "name": "depositAmount", "type": "uint256" }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "event",
+    "name": "VaultActivated",
+    "inputs": [
+      { "name": "vault", "type": "address", "indexed": true },
+      { "name": "wrapper", "type": "address", "indexed": true },
+      { "name": "depositor", "type": "address", "indexed": true },
+      { "name": "depositAmount", "type": "uint256", "indexed": false },
+      { "name": "sharesReceived", "type": "uint256", "indexed": false },
+      { "name": "wrappedAmount", "type": "uint256", "indexed": false }
+    ]
+  },
+  {
+    "type": "event",
+    "name": "AuctionStarted",
+    "inputs": [
+      { "name": "ccaStrategy", "type": "address", "indexed": true },
+      { "name": "auctionAmount", "type": "uint256", "indexed": false },
+      { "name": "requiredRaise", "type": "uint256", "indexed": false }
+    ]
+  }
+]
+

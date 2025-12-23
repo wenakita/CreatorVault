@@ -1,0 +1,31 @@
+{
+  "name": "CreatorVault",
+  "short_name": "Vault",
+  "description": "Launch your Creator Coin vault in one click. Earn yield, build community, go omnichain.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0c0a09",
+  "theme_color": "#ed7424",
+  "icons": [
+    {
+      "src": "https://tomato-abundant-urial-204.mypinata.cloud/ipfs/bafybeigzyatm2pgrkqbnskyvflnagtqli6rgh7wv7t2znaywkm2pixmkxy",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "https://tomato-abundant-urial-204.mypinata.cloud/ipfs/bafybeigzyatm2pgrkqbnskyvflnagtqli6rgh7wv7t2znaywkm2pixmkxy",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ],
+  "miniApp": {
+    "type": "frame",
+    "version": "1.0.0",
+    "homeUrl": "/",
+    "iconUrl": "https://tomato-abundant-urial-204.mypinata.cloud/ipfs/bafybeigzyatm2pgrkqbnskyvflnagtqli6rgh7wv7t2znaywkm2pixmkxy",
+    "splashImageUrl": "https://tomato-abundant-urial-204.mypinata.cloud/ipfs/bafybeigzyatm2pgrkqbnskyvflnagtqli6rgh7wv7t2znaywkm2pixmkxy",
+    "splashBackgroundColor": "#0c0a09",
+    "webhookUrl": ""
+  }
+}
+

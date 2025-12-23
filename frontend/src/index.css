@@ -1,0 +1,129 @@
+@import url('https://api.fontshare.com/v2/css?f[]=satoshi@400,500,700,900&f[]=cabinet-grotesk@700,800,900&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    font-family: 'Satoshi', system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  body {
+    @apply bg-surface-950 text-surface-100 min-h-screen;
+  }
+
+  /* Custom scrollbar */
+  ::-webkit-scrollbar {
+    width: 8px;
+  }
+
+  ::-webkit-scrollbar-track {
+    @apply bg-surface-950;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    @apply bg-surface-800 rounded-full;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    @apply bg-surface-700;
+  }
+}
+
+@layer components {
+  /* Glass morphism card */
+  .glass-card {
+    @apply bg-surface-950/60 backdrop-blur-xl border border-surface-800/50 rounded-2xl;
+  }
+
+  /* Gradient button */
+  .btn-primary {
+    @apply relative overflow-hidden px-6 py-3 rounded-xl font-semibold text-white
+           bg-gradient-to-r from-vault-500 to-vault-600
+           hover:from-vault-400 hover:to-vault-500
+           transition-all duration-300 ease-out
+           shadow-lg shadow-vault-500/20 hover:shadow-vault-500/40
+           active:scale-[0.98];
+  }
+
+  .btn-primary::before {
+    content: '';
+    @apply absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent
+           -translate-x-full animate-shimmer;
+    background-size: 200% 100%;
+  }
+
+  /* Secondary button */
+  .btn-secondary {
+    @apply px-6 py-3 rounded-xl font-semibold
+           bg-surface-900 text-surface-200 border border-surface-700
+           hover:bg-surface-800 hover:border-surface-600 hover:text-white
+           transition-all duration-200 active:scale-[0.98];
+  }
+
+  /* Ghost button */
+  .btn-ghost {
+    @apply px-4 py-2 rounded-lg font-medium text-surface-300
+           hover:bg-surface-800/50 hover:text-white
+           transition-all duration-200;
+  }
+
+  /* Input styling */
+  .input-field {
+    @apply w-full px-4 py-3 rounded-xl
+           bg-surface-900/50 border border-surface-700
+           text-white placeholder:text-surface-500
+           focus:outline-none focus:border-vault-500 focus:ring-1 focus:ring-vault-500/50
+           transition-all duration-200;
+  }
+
+  /* Stat card */
+  .stat-card {
+    @apply glass-card p-4 space-y-1;
+  }
+
+  .stat-label {
+    @apply text-xs font-medium text-surface-400 uppercase tracking-wider;
+  }
+
+  .stat-value {
+    @apply text-2xl font-bold text-white font-display;
+  }
+
+  /* Glow effect */
+  .glow {
+    @apply relative;
+  }
+
+  .glow::after {
+    content: '';
+    @apply absolute -inset-1 bg-vault-500/20 blur-xl rounded-full -z-10;
+  }
+}
+
+@layer utilities {
+  /* Text gradient */
+  .text-gradient {
+    @apply bg-gradient-to-r from-vault-400 via-vault-500 to-vault-600 bg-clip-text text-transparent;
+  }
+
+  /* Noise overlay */
+  .noise-overlay {
+    @apply fixed inset-0 pointer-events-none opacity-[0.015] mix-blend-overlay;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 400 400' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
+  }
+
+  /* Hide scrollbar but allow scrolling */
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+}
+

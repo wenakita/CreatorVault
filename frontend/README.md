@@ -1,98 +1,104 @@
-# CreatorVault Frontend
+# CreatorVault Mini App
 
-Modern frontend for CreatorVault - an omnichain yield aggregator for creator tokens with LayerZero cross-chain capabilities.
+A Base Mini App for launching and managing omnichain Creator Coin vaults. Built for the [Base App](https://docs.base.org/mini-apps/quickstart/building-for-the-base-app).
 
 ## Features
 
-- **Vault Management** - Deposit creator tokens, withdraw at any time
-- **Cross-Chain Bridge** - Send tokens across chains via LayerZero
-- **Real-Time Analytics** - Live APY, TVL, and performance metrics
-- **Multi-Wallet Support** - MetaMask, WalletConnect, Safe App integration
-- **Responsive Design** - Works on desktop and mobile
+- 🚀 **One-Click Launch** - Deploy your vault in a single transaction
+- 🌐 **Omnichain** - Cross-chain via LayerZero
+- 🎰 **Weekly Lottery** - 90% jackpot for holders
+- 🔥 **Auto-Burns** - 5% of fees burned
+- 📱 **Mobile-First** - Designed for Base App
 
 ## Quick Start
 
-### Prerequisites
-
-- Node.js 18+
-- npm or pnpm
-
-### Installation
-
 ```bash
+# Install dependencies
 npm install
-```
 
-### Development
+# Set up environment
+cp .env.example .env.local
+# Edit .env.local with your CDP API key
 
-```bash
+# Run development server
 npm run dev
 ```
 
-Opens at `http://localhost:5173`
+## Tech Stack
 
-### Build
-
-```bash
-npm run build
-```
-
-Output in `dist/` folder.
+- **React 18** + TypeScript
+- **Vite** - Fast builds
+- **Wagmi v2** + **viem** - Wallet integration
+- **OnchainKit** - Coinbase components
+- **Tailwind CSS** - Styling
+- **Framer Motion** - Animations
 
 ## Project Structure
 
 ```
 frontend/
-├── abis/                 # Contract ABIs
-├── api/                  # API routes (Vercel)
-├── config/               # Configuration
-│   └── contracts.ts      # Contract addresses & chain config
-├── lib/                  # Utilities
-└── index.html
+├── public/
+│   └── manifest.json    # Base Mini App manifest
+├── src/
+│   ├── components/      # UI components
+│   ├── config/          # Contract addresses, wagmi config
+│   ├── hooks/           # Custom React hooks
+│   ├── pages/           # Route pages
+│   └── main.tsx         # Entry point
+├── abis/                # Contract ABIs
+└── api/                 # Vercel API routes
 ```
 
-## Configuration
+## Pages
 
-### Environment Variables
+| Route | Description |
+|-------|-------------|
+| `/` | Landing page with features |
+| `/launch` | One-click vault launcher |
+| `/dashboard` | Browse all creator vaults |
+| `/vault/:address` | Deposit/withdraw from vault |
 
-Copy `.env.example` to `.env.local` and fill in your values:
+## Deployed Contracts (Base)
 
-```bash
-cp .env.example .env.local
-```
+| Contract | Address |
+|----------|---------|
+| Registry | `0x777e28d7617ADb6E2fE7b7C49864A173e36881EF` |
+| Factory | `0x6205c91941A207A622fD00481b92cA04308a2819` |
+| LotteryManager | `0xe2C39D39FF92c0cF7A0e9eD16FcE1d6F14bB38fD` |
+| VaultActivator | `0x1bf02C90B226C028720D25dE535b345e5FfB9743` |
 
-Required variables:
-- `VITE_WALLETCONNECT_PROJECT_ID` - Get from [WalletConnect Cloud](https://cloud.walletconnect.com)
-- `VITE_BASE_RPC` - Base mainnet RPC URL
+## Mini App Integration
 
-### Contract Addresses
+This app follows [Base Mini App guidelines](https://docs.base.org/mini-apps/quickstart/building-for-the-base-app):
 
-Update `config/contracts.ts` with deployed contract addresses.
-
-## Tech Stack
-
-- **React 18** + TypeScript
-- **Vite** - Fast build tool
-- **Wagmi** + **RainbowKit** - Wallet integration
-- **Ethers.js v6** - Ethereum interactions
-- **Tailwind CSS** - Styling
+1. **Manifest** - `public/manifest.json` with Mini App config
+2. **Mobile-First** - Responsive design with bottom nav
+3. **Simple Flow** - Focus on one action: launch vault
+4. **Low Friction** - Coinbase Smart Wallet for gasless txs
 
 ## Deployment
 
-### Vercel
+### Vercel (Recommended)
 
 ```bash
 npm run build
-# Deploy via Vercel CLI or GitHub integration
+vercel deploy
 ```
 
-### Other Platforms
+### Manual
 
 ```bash
 npm run build
-# Deploy dist/ folder to your hosting provider
+# Deploy dist/ folder
 ```
+
+## Environment Variables
+
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `VITE_CDP_API_KEY` | Yes | Coinbase Developer Platform API key |
+| `VITE_BASE_RPC` | No | Custom Base RPC (default: public) |
 
 ## License
 
-MIT
+MIT - AKITA, LLC
