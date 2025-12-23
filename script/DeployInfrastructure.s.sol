@@ -434,8 +434,14 @@ contract DeployCreatorVault is Script {
         address TAX_HOOK = 0xca975B9dAF772C71161f3648437c3616E5Be0088;
         
         // Configure oracle settings for automatic V4 pool setup on CCA graduation
-        ccaStrategy.setOracleConfig(address(oracle), V4_POOL_MANAGER, TAX_HOOK);
-        console.log("       CCA: setOracleConfig (oracle, poolManager, taxHook)");
+        // Also sets up the 6.9% tax hook to send fees to GaugeController
+        ccaStrategy.setOracleConfig(
+            address(oracle),
+            V4_POOL_MANAGER,
+            TAX_HOOK,
+            address(gaugeController)  // GaugeController receives 6.9% trade fees
+        );
+        console.log("       CCA: setOracleConfig (oracle, poolManager, taxHook, feeRecipient)");
         
         // ============ CONFIGURE ORACLE ============
         

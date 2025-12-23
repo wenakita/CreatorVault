@@ -19,6 +19,23 @@ interface ICreatorChainlinkOracle {
 }
 
 /**
+ * @title ITaxHook
+ * @notice Interface for the configurable tax hook
+ * @dev Hook at 0xca975B9dAF772C71161f3648437c3616E5Be0088
+ */
+interface ITaxHook {
+    function setTaxConfig(
+        address token_,
+        address counterAsset_,
+        address recipient_,
+        uint256 taxRate_,
+        bool counterIsEth,
+        bool enabled_,
+        bool lock_
+    ) external;
+}
+
+/**
  * @title IContinuousClearingAuctionFactory
  * @notice Interface for Uniswap's CCA Factory
  */
@@ -118,8 +135,14 @@ contract CCALaunchStrategy is Ownable, ReentrancyGuard {
     /// @notice V4 PoolManager (Base: 0x498581fF718922c3f8e6A244956aF099B2652b2b)
     IPoolManager public poolManager;
     
-    /// @notice Tax hook for the V4 pool
+    /// @notice Tax hook for the V4 pool (0xca975B9dAF772C71161f3648437c3616E5Be0088 on Base)
     address public taxHook;
+    
+    /// @notice Fee recipient for the tax hook (GaugeController)
+    address public feeRecipient;
+    
+    /// @notice Tax rate in basis points (690 = 6.9%)
+    uint256 public taxRateBps = 690;
     
     /// @notice Fee tier for V4 pool (default 3000 = 0.3%)
     uint24 public poolFeeTier = 3000;
@@ -163,6 +186,7 @@ contract CCALaunchStrategy is Ownable, ReentrancyGuard {
     event RecipientsUpdated(address fundsRecipient, address tokensRecipient);
     event OracleConfigured(address indexed oracle, address poolManager, address hook);
     event V4PoolConfigured(address indexed oracle, address token0, address token1);
+    event TaxHookConfigured(address indexed token, address indexed recipient, uint256 taxRate);
 
     // ================================
     // ERRORS
@@ -319,6 +343,11 @@ contract CCALaunchStrategy is Ownable, ReentrancyGuard {
             _configureOracleV4Pool();
         }
         
+        // Configure tax hook for 6.9% fee on the wsToken
+        if (taxHook != address(0) && feeRecipient != address(0)) {
+            _configureTaxHook();
+        }
+        
         emit AuctionGraduated(currentAuction, raised, finalPrice);
         emit FundsSwept(currentAuction, raised);
     }
@@ -366,12 +395,47 @@ contract CCALaunchStrategy is Ownable, ReentrancyGuard {
     }
     
     /**
+     * @notice Configure tax hook for 6.9% fee on wsToken trades
+     * @dev Sets up the hook to collect fees and send to GaugeController
+     */
+    function _configureTaxHook() internal {
+        // Configure the tax hook:
+        // - token: wsToken being traded (auctionToken)
+        // - counterAsset: ETH (address(0))
+        // - recipient: GaugeController (feeRecipient)
+        // - taxRate: 6.9% (690 bps)
+        // - counterIsEth: true
+        // - enabled: true
+        // - lock: false (allow future changes)
+        ITaxHook(taxHook).setTaxConfig(
+            address(auctionToken),  // The wsToken
+            currency,               // Counter asset (address(0) for ETH)
+            feeRecipient,           // GaugeController receives fees
+            taxRateBps,             // 690 = 6.9%
+            currency == address(0), // counterIsEth
+            true,                   // enabled
+            false                   // don't lock (allow changes)
+        );
+        
+        emit TaxHookConfigured(address(auctionToken), feeRecipient, taxRateBps);
+    }
+    
+    /**
      * @notice Manually configure oracle V4 pool (if not done on graduation)
      */
     function configureOracleV4Pool() external onlyOwner {
         if (oracle == address(0)) revert ZeroAddress();
         if (address(poolManager) == address(0)) revert ZeroAddress();
         _configureOracleV4Pool();
+    }
+    
+    /**
+     * @notice Manually configure tax hook (if not done on graduation)
+     */
+    function configureTaxHook() external onlyOwner {
+        if (taxHook == address(0)) revert ZeroAddress();
+        if (feeRecipient == address(0)) revert ZeroAddress();
+        _configureTaxHook();
     }
 
     /**
@@ -517,16 +581,37 @@ contract CCALaunchStrategy is Ownable, ReentrancyGuard {
      * @param _oracle Oracle address to configure
      * @param _poolManager V4 PoolManager address
      * @param _taxHook Tax hook address for the pool
+     * @param _feeRecipient GaugeController to receive 6.9% trade fees
      */
     function setOracleConfig(
         address _oracle,
         address _poolManager,
-        address _taxHook
+        address _taxHook,
+        address _feeRecipient
     ) external onlyOwner {
         oracle = _oracle;
         poolManager = IPoolManager(_poolManager);
         taxHook = _taxHook;
+        feeRecipient = _feeRecipient;
         emit OracleConfigured(_oracle, _poolManager, _taxHook);
+    }
+    
+    /**
+     * @notice Update fee recipient (GaugeController)
+     * @param _feeRecipient New fee recipient address
+     */
+    function setFeeRecipient(address _feeRecipient) external onlyOwner {
+        if (_feeRecipient == address(0)) revert ZeroAddress();
+        feeRecipient = _feeRecipient;
+    }
+    
+    /**
+     * @notice Update tax rate
+     * @param _taxRateBps Tax rate in basis points (690 = 6.9%)
+     */
+    function setTaxRate(uint256 _taxRateBps) external onlyOwner {
+        if (_taxRateBps > 1000) revert("Tax too high"); // Max 10%
+        taxRateBps = _taxRateBps;
     }
     
     /**
