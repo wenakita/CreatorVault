@@ -19,7 +19,9 @@
     "react-dom": "^18.3.1",
     "react-router-dom": "^7.1.0",
     "viem": "^2.21.54",
-    "wagmi": "^2.14.1"
+    "wagmi": "^2.14.1",
+    "which-typed-array": "^1.1.19",
+    "xtend": "^4.0.2"
   },
   "devDependencies": {
     "@types/node": "^22.10.2",
@@ -38,4 +40,3 @@
     "vite": "^6.0.3"
   }
 }
-
