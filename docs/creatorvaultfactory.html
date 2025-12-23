@@ -1,0 +1,472 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CreatorVaultFactory | Architect UI</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;700;900&family=JetBrains+Mono:wght@300;500&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg: #030304;
+            --wire: rgba(255, 255, 255, 0.08);
+            --tension-line: rgba(255, 255, 255, 0.4);
+            --accent: #e0e0e0;
+            --ghost-white: rgba(255, 255, 255, 0.6);
+            --node-glow: rgba(255, 255, 255, 0.15);
+            --font-sans: 'Inter', sans-serif;
+            --font-mono: 'JetBrains Mono', monospace;
+            --transition: cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        body {
+            background-color: var(--bg);
+            color: var(--accent);
+            font-family: var(--font-sans);
+            overflow-x: hidden;
+            min-height: 100vh;
+        }
+
+        /* Gossamer Background Grid */
+        .grid-canvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+            background-image: 
+                linear-gradient(var(--wire) 1px, transparent 1px),
+                linear-gradient(90deg, var(--wire) 1px, transparent 1px);
+            background-size: 40px 40px;
+            mask-image: radial-gradient(circle at 50% 50%, black, transparent 80%);
+        }
+
+        .tension-thread {
+            position: fixed;
+            top: 0;
+            left: 20%;
+            width: 1px;
+            height: 100%;
+            background: linear-gradient(to bottom, transparent, var(--tension-line), transparent);
+            z-index: -1;
+            opacity: 0.3;
+        }
+
+        .tension-thread.right { left: 80%; }
+
+        header {
+            padding: 4rem 4rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+            border-bottom: 0.5px solid var(--wire);
+        }
+
+        .brand-cluster h1 {
+            font-weight: 900;
+            font-size: 3.5rem;
+            letter-spacing: -0.05em;
+            text-transform: uppercase;
+            line-height: 0.9;
+        }
+
+        .brand-cluster p {
+            font-family: var(--font-mono);
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            opacity: 0.5;
+            margin-top: 0.5rem;
+        }
+
+        .status-badge {
+            font-family: var(--font-mono);
+            font-size: 0.8rem;
+            padding: 0.5rem 1rem;
+            border: 0.5px solid var(--tension-line);
+            background: rgba(255,255,255,0.03);
+            backdrop-filter: blur(5px);
+        }
+
+        main {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            min-height: calc(100vh - 200px);
+        }
+
+        .deploy-section {
+            padding: 4rem;
+            border-right: 0.5px solid var(--wire);
+            display: flex;
+            flex-direction: column;
+            gap: 3rem;
+        }
+
+        .schematic-section {
+            padding: 4rem;
+            background: radial-gradient(circle at 70% 30%, rgba(255,255,255,0.02), transparent 50%);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+
+        .input-group {
+            position: relative;
+            margin-bottom: 2rem;
+        }
+
+        .input-group label {
+            display: block;
+            font-family: var(--font-mono);
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            margin-bottom: 0.75rem;
+            color: var(--ghost-white);
+        }
+
+        .input-group input {
+            width: 100%;
+            background: transparent;
+            border: none;
+            border-bottom: 1px solid var(--wire);
+            padding: 0.75rem 0;
+            color: white;
+            font-family: var(--font-mono);
+            font-size: 1.1rem;
+            transition: var(--transition);
+        }
+
+        .input-group input:focus {
+            outline: none;
+            border-bottom-color: var(--tension-line);
+            padding-left: 1rem;
+        }
+
+        .btn-deploy {
+            background: white;
+            color: black;
+            border: none;
+            padding: 1.5rem 2rem;
+            font-family: var(--font-sans);
+            font-weight: 900;
+            text-transform: uppercase;
+            font-size: 1rem;
+            cursor: pointer;
+            width: fit-content;
+            transition: all 0.4s var(--transition);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .btn-deploy:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 40px rgba(255,255,255,0.2);
+        }
+
+        .btn-deploy:active {
+            transform: scale(0.98);
+        }
+
+        /* Schematic Wireframe UI */
+        .schematic-viz {
+            position: relative;
+            height: 400px;
+            width: 100%;
+        }
+
+        .node {
+            position: absolute;
+            width: 140px;
+            padding: 1rem;
+            border: 0.5px solid var(--tension-line);
+            background: rgba(3,3,4,0.8);
+            backdrop-filter: blur(10px);
+            font-family: var(--font-mono);
+            font-size: 0.65rem;
+            text-align: center;
+            transition: var(--transition);
+            z-index: 2;
+        }
+
+        .node:hover {
+            border-color: white;
+            box-shadow: 0 0 20px var(--node-glow);
+        }
+
+        .node.center { top: 50%; left: 50%; transform: translate(-50%, -50%); width: 180px; font-weight: 700; font-size: 0.8rem; }
+        .node.top-left { top: 0; left: 0; }
+        .node.top-right { top: 0; right: 0; }
+        .node.bottom-left { bottom: 0; left: 0; }
+        .node.bottom-right { bottom: 0; right: 0; }
+
+        .svg-lines {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+        }
+
+        .connector {
+            stroke: var(--wire);
+            stroke-width: 0.5;
+            fill: none;
+            transition: var(--transition);
+        }
+
+        .schematic-viz:hover .connector {
+            stroke: var(--tension-line);
+            stroke-dasharray: 4 4;
+            animation: flow 20s linear infinite;
+        }
+
+        @keyframes flow {
+            from { stroke-dashoffset: 200; }
+            to { stroke-dashoffset: 0; }
+        }
+
+        .flow-details {
+            margin-top: 4rem;
+            border-left: 0.5px solid var(--tension-line);
+            padding-left: 2rem;
+        }
+
+        .flow-details h3 {
+            font-size: 0.8rem;
+            font-family: var(--font-mono);
+            text-transform: uppercase;
+            margin-bottom: 1.5rem;
+            opacity: 0.4;
+        }
+
+        .step {
+            display: flex;
+            align-items: center;
+            gap: 1.5rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .step-num {
+            font-family: var(--font-mono);
+            font-size: 0.7rem;
+            width: 24px;
+            height: 24px;
+            border: 0.5px solid var(--tension-line);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .step-label {
+            font-size: 0.9rem;
+            font-weight: 300;
+            color: var(--ghost-white);
+        }
+
+        .step-label b {
+            color: white;
+            font-weight: 700;
+        }
+
+        footer {
+            padding: 2rem 4rem;
+            display: flex;
+            justify-content: space-between;
+            font-family: var(--font-mono);
+            font-size: 0.65rem;
+            border-top: 0.5px solid var(--wire);
+            opacity: 0.5;
+        }
+
+        /* Micro-animations */
+        .reveal {
+            animation: revealUp 1s var(--transition) both;
+        }
+
+        @keyframes revealUp {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .delay-1 { animation-delay: 0.1s; }
+        .delay-2 { animation-delay: 0.2s; }
+        .delay-3 { animation-delay: 0.3s; }
+
+        @media (max-width: 1024px) {
+            main { grid-template-columns: 1fr; }
+            header { padding: 2rem; flex-direction: column; align-items: flex-start; gap: 1rem; }
+            .deploy-section, .schematic-section { padding: 2rem; }
+            .schematic-viz { height: 300px; margin-top: 2rem; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="grid-canvas"></div>
+    <div class="tension-thread"></div>
+    <div class="tension-thread right"></div>
+
+    <header>
+        <div class="brand-cluster reveal">
+            <h1>Architect</h1>
+            <p>CreatorVaultFactory v1.0.4 // Omnichain Social-Fi Engine</p>
+        </div>
+        <div class="status-badge reveal delay-1">
+            NETWORK: ETH-MAINNET // FACTORY: 0x4e59...956c
+        </div>
+    </header>
+
+    <main>
+        <section class="deploy-section">
+            <div class="reveal delay-2">
+                <div class="input-group">
+                    <label>Creator Coin Address (ERC-20)</label>
+                    <input type="text" placeholder="0x..." id="coin-addr" value="0x8d5c7c...b54f">
+                </div>
+                <div class="input-group">
+                    <label>Creator Wallet / Treasury</label>
+                    <input type="text" placeholder="0x..." id="creator-addr">
+                </div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem;">
+                    <div class="input-group">
+                        <label>Asset Symbol</label>
+                        <input type="text" placeholder="e.g. AKITA" id="symbol" oninput="updateViz()">
+                    </div>
+                    <div class="input-group">
+                        <label>Salt (Deterministic)</label>
+                        <input type="text" placeholder="Optional" id="salt">
+                    </div>
+                </div>
+            </div>
+
+            <div class="reveal delay-3" style="display: flex; gap: 1rem;">
+                <button class="btn-deploy" onclick="deploy()">Initialize Infrastructure</button>
+                <button class="btn-deploy" style="background: transparent; color: white; border: 0.5px solid var(--tension-line);">Preview Create2</button>
+            </div>
+
+            <div class="flow-details reveal delay-3">
+                <h3>Deployment Blueprint</h3>
+                <div class="step">
+                    <div class="step-num">01</div>
+                    <div class="step-label">Deploy <b>CreatorOVault</b> (ERC-4626)</div>
+                </div>
+                <div class="step">
+                    <div class="step-num">02</div>
+                    <div class="step-label">Initialize <b>CreatorShareOFT</b> (Omnichain)</div>
+                </div>
+                <div class="step">
+                    <div class="step-num">03</div>
+                    <div class="step-label">Deploy <b>CCA Launch</b> Strategy</div>
+                </div>
+                <div class="step">
+                    <div class="step-num">04</div>
+                    <div class="step-label">Bind <b>GaugeController</b> (Fee Burner)</div>
+                </div>
+            </div>
+        </section>
+
+        <section class="schematic-section">
+            <div class="schematic-viz reveal delay-2">
+                <svg class="svg-lines">
+                    <!-- Dynamic lines connecting nodes -->
+                    <line x1="50%" y1="50%" x2="70" y2="50" class="connector" />
+                    <line x1="50%" y1="50%" x2="calc(100% - 70px)" y2="50" class="connector" />
+                    <line x1="50%" y1="50%" x2="50%" y2="50" class="connector" />
+                    
+                    <path d="M 90 60 L 250 180" class="connector" />
+                    <path d="M calc(100% - 90px) 60 L calc(100% - 250px) 180" class="connector" />
+                    <path d="M 90 calc(100% - 60px) L 250 calc(100% - 180px)" class="connector" />
+                    <path d="M calc(100% - 90px) calc(100% - 60px) L calc(100% - 250px) calc(100% - 180px)" class="connector" />
+                </svg>
+
+                <div class="node top-left" id="node-vault">
+                    v<span class="ticker">SYMBOL</span><br/>
+                    <span style="opacity:0.4">VAULT CORE</span>
+                </div>
+                <div class="node top-right" id="node-oft">
+                    ws<span class="ticker">SYMBOL</span><br/>
+                    <span style="opacity:0.4">LAYERZERO OFT</span>
+                </div>
+                <div class="node center">
+                    WRAPPED VAULT<br/>INFRASTRUCTURE
+                </div>
+                <div class="node bottom-left">
+                    GAUGE<br/>
+                    <span style="opacity:0.4">6.9% FEE ENGINE</span>
+                </div>
+                <div class="node bottom-right">
+                    CCA STRATEGY<br/>
+                    <span style="opacity:0.4">FAIR LAUNCH</span>
+                </div>
+            </div>
+
+            <div style="margin-top: 3rem; font-family: var(--font-mono); font-size: 0.7rem; color: var(--ghost-white);">
+                <div style="display:flex; justify-content:space-between; margin-bottom: 0.5rem;">
+                    <span>EST. GAS COST</span>
+                    <span>1,420,551 Units</span>
+                </div>
+                <div style="width: 100%; height: 1px; background: var(--wire);"></div>
+                <div style="display:flex; justify-content:space-between; margin-top: 0.5rem;">
+                    <span>DETERMINISTIC ADDR</span>
+                    <span id="pred-addr">0x0000...0000</span>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <footer>
+        <div>BUILD: 0XAKITA.ETH // CC-04</div>
+        <div>SOCIAL-FI INFRASTRUCTURE PROTOCOL</div>
+        <div>STABLE // 2024</div>
+    </footer>
+
+    <script>
+        function updateViz() {
+            const sym = document.getElementById('symbol').value.toUpperCase() || 'SYMBOL';
+            const tickers = document.querySelectorAll('.ticker');
+            tickers.forEach(t => t.innerText = sym);
+            
+            // Mock address prediction
+            if(sym.length > 2) {
+                document.getElementById('pred-addr').innerText = '0x' + Math.random().toString(16).slice(2, 10) + '...' + Math.random().toString(16).slice(2, 6);
+            }
+        }
+
+        function deploy() {
+            const btn = document.querySelector('.btn-deploy');
+            btn.innerText = 'DEPLOYING...';
+            btn.style.opacity = '0.5';
+            btn.style.pointerEvents = 'none';
+
+            setTimeout(() => {
+                alert('Infrastructure deployed successfully. Registered with CreatorRegistry.');
+                btn.innerText = 'INITIALIZE INFRASTRUCTURE';
+                btn.style.opacity = '1';
+                btn.style.pointerEvents = 'all';
+            }, 2000);
+        }
+
+        // Initialize with mouse move effect for "tension"
+        document.addEventListener('mousemove', (e) => {
+            const x = (e.clientX / window.innerWidth - 0.5) * 10;
+            const y = (e.clientY / window.innerHeight - 0.5) * 10;
+            
+            const nodes = document.querySelectorAll('.node');
+            nodes.forEach(node => {
+                node.style.transform = node.classList.contains('center') 
+                    ? `translate(calc(-50% + ${x}px), calc(-50% + ${y}px))`
+                    : `translate(${x}px, ${y}px)`;
+            });
+        });
+    </script>
+</body>
+</html>

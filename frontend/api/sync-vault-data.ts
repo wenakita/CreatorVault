@@ -9,7 +9,6 @@ let prisma: any = null;
 async function getPrisma(): Promise<any> {
   if (!prisma) {
     try {
-      // Use eval to completely bypass TypeScript static analysis
       const modulePath = '@prisma/client';
       const prismaModule = await eval(`import('${modulePath}')`).catch(() => null);
       if (!prismaModule) {
@@ -30,11 +29,16 @@ async function getPrisma(): Promise<any> {
   return prisma;
 }
 
-// Charm Finance Vault addresses
-const VAULTS = {
-  USD1_WLFI: '0x22828dbf15f5fba2394ba7cf8fa9a96bdb444b71',
-  WETH_WLFI: '0x3314e248f3f752cd16939773d83beb3a362f0aef',
-};
+// Get vault addresses from environment
+function getConfiguredVaults(): Record<string, string> {
+  const vaults: Record<string, string> = {};
+  
+  if (process.env.VITE_CHARM_VAULT_ADDRESS) {
+    vaults['VAULT_1'] = process.env.VITE_CHARM_VAULT_ADDRESS.toLowerCase();
+  }
+  
+  return vaults;
+}
 
 // GraphQL query for Charm Finance subgraph
 const SNAPSHOT_QUERY = `
@@ -268,6 +272,18 @@ export default async function handler(
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
+  const VAULTS = getConfiguredVaults();
+  
+  // Check if any vaults are configured
+  if (Object.keys(VAULTS).length === 0) {
+    return res.status(200).json({
+      success: true,
+      message: 'No vaults configured. Set VITE_CHARM_VAULT_ADDRESS environment variable.',
+      syncedAt: new Date().toISOString(),
+      results: [],
+    });
+  }
+
   try {
     const results = [];
     
@@ -299,4 +315,3 @@ export default async function handler(
     if (db) await db.$disconnect();
   }
 }
-

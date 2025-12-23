@@ -3,11 +3,13 @@ import { PrismaClient } from '@prisma/client';
 
 const prisma = new PrismaClient();
 
-// Charm Finance Vault addresses
-const VAULTS = {
-  USD1_WLFI: '0x22828dbf15f5fba2394ba7cf8fa9a96bdb444b71',
-  WETH_WLFI: '0x3314e248f3f752cd16939773d83beb3a362f0aef',
-};
+// Get vault addresses from environment or use empty defaults
+const VAULTS: Record<string, string> = {};
+
+// Add configured vaults from environment
+if (process.env.VITE_CHARM_VAULT_ADDRESS) {
+  VAULTS['VAULT_1'] = process.env.VITE_CHARM_VAULT_ADDRESS.toLowerCase();
+}
 
 export default async function handler(
   req: VercelRequest,
@@ -24,6 +26,21 @@ export default async function handler(
 
   if (req.method !== 'GET') {
     return res.status(405).json({ error: 'Method not allowed' });
+  }
+
+  // Check if any vaults are configured
+  if (Object.keys(VAULTS).length === 0) {
+    return res.status(200).json({
+      success: true,
+      data: {
+        vaults: {},
+        syncStatus: {},
+        meta: {
+          message: 'No vaults configured. Set VITE_CHARM_VAULT_ADDRESS environment variable.',
+          generatedAt: new Date().toISOString(),
+        }
+      }
+    });
   }
 
   try {
@@ -171,4 +188,3 @@ export default async function handler(
     await prisma.$disconnect();
   }
 }
-

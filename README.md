@@ -20,8 +20,7 @@ CreatorVault is a **vault-as-a-service platform** for Creator Coins (Coinbase Cr
 
 - **Creator Coins** (Coinbase) - Token standard for creators
 - **FriendTech** - Social-fi mechanics and engagement
-- **DragonOVault** - Yearn V3-inspired vault architecture
-- **EagleOVault** - Dual-token yield aggregation patterns
+- **Yearn V3** - Battle-tested vault architecture
 
 ## Key Features
 
@@ -39,12 +38,12 @@ CreatorVault is a **vault-as-a-service platform** for Creator Coins (Coinbase Cr
 graph TB
     subgraph CreatorVault["🎨 CREATORVAULT PLATFORM"]
         Registry["<b>CreatorRegistry</b><br/>Token & Chain Config"]
-        Factory["<b>CreatorVaultFactory</b><br/>Deploy Infrastructure"]
+        Factory["<b>CreatorOVaultFactory</b><br/>Deploy Infrastructure"]
     end
 
     subgraph AkitaVault["🐕 AKITA VAULT ECOSYSTEM"]
         Token["<b>akita</b><br/>Creator Coin"]
-        Vault["<b>CreatOVault</b><br/>akita Omnichain Vault<br/>(akitaOV)"]
+        Vault["<b>CreatorOVault</b><br/>akita Omnichain Vault<br/>(akitaOV)"]
         Wrapper["<b>CreatorOVaultWrapper</b><br/>Wrap/Unwrap"]
         OFT["<b>CreatorShareOFT</b><br/>akita Share Token<br/>(stkmaakita)"]
     end
@@ -93,7 +92,7 @@ graph TB
 ## Token Flow
 
 ```
-Creator Coin (akita) → Deposit → CreatOVault (akitaOV shares)
+Creator Coin (akita) → Deposit → CreatorOVault (akitaOV shares)
                                        ↓
                               CreatorOVaultWrapper
                                        ↓
@@ -141,20 +140,35 @@ forge test
 ```
 CreatorVault/
 ├── contracts/
-│   ├── CreatOVault.sol           # ERC-4626 vault for Creator Coins
-│   ├── CreatorOVaultWrapper.sol  # Wraps vault shares for cross-chain
-│   ├── CreatorShareOFT.sol       # LayerZero OFT with buy fees
-│   ├── CreatorRegistry.sol       # Platform registry & config
-│   ├── factories/
-│   │   └── CreatorVaultFactory.sol  # Deploy vault infrastructure
-│   ├── strategies/
-│   │   └── BaseCreatorStrategy.sol  # Strategy base contract
-│   ├── helpers/
-│   │   └── CreatorCreate2Deployer.sol  # Deterministic deployment
-│   └── interfaces/
-│       ├── ICreatorRegistry.sol
-│       └── IStrategy.sol
-├── reference/                    # Dragon contracts for reference
+│   ├── core/                     # Core platform contracts
+│   │   └── CreatorRegistry.sol
+│   ├── vault/                    # Vault contracts
+│   │   ├── CreatorOVault.sol
+│   │   └── CreatorOVaultWrapper.sol
+│   ├── layerzero/                # Cross-chain (LayerZero)
+│   │   └── CreatorShareOFT.sol
+│   ├── governance/               # Governance & tokenomics
+│   │   ├── CreatorGaugeController.sol
+│   │   └── veAKITA.sol
+│   ├── factories/                # Deployment factories
+│   │   └── CreatorOVaultFactory.sol
+│   ├── strategies/               # Yield strategies
+│   │   └── BaseCreatorStrategy.sol
+│   ├── lottery/                  # Lottery system
+│   │   └── CreatorLotteryManager.sol
+│   ├── vrf/                      # Chainlink VRF
+│   │   └── CreatorVRFConsumerV2_5.sol
+│   ├── oracles/                  # Price oracles
+│   │   └── CreatorChainlinkOracle.sol
+│   ├── lp/                       # LP management
+│   ├── hooks/                    # Uniswap V4 hooks
+│   ├── helpers/                  # Utility contracts
+│   └── interfaces/               # All interfaces (mirrored structure)
+│       ├── core/
+│       ├── strategies/
+│       ├── lp/
+│       ├── oracles/
+│       └── external/
 ├── frontend/                     # UI components
 ├── deployments/                  # Deployment addresses
 └── README.md
@@ -162,7 +176,7 @@ CreatorVault/
 
 ## Core Contracts
 
-### CreatOVault
+### CreatorOVault
 
 ERC-4626 compliant vault for Creator Coins with:
 

@@ -5,12 +5,12 @@ import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
-import {IStrategy} from "../interfaces/IStrategy.sol";
+import {IStrategy} from "../interfaces/strategies/IStrategy.sol";
 
 /**
  * @title BaseCreatorStrategy
  * @author 0xakita.eth (CreatorVault)
- * @notice Base strategy contract for CreatOVault yield strategies
+ * @notice Base strategy contract for CreatorOVault yield strategies
  * 
  * @dev SINGLE-TOKEN PATTERN:
  *      - Each strategy manages one token (the Creator Coin)
@@ -18,7 +18,7 @@ import {IStrategy} from "../interfaces/IStrategy.sol";
  *      - Inherit this contract and implement _deployFunds() and _freeFunds()
  * 
  * @dev ARCHITECTURE:
- *      CreatOVault → BaseCreatorStrategy → [CharmStrategy, AaveStrategy, etc.]
+ *      CreatorOVault → BaseCreatorStrategy → [CharmStrategy, AaveStrategy, etc.]
  *                                           └──> External yield protocols
  * 
  * @dev REQUIRED OVERRIDES:
@@ -102,7 +102,7 @@ abstract contract BaseCreatorStrategy is IStrategy, Ownable, ReentrancyGuard {
     /**
      * @notice Initialize the strategy
      * @param _asset The token this strategy manages (Creator Coin)
-     * @param _vault The CreatOVault address
+     * @param _vault The CreatorOVault address
      * @param _name Strategy name for identification
      * @param _owner Owner address
      */

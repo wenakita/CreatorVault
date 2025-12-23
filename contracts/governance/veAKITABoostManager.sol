@@ -2,15 +2,15 @@
 pragma solidity ^0.8.20;
 
 /**
- * @title veCreatorShareBoostManager
+ * @title veAKITABoostManager
  * @author 0xakita.eth (CreatorVault)
- * @notice Calculates lottery boost based on veCreatorShare holdings
+ * @notice Calculates lottery boost based on veAKITA holdings
  * 
  * @dev BOOST MECHANISM:
- *      Users who lock wrapped shares into veCreatorShare get increased lottery win chances.
+ *      Users who lock wrapped shares into veAKITA get increased lottery win chances.
  *      The boost scales linearly based on:
  *      1. Lock duration (longer = more boost)
- *      2. Relative veCreatorShare balance vs total supply
+ *      2. Relative veAKITA balance vs total supply
  * 
  * @dev BOOST FORMULA:
  *      boostMultiplier = 10000 + (userShare × (maxBoost - 10000))
@@ -19,7 +19,7 @@ pragma solidity ^0.8.20;
  * @dev BOOST TIERS:
  *      - No lock:     1.0x (10000 bps)
  *      - Minimum:     1.0x 
- *      - Maximum:     2.5x (25000 bps) for veCreatorShare lockers
+ *      - Maximum:     2.5x (25000 bps) for veAKITA lockers
  * 
  * @dev FLASH LOAN PROTECTION:
  *      Users must hold tokens for MIN_HOLDING_BLOCKS before getting boost
@@ -29,7 +29,7 @@ import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
-interface IveCreatorShare {
+interface IveAKITA {
     function getVotingPower(address user) external view returns (uint256);
     function getTotalVotingPower() external view returns (uint256);
     function hasActiveLock(address user) external view returns (bool);
@@ -40,7 +40,7 @@ interface ICreatorGaugeController {
     function getJackpotReserve(address vault) external view returns (uint256);
 }
 
-contract veCreatorShareBoostManager is Ownable, ReentrancyGuard {
+contract veAKITABoostManager is Ownable, ReentrancyGuard {
     // ================================
     // CONSTANTS
     // ================================
@@ -48,7 +48,7 @@ contract veCreatorShareBoostManager is Ownable, ReentrancyGuard {
     /// @notice Precision for boost calculations (10000 = 100%)
     uint256 public constant BOOST_PRECISION = 10000;
 
-    /// @notice Maximum boost for veCreatorShare lockers (2.5x)
+    /// @notice Maximum boost for veAKITA lockers (2.5x)
     uint256 public constant MAX_VE_BOOST = 25000;
 
     /// @notice Minimum holding blocks for flash loan protection
@@ -58,8 +58,8 @@ contract veCreatorShareBoostManager is Ownable, ReentrancyGuard {
     // STATE
     // ================================
 
-    /// @notice veCreatorShare token (ve{SYMBOL})
-    IveCreatorShare public immutable veCreatorShare;
+    /// @notice veAKITA token
+    IveAKITA public immutable veAKITA;
 
     /// @notice GaugeController (optional, for probability boost)
     ICreatorGaugeController public gaugeController;
@@ -70,7 +70,7 @@ contract veCreatorShareBoostManager is Ownable, ReentrancyGuard {
     /// @notice Max boost (2.5x = 25000 bps)
     uint256 public maxBoost = 25000;
 
-    /// @notice Minimum veCreatorShare to participate
+    /// @notice Minimum veAKITA to participate
     uint256 public minVotingPower = 0.1 ether;
 
     /// @notice Flash loan protection: last balance update block
@@ -100,9 +100,9 @@ contract veCreatorShareBoostManager is Ownable, ReentrancyGuard {
     // CONSTRUCTOR
     // ================================
 
-    constructor(address _veCreatorShare, address _owner) Ownable(_owner) {
-        if (_veCreatorShare == address(0)) revert ZeroAddress();
-        veCreatorShare = IveCreatorShare(_veCreatorShare);
+    constructor(address _veAKITA, address _owner) Ownable(_owner) {
+        if (_veAKITA == address(0)) revert ZeroAddress();
+        veAKITA = IveAKITA(_veAKITA);
     }
 
     // ================================
@@ -129,11 +129,11 @@ contract veCreatorShareBoostManager is Ownable, ReentrancyGuard {
             return baseBoost;
         }
 
-        // Get user's veCreatorShare voting power
-        uint256 userPower = veCreatorShare.getVotingPower(user);
-        uint256 totalPower = veCreatorShare.getTotalVotingPower();
+        // Get user's veAKITA voting power
+        uint256 userPower = veAKITA.getVotingPower(user);
+        uint256 totalPower = veAKITA.getTotalVotingPower();
 
-        // No veCreatorShare = base boost only
+        // No veAKITA = base boost only
         if (userPower == 0 || totalPower == 0) {
             return baseBoost;
         }
@@ -180,13 +180,13 @@ contract veCreatorShareBoostManager is Ownable, ReentrancyGuard {
      * @dev This is used by CreatorLotteryManager for win chance calculation
      */
     function getTotalProbabilityBoost(address user) external view returns (uint256 totalBoostBps) {
-        // veCreatorShare lockers get probability boost based on their lock
-        if (!veCreatorShare.hasActiveLock(user)) {
+        // veAKITA lockers get probability boost based on their lock
+        if (!veAKITA.hasActiveLock(user)) {
             return 0;
         }
 
         // Get remaining lock time as a proportion of max
-        uint256 remainingTime = veCreatorShare.getRemainingLockTime(user);
+        uint256 remainingTime = veAKITA.getRemainingLockTime(user);
         uint256 maxLockTime = 4 * 365 days;
 
         // Max probability boost: 690 bps (6.9%) at 4 year lock
@@ -211,8 +211,8 @@ contract veCreatorShareBoostManager is Ownable, ReentrancyGuard {
         uint256 lockTimeRemaining
     ) {
         multiplier = calculateBoost(user);
-        hasLock = veCreatorShare.hasActiveLock(user);
-        lockTimeRemaining = veCreatorShare.getRemainingLockTime(user);
+        hasLock = veAKITA.hasActiveLock(user);
+        lockTimeRemaining = veAKITA.getRemainingLockTime(user);
     }
 
     /**
@@ -227,8 +227,8 @@ contract veCreatorShareBoostManager is Ownable, ReentrancyGuard {
         bool isProtected
     ) {
         boostMultiplier = calculateBoost(user);
-        userVotingPower = veCreatorShare.getVotingPower(user);
-        totalVotingPower = veCreatorShare.getTotalVotingPower();
+        userVotingPower = veAKITA.getVotingPower(user);
+        totalVotingPower = veAKITA.getTotalVotingPower();
         
         if (totalVotingPower > 0) {
             userShareBps = (userVotingPower * BOOST_PRECISION) / totalVotingPower;
@@ -246,7 +246,7 @@ contract veCreatorShareBoostManager is Ownable, ReentrancyGuard {
      * @param user User whose balance changed
      */
     function updateBalanceTracking(address user) external {
-        require(msg.sender == address(veCreatorShare), "Only veCreatorShare");
+        require(msg.sender == address(veAKITA), "Only veAKITA");
         lastBalanceUpdateBlock[user] = block.number;
     }
 

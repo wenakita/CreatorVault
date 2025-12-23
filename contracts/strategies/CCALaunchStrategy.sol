@@ -45,7 +45,7 @@ interface IContinuousClearingAuction {
 
 /**
  * @title CCALaunchStrategy
- * @author 0xakita.eth (CreatorVault)
+ * @author 0xakita.eth
  * @notice Fair launch strategy using Uniswap's Continuous Clearing Auction
  * 
  * @dev USE CASES:
@@ -358,16 +358,19 @@ contract CCALaunchStrategy is Ownable, ReentrancyGuard {
         uint64 phase2Duration = duration / 4;
         uint64 phase3Duration = duration - phase1Duration - phase2Duration;
         
+        // Use uint256 for intermediate calculations to avoid overflow
+        uint256 mpsValue = uint256(MPS);
+        
         // Phase 1: 20% over 50% of time = slow
-        uint24 mps1 = uint24((MPS * 2000) / 10000 / phase1Duration); // 20% / phase1
+        uint24 mps1 = uint24((mpsValue * 2000) / 10000 / phase1Duration); // 20% / phase1
         bytes8 packed1 = bytes8(uint64(mps1) | (uint64(phase1Duration) << 24));
         
         // Phase 2: 30% over 25% of time = medium
-        uint24 mps2 = uint24((MPS * 3000) / 10000 / phase2Duration);
+        uint24 mps2 = uint24((mpsValue * 3000) / 10000 / phase2Duration);
         bytes8 packed2 = bytes8(uint64(mps2) | (uint64(phase2Duration) << 24));
         
         // Phase 3: 50% over 25% of time = fast
-        uint24 mps3 = uint24((MPS * 5000) / 10000 / phase3Duration);
+        uint24 mps3 = uint24((mpsValue * 5000) / 10000 / phase3Duration);
         bytes8 packed3 = bytes8(uint64(mps3) | (uint64(phase3Duration) << 24));
         
         return abi.encodePacked(packed1, packed2, packed3);

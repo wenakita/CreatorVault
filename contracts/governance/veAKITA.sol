@@ -108,10 +108,10 @@ import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol
 import {Nonces} from "@openzeppelin/contracts/utils/Nonces.sol";
 
 /**
- * @title IveCreatorShare
- * @notice Interface for veCreatorShare (Vote-Escrowed Wrapped ShareOFT)
+ * @title IveAKITA
+ * @notice Interface for veAKITA (Vote-Escrowed Wrapped AKITA Shares)
  */
-interface IveCreatorShare {
+interface IveAKITA {
     struct Lock {
         uint256 amount;
         uint256 end;
@@ -151,7 +151,7 @@ interface IveCreatorShare {
     function MAX_LOCK_DURATION() external view returns (uint256);
 }
 
-contract veCreatorShare is IveCreatorShare, Ownable, ERC20, ERC20Permit, ERC20Votes, ReentrancyGuard {
+contract veAKITA is IveAKITA, Ownable, ERC20, ERC20Permit, ERC20Votes, ReentrancyGuard {
     using SafeERC20 for IERC20;
 
     // ================================
@@ -457,15 +457,15 @@ contract veCreatorShare is IveCreatorShare, Ownable, ERC20, ERC20Permit, ERC20Vo
     // ================================
 
     function transfer(address, uint256) public pure override returns (bool) {
-        revert("veCreatorShare: non-transferable");
+        revert("veAKITA: non-transferable");
     }
 
     function transferFrom(address, address, uint256) public pure override returns (bool) {
-        revert("veCreatorShare: non-transferable");
+        revert("veAKITA: non-transferable");
     }
 
     function approve(address, uint256) public pure override returns (bool) {
-        revert("veCreatorShare: non-transferable");
+        revert("veAKITA: non-transferable");
     }
 
     // Required overrides

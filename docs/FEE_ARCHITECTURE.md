@@ -234,7 +234,7 @@ wsAKITA (Wrapped Share) ← Cross-chain via LayerZero, trades on DEXes
 ├─────────────────────────────────────────────────────────────────────┤
 │                                                                     │
 │  1. Factory deploys all contracts:                                 │
-│     - CreatOVault (akitaOV)                                        │
+│     - CreatorOVault (akitaOV)                                        │
 │     - CreatorOVaultWrapper (user-facing: deposit/withdraw)         │
 │     - CreatorShareOFT (wsAKITA)                                 │
 │     - CreatorGaugeController                                       │
@@ -336,7 +336,7 @@ strategy.sweepUnsoldTokens();  // Remaining tokens to creator
 |----------|---------|---------|
 | akita (Creator Coin) | `0x5b674196812451b7cec024fe9d22d2c0b172fa75` | Base |
 | wsAKITA (ShareOFT) | TBD (via Factory) | Base |
-| CreatOVault (akitaOV) | TBD (via Factory) | Base |
+| CreatorOVault (akitaOV) | TBD (via Factory) | Base |
 | CreatorOVaultWrapper | TBD (via Factory) | Base |
 | CCALaunchStrategy | TBD (via Factory) | Base |
 | CreatorGaugeController | TBD (via Factory) | Base |

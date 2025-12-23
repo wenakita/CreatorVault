@@ -5,29 +5,41 @@ import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
-import {IStrategy} from "../interfaces/IStrategy.sol";
+import {IStrategy} from "../interfaces/strategies/IStrategy.sol";
 
 /**
  * @title CreatorCharmStrategy
  * @author 0xakita.eth (CreatorVault)
- * @notice Charm vault strategy for Creator Coin / WETH pairs
+ * @notice Charm vault strategy for the ORIGINAL Creator Coin / WETH pairs
  * 
- * @dev USES CHARM FINANCE:
+ * @dev PURPOSE:
+ *      This strategy manages liquidity for the ORIGINAL CREATOR COIN (e.g., AKITA)
+ *      on Uniswap V3 via Charm Finance Alpha Vaults.
+ * 
+ *      NOT for CreatorShareOFT (wsAKITA) - that uses CreatorLPManager on V4.
+ * 
+ * @dev TOKEN DISTINCTION:
+ *      ┌────────────────────────────────────────────────────────────┐
+ *      │ AKITA (Creator Coin)  →  CreatorCharmStrategy  →  V3 Pool │
+ *      │ wsAKITA (ShareOFT)    →  CreatorLPManager      →  V4 Pool │
+ *      └────────────────────────────────────────────────────────────┘
+ * 
+ * @dev USES CHARM FINANCE (V3):
  *      - Charm handles automatic rebalancing via keepers
  *      - Passive concentrated liquidity management
  *      - Battle-tested and audited
  *      - We just deposit/withdraw, Charm does the rest
+ *      - No fee hooks (V3 doesn't support hooks)
  * 
  * @dev SINGLE TOKEN INTERFACE:
- *      - CreatOVault deposits Creator Coin
+ *      - CreatorOVault deposits Creator Coin
  *      - We swap half to WETH and deposit to Charm
  *      - On withdraw, we swap back and return Creator Coin
  * 
- * @dev IMPROVEMENTS:
- *      - Slippage protection on all swaps
- *      - Graceful failure handling
- *      - Pre-deposit range checks
- *      - Pool price for swap calculations (not oracle)
+ * @dev WHY V3 FOR CREATOR COIN:
+ *      - The original Creator Coin doesn't need the 6.9% fee hook
+ *      - Charm Alpha Vaults are proven and audited
+ *      - Passive management = lower operational overhead
  */
 
 interface ICharmVault {
@@ -93,7 +105,7 @@ contract CreatorCharmStrategy is IStrategy, Ownable, ReentrancyGuard {
     // STATE
     // =================================
 
-    /// @notice The CreatOVault this strategy serves
+    /// @notice The CreatorOVault this strategy serves
     address public vault;
     
     /// @notice Creator Coin token
@@ -178,7 +190,7 @@ contract CreatorCharmStrategy is IStrategy, Ownable, ReentrancyGuard {
      * @param _creatorCoin Creator Coin token address
      * @param _weth WETH address
      * @param _swapRouter Uniswap router address
-     * @param _vault CreatOVault address
+     * @param _vault CreatorOVault address
      * @param _owner Owner address
      */
     constructor(

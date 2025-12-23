@@ -49,7 +49,7 @@ export const AKITA_CONFIG = {
     chainId: CHAIN_IDS.BASE,
   },
   
-  // Vault (CreatOVault)
+  // Vault (CreatorOVault)
   vault: {
     address: '' as `0x${string}`, // TBD after deployment
     name: 'akita Omnichain Vault',

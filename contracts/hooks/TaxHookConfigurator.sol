@@ -82,7 +82,7 @@ contract TaxHookConfigurator {
     // =================================
     
     /**
-     * @notice Configure tax hook for a stkmaakita/ETH pool
+     * @notice Configure tax hook for a wsAKITA/ETH pool
      * @param _shareOFT The CreatorShareOFT token address
      * @param _gaugeController The CreatorGaugeController address (fee recipient)
      * @param _feeBps Fee in basis points (690 = 6.9%)
