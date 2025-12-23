@@ -17,19 +17,24 @@ const vaults = [
   {
     id: 'akita',
     name: 'AKITA',
-    symbol: 'sAKITA',
+    symbol: 'AKITA',  // User-facing: AKITA (not sAKITA)
     wrappedSymbol: 'wsAKITA',
     token: AKITA.token,
     vault: AKITA.vault,
     tvl: '$420,690',
     apy: '42.0%',
     holders: 69,
-    jackpot: '0.1 ETH',
-    nextDraw: '6d 12h',
     status: 'active',
     color: 'from-orange-500 to-red-600',
   },
 ]
+
+// Shared lottery data - single jackpot across ALL vaults
+const sharedLottery = {
+  jackpot: '0.1 ETH',
+  nextDraw: '6d 12h',
+  progress: 65,
+}
 
 const container = {
   hidden: { opacity: 0 },
@@ -102,8 +107,8 @@ export function Dashboard() {
               <Gift className="w-4 h-4 text-yellow-500" />
             </div>
           </div>
-          <p className="stat-value">0.1 ETH</p>
-          <p className="stat-label">Total Jackpots</p>
+          <p className="stat-value text-yellow-400">{sharedLottery.jackpot}</p>
+          <p className="stat-label">Global Jackpot</p>
         </motion.div>
       </motion.div>
 
@@ -149,7 +154,7 @@ export function Dashboard() {
                     <ArrowUpRight className="w-5 h-5 text-surface-500 group-hover:text-brand-500 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-all" />
                   </div>
 
-                  <div className="mt-6 grid grid-cols-2 sm:grid-cols-4 gap-4">
+                  <div className="mt-6 grid grid-cols-2 sm:grid-cols-3 gap-4">
                     <div>
                       <p className="text-xs text-surface-500 uppercase tracking-wider">TVL</p>
                       <p className="font-semibold text-lg">{vault.tvl}</p>
@@ -160,37 +165,73 @@ export function Dashboard() {
                     </div>
                     <div>
                       <p className="text-xs text-surface-500 uppercase tracking-wider flex items-center gap-1">
-                        <Gift className="w-3 h-3" /> Jackpot
+                        <Gift className="w-3 h-3" /> Swap-To-Win
                       </p>
-                      <p className="font-semibold text-lg text-yellow-400">{vault.jackpot}</p>
-                    </div>
-                    <div>
-                      <p className="text-xs text-surface-500 uppercase tracking-wider flex items-center gap-1">
-                        <Flame className="w-3 h-3" /> Next Draw
-                      </p>
-                      <p className="font-semibold text-lg">{vault.nextDraw}</p>
-                    </div>
-                  </div>
-
-                  {/* Progress bar showing time to next lottery */}
-                  <div className="mt-4 space-y-1">
-                    <div className="flex justify-between text-xs text-surface-500">
-                      <span>Lottery Progress</span>
-                      <span>~65%</span>
-                    </div>
-                    <div className="h-1.5 rounded-full bg-surface-800 overflow-hidden">
-                      <motion.div
-                        className="h-full bg-gradient-to-r from-brand-500 to-brand-400"
-                        initial={{ width: 0 }}
-                        animate={{ width: '65%' }}
-                        transition={{ duration: 1, ease: 'easeOut' }}
-                      />
+                      <p className="font-semibold text-sm text-yellow-400">Shared Jackpot</p>
                     </div>
                   </div>
                 </div>
               </Link>
             </motion.div>
           ))}
+        </div>
+      </motion.div>
+
+      {/* Shared Lottery Info */}
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ delay: 0.4 }}
+        className="glass-card p-6"
+      >
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-4">
+          <div>
+            <h3 className="font-semibold text-lg flex items-center gap-2">
+              <Gift className="w-5 h-5 text-yellow-500" />
+              Swap-To-Win Lottery
+              <span className="px-2 py-0.5 rounded-full bg-yellow-500/10 text-yellow-400 text-xs font-medium">
+                Live
+              </span>
+            </h3>
+            <p className="text-surface-400 text-sm mt-1">
+              Shared jackpot across all vaults. Swap any wsToken to enter!
+            </p>
+          </div>
+          <div className="text-right">
+            <p className="text-2xl font-bold text-yellow-400">{sharedLottery.jackpot}</p>
+            <p className="text-surface-500 text-xs">Next draw: {sharedLottery.nextDraw}</p>
+          </div>
+        </div>
+        
+        {/* Progress bar showing time to next lottery */}
+        <div className="space-y-1">
+          <div className="flex justify-between text-xs text-surface-500">
+            <span>Weekly Progress</span>
+            <span>~{sharedLottery.progress}%</span>
+          </div>
+          <div className="h-2 rounded-full bg-surface-800 overflow-hidden">
+            <motion.div
+              className="h-full bg-gradient-to-r from-yellow-500 to-orange-500"
+              initial={{ width: 0 }}
+              animate={{ width: `${sharedLottery.progress}%` }}
+              transition={{ duration: 1, ease: 'easeOut' }}
+            />
+          </div>
+        </div>
+
+        <div className="mt-4 grid grid-cols-3 gap-4 text-center text-sm">
+          <div className="p-3 rounded-lg bg-surface-900/50">
+            <p className="text-yellow-400 font-bold">90%</p>
+            <p className="text-surface-500 text-xs">Jackpot</p>
+          </div>
+          <div className="p-3 rounded-lg bg-surface-900/50">
+            <p className="text-red-400 font-bold">5%</p>
+            <p className="text-surface-500 text-xs">Burned</p>
+          </div>
+          <div className="p-3 rounded-lg bg-surface-900/50">
+            <p className="text-brand-400 font-bold">5%</p>
+            <p className="text-surface-500 text-xs">Protocol</p>
+          </div>
         </div>
       </motion.div>
 

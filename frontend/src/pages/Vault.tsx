@@ -14,20 +14,23 @@ import {
   Clock,
   Users,
   Coins,
-  RefreshCw,
+  Zap,
+  Trophy,
 } from 'lucide-react'
-import { AKITA } from '../config/contracts'
+import { AKITA, CONTRACTS } from '../config/contracts'
 import { ConnectButton } from '../components/ConnectButton'
 import { TokenImage } from '../components/TokenImage'
 
-// Simplified vault ABI
-const VAULT_ABI = [
-  { name: 'deposit', type: 'function', inputs: [{ name: 'assets', type: 'uint256' }, { name: 'receiver', type: 'address' }], outputs: [{ type: 'uint256' }], stateMutability: 'nonpayable' },
-  { name: 'withdraw', type: 'function', inputs: [{ name: 'assets', type: 'uint256' }, { name: 'receiver', type: 'address' }, { name: 'owner', type: 'address' }], outputs: [{ type: 'uint256' }], stateMutability: 'nonpayable' },
-  { name: 'totalAssets', type: 'function', inputs: [], outputs: [{ type: 'uint256' }], stateMutability: 'view' },
-  { name: 'totalSupply', type: 'function', inputs: [], outputs: [{ type: 'uint256' }], stateMutability: 'view' },
+// Wrapper ABI - users deposit AKITA, get wsAKITA directly
+const WRAPPER_ABI = [
+  { name: 'deposit', type: 'function', inputs: [{ name: 'amount', type: 'uint256' }], outputs: [{ type: 'uint256' }], stateMutability: 'nonpayable' },
+  { name: 'withdraw', type: 'function', inputs: [{ name: 'amount', type: 'uint256' }], outputs: [{ type: 'uint256' }], stateMutability: 'nonpayable' },
+] as const
+
+// wsAKITA (ShareOFT) - what users hold
+const SHARE_OFT_ABI = [
   { name: 'balanceOf', type: 'function', inputs: [{ name: 'account', type: 'address' }], outputs: [{ type: 'uint256' }], stateMutability: 'view' },
-  { name: 'convertToAssets', type: 'function', inputs: [{ name: 'shares', type: 'uint256' }], outputs: [{ type: 'uint256' }], stateMutability: 'view' },
+  { name: 'totalSupply', type: 'function', inputs: [], outputs: [{ type: 'uint256' }], stateMutability: 'view' },
 ] as const
 
 const tabs = ['Deposit', 'Withdraw'] as const
@@ -39,33 +42,12 @@ export function Vault() {
   const [activeTab, setActiveTab] = useState<TabType>('Deposit')
   const [amount, setAmount] = useState('')
 
-  // For demo, use AKITA addresses
-  const vault = vaultAddress || AKITA.vault
+  // Use AKITA config - wrapper handles everything
   const tokenAddress = AKITA.token
+  const wrapperAddress = AKITA.wrapper
+  const shareOFTAddress = AKITA.shareOFT
 
-  // Read vault data
-  const { data: totalAssets } = useReadContract({
-    address: vault as `0x${string}`,
-    abi: VAULT_ABI,
-    functionName: 'totalAssets',
-  })
-
-  const { data: userShares } = useReadContract({
-    address: vault as `0x${string}`,
-    abi: VAULT_ABI,
-    functionName: 'balanceOf',
-    args: [userAddress!],
-    query: { enabled: !!userAddress },
-  })
-
-  const { data: userAssets } = useReadContract({
-    address: vault as `0x${string}`,
-    abi: VAULT_ABI,
-    functionName: 'convertToAssets',
-    args: [userShares || 0n],
-    query: { enabled: !!userShares },
-  })
-
+  // Read user's AKITA balance (for deposits)
   const { data: tokenBalance } = useReadContract({
     address: tokenAddress as `0x${string}`,
     abi: erc20Abi,
@@ -74,11 +56,28 @@ export function Vault() {
     query: { enabled: !!userAddress },
   })
 
+  // Read user's wsAKITA balance (for withdrawals)
+  const { data: wsAkitaBalance } = useReadContract({
+    address: shareOFTAddress as `0x${string}`,
+    abi: SHARE_OFT_ABI,
+    functionName: 'balanceOf',
+    args: [userAddress!],
+    query: { enabled: !!userAddress },
+  })
+
+  // Read total wsAKITA supply
+  const { data: totalWsAkita } = useReadContract({
+    address: shareOFTAddress as `0x${string}`,
+    abi: SHARE_OFT_ABI,
+    functionName: 'totalSupply',
+  })
+
+  // Check AKITA allowance for wrapper
   const { data: tokenAllowance } = useReadContract({
     address: tokenAddress as `0x${string}`,
     abi: erc20Abi,
     functionName: 'allowance',
-    args: [userAddress!, vault as `0x${string}`],
+    args: [userAddress!, wrapperAddress as `0x${string}`],
     query: { enabled: !!userAddress },
   })
 
@@ -100,27 +99,29 @@ export function Vault() {
       address: tokenAddress as `0x${string}`,
       abi: erc20Abi,
       functionName: 'approve',
-      args: [vault as `0x${string}`, parseUnits(amount || '0', 18)],
+      args: [wrapperAddress as `0x${string}`, parseUnits(amount || '0', 18)],
     })
   }
 
+  // Deposit AKITA → get wsAKITA (wrapper handles sAKITA internally)
   const handleDeposit = () => {
     if (!userAddress) return
     deposit({
-      address: vault as `0x${string}`,
-      abi: VAULT_ABI,
+      address: wrapperAddress as `0x${string}`,
+      abi: WRAPPER_ABI,
       functionName: 'deposit',
-      args: [parseUnits(amount || '0', 18), userAddress],
+      args: [parseUnits(amount || '0', 18)],
     })
   }
 
+  // Withdraw wsAKITA → get AKITA (wrapper handles sAKITA internally)
   const handleWithdraw = () => {
     if (!userAddress) return
     withdraw({
-      address: vault as `0x${string}`,
-      abi: VAULT_ABI,
+      address: wrapperAddress as `0x${string}`,
+      abi: WRAPPER_ABI,
       functionName: 'withdraw',
-      args: [parseUnits(amount || '0', 18), userAddress, userAddress],
+      args: [parseUnits(amount || '0', 18)],
     })
   }
 
@@ -149,11 +150,11 @@ export function Vault() {
           />
           <div>
             <h1 className="font-display text-2xl font-bold">AKITA Vault</h1>
-            <p className="text-surface-400">sAKITA • Base</p>
+            <p className="text-surface-400">AKITA → wsAKITA • Base</p>
           </div>
         </div>
         <a
-          href={`https://basescan.org/address/${vault}`}
+          href={`https://basescan.org/address/${wrapperAddress}`}
           target="_blank"
           rel="noopener noreferrer"
           className="btn-ghost flex items-center gap-2"
@@ -173,9 +174,9 @@ export function Vault() {
         <div className="stat-card">
           <div className="flex items-center gap-2 text-surface-400">
             <Coins className="w-4 h-4" />
-            <span className="stat-label">TVL</span>
+            <span className="stat-label">Total wsAKITA</span>
           </div>
-          <p className="stat-value">{formatAmount(totalAssets)}</p>
+          <p className="stat-value">{formatAmount(totalWsAkita)}</p>
         </div>
         <div className="stat-card">
           <div className="flex items-center gap-2 text-surface-400">
@@ -186,8 +187,8 @@ export function Vault() {
         </div>
         <div className="stat-card">
           <div className="flex items-center gap-2 text-surface-400">
-            <Gift className="w-4 h-4" />
-            <span className="stat-label">Jackpot</span>
+            <Trophy className="w-4 h-4" />
+            <span className="stat-label">Global Jackpot</span>
           </div>
           <p className="stat-value text-yellow-400">0.1 ETH</p>
         </div>
@@ -222,7 +223,7 @@ export function Vault() {
               >
                 {tab === 'Deposit' ? (
                   <span className="flex items-center justify-center gap-2">
-                    <ArrowDownToLine className="w-4 h-4" /> Deposit
+                    <ArrowDownToLine className="w-4 h-4" /> Deposit AKITA
                   </span>
                 ) : (
                   <span className="flex items-center justify-center gap-2">
@@ -231,6 +232,24 @@ export function Vault() {
                 )}
               </button>
             ))}
+          </div>
+
+          {/* Flow indicator */}
+          <div className="flex items-center justify-center gap-2 text-sm text-surface-400 bg-surface-900/30 rounded-lg py-2">
+            {activeTab === 'Deposit' ? (
+              <>
+                <span className="text-white font-medium">AKITA</span>
+                <span>→</span>
+                <span className="text-brand-400 font-medium">wsAKITA</span>
+                <span className="text-surface-500 ml-2">(~1:1)</span>
+              </>
+            ) : (
+              <>
+                <span className="text-brand-400 font-medium">wsAKITA</span>
+                <span>→</span>
+                <span className="text-white font-medium">AKITA</span>
+              </>
+            )}
           </div>
 
           {/* Amount Input */}
@@ -244,15 +263,15 @@ export function Vault() {
                     setAmount(
                       activeTab === 'Deposit'
                         ? formatUnits(tokenBalance || 0n, 18)
-                        : formatUnits(userAssets || 0n, 18)
+                        : formatUnits(wsAkitaBalance || 0n, 18)
                     )
                   }
                   className="text-brand-500 hover:text-brand-400"
                 >
                   {activeTab === 'Deposit'
                     ? formatAmount(tokenBalance)
-                    : formatAmount(userAssets)}{' '}
-                  {activeTab === 'Deposit' ? 'AKITA' : 'sAKITA'}
+                    : formatAmount(wsAkitaBalance)}{' '}
+                  {activeTab === 'Deposit' ? 'AKITA' : 'wsAKITA'}
                 </button>
               </span>
             </div>
@@ -269,7 +288,7 @@ export function Vault() {
                   setAmount(
                     activeTab === 'Deposit'
                       ? formatUnits(tokenBalance || 0n, 18)
-                      : formatUnits(userAssets || 0n, 18)
+                      : formatUnits(wsAkitaBalance || 0n, 18)
                   )
                 }
                 className="absolute right-3 top-1/2 -translate-y-1/2 px-3 py-1 rounded-lg bg-brand-500/10 text-brand-500 text-sm font-medium hover:bg-brand-500/20 transition-colors"
@@ -312,7 +331,7 @@ export function Vault() {
                 ) : (
                   <>
                     <ArrowDownToLine className="w-4 h-4" />
-                    Deposit
+                    Deposit AKITA → wsAKITA
                   </>
                 )}
               </button>
@@ -331,7 +350,7 @@ export function Vault() {
               ) : (
                 <>
                   <ArrowUpFromLine className="w-4 h-4" />
-                  Withdraw
+                  Withdraw wsAKITA → AKITA
                 </>
               )}
             </button>
@@ -363,37 +382,33 @@ export function Vault() {
 
           <div className="space-y-3">
             <div className="flex justify-between">
-              <span className="text-surface-400">sAKITA Balance</span>
-              <span className="font-mono">{formatAmount(userShares)}</span>
+              <span className="text-surface-400">AKITA Balance</span>
+              <span className="font-mono">{formatAmount(tokenBalance)}</span>
             </div>
             <div className="flex justify-between">
-              <span className="text-surface-400">AKITA Value</span>
-              <span className="font-mono">{formatAmount(userAssets)}</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-surface-400">Lottery Tickets</span>
-              <span className="font-mono">~{formatAmount(userShares)}</span>
+              <span className="text-surface-400">wsAKITA Balance</span>
+              <span className="font-mono text-brand-400">{formatAmount(wsAkitaBalance)}</span>
             </div>
           </div>
 
           <div className="pt-4 border-t border-surface-800">
             <div className="flex justify-between mb-2">
-              <span className="text-surface-400 text-sm">Win Probability</span>
+              <span className="text-surface-400 text-sm">Pool Share</span>
               <span className="text-sm">
-                {userShares && totalAssets && totalAssets > 0n
-                  ? ((Number(userShares) / Number(totalAssets)) * 100).toFixed(2)
+                {wsAkitaBalance && totalWsAkita && totalWsAkita > 0n
+                  ? ((Number(wsAkitaBalance) / Number(totalWsAkita)) * 100).toFixed(4)
                   : '0'}
                 %
               </span>
             </div>
             <div className="h-2 rounded-full bg-surface-800 overflow-hidden">
               <motion.div
-                className="h-full bg-gradient-to-r from-brand-500 to-yellow-500"
+                className="h-full bg-gradient-to-r from-brand-500 to-brand-400"
                 initial={{ width: 0 }}
                 animate={{
                   width: `${
-                    userShares && totalAssets && totalAssets > 0n
-                      ? Math.min((Number(userShares) / Number(totalAssets)) * 100, 100)
+                    wsAkitaBalance && totalWsAkita && totalWsAkita > 0n
+                      ? Math.min((Number(wsAkitaBalance) / Number(totalWsAkita)) * 100, 100)
                       : 0
                   }%`,
                 }}
@@ -404,7 +419,7 @@ export function Vault() {
         </motion.div>
       </div>
 
-      {/* Tax Distribution */}
+      {/* Swap-To-Win Lottery Info */}
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
@@ -412,17 +427,26 @@ export function Vault() {
         className="glass-card p-6"
       >
         <h3 className="font-semibold mb-4 flex items-center gap-2">
-          <RefreshCw className="w-4 h-4 text-brand-500" />
-          6.9% Sell Tax Distribution
+          <Zap className="w-5 h-5 text-yellow-500" />
+          Swap-To-Win Lottery
+          <span className="ml-2 px-2 py-0.5 rounded-full bg-yellow-500/10 text-yellow-400 text-xs font-medium">
+            Shared Jackpot
+          </span>
         </h3>
+        
+        <p className="text-surface-400 text-sm mb-4">
+          Every swap of wsAKITA on Uniswap V4 is an entry to win the weekly jackpot! 
+          The 6.9% sell tax funds the prize pool shared across all Creator Vaults.
+        </p>
+
         <div className="grid sm:grid-cols-3 gap-4">
           <div className="p-4 rounded-xl bg-yellow-500/5 border border-yellow-500/20">
             <div className="flex items-center gap-2 mb-2">
-              <Gift className="w-5 h-5 text-yellow-500" />
+              <Trophy className="w-5 h-5 text-yellow-500" />
               <span className="font-medium">90% Jackpot</span>
             </div>
             <p className="text-surface-400 text-sm">
-              Weekly lottery for sAKITA holders. More shares = more chances.
+              Weekly draw for all swappers. Swap wsAKITA = lottery entry!
             </p>
           </div>
           <div className="p-4 rounded-xl bg-red-500/5 border border-red-500/20">
@@ -431,7 +455,7 @@ export function Vault() {
               <span className="font-medium">5% Burn</span>
             </div>
             <p className="text-surface-400 text-sm">
-              Permanently removed from supply. Deflationary pressure.
+              Permanently removed. Deflationary across all vaults.
             </p>
           </div>
           <div className="p-4 rounded-xl bg-brand-500/5 border border-brand-500/20">
@@ -440,12 +464,18 @@ export function Vault() {
               <span className="font-medium">5% Protocol</span>
             </div>
             <p className="text-surface-400 text-sm">
-              Sustains platform development and operations.
+              Sustains CreatorVault development.
             </p>
           </div>
+        </div>
+
+        <div className="mt-4 p-3 rounded-lg bg-surface-900/50 text-center">
+          <p className="text-surface-500 text-xs uppercase tracking-wider mb-1">How to enter</p>
+          <p className="text-surface-300 text-sm">
+            Simply <span className="text-brand-400 font-medium">swap wsAKITA</span> on Uniswap after CCA graduation. Every sell is an entry!
+          </p>
         </div>
       </motion.div>
     </div>
   )
 }
-
