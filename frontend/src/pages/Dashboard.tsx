@@ -9,10 +9,10 @@ import {
   ArrowUpRight,
   Sparkles,
   Gift,
-  Flame,
   Clock,
   CheckCircle2,
-  PartyPopper,
+  AlertCircle,
+  Plus,
 } from 'lucide-react'
 import { AKITA } from '../config/contracts'
 import { TokenImage } from '../components/TokenImage'
@@ -34,12 +34,12 @@ const CCA_STRATEGY_ABI = [
   },
 ] as const
 
-// Example vault data - in production this comes from the registry
+// Example vault data
 const vaults = [
   {
     id: 'akita',
     name: 'AKITA',
-    symbol: 'AKITA',  // User-facing: AKITA (not sAKITA)
+    symbol: 'AKITA',
     wrappedSymbol: 'wsAKITA',
     token: AKITA.token,
     vault: AKITA.vault,
@@ -52,26 +52,24 @@ const vaults = [
   },
 ]
 
-// Shared lottery data - single jackpot across ALL vaults, random VRF draw
 const sharedLottery = {
   jackpot: '0.1 ETH',
-  progress: 35, // Pool growth indicator (not time-based)
+  progress: 35,
 }
 
 const container = {
   hidden: { opacity: 0 },
   show: {
     opacity: 1,
-    transition: { staggerChildren: 0.1 },
+    transition: { staggerChildren: 0.08 },
   },
 }
 
 const item = {
-  hidden: { opacity: 0, y: 20 },
+  hidden: { opacity: 0, y: 12 },
   show: { opacity: 1, y: 0 },
 }
 
-// Hook to get auction status for a vault
 function useAuctionStatus(ccaStrategy: string) {
   const { data } = useReadContract({
     address: ccaStrategy as `0x${string}`,
@@ -88,7 +86,6 @@ function useAuctionStatus(ccaStrategy: string) {
   }
 }
 
-// Auction Status Badge Component
 function AuctionStatusBadge({ ccaStrategy }: { ccaStrategy: string }) {
   const { isActive, isGraduated, currencyRaised } = useAuctionStatus(ccaStrategy)
   
@@ -96,10 +93,10 @@ function AuctionStatusBadge({ ccaStrategy }: { ccaStrategy: string }) {
     return (
       <Link 
         to={`/complete-auction/${ccaStrategy}`}
-        className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-yellow-500/10 text-yellow-400 text-xs font-medium hover:bg-yellow-500/20 transition-colors"
+        className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-yellow-500/10 text-yellow-400 text-xs font-medium hover:bg-yellow-500/20 transition-colors"
       >
-        <PartyPopper className="w-3 h-3" />
-        Complete Auction
+        <AlertCircle className="w-3 h-3" />
+        Action Required
       </Link>
     )
   }
@@ -107,15 +104,15 @@ function AuctionStatusBadge({ ccaStrategy }: { ccaStrategy: string }) {
   if (isActive) {
     const raised = currencyRaised ? Number(formatUnits(currencyRaised, 18)).toFixed(4) : '0'
     return (
-      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-blue-500/10 text-blue-400 text-xs font-medium">
+      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-brand-500/10 text-brand-400 text-xs font-medium">
         <Clock className="w-3 h-3" />
-        CCA Live ({raised} ETH)
+        CCA ({raised} ETH)
       </span>
     )
   }
   
   return (
-    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-green-500/10 text-green-400 text-xs font-medium">
+    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-green-500/10 text-green-400 text-xs font-medium">
       <CheckCircle2 className="w-3 h-3" />
       Active
     </span>
@@ -124,217 +121,144 @@ function AuctionStatusBadge({ ccaStrategy }: { ccaStrategy: string }) {
 
 export function Dashboard() {
   return (
-    <div className="space-y-8 py-8">
+    <div className="space-y-6 py-6">
       {/* Header */}
       <motion.div
-        initial={{ opacity: 0, y: 20 }}
+        initial={{ opacity: 0, y: 12 }}
         animate={{ opacity: 1, y: 0 }}
-        className="space-y-2"
+        className="flex items-center justify-between"
       >
-        <h1 className="font-display text-3xl font-bold">Creator Vaults</h1>
-        <p className="text-surface-400">
-          Explore and invest in creator-powered omnichain vaults
-        </p>
+        <div>
+          <h1 className="font-display text-2xl font-bold">Vaults</h1>
+          <p className="text-surface-500 text-sm">Creator-powered yield vaults</p>
+        </div>
+        <Link to="/launch">
+          <button className="btn-primary flex items-center gap-1.5 text-sm px-3 py-2">
+            <Plus className="w-4 h-4" />
+            New
+          </button>
+        </Link>
       </motion.div>
 
-      {/* Stats Overview */}
+      {/* Stats */}
       <motion.div
         variants={container}
         initial="hidden"
         animate="show"
-        className="grid grid-cols-2 sm:grid-cols-4 gap-4"
+        className="grid grid-cols-4 gap-3"
       >
-        <motion.div variants={item} className="stat-card">
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg bg-brand-500/10 flex items-center justify-center">
-              <Coins className="w-4 h-4 text-brand-500" />
-            </div>
-          </div>
-          <p className="stat-value">$420.69K</p>
-          <p className="stat-label">Total TVL</p>
-        </motion.div>
-
-        <motion.div variants={item} className="stat-card">
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg bg-green-500/10 flex items-center justify-center">
-              <TrendingUp className="w-4 h-4 text-green-500" />
-            </div>
-          </div>
-          <p className="stat-value">42.0%</p>
-          <p className="stat-label">Avg APY</p>
-        </motion.div>
-
-        <motion.div variants={item} className="stat-card">
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg bg-blue-500/10 flex items-center justify-center">
-              <Users className="w-4 h-4 text-blue-500" />
-            </div>
-          </div>
-          <p className="stat-value">{vaults.length}</p>
-          <p className="stat-label">Active Vaults</p>
-        </motion.div>
-
-        <motion.div variants={item} className="stat-card">
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg bg-yellow-500/10 flex items-center justify-center">
-              <Gift className="w-4 h-4 text-yellow-500" />
-            </div>
-          </div>
-          <p className="stat-value text-yellow-400">{sharedLottery.jackpot}</p>
-          <p className="stat-label">Global Jackpot</p>
-        </motion.div>
+        {[
+          { icon: Coins, value: '$420K', label: 'TVL', color: 'text-brand-500' },
+          { icon: TrendingUp, value: '42%', label: 'APY', color: 'text-green-500' },
+          { icon: Users, value: '1', label: 'Vaults', color: 'text-blue-500' },
+          { icon: Gift, value: '0.1 ETH', label: 'Jackpot', color: 'text-yellow-500' },
+        ].map((stat) => (
+          <motion.div
+            key={stat.label}
+            variants={item}
+            className="p-3 rounded-xl bg-surface-900/50 border border-surface-800/50"
+          >
+            <stat.icon className={`w-4 h-4 ${stat.color} mb-2`} />
+            <p className="font-bold text-lg">{stat.value}</p>
+            <p className="text-[10px] text-surface-500 uppercase tracking-wider">{stat.label}</p>
+          </motion.div>
+        ))}
       </motion.div>
 
-      {/* Vault Cards */}
+      {/* Vault List */}
       <motion.div
         variants={container}
         initial="hidden"
         animate="show"
-        className="space-y-4"
+        className="space-y-3"
       >
-        <h2 className="font-semibold text-lg flex items-center gap-2">
-          <Sparkles className="w-5 h-5 text-brand-500" />
-          Featured Vaults
-        </h2>
+        {vaults.map((vault) => (
+          <motion.div key={vault.id} variants={item}>
+            <Link to={`/vault/${vault.vault}`}>
+              <div className="glass-card p-4 hover:border-brand-500/30 transition-all group">
+                <div className="flex items-center gap-4">
+                  <TokenImage
+                    tokenAddress={vault.token as `0x${string}`}
+                    symbol={vault.symbol}
+                    size="md"
+                    fallbackColor={vault.color}
+                  />
+                  
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <h3 className="font-semibold">{vault.name}</h3>
+                      <AuctionStatusBadge ccaStrategy={vault.ccaStrategy} />
+                    </div>
+                    <p className="text-surface-500 text-xs">
+                      {vault.symbol} → {vault.wrappedSymbol}
+                    </p>
+                  </div>
 
-        <div className="grid gap-4">
-          {vaults.map((vault) => (
-            <motion.div key={vault.id} variants={item}>
-              <div className="glass-card p-6 hover:border-brand-500/50 transition-all group">
-                <div className="flex items-start justify-between">
-                  <div className="flex items-center gap-4">
-                    <TokenImage
-                      tokenAddress={vault.token as `0x${string}`}
-                      symbol={vault.symbol}
-                      size="lg"
-                      fallbackColor={vault.color}
-                    />
+                  <div className="hidden sm:flex items-center gap-6 text-right">
                     <div>
-                      <h3 className="font-semibold text-lg flex items-center gap-2">
-                        {vault.name}
-                        <AuctionStatusBadge ccaStrategy={vault.ccaStrategy} />
-                      </h3>
-                      <p className="text-surface-400 text-sm">
-                        {vault.symbol} → {vault.wrappedSymbol}
-                      </p>
+                      <p className="font-semibold">{vault.tvl}</p>
+                      <p className="text-[10px] text-surface-500 uppercase">TVL</p>
+                    </div>
+                    <div>
+                      <p className="font-semibold text-green-400">{vault.apy}</p>
+                      <p className="text-[10px] text-surface-500 uppercase">APY</p>
                     </div>
                   </div>
-                  <Link to={`/vault/${vault.vault}`}>
-                    <ArrowUpRight className="w-5 h-5 text-surface-500 group-hover:text-brand-500 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-all" />
-                  </Link>
-                </div>
 
-                <div className="mt-6 grid grid-cols-2 sm:grid-cols-3 gap-4">
-                  <div>
-                    <p className="text-xs text-surface-500 uppercase tracking-wider">TVL</p>
-                    <p className="font-semibold text-lg">{vault.tvl}</p>
-                  </div>
-                  <div>
-                    <p className="text-xs text-surface-500 uppercase tracking-wider">APY</p>
-                    <p className="font-semibold text-lg text-green-400">{vault.apy}</p>
-                  </div>
-                  <div>
-                    <p className="text-xs text-surface-500 uppercase tracking-wider flex items-center gap-1">
-                      <Gift className="w-3 h-3" /> Buy-To-Win
-                    </p>
-                    <p className="font-semibold text-sm text-yellow-400">VRF Jackpot</p>
-                  </div>
-                </div>
-                
-                {/* Action buttons */}
-                <div className="mt-4 pt-4 border-t border-surface-800 flex gap-3">
-                  <Link to={`/vault/${vault.vault}`} className="btn-primary flex-1 text-center text-sm py-2">
-                    View Vault
-                  </Link>
+                  <ArrowUpRight className="w-4 h-4 text-surface-600 group-hover:text-brand-500 transition-colors" />
                 </div>
               </div>
-            </motion.div>
-          ))}
+            </Link>
+          </motion.div>
+        ))}
+      </motion.div>
+
+      {/* Lottery Card */}
+      <motion.div
+        initial={{ opacity: 0, y: 12 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.3 }}
+        className="glass-card p-4"
+      >
+        <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center gap-2">
+            <Gift className="w-4 h-4 text-yellow-500" />
+            <span className="font-medium text-sm">Jackpot Pool</span>
+            <span className="px-1.5 py-0.5 rounded bg-yellow-500/10 text-yellow-500 text-[10px] font-medium">
+              VRF
+            </span>
+          </div>
+          <span className="font-bold text-yellow-400">{sharedLottery.jackpot}</span>
+        </div>
+        
+        <div className="h-1.5 rounded-full bg-surface-800 overflow-hidden mb-2">
+          <motion.div
+            className="h-full bg-gradient-to-r from-yellow-500 to-orange-500"
+            initial={{ width: 0 }}
+            animate={{ width: `${sharedLottery.progress}%` }}
+            transition={{ duration: 0.8, ease: 'easeOut' }}
+          />
+        </div>
+        
+        <div className="flex items-center justify-between text-[10px] text-surface-500">
+          <span>6.9% trade fees fund the pool</span>
+          <span>90% winner · 5% burn · 5% protocol</span>
         </div>
       </motion.div>
 
-      {/* Buy-To-Win Lottery Info */}
+      {/* Empty State */}
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ delay: 0.4 }}
-        className="glass-card p-6"
+        className="p-6 rounded-xl border border-dashed border-surface-800 text-center"
       >
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-4">
-          <div>
-            <h3 className="font-semibold text-lg flex items-center gap-2">
-              <Gift className="w-5 h-5 text-yellow-500" />
-              Buy-To-Win Lottery
-              <span className="px-2 py-0.5 rounded-full bg-yellow-500/10 text-yellow-400 text-xs font-medium">
-                VRF
-              </span>
-            </h3>
-            <p className="text-surface-400 text-sm mt-1">
-              Shared jackpot across all vaults. Every wsToken <span className="text-white font-medium">BUY</span> = entry!
-            </p>
-          </div>
-          <div className="text-right">
-            <p className="text-2xl font-bold text-yellow-400">{sharedLottery.jackpot}</p>
-            <p className="text-surface-500 text-xs">Random VRF Draw</p>
-          </div>
-        </div>
-        
-        {/* Jackpot pool indicator */}
-        <div className="space-y-1 mb-4">
-          <div className="flex justify-between text-xs text-surface-500">
-            <span>Pool Growth (6.9% trade fees)</span>
-            <span>Building...</span>
-          </div>
-          <div className="h-2 rounded-full bg-surface-800 overflow-hidden">
-            <motion.div
-              className="h-full bg-gradient-to-r from-yellow-500 to-orange-500"
-              initial={{ width: 0 }}
-              animate={{ width: `${sharedLottery.progress}%` }}
-              transition={{ duration: 1, ease: 'easeOut' }}
-            />
-          </div>
-        </div>
-
-        <div className="grid grid-cols-3 gap-4 text-center text-sm">
-          <div className="p-3 rounded-lg bg-surface-900/50">
-            <p className="text-yellow-400 font-bold">90%</p>
-            <p className="text-surface-500 text-xs">Winner</p>
-          </div>
-          <div className="p-3 rounded-lg bg-surface-900/50">
-            <p className="text-red-400 font-bold">5%</p>
-            <p className="text-surface-500 text-xs">Burned</p>
-          </div>
-          <div className="p-3 rounded-lg bg-surface-900/50">
-            <p className="text-brand-400 font-bold">5%</p>
-            <p className="text-surface-500 text-xs">Protocol</p>
-          </div>
-        </div>
-
-        <p className="mt-4 text-center text-xs text-surface-500">
-          Chainlink VRF v2.5 ensures fair, verifiable randomness
-        </p>
-      </motion.div>
-
-      {/* Empty State / CTA */}
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ delay: 0.5 }}
-        className="glass-card p-8 text-center space-y-4 border-dashed"
-      >
-        <div className="w-12 h-12 rounded-xl bg-brand-500/10 flex items-center justify-center mx-auto">
-          <Sparkles className="w-6 h-6 text-brand-500" />
-        </div>
-        <h3 className="font-semibold text-lg">Launch Your Vault</h3>
-        <p className="text-surface-400 text-sm max-w-md mx-auto">
-          Are you a creator with your own token? Turn it into an omnichain vault and
-          reward your community with weekly jackpots.
-        </p>
+        <Sparkles className="w-8 h-8 text-surface-600 mx-auto mb-3" />
+        <p className="text-surface-400 text-sm mb-3">Have a Creator Coin?</p>
         <Link to="/launch">
-          <button className="btn-primary">Get Started</button>
+          <button className="btn-secondary text-sm px-4 py-2">Create Vault</button>
         </Link>
       </motion.div>
     </div>
   )
 }
-
