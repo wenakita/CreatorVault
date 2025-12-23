@@ -1,5 +1,7 @@
 import { Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
+import { useReadContract } from 'wagmi'
+import { formatUnits } from 'viem'
 import {
   TrendingUp,
   Users,
@@ -8,9 +10,29 @@ import {
   Sparkles,
   Gift,
   Flame,
+  Clock,
+  CheckCircle2,
+  PartyPopper,
 } from 'lucide-react'
 import { AKITA } from '../config/contracts'
 import { TokenImage } from '../components/TokenImage'
+
+// CCA Strategy ABI for reading auction status
+const CCA_STRATEGY_ABI = [
+  {
+    name: 'getAuctionStatus',
+    type: 'function',
+    inputs: [],
+    outputs: [
+      { name: 'auction', type: 'address' },
+      { name: 'isActive', type: 'bool' },
+      { name: 'isGraduated', type: 'bool' },
+      { name: 'clearingPrice', type: 'uint256' },
+      { name: 'currencyRaised', type: 'uint256' },
+    ],
+    stateMutability: 'view',
+  },
+] as const
 
 // Example vault data - in production this comes from the registry
 const vaults = [
@@ -21,10 +43,11 @@ const vaults = [
     wrappedSymbol: 'wsAKITA',
     token: AKITA.token,
     vault: AKITA.vault,
+    ccaStrategy: AKITA.ccaStrategy,
     tvl: '$420,690',
     apy: '42.0%',
     holders: 69,
-    status: 'active',
+    status: 'active' as const,
     color: 'from-orange-500 to-red-600',
   },
 ]
@@ -46,6 +69,57 @@ const container = {
 const item = {
   hidden: { opacity: 0, y: 20 },
   show: { opacity: 1, y: 0 },
+}
+
+// Hook to get auction status for a vault
+function useAuctionStatus(ccaStrategy: string) {
+  const { data } = useReadContract({
+    address: ccaStrategy as `0x${string}`,
+    abi: CCA_STRATEGY_ABI,
+    functionName: 'getAuctionStatus',
+  })
+  
+  return {
+    auction: data?.[0],
+    isActive: data?.[1] || false,
+    isGraduated: data?.[2] || false,
+    clearingPrice: data?.[3],
+    currencyRaised: data?.[4],
+  }
+}
+
+// Auction Status Badge Component
+function AuctionStatusBadge({ ccaStrategy }: { ccaStrategy: string }) {
+  const { isActive, isGraduated, currencyRaised } = useAuctionStatus(ccaStrategy)
+  
+  if (isGraduated) {
+    return (
+      <Link 
+        to={`/complete-auction/${ccaStrategy}`}
+        className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-yellow-500/10 text-yellow-400 text-xs font-medium hover:bg-yellow-500/20 transition-colors"
+      >
+        <PartyPopper className="w-3 h-3" />
+        Complete Auction
+      </Link>
+    )
+  }
+  
+  if (isActive) {
+    const raised = currencyRaised ? Number(formatUnits(currencyRaised, 18)).toFixed(4) : '0'
+    return (
+      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-blue-500/10 text-blue-400 text-xs font-medium">
+        <Clock className="w-3 h-3" />
+        CCA Live ({raised} ETH)
+      </span>
+    )
+  }
+  
+  return (
+    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-green-500/10 text-green-400 text-xs font-medium">
+      <CheckCircle2 className="w-3 h-3" />
+      Active
+    </span>
+  )
 }
 
 export function Dashboard() {
@@ -126,51 +200,54 @@ export function Dashboard() {
         <div className="grid gap-4">
           {vaults.map((vault) => (
             <motion.div key={vault.id} variants={item}>
-              <Link to={`/vault/${vault.vault}`}>
-                <div className="glass-card p-6 hover:border-brand-500/50 transition-all group">
-                    <div className="flex items-start justify-between">
-                    <div className="flex items-center gap-4">
-                      <TokenImage
-                        tokenAddress={vault.token as `0x${string}`}
-                        symbol={vault.symbol}
-                        size="lg"
-                        fallbackColor={vault.color}
-                      />
-                      <div>
-                        <h3 className="font-semibold text-lg flex items-center gap-2">
-                          {vault.name}
-                          {vault.status === 'active' && (
-                            <span className="px-2 py-0.5 rounded-full bg-green-500/10 text-green-400 text-xs font-medium">
-                              Active
-                            </span>
-                          )}
-                        </h3>
-                        <p className="text-surface-400 text-sm">
-                          {vault.symbol} → {vault.wrappedSymbol}
-                        </p>
-                      </div>
-                    </div>
-                    <ArrowUpRight className="w-5 h-5 text-surface-500 group-hover:text-brand-500 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-all" />
-                  </div>
-
-                  <div className="mt-6 grid grid-cols-2 sm:grid-cols-3 gap-4">
+              <div className="glass-card p-6 hover:border-brand-500/50 transition-all group">
+                <div className="flex items-start justify-between">
+                  <div className="flex items-center gap-4">
+                    <TokenImage
+                      tokenAddress={vault.token as `0x${string}`}
+                      symbol={vault.symbol}
+                      size="lg"
+                      fallbackColor={vault.color}
+                    />
                     <div>
-                      <p className="text-xs text-surface-500 uppercase tracking-wider">TVL</p>
-                      <p className="font-semibold text-lg">{vault.tvl}</p>
-                    </div>
-                    <div>
-                      <p className="text-xs text-surface-500 uppercase tracking-wider">APY</p>
-                      <p className="font-semibold text-lg text-green-400">{vault.apy}</p>
-                    </div>
-                    <div>
-                      <p className="text-xs text-surface-500 uppercase tracking-wider flex items-center gap-1">
-                        <Gift className="w-3 h-3" /> Buy-To-Win
+                      <h3 className="font-semibold text-lg flex items-center gap-2">
+                        {vault.name}
+                        <AuctionStatusBadge ccaStrategy={vault.ccaStrategy} />
+                      </h3>
+                      <p className="text-surface-400 text-sm">
+                        {vault.symbol} → {vault.wrappedSymbol}
                       </p>
-                      <p className="font-semibold text-sm text-yellow-400">VRF Jackpot</p>
                     </div>
+                  </div>
+                  <Link to={`/vault/${vault.vault}`}>
+                    <ArrowUpRight className="w-5 h-5 text-surface-500 group-hover:text-brand-500 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-all" />
+                  </Link>
+                </div>
+
+                <div className="mt-6 grid grid-cols-2 sm:grid-cols-3 gap-4">
+                  <div>
+                    <p className="text-xs text-surface-500 uppercase tracking-wider">TVL</p>
+                    <p className="font-semibold text-lg">{vault.tvl}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-surface-500 uppercase tracking-wider">APY</p>
+                    <p className="font-semibold text-lg text-green-400">{vault.apy}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-surface-500 uppercase tracking-wider flex items-center gap-1">
+                      <Gift className="w-3 h-3" /> Buy-To-Win
+                    </p>
+                    <p className="font-semibold text-sm text-yellow-400">VRF Jackpot</p>
                   </div>
                 </div>
-              </Link>
+                
+                {/* Action buttons */}
+                <div className="mt-4 pt-4 border-t border-surface-800 flex gap-3">
+                  <Link to={`/vault/${vault.vault}`} className="btn-primary flex-1 text-center text-sm py-2">
+                    View Vault
+                  </Link>
+                </div>
+              </div>
             </motion.div>
           ))}
         </div>

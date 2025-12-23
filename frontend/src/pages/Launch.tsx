@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useAccount, useWriteContract, useWaitForTransactionReceipt, useReadContract } from 'wagmi'
 import { parseUnits, formatUnits, erc20Abi } from 'viem'
@@ -11,6 +12,8 @@ import {
   AlertCircle,
   Sparkles,
   Wallet,
+  Zap,
+  PartyPopper,
 } from 'lucide-react'
 import { CONTRACTS } from '../config/contracts'
 import { ConnectButton } from '../components/ConnectButton'
@@ -55,6 +58,7 @@ const VAULT_ACTIVATOR_ABI = [
 ] as const
 
 export function Launch() {
+  const navigate = useNavigate()
   const { address, isConnected } = useAccount()
   const [tokenAddress, setTokenAddress] = useState('')
   const [depositAmount, setDepositAmount] = useState('100000000')
@@ -203,13 +207,26 @@ export function Launch() {
         className="text-center space-y-2"
       >
         <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-brand-500/10 text-brand-500 text-sm font-medium">
-          <Sparkles className="w-4 h-4" />
-          One-Click Launch
+          <Rocket className="w-4 h-4" />
+          Click 1 of 2
         </div>
         <h1 className="font-display text-3xl font-bold">Launch Your Vault</h1>
         <p className="text-surface-400">
-          Turn your Creator Coin into an omnichain yield machine
+          Deploy contracts & start fair launch auction (CCA)
         </p>
+        
+        {/* 2-Click Flow Explainer */}
+        <div className="flex items-center justify-center gap-4 pt-2 text-xs text-surface-500">
+          <div className="flex items-center gap-1.5 text-brand-400">
+            <div className="w-5 h-5 rounded-full bg-brand-500 text-white flex items-center justify-center text-[10px] font-bold">1</div>
+            Deploy + Launch CCA
+          </div>
+          <ArrowRight className="w-3 h-3" />
+          <div className="flex items-center gap-1.5">
+            <div className="w-5 h-5 rounded-full bg-surface-700 text-surface-400 flex items-center justify-center text-[10px] font-bold">2</div>
+            Complete Auction
+          </div>
+        </div>
       </motion.div>
 
       {/* Progress Steps */}
@@ -466,20 +483,45 @@ export function Launch() {
               <CheckCircle2 className="w-10 h-10 text-green-500" />
             </motion.div>
             <h2 className="font-display text-2xl font-bold">
-              🎉 Vault Launched!
+              ✅ Click 1 Complete!
             </h2>
             <p className="text-surface-400">
-              Your Creator Vault is now live. Share with your community!
+              Your vault is deployed and the CCA auction is live! 
+              Once the auction graduates (reaches the required raise), 
+              proceed to Click 2 to complete setup.
             </p>
-            <a
-              href={`https://basescan.org/tx/${activateTxHash}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="btn-secondary inline-flex items-center gap-2"
-            >
-              View Transaction
-              <ArrowRight className="w-4 h-4" />
-            </a>
+            
+            {/* Next Steps */}
+            <div className="p-4 rounded-xl bg-yellow-500/10 border border-yellow-500/20 text-left">
+              <p className="font-semibold text-yellow-400 flex items-center gap-2">
+                <PartyPopper className="w-4 h-4" />
+                What's Next?
+              </p>
+              <ul className="mt-2 space-y-1 text-sm text-surface-300">
+                <li>1. Wait for the CCA auction to graduate</li>
+                <li>2. Once graduated, click "Complete Auction" to finalize</li>
+                <li>3. This enables 6.9% trade fees & Buy-To-Win lottery</li>
+              </ul>
+            </div>
+            
+            <div className="flex flex-col sm:flex-row gap-3 justify-center">
+              <button
+                onClick={() => navigate('/complete-auction')}
+                className="btn-primary flex items-center justify-center gap-2"
+              >
+                <Zap className="w-4 h-4" />
+                Go to Click 2
+              </button>
+              <a
+                href={`https://basescan.org/tx/${activateTxHash}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="btn-secondary inline-flex items-center justify-center gap-2"
+              >
+                View Transaction
+                <ArrowRight className="w-4 h-4" />
+              </a>
+            </div>
           </motion.div>
         )}
       </AnimatePresence>
