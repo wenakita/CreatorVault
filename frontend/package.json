@@ -12,7 +12,9 @@
   "dependencies": {
     "@coinbase/onchainkit": "^0.38.10",
     "@tanstack/react-query": "^5.62.0",
+    "@types/d3": "^7.4.3",
     "buffer": "^6.0.3",
+    "d3": "^7.9.0",
     "framer-motion": "^11.15.0",
     "lucide-react": "^0.468.0",
     "react": "^18.3.1",
