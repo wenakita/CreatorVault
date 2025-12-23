@@ -163,9 +163,9 @@ export function Launch() {
       case 'complete':
         return <CheckCircle2 className="w-5 h-5 text-green-500" />
       case 'loading':
-        return <Loader2 className="w-5 h-5 text-vault-500 animate-spin" />
+        return <Loader2 className="w-5 h-5 text-brand-500 animate-spin" />
       case 'active':
-        return <Circle className="w-5 h-5 text-vault-500 fill-vault-500" />
+        return <Circle className="w-5 h-5 text-brand-500 fill-brand-500" />
       case 'error':
         return <AlertCircle className="w-5 h-5 text-red-500" />
       default:
@@ -181,8 +181,8 @@ export function Launch() {
           animate={{ opacity: 1, y: 0 }}
           className="glass-card p-8 max-w-md text-center space-y-6"
         >
-          <div className="w-16 h-16 rounded-2xl bg-vault-500/10 flex items-center justify-center mx-auto">
-            <Wallet className="w-8 h-8 text-vault-500" />
+          <div className="w-16 h-16 rounded-2xl bg-brand-500/10 flex items-center justify-center mx-auto">
+            <Wallet className="w-8 h-8 text-brand-500" />
           </div>
           <h2 className="font-display text-2xl font-bold">Connect Your Wallet</h2>
           <p className="text-surface-400">
@@ -202,7 +202,7 @@ export function Launch() {
         animate={{ opacity: 1, y: 0 }}
         className="text-center space-y-2"
       >
-        <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-vault-500/10 text-vault-500 text-sm font-medium">
+        <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-brand-500/10 text-brand-500 text-sm font-medium">
           <Sparkles className="w-4 h-4" />
           One-Click Launch
         </div>
@@ -237,7 +237,7 @@ export function Launch() {
               {index < steps.length - 1 && (
                 <div
                   className={`w-12 sm:w-24 h-0.5 mx-2 ${
-                    step.status === 'complete' ? 'bg-vault-500' : 'bg-surface-800'
+                    step.status === 'complete' ? 'bg-brand-500' : 'bg-surface-800'
                   }`}
                 />
               )}
@@ -357,7 +357,7 @@ export function Launch() {
               exit={{ opacity: 0, height: 0 }}
               className="space-y-4 pt-4 border-t border-surface-800"
             >
-              <div className="glass-card p-4 bg-vault-500/5 border-vault-500/20">
+              <div className="glass-card p-4 bg-brand-500/5 border-brand-500/20">
                 <h3 className="font-semibold mb-2">Summary</h3>
                 <div className="space-y-1 text-sm text-surface-400">
                   <p>

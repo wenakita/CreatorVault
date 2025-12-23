@@ -211,7 +211,7 @@ export function Vault() {
                 onClick={() => setActiveTab(tab)}
                 className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors ${
                   activeTab === tab
-                    ? 'bg-vault-500 text-white'
+                    ? 'bg-brand-500 text-white'
                     : 'text-surface-400 hover:text-white'
                 }`}
               >
@@ -242,7 +242,7 @@ export function Vault() {
                         : formatUnits(userAssets || 0n, 18)
                     )
                   }
-                  className="text-vault-500 hover:text-vault-400"
+                  className="text-brand-500 hover:text-brand-400"
                 >
                   {activeTab === 'Deposit'
                     ? formatAmount(tokenBalance)
@@ -267,7 +267,7 @@ export function Vault() {
                       : formatUnits(userAssets || 0n, 18)
                   )
                 }
-                className="absolute right-3 top-1/2 -translate-y-1/2 px-3 py-1 rounded-lg bg-vault-500/10 text-vault-500 text-sm font-medium hover:bg-vault-500/20 transition-colors"
+                className="absolute right-3 top-1/2 -translate-y-1/2 px-3 py-1 rounded-lg bg-brand-500/10 text-brand-500 text-sm font-medium hover:bg-brand-500/20 transition-colors"
               >
                 MAX
               </button>
@@ -352,7 +352,7 @@ export function Vault() {
           className="sm:col-span-2 glass-card p-6 space-y-4"
         >
           <h3 className="font-semibold flex items-center gap-2">
-            <Users className="w-4 h-4 text-vault-500" />
+            <Users className="w-4 h-4 text-brand-500" />
             Your Position
           </h3>
 
@@ -383,7 +383,7 @@ export function Vault() {
             </div>
             <div className="h-2 rounded-full bg-surface-800 overflow-hidden">
               <motion.div
-                className="h-full bg-gradient-to-r from-vault-500 to-yellow-500"
+                className="h-full bg-gradient-to-r from-brand-500 to-yellow-500"
                 initial={{ width: 0 }}
                 animate={{
                   width: `${
@@ -407,7 +407,7 @@ export function Vault() {
         className="glass-card p-6"
       >
         <h3 className="font-semibold mb-4 flex items-center gap-2">
-          <RefreshCw className="w-4 h-4 text-vault-500" />
+          <RefreshCw className="w-4 h-4 text-brand-500" />
           6.9% Sell Tax Distribution
         </h3>
         <div className="grid sm:grid-cols-3 gap-4">
@@ -429,9 +429,9 @@ export function Vault() {
               Permanently removed from supply. Deflationary pressure.
             </p>
           </div>
-          <div className="p-4 rounded-xl bg-vault-500/5 border border-vault-500/20">
+          <div className="p-4 rounded-xl bg-brand-500/5 border border-brand-500/20">
             <div className="flex items-center gap-2 mb-2">
-              <Coins className="w-5 h-5 text-vault-500" />
+              <Coins className="w-5 h-5 text-brand-500" />
               <span className="font-medium">5% Protocol</span>
             </div>
             <p className="text-surface-400 text-sm">

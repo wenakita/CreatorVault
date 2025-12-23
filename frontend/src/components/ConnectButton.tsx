@@ -29,7 +29,7 @@ export function ConnectButton() {
           className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-surface-900 border border-surface-700 hover:border-surface-600 transition-colors"
           whileTap={{ scale: 0.98 }}
         >
-          <div className="w-6 h-6 rounded-full bg-gradient-to-br from-vault-500 to-vault-700" />
+          <div className="w-6 h-6 rounded-full bg-brand-500" />
           <span className="font-mono text-sm">{formatAddress(address)}</span>
           <ChevronDown
             className={`w-4 h-4 text-surface-400 transition-transform ${

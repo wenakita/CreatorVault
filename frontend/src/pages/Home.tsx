@@ -60,7 +60,7 @@ export function Home() {
           animate={{ opacity: 1, scale: 1 }}
           transition={{ delay: 0.2 }}
         >
-          <span className="w-2 h-2 rounded-full bg-vault-500 animate-pulse" />
+          <span className="w-2 h-2 rounded-full bg-brand-500 animate-pulse" />
           <span className="text-surface-300">Now live on Base</span>
         </motion.div>
 
@@ -132,10 +132,10 @@ export function Home() {
             <motion.div
               key={feature.title}
               variants={item}
-              className="glass-card p-6 space-y-3 group hover:border-vault-500/50 transition-colors"
+              className="glass-card p-6 space-y-3 group hover:border-brand-500/50 transition-colors"
             >
-              <div className="w-12 h-12 rounded-xl bg-vault-500/10 flex items-center justify-center group-hover:bg-vault-500/20 transition-colors">
-                <feature.icon className="w-6 h-6 text-vault-500" />
+              <div className="w-12 h-12 rounded-xl bg-brand-500/10 flex items-center justify-center group-hover:bg-brand-500/20 transition-colors">
+                <feature.icon className="w-6 h-6 text-brand-500" />
               </div>
               <h3 className="font-semibold text-lg">{feature.title}</h3>
               <p className="text-surface-400 text-sm">{feature.description}</p>
@@ -157,7 +157,7 @@ export function Home() {
 
         <div className="relative">
           {/* Connection line */}
-          <div className="absolute left-6 top-0 bottom-0 w-0.5 bg-gradient-to-b from-vault-500 via-vault-500/50 to-transparent hidden sm:block" />
+          <div className="absolute left-6 top-0 bottom-0 w-0.5 bg-gradient-to-b from-brand-500 via-brand-500/50 to-transparent hidden sm:block" />
 
           <div className="space-y-6">
             {[
@@ -184,7 +184,7 @@ export function Home() {
                 viewport={{ once: true }}
                 className="flex items-start gap-4"
               >
-                <div className="relative z-10 w-12 h-12 rounded-full bg-vault-500 flex items-center justify-center font-display font-bold text-lg shrink-0">
+                <div className="relative z-10 w-12 h-12 rounded-full bg-brand-500 flex items-center justify-center font-display font-bold text-lg shrink-0">
                   {step.step}
                 </div>
                 <div className="glass-card p-4 flex-1">
@@ -204,7 +204,7 @@ export function Home() {
         viewport={{ once: true }}
         className="glass-card p-8 text-center space-y-4 relative overflow-hidden"
       >
-        <div className="absolute inset-0 bg-gradient-to-r from-vault-500/10 via-transparent to-vault-500/10" />
+        <div className="absolute inset-0 bg-gradient-to-r from-brand-500/10 via-transparent to-brand-500/10" />
         <h2 className="font-display text-2xl font-bold relative">
           Ready to launch?
         </h2>

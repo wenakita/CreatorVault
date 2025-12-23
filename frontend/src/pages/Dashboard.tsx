@@ -67,8 +67,8 @@ export function Dashboard() {
       >
         <motion.div variants={item} className="stat-card">
           <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg bg-vault-500/10 flex items-center justify-center">
-              <Coins className="w-4 h-4 text-vault-500" />
+            <div className="w-8 h-8 rounded-lg bg-brand-500/10 flex items-center justify-center">
+              <Coins className="w-4 h-4 text-brand-500" />
             </div>
           </div>
           <p className="stat-value">$420.69K</p>
@@ -114,7 +114,7 @@ export function Dashboard() {
         className="space-y-4"
       >
         <h2 className="font-semibold text-lg flex items-center gap-2">
-          <Sparkles className="w-5 h-5 text-vault-500" />
+          <Sparkles className="w-5 h-5 text-brand-500" />
           Featured Vaults
         </h2>
 
@@ -122,7 +122,7 @@ export function Dashboard() {
           {vaults.map((vault) => (
             <motion.div key={vault.id} variants={item}>
               <Link to={`/vault/${vault.vault}`}>
-                <div className="glass-card p-6 hover:border-vault-500/50 transition-all group">
+                <div className="glass-card p-6 hover:border-brand-500/50 transition-all group">
                   <div className="flex items-start justify-between">
                     <div className="flex items-center gap-4">
                       <div
@@ -144,7 +144,7 @@ export function Dashboard() {
                         </p>
                       </div>
                     </div>
-                    <ArrowUpRight className="w-5 h-5 text-surface-500 group-hover:text-vault-500 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-all" />
+                    <ArrowUpRight className="w-5 h-5 text-surface-500 group-hover:text-brand-500 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-all" />
                   </div>
 
                   <div className="mt-6 grid grid-cols-2 sm:grid-cols-4 gap-4">
@@ -178,7 +178,7 @@ export function Dashboard() {
                     </div>
                     <div className="h-1.5 rounded-full bg-surface-800 overflow-hidden">
                       <motion.div
-                        className="h-full bg-gradient-to-r from-vault-500 to-vault-400"
+                        className="h-full bg-gradient-to-r from-brand-500 to-brand-400"
                         initial={{ width: 0 }}
                         animate={{ width: '65%' }}
                         transition={{ duration: 1, ease: 'easeOut' }}
@@ -199,8 +199,8 @@ export function Dashboard() {
         transition={{ delay: 0.5 }}
         className="glass-card p-8 text-center space-y-4 border-dashed"
       >
-        <div className="w-12 h-12 rounded-xl bg-vault-500/10 flex items-center justify-center mx-auto">
-          <Sparkles className="w-6 h-6 text-vault-500" />
+        <div className="w-12 h-12 rounded-xl bg-brand-500/10 flex items-center justify-center mx-auto">
+          <Sparkles className="w-6 h-6 text-brand-500" />
         </div>
         <h3 className="font-semibold text-lg">Launch Your Vault</h3>
         <p className="text-surface-400 text-sm max-w-md mx-auto">

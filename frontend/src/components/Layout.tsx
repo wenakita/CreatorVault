@@ -19,14 +19,14 @@ export function Layout() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-3 flex items-center justify-between">
           <Link to="/" className="flex items-center gap-2">
             <motion.div
-              className="w-9 h-9 rounded-xl bg-gradient-to-br from-vault-500 to-vault-700 flex items-center justify-center"
+              className="w-9 h-9 rounded-xl bg-brand-500 flex items-center justify-center"
               whileHover={{ scale: 1.05, rotate: 5 }}
               whileTap={{ scale: 0.95 }}
             >
               <Wallet className="w-5 h-5 text-white" />
             </motion.div>
             <span className="font-display font-bold text-lg hidden sm:block">
-              Creator<span className="text-vault-500">Vault</span>
+              Creator<span className="text-brand-500">Vault</span>
             </span>
           </Link>
 
@@ -53,18 +53,18 @@ export function Layout() {
                 {isActive && (
                   <motion.div
                     layoutId="nav-indicator"
-                    className="absolute inset-0 bg-vault-500/20 rounded-xl"
+                    className="absolute inset-0 bg-brand-500/20 rounded-xl"
                     transition={{ type: 'spring', bounce: 0.2, duration: 0.6 }}
                   />
                 )}
                 <Icon
                   className={`w-5 h-5 transition-colors ${
-                    isActive ? 'text-vault-500' : 'text-surface-400'
+                    isActive ? 'text-brand-500' : 'text-surface-400'
                   }`}
                 />
                 <span
                   className={`text-xs font-medium transition-colors ${
-                    isActive ? 'text-vault-500' : 'text-surface-400'
+                    isActive ? 'text-brand-500' : 'text-surface-400'
                   }`}
                 >
                   {label}
@@ -86,7 +86,7 @@ export function Layout() {
                 to={path}
                 className={`relative group p-3 rounded-xl transition-colors ${
                   isActive
-                    ? 'bg-vault-500/20 text-vault-500'
+                    ? 'bg-brand-500/20 text-brand-500'
                     : 'text-surface-400 hover:bg-surface-800/50 hover:text-white'
                 }`}
               >
