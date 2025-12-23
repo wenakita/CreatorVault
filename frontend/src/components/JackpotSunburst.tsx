@@ -1,7 +1,8 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { useRef, useEffect, useMemo, useState } from 'react'
+import { useRef, useEffect, useMemo, useState, useCallback } from 'react'
 import * as d3 from 'd3'
-import { Trophy, Flame, Building2, RotateCcw } from 'lucide-react'
+import { Trophy, Flame, Building2, RotateCcw, ChevronRight } from 'lucide-react'
+import { motion, AnimatePresence } from 'framer-motion'
 
 interface HierarchyNode {
   name: string
@@ -29,31 +30,36 @@ const DEFAULT_TOKENS: JackpotToken[] = [
   { symbol: 'wsDAWG', name: 'Wrapped Staked DAWG', value: 20, color: '#06b6d4' },
 ]
 
-/**
- * 3D-style Zoomable Sunburst with gradients and depth
- */
 export function JackpotSunburst({
   tokens = DEFAULT_TOKENS,
   totalEth = '0.1 ETH',
   totalUsd = 350,
 }: JackpotSunburstProps) {
   const svgRef = useRef<SVGSVGElement>(null)
+  const [hoveredNode, setHoveredNode] = useState<string | null>(null)
+  const [tooltipData, setTooltipData] = useState<{
+    name: string
+    value: number
+    percentage: number
+    x: number
+    y: number
+  } | null>(null)
 
   const data: HierarchyNode = useMemo(() => {
     const tokenChildren = tokens.map((token) => ({
       name: token.symbol,
       color: token.color,
       children: [
-        { name: 'Winner', value: token.value * 0.9, color: '#facc15' },
+        { name: 'Winner', value: token.value * 0.9, color: '#fbbf24' },
         { name: 'Burn', value: token.value * 0.05, color: '#f87171' },
         { name: 'Protocol', value: token.value * 0.05, color: '#60a5fa' },
       ],
     }))
-    return { name: 'Jackpot', children: tokenChildren }
+    return { name: 'Pool', children: tokenChildren }
   }, [tokens])
 
   const isMobile = typeof window !== 'undefined' && window.innerWidth < 640
-  const size = isMobile ? 320 : 400
+  const size = isMobile ? 280 : 340
   const radius = size / 2
 
   const root = useMemo(() => {
@@ -67,225 +73,310 @@ export function JackpotSunburst({
   const [focus, setFocus] = useState(root)
   useEffect(() => setFocus(root), [root])
 
+  const tokenColorMap = useMemo(() => {
+    const map: Record<string, string> = {}
+    tokens.forEach((t) => { map[t.symbol] = t.color })
+    return map
+  }, [tokens])
+
+  const getNodeColor = useCallback((d: any): string => {
+    if (d.data.color && d.depth > 1) return d.data.color
+    if (tokenColorMap[d.data.name]) return tokenColorMap[d.data.name]
+    const ancestor = d.ancestors().find((a: any) => tokenColorMap[a.data.name])
+    return ancestor ? tokenColorMap[ancestor.data.name] : '#64748b'
+  }, [tokenColorMap])
+
   useEffect(() => {
+    if (!svgRef.current) return
+
     const svg = d3.select(svgRef.current)
     svg.selectAll('*').remove()
     svg.attr('viewBox', `${-radius} ${-radius} ${size} ${size}`)
 
-    // Gradients for 3D effect
     const defs = svg.append('defs')
 
-    // Radial gradient for depth
-    const radialGrad = defs.append('radialGradient')
-      .attr('id', 'depthGradient')
-      .attr('cx', '30%')
-      .attr('cy', '30%')
-    radialGrad.append('stop').attr('offset', '0%').attr('stop-color', 'rgba(255,255,255,0.15)')
-    radialGrad.append('stop').attr('offset', '100%').attr('stop-color', 'rgba(0,0,0,0.3)')
-
-    // Drop shadow filter
-    const filter = defs.append('filter')
-      .attr('id', 'dropShadow')
-      .attr('x', '-50%').attr('y', '-50%')
-      .attr('width', '200%').attr('height', '200%')
-    filter.append('feDropShadow')
-      .attr('dx', '0').attr('dy', '4')
-      .attr('stdDeviation', '8')
-      .attr('flood-color', 'rgba(0,0,0,0.5)')
-
-    // Glow filter
-    const glow = defs.append('filter').attr('id', 'glow')
-    glow.append('feGaussianBlur').attr('stdDeviation', '4').attr('result', 'blur')
-    glow.append('feMerge').html('<feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/>')
-
-    // Token colors
-    const tokenColorMap: Record<string, string> = {}
-    tokens.forEach((t) => { tokenColorMap[t.symbol] = t.color })
-
-    const getColor = (d: any) => {
-      if (d.data.color && d.depth > 1) return d.data.color
-      if (tokenColorMap[d.data.name]) return tokenColorMap[d.data.name]
-      const ancestor = d.ancestors().find((a: any) => tokenColorMap[a.data.name])
-      return ancestor ? tokenColorMap[ancestor.data.name] : '#64748b'
-    }
-
-    // Create gradient for each token
+    // Refined gradients for each token
     tokens.forEach((token) => {
-      const grad = defs.append('linearGradient')
-        .attr('id', `grad-${token.symbol}`)
-        .attr('x1', '0%').attr('y1', '0%')
-        .attr('x2', '100%').attr('y2', '100%')
-      grad.append('stop').attr('offset', '0%').attr('stop-color', d3.color(token.color)?.brighter(0.5)?.toString() || token.color)
-      grad.append('stop').attr('offset', '100%').attr('stop-color', d3.color(token.color)?.darker(0.5)?.toString() || token.color)
+      const gradient = defs.append('linearGradient')
+        .attr('id', `gradient-${token.symbol}`)
+        .attr('gradientTransform', 'rotate(45)')
+      gradient.append('stop')
+        .attr('offset', '0%')
+        .attr('stop-color', d3.color(token.color)?.brighter(0.3)?.toString() || token.color)
+      gradient.append('stop')
+        .attr('offset', '50%')
+        .attr('stop-color', token.color)
+      gradient.append('stop')
+        .attr('offset', '100%')
+        .attr('stop-color', d3.color(token.color)?.darker(0.3)?.toString() || token.color)
     })
 
+    // Distribution gradients
+    const distColors = [
+      { id: 'winner', colors: ['#fde047', '#fbbf24', '#f59e0b'] },
+      { id: 'burn', colors: ['#fca5a5', '#f87171', '#ef4444'] },
+      { id: 'protocol', colors: ['#93c5fd', '#60a5fa', '#3b82f6'] },
+    ]
+    distColors.forEach(({ id, colors }) => {
+      const grad = defs.append('linearGradient')
+        .attr('id', `gradient-${id}`)
+        .attr('gradientTransform', 'rotate(45)')
+      grad.append('stop').attr('offset', '0%').attr('stop-color', colors[0])
+      grad.append('stop').attr('offset', '50%').attr('stop-color', colors[1])
+      grad.append('stop').attr('offset', '100%').attr('stop-color', colors[2])
+    })
+
+    // Subtle inner shadow
+    const innerShadow = defs.append('filter').attr('id', 'innerShadow')
+    innerShadow.append('feOffset').attr('dx', '0').attr('dy', '2')
+    innerShadow.append('feGaussianBlur').attr('stdDeviation', '3').attr('result', 'offset-blur')
+    innerShadow.append('feComposite')
+      .attr('operator', 'out')
+      .attr('in', 'SourceGraphic')
+      .attr('in2', 'offset-blur')
+      .attr('result', 'inverse')
+    innerShadow.append('feFlood').attr('flood-color', 'black').attr('flood-opacity', '0.15').attr('result', 'color')
+    innerShadow.append('feComposite').attr('operator', 'in').attr('in', 'color').attr('in2', 'inverse').attr('result', 'shadow')
+    innerShadow.append('feComposite').attr('operator', 'over').attr('in', 'shadow').attr('in2', 'SourceGraphic')
+
+    // Outer glow
+    const glow = defs.append('filter').attr('id', 'glow').attr('x', '-50%').attr('y', '-50%').attr('width', '200%').attr('height', '200%')
+    glow.append('feGaussianBlur').attr('in', 'SourceAlpha').attr('stdDeviation', '4').attr('result', 'blur')
+    glow.append('feOffset').attr('in', 'blur').attr('dx', '0').attr('dy', '0').attr('result', 'offsetBlur')
+    const glowMerge = glow.append('feMerge')
+    glowMerge.append('feMergeNode').attr('in', 'offsetBlur')
+    glowMerge.append('feMergeNode').attr('in', 'SourceGraphic')
+
+    // Arc generator with refined styling
     const arc = d3.arc<any>()
       .startAngle((d) => d.x0)
       .endAngle((d) => d.x1)
-      .padAngle(0.01)
-      .padRadius(radius * 0.5)
+      .padAngle(0.015)
+      .padRadius(radius * 0.4)
+      .innerRadius((d) => d.y0 + 2)
+      .outerRadius((d) => Math.max(d.y0 + 2, d.y1 - 3))
+      .cornerRadius(6)
+
+    const arcHover = d3.arc<any>()
+      .startAngle((d) => d.x0)
+      .endAngle((d) => d.x1)
+      .padAngle(0.015)
+      .padRadius(radius * 0.4)
       .innerRadius((d) => d.y0)
-      .outerRadius((d) => Math.max(d.y0, d.y1 - 2))
-      .cornerRadius(4)
+      .outerRadius((d) => d.y1 + 4)
+      .cornerRadius(8)
 
     let x = d3.scaleLinear().domain([focus.x0, focus.x1]).range([0, 2 * Math.PI])
     let y = d3.scaleLinear().domain([focus.y0, radius]).range([0, radius])
 
-    const g = svg.append('g').attr('filter', 'url(#dropShadow)')
+    const g = svg.append('g')
 
-    // Center glow circle
+    // Ambient ring
     g.append('circle')
-      .attr('r', y(focus.y0) + 5 || 55)
+      .attr('r', radius - 10)
       .attr('fill', 'none')
-      .attr('stroke', 'rgba(234, 179, 8, 0.2)')
-      .attr('stroke-width', 2)
+      .attr('stroke', 'rgba(255,255,255,0.03)')
+      .attr('stroke-width', 1)
+
+    // Center background
+    const centerR = y(focus.y0) || 45
+    g.append('circle')
+      .attr('r', centerR + 8)
+      .attr('fill', 'rgba(15,23,42,0.4)')
       .attr('filter', 'url(#glow)')
 
-    // Center circle
-    const centerR = y(focus.y0) || 50
-    const center = g.append('circle')
-      .attr('r', centerR)
-      .attr('fill', 'url(#centerGrad)')
-      .attr('stroke', 'rgba(255,255,255,0.1)')
-      .attr('stroke-width', 1)
-      .style('cursor', focus.parent ? 'pointer' : 'default')
-      .on('click', () => { if (focus.parent) setFocus(focus.parent) })
-
-    // Center gradient
+    // Center circle with gradient
     const centerGrad = defs.append('radialGradient')
       .attr('id', 'centerGrad')
       .attr('cx', '35%').attr('cy', '35%')
     centerGrad.append('stop').attr('offset', '0%').attr('stop-color', 'rgba(30,41,59,1)')
     centerGrad.append('stop').attr('offset', '100%').attr('stop-color', 'rgba(15,23,42,1)')
 
+    const center = g.append('circle')
+      .attr('r', centerR)
+      .attr('fill', 'url(#centerGrad)')
+      .attr('stroke', 'rgba(255,255,255,0.08)')
+      .attr('stroke-width', 1)
+      .attr('filter', 'url(#innerShadow)')
+      .style('cursor', focus.parent ? 'pointer' : 'default')
+      .on('click', () => { if (focus.parent) setFocus(focus.parent) })
+
+    // Golden ring accent
+    g.append('circle')
+      .attr('r', centerR)
+      .attr('fill', 'none')
+      .attr('stroke', 'url(#goldRing)')
+      .attr('stroke-width', 1.5)
+      .attr('opacity', 0.6)
+
+    const goldRing = defs.append('linearGradient').attr('id', 'goldRing').attr('gradientTransform', 'rotate(90)')
+    goldRing.append('stop').attr('offset', '0%').attr('stop-color', 'rgba(251,191,36,0.4)')
+    goldRing.append('stop').attr('offset', '50%').attr('stop-color', 'rgba(251,191,36,0.1)')
+    goldRing.append('stop').attr('offset', '100%').attr('stop-color', 'rgba(251,191,36,0.4)')
+
     // Center text
     const centerText = g.append('g').attr('pointer-events', 'none')
-    centerText.append('text')
-      .attr('text-anchor', 'middle')
-      .attr('y', -12)
-      .style('font-size', '10px')
-      .style('fill', '#94a3b8')
-      .style('text-transform', 'uppercase')
-      .style('letter-spacing', '2px')
-      .text(focus.depth === 0 ? 'Jackpot' : focus.data.name)
-
-    centerText.append('text')
-      .attr('text-anchor', 'middle')
-      .attr('y', 12)
-      .style('font-size', '22px')
-      .style('font-weight', '700')
-      .style('fill', '#fbbf24')
-      .style('text-shadow', '0 0 20px rgba(251,191,36,0.5)')
-      .text(focus.depth === 0 ? totalEth : `$${(focus.value || 0).toFixed(0)}`)
-
-    if (focus.parent) {
+    
+    if (focus.depth === 0) {
       centerText.append('text')
         .attr('text-anchor', 'middle')
-        .attr('y', 32)
+        .attr('y', -14)
+        .attr('fill', '#94a3b8')
         .style('font-size', '9px')
-        .style('fill', '#64748b')
-        .text('tap to zoom out')
+        .style('font-weight', '500')
+        .style('letter-spacing', '1.5px')
+        .style('text-transform', 'uppercase')
+        .text('Jackpot')
+
+      centerText.append('text')
+        .attr('text-anchor', 'middle')
+        .attr('y', 10)
+        .attr('fill', '#fbbf24')
+        .style('font-size', '20px')
+        .style('font-weight', '700')
+        .text(totalEth)
+
+      centerText.append('text')
+        .attr('text-anchor', 'middle')
+        .attr('y', 28)
+        .attr('fill', '#64748b')
+        .style('font-size', '10px')
+        .text(`≈ $${totalUsd.toFixed(0)}`)
     } else {
       centerText.append('text')
         .attr('text-anchor', 'middle')
+        .attr('y', -8)
+        .attr('fill', '#94a3b8')
+        .style('font-size', '9px')
+        .style('font-weight', '500')
+        .style('letter-spacing', '1px')
+        .text(focus.data.name)
+
+      centerText.append('text')
+        .attr('text-anchor', 'middle')
+        .attr('y', 14)
+        .attr('fill', '#fbbf24')
+        .style('font-size', '18px')
+        .style('font-weight', '700')
+        .text(`$${(focus.value || 0).toFixed(0)}`)
+
+      centerText.append('text')
+        .attr('text-anchor', 'middle')
         .attr('y', 32)
-        .style('font-size', '10px')
-        .style('fill', '#64748b')
-        .text(`≈ $${totalUsd.toFixed(0)} USD`)
+        .attr('fill', '#475569')
+        .style('font-size', '9px')
+        .text('← back')
     }
 
-    // Arcs
+    // Draw arcs
     const nodes = root.descendants().filter((d) => d.depth)
-    const path = g.selectAll('path')
+
+    const paths = g.selectAll('path.arc')
       .data(nodes)
       .join('path')
+      .attr('class', 'arc')
       .attr('fill', (d: any) => {
-        const color = getColor(d)
-        // Use gradient for depth 1 (tokens)
-        if (d.depth === 1) {
-          return `url(#grad-${d.data.name})`
-        }
-        return color
+        const name = d.data.name.toLowerCase()
+        if (d.depth === 1) return `url(#gradient-${d.data.name})`
+        if (name === 'winner') return 'url(#gradient-winner)'
+        if (name === 'burn') return 'url(#gradient-burn)'
+        if (name === 'protocol') return 'url(#gradient-protocol)'
+        return getNodeColor(d)
       })
-      .attr('fill-opacity', (d: any) => d.y1 <= radius && d.y0 >= 0 && d.x1 > d.x0 ? 0.9 : 0)
-      .attr('stroke', 'rgba(255,255,255,0.15)')
+      .attr('fill-opacity', (d: any) => {
+        const visible = d.y1 <= radius && d.y0 >= 0 && d.x1 > d.x0
+        if (!visible) return 0
+        if (hoveredNode && hoveredNode !== d.data.name) return 0.5
+        return 0.95
+      })
+      .attr('stroke', 'rgba(255,255,255,0.1)')
       .attr('stroke-width', 0.5)
       .attr('d', (d: any) => arc({ ...d, x0: x(d.x0), x1: x(d.x1), y0: y(d.y0), y1: y(d.y1) }))
       .style('cursor', 'pointer')
-      .on('mouseenter', function() {
+      .style('transition', 'fill-opacity 200ms ease')
+      .on('mouseenter', function(event: any, d: any) {
+        setHoveredNode(d.data.name)
         d3.select(this)
-          .transition().duration(150)
+          .transition()
+          .duration(200)
+          .ease(d3.easeCubicOut)
+          .attr('d', arcHover({ ...d, x0: x(d.x0), x1: x(d.x1), y0: y(d.y0), y1: y(d.y1) }))
           .attr('fill-opacity', 1)
-          .attr('stroke-width', 1.5)
+          .attr('stroke-width', 1)
+
+        const rect = svgRef.current?.getBoundingClientRect()
+        if (rect) {
+          setTooltipData({
+            name: d.data.name,
+            value: d.value || 0,
+            percentage: totalUsd > 0 ? ((d.value || 0) / totalUsd) * 100 : 0,
+            x: event.clientX - rect.left,
+            y: event.clientY - rect.top,
+          })
+        }
       })
-      .on('mouseleave', function() {
+      .on('mousemove', function(event: any, d: any) {
+        const rect = svgRef.current?.getBoundingClientRect()
+        if (rect) {
+          setTooltipData({
+            name: d.data.name,
+            value: d.value || 0,
+            percentage: totalUsd > 0 ? ((d.value || 0) / totalUsd) * 100 : 0,
+            x: event.clientX - rect.left,
+            y: event.clientY - rect.top,
+          })
+        }
+      })
+      .on('mouseleave', function(_, d: any) {
+        setHoveredNode(null)
+        setTooltipData(null)
         d3.select(this)
-          .transition().duration(150)
-          .attr('fill-opacity', 0.9)
+          .transition()
+          .duration(200)
+          .ease(d3.easeCubicIn)
+          .attr('d', arc({ ...d, x0: x(d.x0), x1: x(d.x1), y0: y(d.y0), y1: y(d.y1) }))
+          .attr('fill-opacity', 0.95)
           .attr('stroke-width', 0.5)
       })
-      .on('click', (_: any, d: any) => setFocus(d))
-
-    // Tooltips
-    path.append('title').text((d: any) => {
-      const label = d.ancestors().reverse().map((n: any) => n.data.name).join(' → ')
-      return `${label}\n$${(d.value || 0).toFixed(2)} (${totalUsd > 0 ? ((d.value || 0) / totalUsd * 100).toFixed(1) : 0}%)`
-    })
-
-    // Labels
-    g.selectAll('text.label')
-      .data(nodes)
-      .join('text')
-      .attr('class', 'label')
-      .attr('pointer-events', 'none')
-      .attr('text-anchor', 'middle')
-      .attr('font-size', 9)
-      .attr('font-weight', '600')
-      .attr('dy', '0.35em')
-      .attr('fill', 'white')
-      .attr('fill-opacity', (d: any) => {
-        const a = x(d.x1) - x(d.x0)
-        const rMid = (y(d.y0) + y(d.y1)) / 2
-        return a * rMid > 14 ? 1 : 0
+      .on('click', (_, d: any) => {
+        setTooltipData(null)
+        setFocus(d)
       })
-      .attr('transform', (d: any) => {
-        const angle = ((x(d.x0) + x(d.x1)) / 2) * (180 / Math.PI)
-        const r = (y(d.y0) + y(d.y1)) / 2
-        return `rotate(${angle - 90}) translate(${r},0) rotate(${angle < 180 ? 0 : 180})`
-      })
-      .style('text-shadow', '0 1px 2px rgba(0,0,0,0.8)')
-      .text((d: any) => d.data.name)
 
-    // Zoom function
+    // Zoom transition
     function zoomTo(newFocus: any) {
       const xNew = d3.scaleLinear().domain([newFocus.x0, newFocus.x1]).range([0, 2 * Math.PI])
       const yNew = d3.scaleLinear().domain([newFocus.y0, radius]).range([0, radius])
-      const t = g.transition().duration(750).ease(d3.easeCubicInOut)
+      const t = g.transition().duration(800).ease(d3.easeCubicInOut)
+
+      const newCenterR = yNew(newFocus.y0) || 45
 
       center
         .style('cursor', newFocus.parent ? 'pointer' : 'default')
         .transition(t as any)
-        .attr('r', yNew(newFocus.y0) || 50)
+        .attr('r', newCenterR)
 
       // Update center text
       centerText.selectAll('*').remove()
-      centerText.append('text')
-        .attr('text-anchor', 'middle').attr('y', -12)
-        .style('font-size', '10px').style('fill', '#94a3b8')
-        .style('text-transform', 'uppercase').style('letter-spacing', '2px')
-        .text(newFocus.depth === 0 ? 'Jackpot' : newFocus.data.name)
-      centerText.append('text')
-        .attr('text-anchor', 'middle').attr('y', 12)
-        .style('font-size', '22px').style('font-weight', '700')
-        .style('fill', '#fbbf24').style('text-shadow', '0 0 20px rgba(251,191,36,0.5)')
-        .text(newFocus.depth === 0 ? totalEth : `$${(newFocus.value || 0).toFixed(0)}`)
-      centerText.append('text')
-        .attr('text-anchor', 'middle').attr('y', 32)
-        .style('font-size', newFocus.parent ? '9px' : '10px').style('fill', '#64748b')
-        .text(newFocus.parent ? 'tap to zoom out' : `≈ $${totalUsd.toFixed(0)} USD`)
+      if (newFocus.depth === 0) {
+        centerText.append('text').attr('text-anchor', 'middle').attr('y', -14).attr('fill', '#94a3b8')
+          .style('font-size', '9px').style('font-weight', '500').style('letter-spacing', '1.5px')
+          .style('text-transform', 'uppercase').text('Jackpot')
+        centerText.append('text').attr('text-anchor', 'middle').attr('y', 10).attr('fill', '#fbbf24')
+          .style('font-size', '20px').style('font-weight', '700').text(totalEth)
+        centerText.append('text').attr('text-anchor', 'middle').attr('y', 28).attr('fill', '#64748b')
+          .style('font-size', '10px').text(`≈ $${totalUsd.toFixed(0)}`)
+      } else {
+        centerText.append('text').attr('text-anchor', 'middle').attr('y', -8).attr('fill', '#94a3b8')
+          .style('font-size', '9px').style('font-weight', '500').style('letter-spacing', '1px').text(newFocus.data.name)
+        centerText.append('text').attr('text-anchor', 'middle').attr('y', 14).attr('fill', '#fbbf24')
+          .style('font-size', '18px').style('font-weight', '700').text(`$${(newFocus.value || 0).toFixed(0)}`)
+        centerText.append('text').attr('text-anchor', 'middle').attr('y', 32).attr('fill', '#475569')
+          .style('font-size', '9px').text('← back')
+      }
 
-      path.transition(t as any)
-        .attr('fill-opacity', (d: any) => d.y1 <= radius && d.y0 >= 0 && d.x1 > d.x0 ? 0.9 : 0)
+      paths.transition(t as any)
+        .attr('fill-opacity', (d: any) => d.y1 <= radius && d.y0 >= 0 && d.x1 > d.x0 ? 0.95 : 0)
         .attrTween('d', (d: any) => {
           const i = d3.interpolate(
             { x0: x(d.x0), x1: x(d.x1), y0: y(d.y0), y1: y(d.y1) },
@@ -294,102 +385,138 @@ export function JackpotSunburst({
           return (tt: number) => arc({ ...d, ...i(tt) }) as string
         })
 
-      g.selectAll('text.label').transition(t as any)
-        .attr('fill-opacity', (d: any) => {
-          const a = xNew(d.x1) - xNew(d.x0)
-          const rMid = (yNew(d.y0) + yNew(d.y1)) / 2
-          return a * rMid > 14 ? 1 : 0
-        })
-        .attrTween('transform', (d: any) => {
-          const i = d3.interpolate(
-            { x0: x(d.x0), x1: x(d.x1), y0: y(d.y0), y1: y(d.y1) },
-            { x0: xNew(d.x0), x1: xNew(d.x1), y0: yNew(d.y0), y1: yNew(d.y1) }
-          )
-          return (tt: number) => {
-            const v = i(tt)
-            const angle = ((v.x0 + v.x1) / 2) * (180 / Math.PI)
-            const rMid = (v.y0 + v.y1) / 2
-            return `rotate(${angle - 90}) translate(${rMid},0) rotate(${angle < 180 ? 0 : 180})`
-          }
-        })
-
-      x = xNew; y = yNew
+      x = xNew
+      y = yNew
     }
 
     zoomTo(focus)
+
     return () => { svg.selectAll('*').remove() }
-  }, [root, focus, radius, size, tokens, totalEth, totalUsd])
+  }, [root, focus, radius, size, tokens, totalEth, totalUsd, tokenColorMap, getNodeColor, hoveredNode])
 
   return (
     <div className="relative">
-      {/* Ambient glow behind chart */}
-      <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-        <div className="w-64 h-64 bg-yellow-500/10 rounded-full blur-3xl" />
+      {/* Background glow */}
+      <div className="absolute inset-0 flex items-center justify-center pointer-events-none -z-10">
+        <div className="w-48 h-48 bg-amber-500/5 rounded-full blur-[60px]" />
       </div>
 
-      <div className="relative bg-gradient-to-br from-slate-900/90 via-slate-900/95 to-slate-950/90 backdrop-blur-xl rounded-3xl p-5 sm:p-6 border border-white/5 shadow-2xl">
-        {/* Header */}
-        <div className="flex items-center justify-between mb-5">
-          <div>
-            <h3 className="text-white font-semibold text-base tracking-tight">Live Jackpot Pool</h3>
-            <p className="text-slate-500 text-xs mt-0.5">Tap to explore • Center to zoom out</p>
-          </div>
-          {focus.parent && (
-            <button
-              onClick={() => setFocus(root)}
-              className="p-2 rounded-lg bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white transition-all"
-            >
-              <RotateCcw className="w-4 h-4" />
-            </button>
-          )}
-        </div>
+      <div className="relative bg-gradient-to-b from-slate-900/95 to-slate-950/95 backdrop-blur-xl rounded-3xl border border-white/[0.06] shadow-2xl overflow-hidden">
+        {/* Subtle top highlight */}
+        <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/10 to-transparent" />
 
-        <div className="flex flex-col lg:flex-row items-center gap-6">
-          {/* Chart */}
-          <div className="relative">
-            <svg ref={svgRef} width={size} height={size} />
-          </div>
-
-          {/* Legend */}
-          <div className="flex-1 w-full space-y-4">
+        <div className="p-5 sm:p-6">
+          {/* Header */}
+          <div className="flex items-center justify-between mb-5">
             <div>
-              <p className="text-slate-500 text-[10px] uppercase tracking-widest font-medium mb-2">Pool Assets</p>
-              <div className="space-y-1.5">
-                {tokens.map((token) => (
-                  <button
-                    key={token.symbol}
-                    onClick={() => {
-                      const node = root.descendants().find((d) => d.data.name === token.symbol)
-                      if (node) setFocus(node)
+              <h3 className="text-white/90 font-semibold text-sm tracking-tight">Live Jackpot</h3>
+              <p className="text-slate-500 text-[11px] mt-0.5">Tap segments to explore</p>
+            </div>
+            <AnimatePresence>
+              {focus.parent && (
+                <motion.button
+                  initial={{ opacity: 0, scale: 0.9 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.9 }}
+                  onClick={() => setFocus(root)}
+                  className="p-2 rounded-lg bg-white/[0.04] hover:bg-white/[0.08] text-slate-400 hover:text-white transition-all"
+                >
+                  <RotateCcw className="w-3.5 h-3.5" />
+                </motion.button>
+              )}
+            </AnimatePresence>
+          </div>
+
+          <div className="flex flex-col lg:flex-row items-center gap-6">
+            {/* Chart */}
+            <div className="relative flex-shrink-0">
+              <svg ref={svgRef} width={size} height={size} className="drop-shadow-xl" />
+              
+              {/* Custom tooltip */}
+              <AnimatePresence>
+                {tooltipData && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 4 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: 4 }}
+                    className="absolute pointer-events-none z-10 px-3 py-2 rounded-lg bg-slate-800/95 backdrop-blur border border-white/10 shadow-xl"
+                    style={{
+                      left: tooltipData.x + 12,
+                      top: tooltipData.y - 40,
                     }}
-                    className="w-full flex items-center justify-between p-2.5 rounded-xl bg-white/[0.02] hover:bg-white/[0.05] border border-white/5 hover:border-white/10 transition-all group"
                   >
-                    <div className="flex items-center gap-2.5">
-                      <div className="w-3 h-3 rounded-full shadow-lg" style={{ backgroundColor: token.color, boxShadow: `0 0 12px ${token.color}50` }} />
-                      <span className="text-sm font-medium text-white/90 group-hover:text-white">{token.symbol}</span>
+                    <div className="text-white font-medium text-xs">{tooltipData.name}</div>
+                    <div className="flex items-baseline gap-2 mt-0.5">
+                      <span className="text-amber-400 font-semibold text-sm">${tooltipData.value.toFixed(2)}</span>
+                      <span className="text-slate-500 text-[10px]">{tooltipData.percentage.toFixed(1)}%</span>
                     </div>
-                    <span className="text-sm font-mono text-slate-400">${token.value}</span>
-                  </button>
-                ))}
-              </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </div>
 
-            <div className="pt-3 border-t border-white/5">
-              <p className="text-slate-500 text-[10px] uppercase tracking-widest font-medium mb-2">Distribution</p>
-              <div className="space-y-2">
-                {[
-                  { icon: Trophy, label: 'Winner', pct: '90%', color: 'text-yellow-400' },
-                  { icon: Flame, label: 'Burn', pct: '5%', color: 'text-red-400' },
-                  { icon: Building2, label: 'Protocol', pct: '5%', color: 'text-blue-400' },
-                ].map(({ icon: Icon, label, pct, color }) => (
-                  <div key={label} className="flex items-center justify-between text-sm">
-                    <div className="flex items-center gap-2">
-                      <Icon className={`w-3.5 h-3.5 ${color}`} />
-                      <span className="text-slate-400">{label}</span>
+            {/* Legend */}
+            <div className="flex-1 w-full lg:max-w-[200px] space-y-4">
+              {/* Pool assets */}
+              <div>
+                <p className="text-slate-500 text-[10px] uppercase tracking-widest font-medium mb-2">Pool Assets</p>
+                <div className="space-y-1">
+                  {tokens.map((token) => (
+                    <button
+                      key={token.symbol}
+                      onClick={() => {
+                        const node = root.descendants().find((d) => d.data.name === token.symbol)
+                        if (node) setFocus(node)
+                      }}
+                      onMouseEnter={() => setHoveredNode(token.symbol)}
+                      onMouseLeave={() => setHoveredNode(null)}
+                      className={`w-full flex items-center justify-between p-2.5 rounded-xl transition-all group ${
+                        hoveredNode === token.symbol
+                          ? 'bg-white/[0.06] border-white/10'
+                          : 'bg-white/[0.02] border-transparent hover:bg-white/[0.04]'
+                      } border`}
+                    >
+                      <div className="flex items-center gap-2.5">
+                        <div 
+                          className="w-2.5 h-2.5 rounded-full" 
+                          style={{ 
+                            backgroundColor: token.color,
+                            boxShadow: hoveredNode === token.symbol ? `0 0 8px ${token.color}` : 'none'
+                          }} 
+                        />
+                        <span className="text-sm font-medium text-white/80 group-hover:text-white transition-colors">
+                          {token.symbol}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <span className="text-sm font-mono text-slate-500">${token.value}</span>
+                        <ChevronRight className="w-3 h-3 text-slate-600 group-hover:text-slate-400 transition-colors" />
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Distribution */}
+              <div className="pt-3 border-t border-white/[0.04]">
+                <p className="text-slate-500 text-[10px] uppercase tracking-widest font-medium mb-2">Distribution</p>
+                <div className="space-y-1.5">
+                  {[
+                    { icon: Trophy, label: 'Winner', pct: 90, color: 'text-amber-400', bg: 'bg-amber-400/10' },
+                    { icon: Flame, label: 'Burn', pct: 5, color: 'text-red-400', bg: 'bg-red-400/10' },
+                    { icon: Building2, label: 'Protocol', pct: 5, color: 'text-blue-400', bg: 'bg-blue-400/10' },
+                  ].map(({ icon: Icon, label, pct, color, bg }) => (
+                    <div key={label} className="flex items-center justify-between text-sm">
+                      <div className="flex items-center gap-2">
+                        <div className={`p-1 rounded ${bg}`}>
+                          <Icon className={`w-3 h-3 ${color}`} />
+                        </div>
+                        <span className="text-slate-400">{label}</span>
+                      </div>
+                      <span className={`font-semibold tabular-nums ${color}`}>{pct}%</span>
                     </div>
-                    <span className={`font-semibold ${color}`}>{pct}</span>
-                  </div>
-                ))}
+                  ))}
+                </div>
               </div>
             </div>
           </div>
