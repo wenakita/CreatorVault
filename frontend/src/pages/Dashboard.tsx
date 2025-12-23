@@ -29,11 +29,10 @@ const vaults = [
   },
 ]
 
-// Shared lottery data - single jackpot across ALL vaults
+// Shared lottery data - single jackpot across ALL vaults, random VRF draw
 const sharedLottery = {
   jackpot: '0.1 ETH',
-  nextDraw: '6d 12h',
-  progress: 65,
+  progress: 35, // Pool growth indicator (not time-based)
 }
 
 const container = {
@@ -165,9 +164,9 @@ export function Dashboard() {
                     </div>
                     <div>
                       <p className="text-xs text-surface-500 uppercase tracking-wider flex items-center gap-1">
-                        <Gift className="w-3 h-3" /> Swap-To-Win
+                        <Gift className="w-3 h-3" /> Buy-To-Win
                       </p>
-                      <p className="font-semibold text-sm text-yellow-400">Shared Jackpot</p>
+                      <p className="font-semibold text-sm text-yellow-400">VRF Jackpot</p>
                     </div>
                   </div>
                 </div>
@@ -177,7 +176,7 @@ export function Dashboard() {
         </div>
       </motion.div>
 
-      {/* Shared Lottery Info */}
+      {/* Buy-To-Win Lottery Info */}
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
@@ -188,26 +187,26 @@ export function Dashboard() {
           <div>
             <h3 className="font-semibold text-lg flex items-center gap-2">
               <Gift className="w-5 h-5 text-yellow-500" />
-              Swap-To-Win Lottery
+              Buy-To-Win Lottery
               <span className="px-2 py-0.5 rounded-full bg-yellow-500/10 text-yellow-400 text-xs font-medium">
-                Live
+                VRF
               </span>
             </h3>
             <p className="text-surface-400 text-sm mt-1">
-              Shared jackpot across all vaults. Swap any wsToken to enter!
+              Shared jackpot across all vaults. Every wsToken <span className="text-white font-medium">BUY</span> = entry!
             </p>
           </div>
           <div className="text-right">
             <p className="text-2xl font-bold text-yellow-400">{sharedLottery.jackpot}</p>
-            <p className="text-surface-500 text-xs">Next draw: {sharedLottery.nextDraw}</p>
+            <p className="text-surface-500 text-xs">Random VRF Draw</p>
           </div>
         </div>
         
-        {/* Progress bar showing time to next lottery */}
-        <div className="space-y-1">
+        {/* Jackpot pool indicator */}
+        <div className="space-y-1 mb-4">
           <div className="flex justify-between text-xs text-surface-500">
-            <span>Weekly Progress</span>
-            <span>~{sharedLottery.progress}%</span>
+            <span>Pool Growth (6.9% trade fees)</span>
+            <span>Building...</span>
           </div>
           <div className="h-2 rounded-full bg-surface-800 overflow-hidden">
             <motion.div
@@ -219,10 +218,10 @@ export function Dashboard() {
           </div>
         </div>
 
-        <div className="mt-4 grid grid-cols-3 gap-4 text-center text-sm">
+        <div className="grid grid-cols-3 gap-4 text-center text-sm">
           <div className="p-3 rounded-lg bg-surface-900/50">
             <p className="text-yellow-400 font-bold">90%</p>
-            <p className="text-surface-500 text-xs">Jackpot</p>
+            <p className="text-surface-500 text-xs">Winner</p>
           </div>
           <div className="p-3 rounded-lg bg-surface-900/50">
             <p className="text-red-400 font-bold">5%</p>
@@ -233,6 +232,10 @@ export function Dashboard() {
             <p className="text-surface-500 text-xs">Protocol</p>
           </div>
         </div>
+
+        <p className="mt-4 text-center text-xs text-surface-500">
+          Chainlink VRF v2.5 ensures fair, verifiable randomness
+        </p>
       </motion.div>
 
       {/* Empty State / CTA */}

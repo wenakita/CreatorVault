@@ -467,5 +467,31 @@ contract CreatorShareOFT is OFT, ReentrancyGuard {
     function description() external pure returns (string memory) {
         return "CreatorVault Share Token - Represents proportional ownership of assets in a Creator Coin Omnichain Vault. Enables cross-chain transfers via LayerZero.";
     }
+    
+    // ================================
+    // PAYOUT RECIPIENT (for external hooks)
+    // ================================
+    
+    /**
+     * @notice Returns the address that should receive trade fees
+     * @dev Called by external tax hooks (like the 6.9% V4 hook) to determine
+     *      where to send collected fees. Returns the GaugeController which
+     *      handles distribution (90% jackpot, 5% burn, 5% protocol).
+     * 
+     * @return The gauge controller address, or owner if not set
+     */
+    function payoutRecipient() external view returns (address) {
+        return gaugeController != address(0) ? gaugeController : owner();
+    }
+    
+    /**
+     * @notice Check if caller is the payout recipient (for Zora compatibility)
+     * @param account Address to check
+     * @return True if account is the payout recipient
+     */
+    function isOwner(address account) external view returns (bool) {
+        return account == owner() || 
+               (gaugeController != address(0) && account == gaugeController);
+    }
 }
 

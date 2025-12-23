@@ -11,7 +11,6 @@ import {
   ArrowUpFromLine,
   Loader2,
   ExternalLink,
-  Clock,
   Users,
   Coins,
   Zap,
@@ -194,10 +193,10 @@ export function Vault() {
         </div>
         <div className="stat-card">
           <div className="flex items-center gap-2 text-surface-400">
-            <Clock className="w-4 h-4" />
-            <span className="stat-label">Next Draw</span>
+            <Zap className="w-4 h-4" />
+            <span className="stat-label">Trade Fee</span>
           </div>
-          <p className="stat-value">6d 12h</p>
+          <p className="stat-value">6.9%</p>
         </div>
       </motion.div>
 
@@ -419,7 +418,7 @@ export function Vault() {
         </motion.div>
       </div>
 
-      {/* Swap-To-Win Lottery Info */}
+      {/* Buy-To-Win Lottery Info */}
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
@@ -428,15 +427,16 @@ export function Vault() {
       >
         <h3 className="font-semibold mb-4 flex items-center gap-2">
           <Zap className="w-5 h-5 text-yellow-500" />
-          Swap-To-Win Lottery
+          Buy-To-Win Lottery
           <span className="ml-2 px-2 py-0.5 rounded-full bg-yellow-500/10 text-yellow-400 text-xs font-medium">
-            Shared Jackpot
+            Chainlink VRF
           </span>
         </h3>
         
         <p className="text-surface-400 text-sm mb-4">
-          Every swap of wsAKITA on Uniswap V4 is an entry to win the weekly jackpot! 
-          The 6.9% sell tax funds the prize pool shared across all Creator Vaults.
+          Every <span className="text-white font-medium">BUY</span> of wsAKITA on Uniswap V4 is an entry to win! 
+          The 6.9% trade fee (on buys AND sells) funds the prize pool shared across all Creator Vaults.
+          Winners selected randomly via Chainlink VRF v2.5.
         </p>
 
         <div className="grid sm:grid-cols-3 gap-4">
@@ -446,7 +446,7 @@ export function Vault() {
               <span className="font-medium">90% Jackpot</span>
             </div>
             <p className="text-surface-400 text-sm">
-              Weekly draw for all swappers. Swap wsAKITA = lottery entry!
+              Random VRF draw. Buy wsAKITA = lottery entry!
             </p>
           </div>
           <div className="p-4 rounded-xl bg-red-500/5 border border-red-500/20">
@@ -472,7 +472,7 @@ export function Vault() {
         <div className="mt-4 p-3 rounded-lg bg-surface-900/50 text-center">
           <p className="text-surface-500 text-xs uppercase tracking-wider mb-1">How to enter</p>
           <p className="text-surface-300 text-sm">
-            Simply <span className="text-brand-400 font-medium">swap wsAKITA</span> on Uniswap after CCA graduation. Every sell is an entry!
+            Simply <span className="text-brand-400 font-medium">BUY wsAKITA</span> on Uniswap after CCA graduation. Every purchase is an entry!
           </p>
         </div>
       </motion.div>

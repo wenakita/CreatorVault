@@ -1,12 +1,12 @@
 import { Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { Rocket, Shield, Globe, Zap, ArrowRight, TrendingUp, Users } from 'lucide-react'
+import { Rocket, Shield, Globe, Zap, ArrowRight, TrendingUp, Users, Heart, Sparkles } from 'lucide-react'
 
 const features = [
   {
-    icon: Shield,
-    title: 'Auto-Compounding',
-    description: 'Your Creator Coin works for you. Yield auto-reinvested.',
+    icon: Heart,
+    title: 'Earn Together',
+    description: 'Creators & communities share in every trade. Aligned incentives.',
   },
   {
     icon: Globe,
@@ -15,13 +15,13 @@ const features = [
   },
   {
     icon: Zap,
-    title: '6.9% Tax Hook',
-    description: 'Sell taxes fund your jackpot & token burns automatically.',
+    title: '6.9% Trade Fee',
+    description: 'Every buy AND sell funds the jackpot pool & token burns.',
   },
   {
-    icon: TrendingUp,
-    title: 'Weekly Lottery',
-    description: '90% jackpot to holders. 5% burned. 5% to protocol.',
+    icon: Sparkles,
+    title: 'Buy-To-Win',
+    description: 'Every purchase = VRF lottery entry. Random draws, fair odds.',
   },
 ]
 
@@ -65,15 +65,14 @@ export function Home() {
         </motion.div>
 
         <h1 className="font-display text-4xl sm:text-6xl font-black tracking-tight">
-          Turn your{' '}
-          <span className="text-gradient">Creator Coin</span>
+          <span className="text-gradient">Earn Together</span>
           <br />
-          into a <span className="text-gradient">Vault Empire</span>
+          Creator Vaults
         </h1>
 
         <p className="text-surface-400 text-lg max-w-xl mx-auto">
-          One click to launch. Auto-compounding yield. Cross-chain liquidity.
-          Weekly jackpots for your community.
+          One click to launch. Creators & communities aligned.
+          Every trade builds the jackpot. Every buy is a chance to win.
         </p>
 
         <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-4">
@@ -98,6 +97,31 @@ export function Home() {
               Explore Vaults
             </motion.button>
           </Link>
+        </div>
+      </motion.section>
+
+      {/* Earn Together Explainer */}
+      <motion.section
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ delay: 0.3 }}
+        className="glass-card p-6 sm:p-8 border-brand-500/30"
+      >
+        <div className="flex flex-col sm:flex-row items-center gap-6">
+          <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-brand-500 to-brand-600 flex items-center justify-center shrink-0">
+            <Heart className="w-10 h-10 text-white" />
+          </div>
+          <div className="text-center sm:text-left">
+            <h2 className="font-display text-xl font-bold mb-2">
+              What is "Earn Together"?
+            </h2>
+            <p className="text-surface-400">
+              Traditional creator tokens pit communities against each other. CreatorVault flips the script:
+              <span className="text-white font-medium"> 6.9% of every trade</span> goes to a shared jackpot pool.
+              <span className="text-brand-400 font-medium"> Every buy is a lottery entry</span>.
+              Winners are picked randomly via Chainlink VRF. Everyone has a fair shot.
+            </p>
+          </div>
         </div>
       </motion.section>
 
@@ -168,13 +192,13 @@ export function Home() {
               },
               {
                 step: 2,
-                title: 'Launch Auction',
-                desc: 'Your wrapped shares (wsToken) go live via CCA fair launch.',
+                title: 'Fair Launch via CCA',
+                desc: 'Your wrapped shares (wsToken) go live via Continuous Clearing Auction. No sniping.',
               },
               {
                 step: 3,
-                title: 'Community Grows',
-                desc: '6.9% sell tax funds weekly jackpots. Holders win, tokens burn.',
+                title: 'Earn Together',
+                desc: '6.9% trade fee on buys AND sells. Every buy = VRF lottery entry. Random winners!',
               },
             ].map((step) => (
               <motion.div
@@ -197,6 +221,33 @@ export function Home() {
         </div>
       </motion.section>
 
+      {/* Buy-To-Win Explainer */}
+      <motion.section
+        initial={{ opacity: 0 }}
+        whileInView={{ opacity: 1 }}
+        viewport={{ once: true }}
+        className="glass-card p-6 border-yellow-500/30 bg-yellow-500/5"
+      >
+        <h3 className="font-semibold text-lg flex items-center gap-2 mb-4">
+          <Sparkles className="w-5 h-5 text-yellow-500" />
+          Buy-To-Win: How the Lottery Works
+        </h3>
+        <div className="grid sm:grid-cols-3 gap-4 text-sm">
+          <div>
+            <p className="text-yellow-400 font-medium mb-1">🎫 Entry</p>
+            <p className="text-surface-400">Every wsToken <span className="text-white">BUY</span> automatically enters you into the jackpot draw.</p>
+          </div>
+          <div>
+            <p className="text-yellow-400 font-medium mb-1">🎲 Random Draw</p>
+            <p className="text-surface-400">Chainlink VRF v2.5 picks winners at random intervals. Fair & verifiable.</p>
+          </div>
+          <div>
+            <p className="text-yellow-400 font-medium mb-1">💰 Distribution</p>
+            <p className="text-surface-400">90% to winner, 5% burned forever, 5% to protocol.</p>
+          </div>
+        </div>
+      </motion.section>
+
       {/* CTA */}
       <motion.section
         initial={{ opacity: 0, y: 20 }}
@@ -206,7 +257,7 @@ export function Home() {
       >
         <div className="absolute inset-0 bg-gradient-to-r from-brand-500/10 via-transparent to-brand-500/10" />
         <h2 className="font-display text-2xl font-bold relative">
-          Ready to launch?
+          Ready to Earn Together?
         </h2>
         <p className="text-surface-400 relative">
           Be the next creator to unlock omnichain yield.
@@ -225,4 +276,3 @@ export function Home() {
     </div>
   )
 }
-
