@@ -2,8 +2,28 @@ export { Layout } from './Layout'
 export { ConnectButton } from './ConnectButton'
 export { TokenImage } from './TokenImage'
 
-// Base-inspired components
-export { TechScramble, ScrambleHeadline } from './TechScramble'
+// Base Motion System (https://www.base.org/brand/motion)
+export {
+  TechScramble,
+  SquareWipe,
+  SlideUp,
+  FadeIn,
+  ScaleIn,
+  Stagger,
+  StaggerItem,
+  HoverScale,
+  BaseSquare,
+  PageTransition,
+  BASE_EASE,
+  DURATION,
+  baseTransition,
+  pageTransition,
+} from './BaseMotion'
+
+// Legacy scramble exports (use BaseMotion instead)
+export { ScrambleHeadline } from './TechScramble'
+
+// Base UI components
 export { BaseStep, BaseStepList, StepIndicator } from './BaseStep'
 export { FeatureCard, FeatureGrid, CommandDisplay, HighlightCard } from './FeatureCard'
 
