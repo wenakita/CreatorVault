@@ -36,7 +36,7 @@ import {IStrategy} from "../interfaces/strategies/IStrategy.sol";
  *      - _creatorCoin: Creator Coin address
  *      - _owner: deployer
  *      - _name: Vault name (e.g., "Creator OVault - AKITA")
- *      - _symbol: Vault symbol (e.g., "vAKITA")
+ *      - _symbol: Vault symbol (e.g., "sAKITA")
  */
 contract CreatorOVault is ERC4626, Ownable, ReentrancyGuard {
     using SafeERC20 for IERC20;
@@ -402,7 +402,7 @@ contract CreatorOVault is ERC4626, Ownable, ReentrancyGuard {
      * @param _creatorCoin Creator Coin address
      * @param _owner Owner address
      * @param _name Vault name (e.g., "Creator OVault - AKITA")
-     * @param _symbol Vault symbol (e.g., "cvAKITA")
+     * @param _symbol Vault symbol (e.g., "sAKITA")
      */
     constructor(
         address _creatorCoin,

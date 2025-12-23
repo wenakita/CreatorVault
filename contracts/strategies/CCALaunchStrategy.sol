@@ -78,7 +78,7 @@ interface IContinuousClearingAuction {
  * @notice Fair launch strategy using Uniswap's Continuous Clearing Auction
  * 
  * @dev USE CASES:
- *      1. Initial stkmaakita token launch - fair price discovery
+ *      1. Initial wsAKITA token launch - fair price discovery
  *      2. Creator token fundraise - no sniping, early participants rewarded
  *      3. Periodic fee auctions - sell accumulated fees fairly
  * 
@@ -111,7 +111,7 @@ contract CCALaunchStrategy is Ownable, ReentrancyGuard {
     // STATE
     // ================================
 
-    /// @notice Token being auctioned (e.g., stkmaakita)
+    /// @notice Token being auctioned (e.g., wsAKITA)
     IERC20 public immutable auctionToken;
     
     /// @notice Currency to raise (address(0) for ETH)
@@ -205,7 +205,7 @@ contract CCALaunchStrategy is Ownable, ReentrancyGuard {
 
     /**
      * @notice Create CCA launch strategy
-     * @param _auctionToken Token to auction (e.g., stkmaakita)
+     * @param _auctionToken Token to auction (e.g., wsAKITA)
      * @param _currency Currency to raise (address(0) for ETH, or USDC/WETH)
      * @param _fundsRecipient Where to send raised funds
      * @param _tokensRecipient Where to send unsold tokens
@@ -324,6 +324,8 @@ contract CCALaunchStrategy is Ownable, ReentrancyGuard {
     /**
      * @notice Sweep raised currency after auction graduates
      * @dev Also configures the oracle with the V4 pool if oracle is set
+     *      NOTE: Tax hook configuration must be done separately by token owner
+     *      (see getTaxHookCalldata() for the exact call to make)
      */
     function sweepCurrency() external nonReentrant {
         if (currentAuction == address(0)) revert NoActiveAuction();
@@ -343,10 +345,10 @@ contract CCALaunchStrategy is Ownable, ReentrancyGuard {
             _configureOracleV4Pool();
         }
         
-        // Configure tax hook for 6.9% fee on the wsToken
-        if (taxHook != address(0) && feeRecipient != address(0)) {
-            _configureTaxHook();
-        }
+        // NOTE: Tax hook must be configured separately by token owner!
+        // The SimpleSellTaxHook at 0xca975B9dAF772C71161f3648437c3616E5Be0088
+        // requires msg.sender == token.owner() to call setTaxConfig.
+        // Use getTaxHookCalldata() to get the exact calldata for ERC-4337 batching.
         
         emit AuctionGraduated(currentAuction, raised, finalPrice);
         emit FundsSwept(currentAuction, raised);
@@ -395,19 +397,16 @@ contract CCALaunchStrategy is Ownable, ReentrancyGuard {
     }
     
     /**
-     * @notice Configure tax hook for 6.9% fee on wsToken trades
-     * @dev Sets up the hook to collect fees and send to GaugeController
+     * @notice Get the calldata for configuring the tax hook
+     * @dev Returns the exact bytes to call on the tax hook (for ERC-4337 batching)
+     *      Token owner must call: taxHook.call(getTaxHookCalldata())
+     * @return target The tax hook address to call
+     * @return data The calldata for setTaxConfig
      */
-    function _configureTaxHook() internal {
-        // Configure the tax hook:
-        // - token: wsToken being traded (auctionToken)
-        // - counterAsset: ETH (address(0))
-        // - recipient: GaugeController (feeRecipient)
-        // - taxRate: 6.9% (690 bps)
-        // - counterIsEth: true
-        // - enabled: true
-        // - lock: false (allow future changes)
-        ITaxHook(taxHook).setTaxConfig(
+    function getTaxHookCalldata() external view returns (address target, bytes memory data) {
+        target = taxHook;
+        data = abi.encodeWithSelector(
+            ITaxHook.setTaxConfig.selector,
             address(auctionToken),  // The wsToken
             currency,               // Counter asset (address(0) for ETH)
             feeRecipient,           // GaugeController receives fees
@@ -416,8 +415,39 @@ contract CCALaunchStrategy is Ownable, ReentrancyGuard {
             true,                   // enabled
             false                   // don't lock (allow changes)
         );
+    }
+    
+    /**
+     * @notice Get all calldata needed for "Click 2" (complete auction + configure hook)
+     * @dev Returns array of calls for ERC-4337 batching:
+     *      1. sweepCurrency() on this strategy
+     *      2. setTaxConfig() on the tax hook (requires token owner)
+     * @return targets Array of addresses to call
+     * @return calldatas Array of calldata for each call
+     */
+    function getCompleteAuctionCalldata() external view returns (
+        address[] memory targets,
+        bytes[] memory calldatas
+    ) {
+        targets = new address[](2);
+        calldatas = new bytes[](2);
         
-        emit TaxHookConfigured(address(auctionToken), feeRecipient, taxRateBps);
+        // Call 1: sweepCurrency on this strategy
+        targets[0] = address(this);
+        calldatas[0] = abi.encodeWithSelector(this.sweepCurrency.selector);
+        
+        // Call 2: setTaxConfig on the tax hook
+        targets[1] = taxHook;
+        calldatas[1] = abi.encodeWithSelector(
+            ITaxHook.setTaxConfig.selector,
+            address(auctionToken),
+            currency,
+            feeRecipient,
+            taxRateBps,
+            currency == address(0),
+            true,
+            false
+        );
     }
     
     /**
@@ -427,15 +457,6 @@ contract CCALaunchStrategy is Ownable, ReentrancyGuard {
         if (oracle == address(0)) revert ZeroAddress();
         if (address(poolManager) == address(0)) revert ZeroAddress();
         _configureOracleV4Pool();
-    }
-    
-    /**
-     * @notice Manually configure tax hook (if not done on graduation)
-     */
-    function configureTaxHook() external onlyOwner {
-        if (taxHook == address(0)) revert ZeroAddress();
-        if (feeRecipient == address(0)) revert ZeroAddress();
-        _configureTaxHook();
     }
 
     /**

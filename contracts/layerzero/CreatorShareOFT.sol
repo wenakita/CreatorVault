@@ -23,6 +23,23 @@ interface ICreatorGaugeController {
 }
 
 /**
+ * @title ISimpleSellTaxHook
+ * @notice Interface for the V4 tax hook that requires token owner to configure
+ * @dev Hook at 0xca975B9dAF772C71161f3648437c3616E5Be0088 on Base
+ */
+interface ISimpleSellTaxHook {
+    function setTaxConfig(
+        address token_,
+        address counterAsset_,
+        address recipient_,
+        uint256 taxRate_,
+        bool counterIsEth,
+        bool enabled_,
+        bool lock_
+    ) external;
+}
+
+/**
  * @title CreatorShareOFT
  * @author 0xakita.eth (CreatorVault)
  * @notice OFT receipt token for CreatorOVault with buy fee and lottery integration
@@ -39,7 +56,7 @@ interface ICreatorGaugeController {
  *      - Sells and normal transfers = no fee
  * 
  * @dev PART OF CREATORTECH PLATFORM:
- *      Each creator deploys their own ShareOFT (e.g., stkmaakita for akita vault)
+ *      Each creator deploys their own ShareOFT (e.g., wsAKITA for akita vault)
  */
 contract CreatorShareOFT is OFT, ReentrancyGuard {
     
@@ -90,6 +107,9 @@ contract CreatorShareOFT is OFT, ReentrancyGuard {
     /// @notice Minter permissions (for wrapper integration)
     mapping(address => bool) public isMinter;
     
+    /// @notice Tax config delegate (can call setTaxConfig on hooks on behalf of this token)
+    address public taxConfigDelegate;
+    
     // ================================
     // EVENTS
     // ================================
@@ -105,6 +125,8 @@ contract CreatorShareOFT is OFT, ReentrancyGuard {
     event GaugeControllerSet(address indexed controller);
     event BuyFeeUpdated(uint16 oldFee, uint16 newFee);
     event MinterUpdated(address indexed minter, bool status);
+    event TaxConfigDelegateSet(address indexed delegate);
+    event TaxHookConfigured(address indexed hook, address recipient, uint256 taxRate);
     
     // ================================
     // ERRORS
@@ -259,7 +281,7 @@ contract CreatorShareOFT is OFT, ReentrancyGuard {
      * @dev Process buy with fees. Follows CEI pattern.
      * 
      * @notice FEE FLOW - THE SOCIAL-FI ENGINE:
-     *         1. Fee is collected in OFT tokens (stkmaakita)
+     *         1. Fee is collected in OFT tokens (wsAKITA)
      *         2. Sent to GaugeController via receiveFees()
      *         3. GaugeController distributes:
      *            - 50% burned → increases PPS for all vault holders
@@ -399,6 +421,42 @@ contract CreatorShareOFT is OFT, ReentrancyGuard {
      */
     function setLotteryEnabled(bool _enabled) external onlyOwner {
         lotteryEnabled = _enabled;
+    }
+    
+    /**
+     * @notice Set the tax config delegate (for future custom hooks)
+     * @dev NOTE: The existing SimpleSellTaxHook at 0xca975B9dAF772C71161f3648437c3616E5Be0088
+     *      checks msg.sender == token.owner(), so ONLY the wsToken owner can configure it.
+     *      This delegate feature is for future hooks that accept delegated configuration.
+     * @param _delegate Address that can call configureTaxHook on behalf of this token
+     */
+    function setTaxConfigDelegate(address _delegate) external onlyOwner {
+        taxConfigDelegate = _delegate;
+        emit TaxConfigDelegateSet(_delegate);
+    }
+    
+    /**
+     * @notice Get tax hook configuration data for the owner to call directly
+     * @dev Since the SimpleSellTaxHook requires msg.sender == token.owner(),
+     *      this helper returns the exact parameters for the owner to call.
+     * 
+     * @param counterAsset Counter asset (address(0) for ETH)
+     * @return token The token address (this contract)
+     * @return recipient The GaugeController address
+     * @return counterIsEth Whether counter asset is ETH
+     */
+    function getTaxHookParams(
+        address counterAsset
+    ) external view returns (
+        address token,
+        address recipient,
+        bool counterIsEth
+    ) {
+        return (
+            address(this),
+            gaugeController != address(0) ? gaugeController : owner(),
+            counterAsset == address(0)
+        );
     }
 
     // ================================

@@ -81,7 +81,7 @@ contract CreatorOVaultWrapper is Ownable, ReentrancyGuard {
     // MUTABLE STATE
     // ================================
     
-    /// @notice ShareOFT token (e.g., stkmaakita) - set post-deploy
+    /// @notice ShareOFT token (e.g., wsAKITA) - set post-deploy
     IMintableBurnableOFT public shareOFT;
     
     /// @notice Tracking for wrap/unwrap accounting
@@ -167,7 +167,7 @@ contract CreatorOVaultWrapper is Ownable, ReentrancyGuard {
     
     /**
      * @notice Set the chain-specific ShareOFT (called after deploy)
-     * @param _shareOFT CreatorShareOFT address (e.g., stkmaakita)
+     * @param _shareOFT CreatorShareOFT address (e.g., wsAKITA)
      */
     function setShareOFT(address _shareOFT) external onlyOwner {
         if (_shareOFT == address(0)) revert ZeroAddress();
@@ -207,7 +207,7 @@ contract CreatorOVaultWrapper is Ownable, ReentrancyGuard {
     /**
      * @notice Deposit Creator Coin and receive ShareOFT in ONE transaction
      * 
-     * @dev USER SEES: akita → stkmaakita
+     * @dev USER SEES: akita → wsAKITA
      * 
      * @dev INTERNAL FLOW:
      *      1. Take Creator Coin from user
@@ -258,7 +258,7 @@ contract CreatorOVaultWrapper is Ownable, ReentrancyGuard {
     /**
      * @notice Withdraw ShareOFT and receive Creator Coin in ONE transaction
      * 
-     * @dev USER SEES: stkmaakita → akita
+     * @dev USER SEES: wsAKITA → akita
      * 
      * @dev INTERNAL FLOW:
      *      1. Burn ShareOFT from user
@@ -309,7 +309,7 @@ contract CreatorOVaultWrapper is Ownable, ReentrancyGuard {
     
     /**
      * @notice Wrap vault shares → ShareOFT tokens
-     * @dev For advanced users who already have vault shares (akitaOV)
+     * @dev For advanced users who already have vault shares (sAKITA)
      * @param amount Amount of vault shares to wrap
      * @return amountOut Amount of ShareOFT tokens minted
      */
@@ -326,7 +326,7 @@ contract CreatorOVaultWrapper is Ownable, ReentrancyGuard {
     
     /**
      * @notice Unwrap ShareOFT tokens → vault shares
-     * @dev For advanced users who want vault shares (akitaOV) directly
+     * @dev For advanced users who want vault shares (sAKITA) directly
      * @param amount Amount of ShareOFT tokens to unwrap
      * @return amountOut Amount of vault shares released
      */
@@ -449,14 +449,14 @@ contract CreatorOVaultWrapper is Ownable, ReentrancyGuard {
     }
     
     /**
-     * @notice Preview wrap output (vault shares → ShareOFT)
+     * @notice Preview wrap output (vaultShares → ShareOFT)
      */
     function previewWrap(uint256 amount, address user) external view returns (uint256) {
         return _previewWrap(amount, user);
     }
     
     /**
-     * @notice Preview unwrap output (ShareOFT → vault shares)
+     * @notice Preview unwrap output (ShareOFT → vaultShares)
      */
     function previewUnwrap(uint256 amount, address user) external view returns (uint256) {
         return _previewUnwrap(amount, user);

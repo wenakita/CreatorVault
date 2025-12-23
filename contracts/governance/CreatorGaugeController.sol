@@ -115,7 +115,7 @@ contract CreatorGaugeController is Ownable, ReentrancyGuard {
     // STATE
     // ================================
     
-    /// @notice The ShareOFT token (e.g., stkmaakita) - what we receive as fees
+    /// @notice The ShareOFT token (e.g., wsAKITA) - what we receive as fees
     IERC20 public immutable shareOFT;
     
     /// @notice The underlying Creator Coin (e.g., akita)
@@ -124,7 +124,7 @@ contract CreatorGaugeController is Ownable, ReentrancyGuard {
     /// @notice The wrapper to unwrap OFT → vault shares
     ICreatorOVaultWrapper public wrapper;
     
-    /// @notice The ERC-4626 vault (e.g., akitaOV)
+    /// @notice The ERC-4626 vault (e.g., sAKITA)
     ICreatorOVault public vault;
     
     /// @notice Vault shares token (same as vault address, but as IERC20)
@@ -295,7 +295,7 @@ contract CreatorGaugeController is Ownable, ReentrancyGuard {
     /**
      * @notice Receive fees from CreatorShareOFT buy transactions
      * @dev Called by ShareOFT when buy fees are collected
-     *      Fees arrive as OFT tokens (e.g., stkmaakita)
+     *      Fees arrive as OFT tokens (e.g., wsAKITA)
      * @param amount Amount of OFT tokens received
      */
     function receiveFees(uint256 amount) external nonReentrant {
@@ -334,7 +334,7 @@ contract CreatorGaugeController is Ownable, ReentrancyGuard {
     
     /**
      * @notice Receive WETH fees from the V4 Tax Hook
-     * @dev Called when swaps happen on the stkmaakita/ETH pool with tax hook
+     * @dev Called when swaps happen on the wsAKITA/ETH pool with tax hook
      *      The tax hook sends WETH here, which we convert to vault shares
      * @param amount Amount of WETH received
      */

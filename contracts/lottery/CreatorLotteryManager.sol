@@ -13,7 +13,7 @@ pragma solidity ^0.8.20;
  * @dev LOTTERY MECHANICS:
  *      1. User trades wsAKITA → lottery entry created
  *      2. Win probability scales with trade size ($1 = base, $1000 = max)
- *      3. vAKITA holders get boosted win chances
+ *      3. sAKITA holders get boosted win chances
  *      4. Winners receive % of jackpot (stored in GaugeController)
  *      5. Winners are broadcast to ALL chains via LayerZero
  * 

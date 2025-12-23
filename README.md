@@ -43,9 +43,9 @@ graph TB
 
     subgraph AkitaVault["🐕 AKITA VAULT ECOSYSTEM"]
         Token["<b>akita</b><br/>Creator Coin"]
-        Vault["<b>CreatorOVault</b><br/>akita Omnichain Vault<br/>(akitaOV)"]
+        Vault["<b>CreatorOVault</b><br/>akita Omnichain Vault<br/>(sAKITA)"]
         Wrapper["<b>CreatorOVaultWrapper</b><br/>Wrap/Unwrap"]
-        OFT["<b>CreatorShareOFT</b><br/>akita Share Token<br/>(stkmaakita)"]
+        OFT["<b>CreatorShareOFT</b><br/>akita Share Token<br/>(wsAKITA)"]
     end
 
     subgraph Strategies["📊 YIELD STRATEGIES"]
@@ -92,11 +92,11 @@ graph TB
 ## Token Flow
 
 ```
-Creator Coin (akita) → Deposit → CreatorOVault (akitaOV shares)
+Creator Coin (akita) → Deposit → CreatorOVault (sAKITA shares)
                                        ↓
                               CreatorOVaultWrapper
                                        ↓
-                              CreatorShareOFT (stkmaakita)
+                              CreatorShareOFT (wsAKITA)
                                        ↓
                               Bridge to any chain via LayerZero
 ```
@@ -189,9 +189,9 @@ ERC-4626 compliant vault for Creator Coins with:
 (vault, wrapper, shareOFT) = factory.deployCreatorVault(
     0x5b67...75,                    // akita token
     "akita Omnichain Vault",        // vault name
-    "akitaOV",                      // vault symbol
+    "sAKITA",                      // vault symbol
     "akita Share Token",            // OFT name
-    "stkmaakita",                   // OFT symbol
+    "wsAKITA",                   // OFT symbol
     "base",                         // chain prefix
     msg.sender                      // creator address
 );
@@ -289,9 +289,9 @@ The first Creator Coin to use CreatorVault:
 | **DEX Pair** | akita/ZORA |
 | **Fee Tier** | 3% (Uniswap V4) |
 | **Vault Name** | akita Omnichain Vault |
-| **Vault Symbol** | akitaOV |
+| **Vault Symbol** | sAKITA |
 | **OFT Name** | akita Share Token |
-| **OFT Symbol** | stkmaakita |
+| **OFT Symbol** | wsAKITA |
 
 ## Security Features
 

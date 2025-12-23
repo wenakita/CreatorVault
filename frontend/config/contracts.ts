@@ -53,14 +53,14 @@ export const AKITA_CONFIG = {
   vault: {
     address: '' as `0x${string}`, // TBD after deployment
     name: 'akita Omnichain Vault',
-    symbol: 'akitaOV',
+    symbol: 'sAKITA',
   },
   
   // ShareOFT (CreatorShareOFT)
   shareOFT: {
     address: '' as `0x${string}`, // TBD after deployment
     name: 'akita Share Token',
-    symbol: 'stkmaakita',
+    symbol: 'wsAKITA',
   },
   
   // Wrapper (CreatorOVaultWrapper)
@@ -79,7 +79,7 @@ export const AKITA_CONFIG = {
   // Creator
   creator: {
     address: '' as `0x${string}`, // Creator's address
-    twitter: '@stkmaakita',
+    twitter: '@wsAKITA',
   },
 };
 

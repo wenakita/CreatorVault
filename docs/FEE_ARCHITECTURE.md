@@ -200,7 +200,7 @@ Instead of building custom hooks (which need allowlist approval), we use:
 | Token Type | Name Format | Symbol Format | Example |
 |------------|-------------|---------------|---------|
 | **Creator Coin** | (original) | (original) | akita |
-| **Vault Share** | `{SYMBOL} Vault` | `v{SYMBOL}` | AKITA Vault / vAKITA |
+| **Vault Share** | `{SYMBOL} Vault` | `v{SYMBOL}` | AKITA Vault / sAKITA |
 | **Wrapped Share** | `Wrapped {SYMBOL} Share` | `ws{SYMBOL}` | Wrapped AKITA Share / wsAKITA |
 
 ### Token Flow
@@ -208,7 +208,7 @@ Instead of building custom hooks (which need allowlist approval), we use:
 akita (Creator Coin)
     │
     ▼ deposit
-vAKITA (Vault Share) ← Stays on-chain, earns yield via strategies
+sAKITA (Vault Share) ← Stays on-chain, earns yield via strategies
     │
     ▼ wrap
 wsAKITA (Wrapped Share) ← Cross-chain via LayerZero, trades on DEXes
@@ -234,7 +234,7 @@ wsAKITA (Wrapped Share) ← Cross-chain via LayerZero, trades on DEXes
 ├─────────────────────────────────────────────────────────────────────┤
 │                                                                     │
 │  1. Factory deploys all contracts:                                 │
-│     - CreatorOVault (akitaOV)                                        │
+│     - CreatorOVault (sAKITA)                                        │
 │     - CreatorOVaultWrapper (user-facing: deposit/withdraw)         │
 │     - CreatorShareOFT (wsAKITA)                                 │
 │     - CreatorGaugeController                                       │
@@ -336,7 +336,7 @@ strategy.sweepUnsoldTokens();  // Remaining tokens to creator
 |----------|---------|---------|
 | akita (Creator Coin) | `0x5b674196812451b7cec024fe9d22d2c0b172fa75` | Base |
 | wsAKITA (ShareOFT) | TBD (via Factory) | Base |
-| CreatorOVault (akitaOV) | TBD (via Factory) | Base |
+| CreatorOVault (sAKITA) | TBD (via Factory) | Base |
 | CreatorOVaultWrapper | TBD (via Factory) | Base |
 | CCALaunchStrategy | TBD (via Factory) | Base |
 | CreatorGaugeController | TBD (via Factory) | Base |

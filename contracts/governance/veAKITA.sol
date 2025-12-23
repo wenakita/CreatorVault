@@ -18,7 +18,7 @@ pragma solidity ^0.8.20;
  * │                                                                     │
  * │  Creator A (Bob):   BOB → vBOB → wsBOB   (uses veAKITA for boost)  │
  * │  Creator B (Alice): ALICE → vALICE → wsALICE (uses veAKITA for boost)│
- * │  Creator C (You):   AKITA → vAKITA → wsAKITA → veAKITA             │
+ * │  Creator C (You):   AKITA → sAKITA → wsAKITA → veAKITA             │
  * └─────────────────────────────────────────────────────────────────────┘
  *
  * WHY AKITA AS PROTOCOL TOKEN:
@@ -168,7 +168,7 @@ contract veAKITA is IveAKITA, Ownable, ERC20, ERC20Permit, ERC20Votes, Reentranc
     /// @notice Wrapped ShareOFT token (e.g., wsAKITA)
     address public immutable wrappedShareOFT;
 
-    /// @notice Vault shares token (e.g., vAKITA) - alternative lock token
+    /// @notice Vault shares token (e.g., sAKITA) - alternative lock token
     address public vaultShares;
 
     /// @notice Vault for calculating underlying value
@@ -217,7 +217,7 @@ contract veAKITA is IveAKITA, Ownable, ERC20, ERC20Permit, ERC20Votes, Reentranc
     // ================================
 
     /**
-     * @notice Lock wrapped shares (wsAKITA) or vault shares (vAKITA) to receive voting power
+     * @notice Lock wrapped shares (wsAKITA) or vault shares (sAKITA) to receive voting power
      * @param _token Token to lock (wrappedShareOFT or vaultShares)
      * @param amount Amount to lock
      * @param duration Lock duration in seconds

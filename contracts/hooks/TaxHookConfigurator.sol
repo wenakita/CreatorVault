@@ -9,7 +9,7 @@ pragma solidity ^0.8.20;
  * @dev EXISTING TAX HOOK:
  *      Address: 0xca975B9dAF772C71161f3648437c3616E5Be0088 (Base)
  *      This hook is already deployed and approved on Uniswap V4!
- *      We just need to configure it for our stkmaakita/ETH pool.
+ *      We just need to configure it for our wsAKITA/ETH pool.
  * 
  * @dev CONFIGURATION:
  *      - Set 6.9% (690 bps) fee on swaps
