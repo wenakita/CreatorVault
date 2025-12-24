@@ -1,4 +1,25 @@
-import { useState } from 'react'
+/**
+ * TokenImage Component - Optimized for Performance
+ * 
+ * RENDERING STRATEGY:
+ * - Regular tokens: Fetch from IPFS/URL, display directly
+ * - wsTokens: On-the-fly CSS transformation (no database storage)
+ * 
+ * CACHING:
+ * - Browser automatically caches image assets (HTTP cache)
+ * - React.memo prevents unnecessary component re-renders
+ * - useMemo prevents expensive re-computations
+ * - loading="lazy" for offscreen images
+ * 
+ * WHY CSS-BASED (not pre-generated):
+ * ✅ Works for any new token instantly
+ * ✅ Zero storage costs
+ * ✅ Always synced with original token logo
+ * ✅ Simple to maintain
+ * ✅ Onchain-friendly (client-side rendering)
+ */
+
+import { useState, useMemo, memo } from 'react'
 import { useTokenMetadata } from '../hooks/useTokenMetadata'
 
 interface TokenImageProps {
@@ -17,7 +38,14 @@ const sizeClasses = {
   xl: 'w-16 h-16 text-2xl',
 }
 
-export function TokenImage({
+/**
+ * TokenImage component with performance optimizations:
+ * - React.memo prevents unnecessary re-renders
+ * - useMemo for expensive computations
+ * - Browser caches images automatically
+ * - CSS-based wsToken rendering (no pre-generation needed)
+ */
+export const TokenImage = memo(function TokenImage({
   tokenAddress,
   symbol,
   size = 'md',
@@ -30,21 +58,29 @@ export function TokenImage({
 
   const sizeClass = sizeClasses[size]
 
-  // Show fallback if no image or loading or error
-  const tokenElement = (!imageUrl || imgError || isLoading) ? (
-    <div
-      className={`${sizeClass} rounded-xl bg-gradient-to-br ${fallbackColor} flex items-center justify-center font-display font-bold text-white`}
-    >
-      {symbol[0]?.toUpperCase() || '?'}
-    </div>
-  ) : (
-    <img
-      src={imageUrl}
-      alt={symbol}
-      className={`${sizeClass} rounded-xl object-cover`}
-      onError={() => setImgError(true)}
-    />
-  )
+  // Memoize token element to prevent re-rendering
+  const tokenElement = useMemo(() => {
+    // Show fallback if no image or loading or error
+    if (!imageUrl || imgError || isLoading) {
+      return (
+        <div
+          className={`${sizeClass} rounded-xl bg-gradient-to-br ${fallbackColor} flex items-center justify-center font-display font-bold text-white`}
+        >
+          {symbol[0]?.toUpperCase() || '?'}
+        </div>
+      )
+    }
+    
+    return (
+      <img
+        src={imageUrl}
+        alt={symbol}
+        className={`${sizeClass} rounded-xl object-cover`}
+        onError={() => setImgError(true)}
+        loading="lazy" // Browser-level lazy loading
+      />
+    )
+  }, [imageUrl, imgError, isLoading, sizeClass, fallbackColor, symbol])
 
   // If not wrapped, return the token element directly
   if (!isWrapped) {
@@ -67,6 +103,7 @@ export function TokenImage({
               alt={symbol}
               className="w-full h-full object-cover"
               onError={() => setImgError(true)}
+              loading="lazy"
             />
           )}
         </div>
@@ -147,4 +184,4 @@ export function TokenImage({
       </div>
     </div>
   )
-}
+})
