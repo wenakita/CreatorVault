@@ -129,27 +129,3 @@ export function Layout() {
   )
 }
 
-          {navItems.map(({ path, icon: Icon, label }) => {
-            const isActive = location.pathname === path
-            return (
-              <Link
-                key={path}
-                to={path}
-                className={`relative group p-3 rounded-xl transition-all ${
-                  isActive
-                    ? 'bg-[#0052FF]/15 text-[#0052FF]'
-                    : 'text-slate-500 hover:bg-white/[0.04] hover:text-white'
-                }`}
-              >
-                <Icon className="w-5 h-5" />
-                <span className="absolute left-full ml-3 px-2.5 py-1.5 rounded-lg bg-slate-800 border border-white/[0.06] text-white text-xs font-medium whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none shadow-lg">
-                  {label}
-                </span>
-              </Link>
-            )
-          })}
-        </div>
-      </nav>
-    </div>
-  )
-}

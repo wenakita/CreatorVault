@@ -1,0 +1,506 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Solana Bridge Adapter - Mercury Nexus</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;500;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --mercury-gradient: linear-gradient(135deg, #f0f0f0 0%, #a0a0a0 25%, #e0e0e0 50%, #707070 75%, #d0d0d0 100%);
+            --deep-void: #050505;
+            --base-blue: #0052FF;
+            --solana-green: #14F195;
+            --solana-purple: #9945FF;
+            --glass: rgba(255, 255, 255, 0.03);
+            --border-silver: rgba(255, 255, 255, 0.2);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background-color: var(--deep-void);
+            color: #fff;
+            font-family: 'Space Grotesk', sans-serif;
+            overflow-x: hidden;
+            min-height: 100vh;
+        }
+
+        .liquid-bg {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+            background: radial-gradient(circle at 50% 50%, #111 0%, #000 100%);
+            opacity: 0.8;
+        }
+
+        .mercury-orb {
+            position: absolute;
+            width: 600px;
+            height: 600px;
+            background: var(--mercury-gradient);
+            border-radius: 50%;
+            filter: blur(80px);
+            opacity: 0.15;
+            animation: float 20s infinite alternate ease-in-out;
+        }
+
+        @keyframes float {
+            0% { transform: translate(-10%, -10%) scale(1); }
+            100% { transform: translate(10%, 10%) scale(1.1); }
+        }
+
+        header {
+            padding: 40px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid var(--border-silver);
+            backdrop-filter: blur(10px);
+        }
+
+        .logo {
+            font-weight: 700;
+            letter-spacing: -1px;
+            font-size: 1.5rem;
+            text-transform: uppercase;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .logo-mark {
+            width: 32px;
+            height: 32px;
+            background: var(--mercury-gradient);
+            border-radius: 50%;
+            box-shadow: 0 0 20px rgba(255,255,255,0.2);
+        }
+
+        .status-pill {
+            padding: 6px 16px;
+            border-radius: 100px;
+            background: rgba(20, 241, 149, 0.1);
+            border: 1px solid var(--solana-green);
+            color: var(--solana-green);
+            font-family: 'Space Mono', monospace;
+            font-size: 0.8rem;
+            text-transform: uppercase;
+        }
+
+        main {
+            display: grid;
+            grid-template-columns: 1fr 2px 1fr;
+            min-height: calc(100vh - 120px);
+            max-width: 1600px;
+            margin: 0 auto;
+            position: relative;
+        }
+
+        .center-line {
+            background: linear-gradient(to bottom, transparent, var(--border-silver), transparent);
+            position: relative;
+        }
+
+        .nexus-core {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 80px;
+            height: 80px;
+            background: #fff;
+            border-radius: 50%;
+            z-index: 10;
+            box-shadow: 0 0 50px #fff;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            mix-blend-mode: difference;
+        }
+
+        .side {
+            padding: 80px 60px;
+            display: flex;
+            flex-direction: column;
+            gap: 40px;
+        }
+
+        .side-header {
+            margin-bottom: 20px;
+        }
+
+        .side-header h2 {
+            font-size: 3rem;
+            font-weight: 300;
+            margin-bottom: 8px;
+        }
+
+        .network-tag {
+            font-family: 'Space Mono', monospace;
+            text-transform: uppercase;
+            font-size: 0.9rem;
+            opacity: 0.6;
+            letter-spacing: 2px;
+        }
+
+        .card {
+            background: var(--glass);
+            border: 1px solid var(--border-silver);
+            border-radius: 24px;
+            padding: 32px;
+            transition: all 0.4s cubic-bezier(0.165, 0.84, 0.44, 1);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .card:hover {
+            background: rgba(255, 255, 255, 0.05);
+            border-color: rgba(255, 255, 255, 0.4);
+            transform: translateY(-5px);
+        }
+
+        .card::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: linear-gradient(45deg, transparent 0%, rgba(255,255,255,0.05) 50%, transparent 100%);
+            transform: translateX(-100%);
+            transition: 0.6s;
+        }
+
+        .card:hover::before {
+            transform: translateX(100%);
+        }
+
+        h3 {
+            font-size: 1.25rem;
+            margin-bottom: 24px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .input-group {
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            font-family: 'Space Mono', monospace;
+            font-size: 0.75rem;
+            margin-bottom: 8px;
+            opacity: 0.5;
+            text-transform: uppercase;
+        }
+
+        input {
+            width: 100%;
+            background: rgba(0,0,0,0.3);
+            border: 1px solid var(--border-silver);
+            border-radius: 12px;
+            padding: 16px;
+            color: #fff;
+            font-family: 'Space Mono', monospace;
+            font-size: 1rem;
+            outline: none;
+            transition: border-color 0.3s;
+        }
+
+        input:focus {
+            border-color: #fff;
+        }
+
+        .btn {
+            width: 100%;
+            padding: 20px;
+            border-radius: 12px;
+            border: none;
+            font-family: 'Space Grotesk', sans-serif;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            cursor: pointer;
+            transition: all 0.3s;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .btn-mercury {
+            background: #fff;
+            color: #000;
+        }
+
+        .btn-mercury:hover {
+            background: var(--mercury-gradient);
+            box-shadow: 0 0 30px rgba(255,255,255,0.3);
+            transform: scale(1.02);
+        }
+
+        .btn-outline {
+            background: transparent;
+            border: 1px solid var(--border-silver);
+            color: #fff;
+        }
+
+        .btn-outline:hover {
+            border-color: #fff;
+            background: rgba(255,255,255,0.05);
+        }
+
+        .twin-mapping {
+            background: linear-gradient(to right, rgba(0, 82, 255, 0.1), rgba(20, 241, 149, 0.1));
+            border: 1px dashed var(--border-silver);
+            border-radius: 16px;
+            padding: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-top: auto;
+        }
+
+        .address-box {
+            font-family: 'Space Mono', monospace;
+            font-size: 0.85rem;
+        }
+
+        .address-box span {
+            display: block;
+            opacity: 0.4;
+            font-size: 0.65rem;
+            margin-bottom: 4px;
+        }
+
+        .cca-stats {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+
+        .stat-item {
+            background: rgba(255,255,255,0.03);
+            padding: 16px;
+            border-radius: 12px;
+        }
+
+        .stat-val {
+            font-size: 1.25rem;
+            font-weight: 700;
+            color: var(--solana-green);
+        }
+
+        .stat-label {
+            font-size: 0.7rem;
+            opacity: 0.5;
+            text-transform: uppercase;
+            margin-top: 4px;
+        }
+
+        .lottery-badge {
+            position: absolute;
+            top: -10px;
+            right: 20px;
+            background: var(--solana-purple);
+            color: #fff;
+            padding: 4px 12px;
+            border-radius: 4px;
+            font-size: 0.7rem;
+            font-weight: 700;
+            z-index: 2;
+        }
+
+        @media (max-width: 1100px) {
+            main {
+                grid-template-columns: 1fr;
+            }
+            .center-line {
+                display: none;
+            }
+            .nexus-core {
+                display: none;
+            }
+        }
+
+        .reflection-effect {
+            position: relative;
+        }
+        
+        .reflection-effect::after {
+            content: '';
+            position: absolute;
+            bottom: -50px;
+            left: 0;
+            right: 0;
+            height: 100px;
+            background: linear-gradient(to top, transparent, rgba(255,255,255,0.05));
+            transform: scaleY(-1);
+            mask-image: linear-gradient(to bottom, rgba(0,0,0,0.3), transparent);
+            pointer-events: none;
+        }
+
+    </style>
+</head>
+<body>
+    <div class="liquid-bg"></div>
+    <div class="mercury-orb"></div>
+    
+    <header>
+        <div class="logo">
+            <div class="logo-mark"></div>
+            Mercury Nexus
+        </div>
+        <div style="display: flex; gap: 20px; align-items: center;">
+            <div class="status-pill">● Bridge Active</div>
+            <button class="btn btn-outline" style="padding: 10px 20px; width: auto; font-size: 0.8rem;">Connect Wallet</button>
+        </div>
+    </header>
+
+    <main>
+        <section class="side base">
+            <div class="side-header">
+                <span class="network-tag">Network: L2 Mainnet</span>
+                <h2>BASE</h2>
+            </div>
+
+            <div class="card reflection-effect">
+                <h3>Bridge to Solana</h3>
+                <div class="input-group">
+                    <label>Asset</label>
+                    <input type="text" value="wsCREATOR (0x412...)" readonly>
+                </div>
+                <div class="input-group">
+                    <label>Amount</label>
+                    <input type="number" placeholder="0.00">
+                </div>
+                <div class="input-group">
+                    <label>Destination Solana Wallet (Bytes32)</label>
+                    <input type="text" placeholder="Gv7Z... or Hex">
+                </div>
+                <button class="btn btn-mercury">Initiate Outbound Burn</button>
+            </div>
+
+            <div class="card">
+                <h3>Token Registry</h3>
+                <div style="display: flex; flex-direction: column; gap: 12px;">
+                    <div style="display: flex; justify-content: space-between; font-family: 'Space Mono'; font-size: 0.8rem;">
+                        <span style="opacity: 0.6">wsSOL</span>
+                        <span>0x3119...cf82</span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; font-family: 'Space Mono'; font-size: 0.8rem;">
+                        <span style="opacity: 0.6">wsCREATOR</span>
+                        <span>0x8922...f321</span>
+                    </div>
+                </div>
+                <button class="btn btn-outline" style="margin-top: 24px;">Register New Token</button>
+            </div>
+        </section>
+
+        <div class="center-line">
+            <div class="nexus-core">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M7 11L12 6L17 11M7 18L12 13L17 18"/>
+                </svg>
+            </div>
+        </div>
+
+        <section class="side solana">
+            <div class="side-header" style="text-align: right;">
+                <span class="network-tag">Network: SPL Native</span>
+                <h2>SOLANA</h2>
+            </div>
+
+            <div class="card reflection-effect">
+                <div class="lottery-badge">6.9% FEE HOOK ENABLED</div>
+                <h3>Jackpot Entry (Lottery)</h3>
+                <div class="input-group">
+                    <label>Spend Asset</label>
+                    <input type="text" value="SOL (via Twin Bridge)" readonly>
+                </div>
+                <div class="input-group">
+                    <label>Entry Amount (SOL)</label>
+                    <input type="number" placeholder="1.0">
+                </div>
+                <div class="input-group">
+                    <label>Min Output wsToken</label>
+                    <input type="text" placeholder="6,942.00">
+                </div>
+                <button class="btn btn-mercury" style="background: var(--solana-green); color: #000;">Buy & Enter Draw</button>
+            </div>
+
+            <div class="card">
+                <h3>CCA Auction Bid</h3>
+                <div class="cca-stats">
+                    <div class="stat-item">
+                        <div class="stat-val">Q96: 4.2</div>
+                        <div class="stat-label">Max Price</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-val">128.5k</div>
+                        <div class="stat-label">Total Bid Capacity</div>
+                    </div>
+                </div>
+                <div class="input-group">
+                    <label>Auction Address</label>
+                    <input type="text" placeholder="0xcca...">
+                </div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+                    <button class="btn btn-mercury">Submit Bid</button>
+                    <button class="btn btn-outline">Exit Bid</button>
+                </div>
+            </div>
+
+            <div class="twin-mapping">
+                <div class="address-box">
+                    <span>SOLANA PUBKEY</span>
+                    7xKX...v32R
+                </div>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="1.5">
+                    <path d="M5 12h14m-7-7l7 7-7 7"/>
+                </svg>
+                <div class="address-box" style="text-align: right;">
+                    <span>DETERMINISTIC TWIN (BASE)</span>
+                    0x3eff...5188
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <footer style="padding: 40px; border-top: 1px solid var(--border-silver); text-align: center; font-size: 0.8rem; opacity: 0.4; font-family: 'Space Mono', monospace;">
+        SOLANA-BRIDGE-ADAPTER V1.0.2 // TWIN CONTRACT ARCHITECTURE BY CREATORVAULT
+    </footer>
+
+    <script>
+        // Subtle Mouse Interaction for Mercury Orbs
+        document.addEventListener('mousemove', (e) => {
+            const orb = document.querySelector('.mercury-orb');
+            const x = (e.clientX / window.innerWidth - 0.5) * 40;
+            const y = (e.clientY / window.innerHeight - 0.5) * 40;
+            orb.style.transform = `translate(${x}px, ${y}px)`;
+        });
+
+        // Button Ripple Effect
+        const buttons = document.querySelectorAll('.btn');
+        buttons.forEach(btn => {
+            btn.addEventListener('click', function(e) {
+                let x = e.clientX - e.target.offsetLeft;
+                let y = e.clientY - e.target.offsetTop;
+                let ripples = document.createElement('span');
+                ripples.style.left = x + 'px';
+                ripples.style.top = y + 'px';
+                this.appendChild(ripples);
+                setTimeout(() => { ripples.remove() }, 1000);
+            });
+        });
+    </script>
+</body>
+</html>
