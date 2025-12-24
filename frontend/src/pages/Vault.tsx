@@ -12,6 +12,7 @@ import {
   Coins,
   Zap,
   Trophy,
+  Building2,
 } from 'lucide-react'
 import { AKITA } from '../config/contracts'
 import { ConnectButton } from '../components/ConnectButton'
@@ -425,25 +426,51 @@ export function Vault() {
       >
         <div className="flex items-center justify-between mb-6">
           <h3 className="font-semibold flex items-center gap-2">
-            <Trophy className="w-5 h-5 text-brand-500" />
-            Jackpot Distribution
+            <TrendingUp className="w-5 h-5 text-brand-500" />
+            Fee Distribution
           </h3>
           <span className="px-2 py-0.5 rounded-full bg-brand-500/10 text-brand-500 text-xs font-medium">
-            Chainlink VRF
+            6.9% per trade
           </span>
         </div>
 
         <LotteryDistributionChart jackpotAmount="0.1 ETH" />
 
-        <div className="mt-6 pt-4 border-t border-surface-800">
-          <div className="flex items-center gap-2 text-sm text-surface-400 mb-2">
-            <Zap className="w-4 h-4 text-brand-500" />
-            <span>How to enter</span>
+        <div className="mt-6 space-y-4">
+          {/* Distribution Breakdown */}
+          <div className="space-y-3">
+            <div className="flex items-center justify-between p-3 rounded-xl bg-purple-500/10 border border-purple-500/20">
+              <div className="flex items-center gap-2">
+                <Trophy className="w-4 h-4 text-purple-400" />
+                <span className="text-sm font-medium text-purple-300">Jackpot Pool</span>
+              </div>
+              <span className="text-white font-bold">69%</span>
+            </div>
+            <div className="flex items-center justify-between p-3 rounded-xl bg-orange-500/10 border border-orange-500/20">
+              <div className="flex items-center gap-2">
+                <Zap className="w-4 h-4 text-orange-400" />
+                <span className="text-sm font-medium text-orange-300">Burned</span>
+              </div>
+              <span className="text-white font-bold">21%</span>
+            </div>
+            <div className="flex items-center justify-between p-3 rounded-xl bg-blue-500/10 border border-blue-500/20">
+              <div className="flex items-center gap-2">
+                <Building2 className="w-4 h-4 text-blue-400" />
+                <span className="text-sm font-medium text-blue-300">Treasury</span>
+              </div>
+              <span className="text-white font-bold">10%</span>
+            </div>
           </div>
-          <p className="text-surface-300 text-sm">
-            Every <span className="text-white font-medium">BUY</span> of wsAKITA on Uniswap V4 = lottery entry.
-            6.9% trade fee (buys & sells) funds the pool.
-          </p>
+
+          {/* Explainer */}
+          <div className="pt-4 border-t border-surface-800 text-sm text-surface-400">
+            <p>
+              <span className="text-brand-400 font-medium">6.9%</span> fee on every buy & sell.
+              <span className="text-white"> 69%</span> funds jackpot,
+              <span className="text-white"> 21%</span> burned forever,
+              <span className="text-white"> 10%</span> to treasury.
+            </p>
+          </div>
         </div>
       </motion.div>
     </div>
