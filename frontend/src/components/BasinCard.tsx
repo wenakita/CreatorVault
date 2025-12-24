@@ -7,14 +7,12 @@ interface BasinCardProps {
   children: ReactNode
   tag?: string
   className?: string
-  accent?: 'cyan' | 'mint' | 'copper' | 'brand'
+  accent?: 'blue' | 'purple'
 }
 
 const accentColors = {
-  cyan: 'border-t-tension-cyan',
-  mint: 'border-t-magma-mint',
-  copper: 'border-t-copper-bright',
-  brand: 'border-t-brand-500',
+  blue: 'border-t-blue-500',
+  purple: 'border-t-purple-500',
 }
 
 export function BasinCard({ 
@@ -22,7 +20,7 @@ export function BasinCard({
   title, 
   children, 
   tag,
-  accent = 'mint',
+  accent = 'purple',
   className = '' 
 }: BasinCardProps) {
   return (
@@ -31,7 +29,7 @@ export function BasinCard({
         relative bg-basalt border border-basalt-light 
         ${accentColors[accent]} border-t-4
         overflow-hidden transition-all duration-300
-        hover:border-magma-mint/30 hover:-translate-y-1
+        hover:border-purple-500/30 hover:-translate-y-1
         shadow-void
         ${className}
       `}
@@ -53,8 +51,8 @@ export function BasinCard({
         {/* Label */}
         {label && (
           <div className="flex items-center gap-2 mb-3">
-            <div className="w-1.5 h-1.5 bg-magma-mint rounded-full" />
-            <span className="text-[11px] font-mono uppercase tracking-[0.3em] text-magma-mint/80">
+            <div className="w-1.5 h-1.5 bg-purple-500 rounded-full" />
+            <span className="text-[11px] font-mono uppercase tracking-[0.3em] text-purple-400">
               {label}
             </span>
           </div>
@@ -62,7 +60,7 @@ export function BasinCard({
 
         {/* Title */}
         <h2 className="flex items-center gap-4 text-2xl font-bold tracking-tight mb-6">
-          <span className="w-5 h-0.5 bg-magma-mint" />
+          <span className="w-5 h-0.5 bg-purple-500" />
           {title}
         </h2>
 

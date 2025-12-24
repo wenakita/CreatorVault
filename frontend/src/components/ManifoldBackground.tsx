@@ -2,24 +2,24 @@ import { motion } from 'framer-motion'
 
 interface ManifoldBackgroundProps {
   opacity?: number
-  variant?: 'default' | 'copper' | 'cyan'
+  variant?: 'default' | 'purple' | 'blue'
 }
 
 const gradients = {
   default: {
     id: 'grad-default',
-    start: '#00f2ff',
-    end: '#0044ff',
+    start: '#3B82F6',
+    end: '#A855F7',
   },
-  copper: {
-    id: 'grad-copper',
-    start: '#f59e0b',
-    end: '#4a3321',
+  purple: {
+    id: 'grad-purple',
+    start: '#A855F7',
+    end: '#7C3AED',
   },
-  cyan: {
-    id: 'grad-cyan',
-    start: '#06b6d4',
-    end: '#22d3ee',
+  blue: {
+    id: 'grad-blue',
+    start: '#3B82F6',
+    end: '#1D4ED8',
   },
 }
 

@@ -270,7 +270,7 @@ export function Vault() {
           label="Multi-Strategy Allocation"
           title="Vault Strategy Pipeline"
           tag="Post-Launch"
-          accent="cyan"
+          accent="blue"
         >
           <p className="text-slate-400 text-sm mb-6 leading-relaxed">
             When the creator deposits to the vault, funds are automatically allocated across multiple yield strategies:

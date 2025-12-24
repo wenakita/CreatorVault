@@ -225,7 +225,7 @@ export function AuctionBid() {
   return (
     <div className="relative space-y-6 py-6">
       {/* Manifold Background */}
-      <ManifoldBackground opacity={0.1} variant="cyan" />
+      <ManifoldBackground opacity={0.1} variant="blue" />
 
       {/* Wire Grid Overlay */}
       <div 
@@ -245,7 +245,7 @@ export function AuctionBid() {
         </Link>
         <div className="flex-1">
           <div className="flex items-center gap-2 text-xs text-slate-500 font-mono mb-1 uppercase tracking-[0.2em]">
-            <span className="inline-block w-2 h-2 rounded-full bg-blue-500 animate-pulse shadow-glow-cyan" />
+            <span className="inline-block w-2 h-2 rounded-full bg-blue-500 animate-pulse shadow-lg shadow-blue-500/50" />
             ACTIVE_AUCTION
           </div>
           <h1 className="text-4xl font-bold font-display tracking-tight bg-gradient-to-b from-white to-slate-400 bg-clip-text text-transparent">
@@ -390,7 +390,7 @@ export function AuctionBid() {
                     onClick={() => handlePresetClick(preset)}
                     className={`p-3 text-sm font-mono transition-all border ${
                       selectedPreset === preset.label
-                        ? 'bg-blue-500/10 text-blue-500 border-blue-500/30 shadow-glow-cyan'
+                        ? 'bg-blue-500/10 text-blue-500 border-blue-500/30 shadow-lg shadow-blue-500/20'
                         : 'bg-white/5 hover:bg-white/10 text-slate-300 border-white/10'
                     }`}
                   >

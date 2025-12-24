@@ -58,7 +58,7 @@ export function TechnicalMetric({
               className={`
                 ${sizes[size]} font-mono font-light tracking-tight
                 ${highlight 
-                  ? 'text-tension-cyan drop-shadow-[0_0_20px_rgba(0,242,255,0.4)]' 
+                  ? 'text-blue-400 drop-shadow-[0_0_20px_rgba(59,130,246,0.4)]' 
                   : 'text-white'
                 }
               `}

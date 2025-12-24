@@ -33,8 +33,8 @@ export function PriceDiscoveryChart({
             key={index}
             className={`flex-1 relative group cursor-pointer transition-all duration-300 ${
               isCurrent
-                ? 'bg-tension-cyan shadow-glow-cyan'
-                : 'bg-white/5 hover:bg-tension-cyan/20'
+                ? 'bg-blue-500 shadow-lg shadow-blue-500/20'
+                : 'bg-white/5 hover:bg-blue-500/20'
             }`}
             style={{ height: `${height}%` }}
             initial={{ height: 0, opacity: 0 }}
@@ -64,7 +64,7 @@ export function PriceDiscoveryChart({
       {/* Clearing price line */}
       {currentPrice !== undefined && (
         <motion.div 
-          className="absolute bottom-0 left-0 w-full h-px bg-tension-cyan/50"
+          className="absolute bottom-0 left-0 w-full h-px bg-blue-500/50"
           style={{ bottom: `${(currentIndex / chartData.length) * 100}%` }}
           initial={{ scaleX: 0 }}
           animate={{ scaleX: 1 }}

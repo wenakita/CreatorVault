@@ -108,7 +108,7 @@ function VaultPhaseCard({ ccaStrategy }: { ccaStrategy: string }) {
     return (
       <div className="relative p-4 bg-blue-500/5 border border-blue-500/30 overflow-hidden">
         {/* Animated pulse */}
-        <div className="absolute top-0 right-0 w-2 h-2 bg-blue-500 rounded-full animate-pulse shadow-glow-cyan" />
+        <div className="absolute top-0 right-0 w-2 h-2 bg-blue-500 rounded-full animate-pulse shadow-lg shadow-blue-500/50" />
         
         <div className="flex items-center gap-2 mb-2">
           <Zap className="w-4 h-4 text-blue-500" />

@@ -34,7 +34,7 @@ export function FlowVisualization({
             className={`
               bg-basalt-light px-6 py-4 border text-center font-mono text-sm
               ${node.highlight 
-                ? 'border-tension-cyan text-tension-cyan shadow-glow-cyan' 
+                ? 'border-blue-500 text-blue-400 shadow-lg shadow-blue-500/20' 
                 : 'border-basalt-light'
               }
             `}
