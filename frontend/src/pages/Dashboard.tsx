@@ -7,7 +7,6 @@ import {
   Users,
   Coins,
   ArrowUpRight,
-  ArrowRight,
   Sparkles,
   Gift,
   Clock,
