@@ -385,7 +385,7 @@ export function Home() {
                 num: '01', 
                 icon: Coins, 
                 title: 'Deposit', 
-                desc: 'Lock creator coins. Get vault tokens representing your share.',
+                desc: 'Deposit creator coins. Get vault tokens representing your share.',
                 color: 'from-blue-500/20 to-cyan-500/20',
                 iconBg: 'bg-blue-500/10',
                 iconColor: 'text-blue-400'
