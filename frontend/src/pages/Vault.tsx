@@ -30,6 +30,30 @@ const SHARE_OFT_ABI = [
   { name: 'totalSupply', type: 'function', inputs: [], outputs: [{ type: 'uint256' }], stateMutability: 'view' },
 ] as const
 
+// CCA Strategy ABI - for auction stats
+const CCA_STRATEGY_ABI = [
+  {
+    name: 'auctionStatus',
+    type: 'function',
+    inputs: [],
+    outputs: [
+      { name: 'isActive', type: 'bool' },
+      { name: 'isGraduated', type: 'bool' },
+      { name: 'bidCount', type: 'uint256' },
+      { name: 'tokensSold', type: 'uint256' },
+      { name: 'currencyRaised', type: 'uint256' },
+    ],
+    stateMutability: 'view',
+  },
+  {
+    name: 'tokenTarget',
+    type: 'function',
+    inputs: [],
+    outputs: [{ type: 'uint256' }],
+    stateMutability: 'view',
+  },
+] as const
+
 const tabs = ['Deposit', 'Withdraw'] as const
 type TabType = typeof tabs[number]
 
@@ -67,6 +91,23 @@ export function Vault() {
     abi: SHARE_OFT_ABI,
     functionName: 'totalSupply',
   })
+
+  // Read CCA auction data
+  const ccaStrategy = AKITA.ccaStrategy
+
+  const { data: auctionStatus } = useReadContract({
+    address: ccaStrategy as `0x${string}`,
+    abi: CCA_STRATEGY_ABI,
+    functionName: 'auctionStatus',
+  })
+
+  const { data: tokenTarget } = useReadContract({
+    address: ccaStrategy as `0x${string}`,
+    abi: CCA_STRATEGY_ABI,
+    functionName: 'tokenTarget',
+  })
+
+  const currencyRaised = auctionStatus?.[4] || 0n
 
   // Check AKITA allowance for wrapper
   const { data: tokenAllowance } = useReadContract({
@@ -433,16 +474,20 @@ export function Vault() {
           <p className="text-slate-400 text-lg">Get AKITA before anyone else</p>
         </div>
 
-        {/* Simple Stats */}
+        {/* Real Auction Stats */}
         <div className="flex items-center justify-center gap-8">
           <div className="text-center">
-            <p className="text-3xl font-bold text-white">12</p>
-            <p className="text-sm text-slate-400">people bidding</p>
+            <p className="text-3xl font-bold text-white">
+              {formatUnits(currencyRaised, 18)}
+            </p>
+            <p className="text-sm text-slate-400">ETH invested</p>
           </div>
           <div className="w-px h-12 bg-white/10" />
           <div className="text-center">
-            <p className="text-3xl font-bold text-brand-400">0.124 ETH</p>
-            <p className="text-sm text-slate-400">invested so far</p>
+            <p className="text-3xl font-bold text-brand-400">
+              {tokenTarget ? (Number(formatUnits(tokenTarget, 18)) / 1000000).toFixed(1) : '0'}M
+            </p>
+            <p className="text-sm text-slate-400">AKITA available</p>
           </div>
         </div>
 

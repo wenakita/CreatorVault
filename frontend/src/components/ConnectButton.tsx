@@ -1,14 +1,30 @@
-import { useAccount, useConnect, useDisconnect } from 'wagmi'
+import { useAccount, useConnect, useDisconnect, useSwitchChain } from 'wagmi'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Wallet, ChevronDown, LogOut, Copy, ExternalLink, Check } from 'lucide-react'
-import { useState } from 'react'
+import { Wallet, ChevronDown, LogOut, Copy, ExternalLink, Check, AlertCircle } from 'lucide-react'
+import { useState, useEffect } from 'react'
+import { base } from 'wagmi/chains'
 
 export function ConnectButton() {
-  const { address, isConnected } = useAccount()
+  const { address, isConnected, chain } = useAccount()
   const { connect, connectors, isPending } = useConnect()
   const { disconnect } = useDisconnect()
+  const { switchChain } = useSwitchChain()
   const [showMenu, setShowMenu] = useState(false)
   const [copied, setCopied] = useState(false)
+  
+  // Check if on wrong network
+  const isWrongNetwork = isConnected && chain?.id !== base.id
+  
+  // Auto-prompt to switch to Base if on wrong network
+  useEffect(() => {
+    if (isWrongNetwork && switchChain) {
+      // Auto-switch after 1 second
+      const timer = setTimeout(() => {
+        switchChain({ chainId: base.id })
+      }, 1000)
+      return () => clearTimeout(timer)
+    }
+  }, [isWrongNetwork, switchChain])
 
   const copyAddress = async () => {
     if (address) {
@@ -22,6 +38,22 @@ export function ConnectButton() {
     `${addr.slice(0, 6)}...${addr.slice(-4)}`
 
   if (isConnected && address) {
+    // Show switch network button if on wrong network
+    if (isWrongNetwork) {
+      return (
+        <motion.button
+          onClick={() => switchChain?.({ chainId: base.id })}
+          className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-orange-500/10 border border-orange-500/30 hover:bg-orange-500/20 transition-colors"
+          whileTap={{ scale: 0.98 }}
+          animate={{ scale: [1, 1.02, 1] }}
+          transition={{ repeat: Infinity, duration: 2 }}
+        >
+          <AlertCircle className="w-5 h-5 text-orange-400" />
+          <span className="font-semibold text-orange-400">Switch to Base</span>
+        </motion.button>
+      )
+    }
+    
     return (
       <div className="relative">
         <motion.button

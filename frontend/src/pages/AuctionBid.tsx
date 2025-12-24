@@ -5,7 +5,6 @@ import { useAccount, useReadContract, useWriteContract, useWaitForTransactionRec
 import { parseEther, formatEther, formatUnits } from 'viem'
 import {
   Clock,
-  Users,
   ArrowLeft,
   AlertCircle,
   Loader2,
@@ -246,7 +245,7 @@ export function AuctionBid() {
         </div>
       </motion.div>
 
-      {/* Social Proof */}
+      {/* Real Auction Stats */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -265,14 +264,6 @@ export function AuctionBid() {
             {tokenTarget ? (Number(formatUnits(tokenTarget, 18)) / 1000000).toFixed(1) : '0'}M
           </p>
           <p className="text-xs text-slate-400">AKITA available</p>
-        </div>
-        <div className="w-px h-12 bg-white/10" />
-        <div>
-          <div className="flex items-center gap-1 justify-center mb-1">
-            <Users className="w-4 h-4 text-green-400" />
-            <p className="text-3xl font-bold text-white">12</p>
-          </div>
-          <p className="text-xs text-slate-400">people bidding</p>
         </div>
       </motion.div>
 

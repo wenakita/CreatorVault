@@ -3,9 +3,6 @@ import { motion } from 'framer-motion'
 import { useReadContract } from 'wagmi'
 import { formatUnits } from 'viem'
 import {
-  TrendingUp,
-  Users,
-  Coins,
   ArrowUpRight,
   Sparkles,
   Clock,
@@ -33,7 +30,7 @@ const CCA_STRATEGY_ABI = [
   },
 ] as const
 
-// Example vault data
+// Vault data - all stats from blockchain
 const vaults = [
   {
     id: 'akita',
@@ -43,9 +40,6 @@ const vaults = [
     token: AKITA.token,
     vault: AKITA.vault,
     ccaStrategy: AKITA.ccaStrategy,
-    tvl: '$420,690',
-    apy: '42.0%',
-    holders: 69,
     status: 'active' as const,
     color: 'from-orange-500 to-red-600',
   },
@@ -168,33 +162,6 @@ export function Dashboard() {
         </div>
       </motion.div>
 
-      {/* Quick Stats */}
-      <motion.div
-        variants={container}
-        initial="hidden"
-        animate="show"
-        className="grid grid-cols-3 gap-4"
-      >
-        {[
-          { icon: Coins, value: '$420K', label: 'Total Value Locked' },
-          { icon: TrendingUp, value: '42%', label: 'Average APY' },
-          { icon: Users, value: '1', label: 'Active Vaults' },
-        ].map((stat) => (
-          <motion.div
-            key={stat.label}
-            variants={item}
-            className="p-4 rounded-2xl bg-white/[0.02] border border-white/10 backdrop-blur-xl"
-          >
-            <div className="flex items-center gap-3 mb-2">
-              <div className="w-10 h-10 rounded-xl bg-brand-500/10 flex items-center justify-center">
-                <stat.icon className="w-5 h-5 text-brand-500" />
-              </div>
-              <p className="font-bold text-2xl">{stat.value}</p>
-            </div>
-            <p className="text-xs text-slate-500">{stat.label}</p>
-          </motion.div>
-        ))}
-      </motion.div>
 
       {/* Vault Cards - Marketplace Style */}
       <div>
@@ -230,24 +197,8 @@ export function Dashboard() {
                     <VaultPhaseCard ccaStrategy={vault.ccaStrategy} />
                   </div>
 
-                  {/* Stats Grid */}
-                  <div className="grid grid-cols-2 gap-3 mb-4">
-                    <div className="p-3 rounded-xl bg-white/[0.02] border border-white/5">
-                      <p className="text-xs text-slate-500 mb-1">TVL</p>
-                      <p className="font-bold text-white">{vault.tvl}</p>
-                    </div>
-                    <div className="p-3 rounded-xl bg-brand-500/10 border border-brand-500/20">
-                      <p className="text-xs text-brand-400 mb-1">APY</p>
-                      <p className="font-bold text-brand-500">{vault.apy}</p>
-                    </div>
-                  </div>
-
-                  {/* Holders */}
-                  <div className="flex items-center justify-between text-sm">
-                    <div className="flex items-center gap-2 text-slate-400">
-                      <Users className="w-4 h-4" />
-                      <span>{vault.holders} holders</span>
-                    </div>
+                  {/* View Details */}
+                  <div className="flex items-center justify-end text-sm">
                     <div className="flex items-center gap-1 text-brand-500 group-hover:gap-2 transition-all">
                       <span className="font-medium text-sm">View Details</span>
                       <ArrowUpRight className="w-4 h-4" />

@@ -1,6 +1,8 @@
 import { Outlet, Link, useLocation } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { Home, Rocket, LayoutDashboard } from 'lucide-react'
+import { useAccount } from 'wagmi'
+import { base } from 'wagmi/chains'
 import { ConnectButton } from './ConnectButton'
 
 const navItems = [
@@ -14,9 +16,20 @@ const baseTransition = { duration: 0.2, ease: [0.4, 0, 0.2, 1] }
 
 export function Layout() {
   const location = useLocation()
+  const { chain, isConnected } = useAccount()
+  const isCorrectNetwork = !isConnected || chain?.id === base.id
 
   return (
     <div className="min-h-screen flex flex-col">
+      {/* Wrong Network Banner */}
+      {!isCorrectNetwork && (
+        <div className="bg-orange-500/10 border-b border-orange-500/30 px-4 py-2 text-center">
+          <p className="text-orange-400 text-sm font-medium">
+            ⚠️ Wrong Network - Please switch to Base Network
+          </p>
+        </div>
+      )}
+      
       {/* Header */}
       <header className="sticky top-0 z-50 bg-slate-950/80 backdrop-blur-xl border-b border-white/[0.06]">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-3 flex items-center justify-between">
@@ -29,14 +42,14 @@ export function Layout() {
               transition={baseTransition}
             >
               <img 
-                src="/base-logo.svg" 
-                alt="Base" 
+                src="/logo.svg" 
+                alt="CreatorVault" 
                 className="w-8 h-8"
               />
             </motion.div>
             <div className="hidden sm:flex items-baseline gap-1">
               <span className="font-semibold text-white tracking-tight">Creator</span>
-              <span className="font-semibold text-[#0052FF] tracking-tight">Vault</span>
+              <span className="font-semibold text-brand-500 tracking-tight">Vault</span>
             </div>
           </Link>
 
