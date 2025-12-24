@@ -1,9 +1,10 @@
 import { Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { 
-  Rocket, ArrowRight, TrendingDown, TrendingUp, 
-  Shield, Zap, Users, ChevronRight,
-  Coins, Gift, Lock, Trophy, Flame, Building2
+  Rocket, ArrowRight, Sparkles, 
+  Shield, Zap, Users, 
+  Coins, Gift, TrendingUp, Trophy, Flame, Building2,
+  CheckCircle2, ChevronRight
 } from 'lucide-react'
 import { LotteryDistributionCompact } from '../components/DistributionChart'
 import { 
@@ -18,300 +19,437 @@ import {
 
 export function Home() {
   return (
-    <div className="space-y-16 py-8">
-      {/* Hero Section */}
-      <section className="relative">
-        {/* Background gradient */}
-        <div className="absolute inset-0 -z-10">
-          <div className="absolute top-0 left-1/4 w-96 h-96 bg-[#0052FF]/8 rounded-full blur-[120px]" />
-          <div className="absolute bottom-0 right-1/4 w-64 h-64 bg-purple-500/8 rounded-full blur-[100px]" />
-        </div>
+    <div className="relative">
+      {/* Ambient background */}
+      <div className="fixed inset-0 -z-10 overflow-hidden pointer-events-none">
+        <div className="absolute top-20 left-1/4 w-[600px] h-[600px] bg-[#0052FF]/5 rounded-full blur-[150px] animate-pulse" />
+        <div className="absolute bottom-0 right-1/4 w-[400px] h-[400px] bg-purple-500/5 rounded-full blur-[120px]" />
+      </div>
 
-        <div className="text-center space-y-6 pt-8">
-          {/* Badge with Square-led animation */}
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 space-y-24 py-12">
+        
+        {/* HERO - Massive, centered, impactful */}
+        <section className="relative min-h-[70vh] flex flex-col items-center justify-center text-center space-y-8">
+          {/* Status badge */}
           <FadeIn delay={0.1}>
-            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/5 border border-white/10 text-sm">
-              <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
-              <span className="text-slate-400">Now live on</span>
-              <div className="flex items-center gap-1">
-                <img src="/base-logo.svg" alt="Base" className="w-3.5 h-3.5" />
-                <span className="text-white font-semibold">base</span>
+            <div className="inline-flex items-center gap-2.5 px-4 py-2 rounded-full bg-white/[0.03] border border-white/[0.08] backdrop-blur-xl">
+              <span className="relative flex h-2 w-2">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75" />
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500" />
+              </span>
+              <span className="text-slate-400 text-sm">Now live on</span>
+              <div className="flex items-center gap-1.5">
+                <img src="/base-logo.svg" alt="Base" className="w-4 h-4" />
+                <span className="text-white font-semibold text-sm">base</span>
               </div>
               <span className="text-slate-600">+</span>
-              <span className="text-purple-400 font-medium">solana</span>
+              <span className="text-purple-400 font-medium text-sm">solana</span>
             </div>
           </FadeIn>
 
-          {/* Main headline with Tech Scramble */}
-          <SlideUp delay={0.15}>
-            <h1 className="font-display text-4xl sm:text-5xl lg:text-6xl font-bold tracking-tight">
-              <span className="text-white">Creator Coins</span>
-              <br />
-              <span className="text-gradient">
-                <TechScramble text="That Pay You Back" delay={300} duration={700} />
-              </span>
-            </h1>
-          </SlideUp>
+          {/* Massive headline */}
+          <div className="space-y-4">
+            <SlideUp delay={0.2}>
+              <h1 className="font-display text-5xl sm:text-6xl lg:text-7xl xl:text-8xl font-black tracking-tight leading-[1.1]">
+                <span className="text-white block">Creator Coins</span>
+                <span className="text-gradient block">
+                  <TechScramble text="That Actually Pay" delay={400} duration={800} />
+                </span>
+              </h1>
+            </SlideUp>
 
-          {/* Subtitle - fades in after scramble */}
-          <FadeIn delay={0.8}>
-            <p className="text-slate-400 text-lg max-w-lg mx-auto leading-relaxed">
-              Deposit creator coins. Earn from every trade. Win the jackpot.
-            </p>
-          </FadeIn>
+            <FadeIn delay={1}>
+              <p className="text-slate-400 text-xl sm:text-2xl max-w-3xl mx-auto leading-relaxed">
+                The first vault system that rewards holders, not just creators.
+                <br />
+                <span className="text-white font-medium">Deposit. Earn. Win.</span>
+              </p>
+            </FadeIn>
+          </div>
 
-          {/* CTA - snappy hover states */}
-          <FadeIn delay={0.9}>
-            <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-2">
+          {/* Hero CTA */}
+          <FadeIn delay={1.2}>
+            <div className="flex flex-col sm:flex-row items-center gap-4 pt-4">
               <Link to="/launch">
                 <motion.button 
-                  className="group relative px-6 py-3 rounded-xl bg-[#0052FF] hover:bg-[#0052FF]/90 text-white font-semibold transition-colors shadow-lg shadow-[#0052FF]/25 hover:shadow-[#0052FF]/40 flex items-center gap-2"
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
+                  className="group relative px-8 py-4 rounded-2xl bg-[#0052FF] text-white font-bold text-lg shadow-2xl shadow-[#0052FF]/30 overflow-hidden"
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
                   transition={{ duration: DURATION.fast, ease: BASE_EASE }}
                 >
-                  <Rocket className="w-4 h-4" />
-                  Launch Your Vault
-                  <ArrowRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
+                  {/* Shimmer effect */}
+                  <div className="absolute inset-0 -translate-x-full group-hover:translate-x-full transition-transform duration-1000 bg-gradient-to-r from-transparent via-white/20 to-transparent" />
+                  
+                  <span className="relative flex items-center gap-2">
+                    <Rocket className="w-5 h-5" />
+                    Launch Your Vault
+                    <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+                  </span>
                 </motion.button>
               </Link>
+
               <Link to="/dashboard">
                 <motion.button 
-                  className="px-6 py-3 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-white font-medium transition-colors flex items-center gap-2"
+                  className="px-8 py-4 rounded-2xl bg-white/[0.04] hover:bg-white/[0.08] border border-white/10 text-white font-semibold text-lg backdrop-blur-xl transition-colors"
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
                   transition={{ duration: DURATION.fast, ease: BASE_EASE }}
                 >
                   Explore Vaults
-                  <ChevronRight className="w-4 h-4" />
                 </motion.button>
               </Link>
             </div>
           </FadeIn>
-        </div>
-      </section>
 
-      {/* Problem → Solution */}
-      <Stagger className="grid md:grid-cols-2 gap-4" delay={0.2}>
-        {/* Problem */}
-        <StaggerItem>
-          <div className="relative p-6 rounded-2xl bg-gradient-to-br from-red-500/5 to-transparent border border-red-500/10 h-full">
-            <div className="flex items-center gap-2 text-red-400 mb-4">
-              <TrendingDown className="w-5 h-5" />
-              <span className="text-sm font-semibold uppercase tracking-wider">The Problem</span>
+          {/* Scroll indicator */}
+          <FadeIn delay={1.4}>
+            <motion.div 
+              className="absolute bottom-8 left-1/2 -translate-x-1/2"
+              animate={{ y: [0, 10, 0] }}
+              transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
+            >
+              <div className="w-6 h-10 rounded-full border-2 border-white/20 flex items-start justify-center p-2">
+                <motion.div 
+                  className="w-1.5 h-1.5 rounded-full bg-white/60"
+                  animate={{ y: [0, 12, 0] }}
+                  transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
+                />
+              </div>
+            </motion.div>
+          </FadeIn>
+        </section>
+
+        {/* VALUE PROPS - Large, visual cards */}
+        <section>
+          <FadeIn delay={0.1}>
+            <div className="text-center mb-12">
+              <h2 className="text-3xl sm:text-4xl font-bold text-white mb-4">
+                The Problem With Creator Coins
+              </h2>
+              <p className="text-slate-400 text-lg max-w-2xl mx-auto">
+                Until now, creator coins only benefited creators. We're changing that.
+              </p>
             </div>
-            <h3 className="text-xl font-bold text-white mb-2">
-              Creator Coins Only Benefit Creators
-            </h3>
-            <p className="text-slate-400 text-sm leading-relaxed">
-              You buy. Creator sells. You hold the bag.
-              <br />
-              Same cycle as memecoins, different face.
-            </p>
-          </div>
-        </StaggerItem>
+          </FadeIn>
 
-        {/* Solution */}
-        <StaggerItem>
-          <div className="relative p-6 rounded-2xl bg-gradient-to-br from-green-500/5 to-transparent border border-green-500/10 h-full">
-            <div className="flex items-center gap-2 text-green-400 mb-4">
-              <TrendingUp className="w-5 h-5" />
-              <span className="text-sm font-semibold uppercase tracking-wider">The Solution</span>
-            </div>
-            <h3 className="text-xl font-bold text-white mb-2">
-              Vaults That Share the Upside
-            </h3>
-            <p className="text-slate-400 text-sm leading-relaxed">
-              Deposit creator coins. Earn from every trade.
-              <br />
-              6.9% fee split: 69% jackpot, 21% burned, 10% treasury.
-            </p>
-          </div>
-        </StaggerItem>
-      </Stagger>
-
-      {/* How It Works - Simple with stagger */}
-      <FadeIn delay={0.1}>
-        <section className="text-center">
-          <h2 className="text-2xl font-bold text-white mb-8">How It Works</h2>
-          <Stagger className="grid grid-cols-3 gap-4 max-w-2xl mx-auto" delay={0.1}>
-            {[
-              { step: '1', icon: Coins, title: 'Deposit', desc: 'Your creator coin' },
-              { step: '2', icon: Lock, title: 'Vault', desc: 'Get wsTokens' },
-              { step: '3', icon: Gift, title: 'Earn', desc: 'From every trade' },
-            ].map(({ step, icon: Icon, title, desc }, i) => (
-              <StaggerItem key={step}>
+          <div className="grid lg:grid-cols-3 gap-6">
+            {/* Problem */}
+            <StaggerItem>
+              <div className="relative p-8 rounded-3xl bg-gradient-to-br from-red-500/5 via-transparent to-transparent border border-red-500/20 backdrop-blur-xl">
+                <div className="absolute inset-0 rounded-3xl bg-gradient-to-br from-red-500/5 to-transparent opacity-0 hover:opacity-100 transition-opacity" />
                 <div className="relative">
-                  <div className="p-5 rounded-2xl bg-white/[0.02] border border-white/5">
-                    <div className="w-10 h-10 rounded-xl bg-[#0052FF]/10 flex items-center justify-center mx-auto mb-3">
-                      <Icon className="w-5 h-5 text-[#0052FF]" />
-                    </div>
-                    <div className="text-white font-semibold text-sm">{title}</div>
-                    <div className="text-slate-500 text-xs mt-1">{desc}</div>
+                  <div className="w-12 h-12 rounded-2xl bg-red-500/10 flex items-center justify-center mb-4">
+                    <TrendingUp className="w-6 h-6 text-red-400 rotate-180" />
                   </div>
-                  {i < 2 && (
-                    <ArrowRight className="hidden sm:block absolute top-1/2 -right-3 w-4 h-4 text-slate-700 -translate-y-1/2" />
-                  )}
+                  <h3 className="text-xl font-bold text-white mb-3">The Old Way</h3>
+                  <p className="text-slate-400 leading-relaxed">
+                    Buy the token. Creator dumps. You hold the bag. The same tired memecoin cycle.
+                  </p>
                 </div>
+              </div>
+            </StaggerItem>
+
+            {/* Arrow */}
+            <div className="hidden lg:flex items-center justify-center">
+              <ArrowRight className="w-12 h-12 text-[#0052FF]" />
+            </div>
+
+            {/* Solution */}
+            <StaggerItem>
+              <div className="relative p-8 rounded-3xl bg-gradient-to-br from-[#0052FF]/10 via-transparent to-transparent border border-[#0052FF]/30 backdrop-blur-xl">
+                <div className="absolute inset-0 rounded-3xl bg-gradient-to-br from-[#0052FF]/10 to-transparent opacity-0 hover:opacity-100 transition-opacity" />
+                <div className="relative">
+                  <div className="w-12 h-12 rounded-2xl bg-[#0052FF]/20 flex items-center justify-center mb-4">
+                    <Sparkles className="w-6 h-6 text-[#0052FF]" />
+                  </div>
+                  <h3 className="text-xl font-bold text-white mb-3">The CreatorVault Way</h3>
+                  <p className="text-slate-400 leading-relaxed">
+                    Vault your coins. Earn from every trade. Win the jackpot. Everyone wins together.
+                  </p>
+                </div>
+              </div>
+            </StaggerItem>
+          </div>
+        </section>
+
+        {/* HOW IT WORKS - Clean, numbered flow */}
+        <section>
+          <FadeIn delay={0.1}>
+            <div className="text-center mb-12">
+              <h2 className="text-3xl sm:text-4xl font-bold text-white mb-4">
+                Three Steps to Earnings
+              </h2>
+              <p className="text-slate-400 text-lg">
+                Simple, transparent, and fully onchain
+              </p>
+            </div>
+          </FadeIn>
+
+          <div className="grid md:grid-cols-3 gap-8 max-w-4xl mx-auto">
+            {[
+              { 
+                num: '01', 
+                icon: Coins, 
+                title: 'Deposit Creator Coins', 
+                desc: 'Lock your creator coins in the vault. Get wsTokens that represent your share.',
+                color: 'from-blue-500/20 to-cyan-500/20',
+                iconBg: 'bg-blue-500/10',
+                iconColor: 'text-blue-400'
+              },
+              { 
+                num: '02', 
+                icon: TrendingUp, 
+                title: 'Earn From Every Trade', 
+                desc: '6.9% fee on all trades. 69% goes to the jackpot pool. You earn as the vault grows.',
+                color: 'from-purple-500/20 to-pink-500/20',
+                iconBg: 'bg-purple-500/10',
+                iconColor: 'text-purple-400'
+              },
+              { 
+                num: '03', 
+                icon: Trophy, 
+                title: 'Win the Jackpot', 
+                desc: 'Every buy is a lottery entry. Chainlink VRF picks winners. Random and fair.',
+                color: 'from-yellow-500/20 to-orange-500/20',
+                iconBg: 'bg-yellow-500/10',
+                iconColor: 'text-yellow-400'
+              },
+            ].map(({ num, icon: Icon, title, desc, color, iconBg, iconColor }, i) => (
+              <StaggerItem key={num}>
+                <motion.div 
+                  className="relative h-full"
+                  whileHover={{ y: -8 }}
+                  transition={{ duration: 0.3, ease: BASE_EASE }}
+                >
+                  <div className={`absolute inset-0 rounded-3xl bg-gradient-to-br ${color} blur-xl opacity-0 group-hover:opacity-100 transition-opacity`} />
+                  <div className="relative p-8 rounded-3xl bg-white/[0.02] border border-white/10 backdrop-blur-xl h-full">
+                    {/* Number badge */}
+                    <div className="text-6xl font-black text-white/5 absolute top-4 right-4">
+                      {num}
+                    </div>
+                    
+                    <div className={`w-14 h-14 rounded-2xl ${iconBg} flex items-center justify-center mb-6`}>
+                      <Icon className={`w-7 h-7 ${iconColor}`} />
+                    </div>
+                    
+                    <h3 className="text-xl font-bold text-white mb-3">{title}</h3>
+                    <p className="text-slate-400 leading-relaxed">{desc}</p>
+                  </div>
+                </motion.div>
               </StaggerItem>
             ))}
-          </Stagger>
-        </section>
-      </FadeIn>
-
-      {/* Live Jackpot */}
-      <FadeIn delay={0.1}>
-        <section className="max-w-xl mx-auto">
-          <div className="text-center mb-6">
-            <h2 className="text-2xl font-bold text-white">Live Jackpot</h2>
-            <p className="text-slate-500 text-sm mt-1">Buy. Enter. Win. All onchain.</p>
-          </div>
-          
-          <div className="bg-gradient-to-b from-slate-900/95 to-slate-950/95 backdrop-blur-xl rounded-2xl border border-white/[0.06] p-6">
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center gap-2">
-                <Gift className="w-5 h-5 text-yellow-500" />
-                <h3 className="font-semibold text-white">Prize Pool</h3>
-              </div>
-              <span className="px-2 py-0.5 rounded-full bg-yellow-500/10 text-yellow-400 text-xs font-medium">
-                VRF
-              </span>
-            </div>
-            
-            <LotteryDistributionCompact jackpotAmount="0.1 ETH" />
-            
-            <div className="mt-4 pt-4 border-t border-white/[0.04] space-y-2">
-              {[
-                { icon: Trophy, label: 'Winner', pct: '69%', color: 'text-yellow-400' },
-                { icon: Flame, label: 'Burn', pct: '21.4%', color: 'text-red-400' },
-                { icon: Building2, label: 'Treasury', pct: '9.6%', color: 'text-blue-400' },
-              ].map(({ icon: Icon, label, pct, color }) => (
-                <div key={label} className="flex items-center justify-between text-sm">
-                  <div className="flex items-center gap-2">
-                    <Icon className={`w-4 h-4 ${color}`} />
-                    <span className="text-slate-400">{label}</span>
-                  </div>
-                  <span className={`font-semibold ${color}`}>{pct}</span>
-                </div>
-              ))}
-            </div>
-            
-            <p className="text-[10px] text-slate-500 mt-4 pt-4 border-t border-white/[0.04] text-center">
-              6.9% trade fees fund the pool • Every buy = lottery entry
-            </p>
           </div>
         </section>
-      </FadeIn>
 
-      {/* Features */}
-      <FadeIn delay={0.1}>
+        {/* JACKPOT - Prominent, glowing */}
         <section>
-          <h2 className="text-2xl font-bold text-white text-center mb-8">Why CreatorVault?</h2>
-          <Stagger className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <FadeIn delay={0.1}>
+            <div className="relative max-w-2xl mx-auto">
+              {/* Glow effect */}
+              <div className="absolute inset-0 bg-gradient-to-r from-yellow-500/20 via-orange-500/20 to-red-500/20 blur-3xl opacity-20 rounded-3xl" />
+              
+              <div className="relative bg-gradient-to-b from-slate-900/95 to-slate-950/95 backdrop-blur-xl rounded-3xl border border-yellow-500/20 p-8 shadow-2xl">
+                {/* Header */}
+                <div className="text-center mb-8">
+                  <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-yellow-500/10 border border-yellow-500/20 mb-4">
+                    <Trophy className="w-4 h-4 text-yellow-500" />
+                    <span className="text-yellow-400 text-sm font-semibold uppercase tracking-wider">Live Prize Pool</span>
+                  </div>
+                  <h2 className="text-4xl font-bold text-white mb-2">
+                    <span className="text-gradient">0.1 ETH</span>
+                  </h2>
+                  <p className="text-slate-400">≈ $350 USD</p>
+                </div>
+
+                {/* Distribution */}
+                <div className="space-y-4">
+                  <LotteryDistributionCompact jackpotAmount="0.1 ETH" />
+                  
+                  <div className="grid grid-cols-3 gap-4 pt-4">
+                    {[
+                      { icon: Trophy, label: 'Winner', pct: '69%', color: 'yellow' },
+                      { icon: Flame, label: 'Burned', pct: '21.4%', color: 'red' },
+                      { icon: Building2, label: 'Treasury', pct: '9.6%', color: 'blue' },
+                    ].map(({ icon: Icon, label, pct, color }) => (
+                      <div key={label} className="text-center p-4 rounded-2xl bg-white/[0.02]">
+                        <Icon className={`w-5 h-5 text-${color}-400 mx-auto mb-2`} />
+                        <div className={`text-2xl font-bold text-${color}-400 mb-1`}>{pct}</div>
+                        <div className="text-xs text-slate-500 uppercase tracking-wider">{label}</div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Details */}
+                <div className="mt-6 pt-6 border-t border-white/[0.06] space-y-3">
+                  <div className="flex items-center gap-3 text-sm text-slate-400">
+                    <CheckCircle2 className="w-4 h-4 text-green-400 flex-shrink-0" />
+                    <span>Every buy automatically enters the lottery</span>
+                  </div>
+                  <div className="flex items-center gap-3 text-sm text-slate-400">
+                    <CheckCircle2 className="w-4 h-4 text-green-400 flex-shrink-0" />
+                    <span>Chainlink VRF ensures provably fair randomness</span>
+                  </div>
+                  <div className="flex items-center gap-3 text-sm text-slate-400">
+                    <CheckCircle2 className="w-4 h-4 text-green-400 flex-shrink-0" />
+                    <span>6.9% of every trade funds the prize pool</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </FadeIn>
+        </section>
+
+        {/* FEATURES - Tight grid */}
+        <section>
+          <FadeIn delay={0.1}>
+            <div className="text-center mb-12">
+              <h2 className="text-3xl sm:text-4xl font-bold text-white mb-4">
+                Built Different
+              </h2>
+              <p className="text-slate-400 text-lg">
+                Not your average creator coin platform
+              </p>
+            </div>
+          </FadeIn>
+
+          <Stagger className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
             {[
               {
                 icon: Zap,
                 title: 'Fair Launch',
-                desc: 'No snipers. No front-running. Just fair price discovery.',
-                color: 'text-yellow-400',
-                bg: 'bg-yellow-400/10',
-              },
-              {
-                icon: Gift,
-                title: 'Every Trade = Entry',
-                desc: 'Buy to enter. Random winner via Chainlink VRF.',
-                color: 'text-purple-400',
-                bg: 'bg-purple-400/10',
+                desc: 'Continuous clearing auction. No snipers.',
+                gradient: 'from-yellow-500/10 to-orange-500/10',
+                iconColor: 'text-yellow-400',
               },
               {
                 icon: Shield,
-                title: 'Clear Split',
-                desc: '69% jackpot. 21% burned. 10% treasury.',
-                color: 'text-green-400',
-                bg: 'bg-green-400/10',
+                title: 'Battle-Tested',
+                desc: 'Audited contracts. Proven security.',
+                gradient: 'from-green-500/10 to-emerald-500/10',
+                iconColor: 'text-green-400',
               },
               {
                 icon: Users,
-                title: 'Built for Holders',
-                desc: 'Earn together. Not against each other.',
-                color: 'text-blue-400',
-                bg: 'bg-blue-400/10',
+                title: 'Community First',
+                desc: 'Holders earn together, not against each other.',
+                gradient: 'from-blue-500/10 to-cyan-500/10',
+                iconColor: 'text-blue-400',
               },
-            ].map(({ icon: Icon, title, desc, color, bg }) => (
+              {
+                icon: Gift,
+                title: 'Real Yield',
+                desc: 'Actual earnings from trading fees and lottery wins.',
+                gradient: 'from-purple-500/10 to-pink-500/10',
+                iconColor: 'text-purple-400',
+              },
+            ].map(({ icon: Icon, title, desc, gradient, iconColor }) => (
               <StaggerItem key={title}>
                 <motion.div 
-                  className="p-5 rounded-2xl bg-white/[0.02] border border-white/5 hover:border-white/10 transition-colors h-full"
-                  whileHover={{ y: -2 }}
+                  className={`relative p-6 rounded-2xl bg-gradient-to-br ${gradient} border border-white/5 backdrop-blur-xl h-full group`}
+                  whileHover={{ scale: 1.05 }}
                   transition={{ duration: DURATION.fast, ease: BASE_EASE }}
                 >
-                  <div className={`w-10 h-10 rounded-xl ${bg} flex items-center justify-center mb-3`}>
-                    <Icon className={`w-5 h-5 ${color}`} />
+                  <div className="absolute inset-0 rounded-2xl bg-white/[0.02] opacity-0 group-hover:opacity-100 transition-opacity" />
+                  <div className="relative">
+                    <Icon className={`w-8 h-8 ${iconColor} mb-4`} />
+                    <h3 className="text-lg font-bold text-white mb-2">{title}</h3>
+                    <p className="text-slate-400 text-sm">{desc}</p>
                   </div>
-                  <h3 className="text-white font-semibold mb-1">{title}</h3>
-                  <p className="text-slate-500 text-sm">{desc}</p>
                 </motion.div>
               </StaggerItem>
             ))}
           </Stagger>
         </section>
-      </FadeIn>
 
-      {/* Cross-chain with Base Square */}
-      <FadeIn delay={0.1}>
-        <section className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-purple-500/10 via-transparent to-[#0052FF]/10 border border-white/5 p-6 sm:p-8">
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-6">
-            <div className="flex items-center gap-4">
-              <div className="flex items-center gap-3">
-                <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-white/5 border border-white/10">
-                  <img src="/base-logo.svg" alt="Base" className="w-5 h-5" />
-                  <span className="text-white font-semibold text-sm">base</span>
+        {/* CROSS-CHAIN - Sleek banner */}
+        <FadeIn delay={0.1}>
+          <section className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-[#0052FF]/10 via-purple-500/10 to-[#0052FF]/10 border border-white/10 p-8">
+            <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHZpZXdCb3g9IjAgMCA2MCA2MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZyBmaWxsPSJub25lIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiPjxnIGZpbGw9IiNmZmYiIGZpbGwtb3BhY2l0eT0iMC4wMiI+PHBhdGggZD0iTTM2IDM0djItMnptMC0ydjJoLTJ2LTJoMnptLTItMnYyaC0ydi0yaDJ6bS0yLTJ2MmgtMnYtMmgyem0tMi0ydjJoLTJ2LTJoMnptLTItMnYyaC0ydi0yaDJ6bS0yLTJ2MmgtMnYtMmgyem0tMi0ydjJoLTJ2LTJoMnoiLz48L2c+PC9nPjwvc3ZnPg==')] opacity-50" />
+            
+            <div className="relative flex flex-col sm:flex-row items-center justify-between gap-6">
+              <div className="flex items-center gap-6">
+                <div className="flex items-center gap-4">
+                  <div className="p-3 rounded-2xl bg-white/5 border border-white/10 backdrop-blur-xl">
+                    <img src="/base-logo.svg" alt="Base" className="w-8 h-8" />
+                  </div>
+                  <span className="text-3xl text-slate-600">+</span>
+                  <div className="p-3 rounded-2xl bg-white/5 border border-white/10 backdrop-blur-xl">
+                    <img 
+                      src="https://raw.githubusercontent.com/solana-labs/token-list/main/assets/mainnet/So11111111111111111111111111111111111111112/logo.png" 
+                      alt="Solana" 
+                      className="w-8 h-8 rounded-full"
+                    />
+                  </div>
                 </div>
-                <span className="text-slate-500 font-medium">+</span>
-                <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-white/5 border border-white/10">
-                  <img 
-                    src="https://raw.githubusercontent.com/solana-labs/token-list/main/assets/mainnet/So11111111111111111111111111111111111111112/logo.png" 
-                    alt="Solana" 
-                    className="w-5 h-5 rounded-full"
-                  />
-                  <span className="text-white font-semibold text-sm">solana</span>
+                <div>
+                  <h3 className="text-xl font-bold text-white mb-1">Cross-Chain Ready</h3>
+                  <p className="text-slate-400">Bridge and participate from Base or Solana</p>
                 </div>
               </div>
+              
+              <a
+                href="https://docs.base.org/guides/base-solana-bridge"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex-shrink-0"
+              >
+                <motion.button
+                  className="px-6 py-3 rounded-xl bg-white/10 hover:bg-white/20 border border-white/20 text-white font-semibold backdrop-blur-xl transition-colors flex items-center gap-2"
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  transition={{ duration: DURATION.fast, ease: BASE_EASE }}
+                >
+                  Learn More
+                  <ChevronRight className="w-4 h-4" />
+                </motion.button>
+              </a>
             </div>
-            <div className="text-center sm:text-left">
-              <p className="text-slate-400 text-sm">Bridge and participate from either chain</p>
-            </div>
-            <a
-              href="https://docs.base.org/guides/base-solana-bridge"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="px-4 py-2 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 text-white text-sm font-medium transition-colors flex items-center gap-2"
-            >
-              Learn More
-              <ArrowRight className="w-4 h-4" />
-            </a>
-          </div>
-        </section>
-      </FadeIn>
+          </section>
+        </FadeIn>
 
-      {/* Final CTA */}
-      <FadeIn delay={0.1}>
-        <section className="text-center py-8">
-          <h2 className="text-2xl font-bold text-white mb-3">Turn Creator Coins Into Earnings</h2>
-          <p className="text-slate-400 mb-6">Launch your vault. Reward your holders. Build onchain.</p>
-          <Link to="/launch">
-            <motion.button 
-              className="group px-8 py-4 rounded-xl bg-[#0052FF] hover:bg-[#0052FF]/90 text-white font-semibold text-lg transition-colors shadow-lg shadow-[#0052FF]/25 hover:shadow-[#0052FF]/40 flex items-center gap-2 mx-auto"
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
-              transition={{ duration: DURATION.fast, ease: BASE_EASE }}
-            >
-              <Rocket className="w-5 h-5" />
-              Launch Your Vault
-              <ArrowRight className="w-5 h-5 group-hover:translate-x-0.5 transition-transform" />
-            </motion.button>
-          </Link>
-        </section>
-      </FadeIn>
+        {/* FINAL CTA - Big, bold */}
+        <FadeIn delay={0.1}>
+          <section className="relative py-20">
+            <div className="absolute inset-0 bg-gradient-to-b from-[#0052FF]/5 to-transparent rounded-3xl blur-3xl" />
+            
+            <div className="relative text-center space-y-8">
+              <div>
+                <h2 className="text-4xl sm:text-5xl font-bold text-white mb-4">
+                  Ready to Launch?
+                </h2>
+                <p className="text-slate-400 text-xl max-w-2xl mx-auto">
+                  Turn your creator coin into a revenue-generating vault.
+                  <br />
+                  Your community deserves to win too.
+                </p>
+              </div>
+
+              <Link to="/launch">
+                <motion.button 
+                  className="group relative px-12 py-6 rounded-2xl bg-[#0052FF] text-white font-bold text-xl shadow-2xl shadow-[#0052FF]/40 overflow-hidden"
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  transition={{ duration: DURATION.fast, ease: BASE_EASE }}
+                >
+                  <div className="absolute inset-0 -translate-x-full group-hover:translate-x-full transition-transform duration-1000 bg-gradient-to-r from-transparent via-white/30 to-transparent" />
+                  
+                  <span className="relative flex items-center gap-3">
+                    <Rocket className="w-6 h-6" />
+                    Launch Your Vault Now
+                    <ArrowRight className="w-6 h-6 group-hover:translate-x-2 transition-transform" />
+                  </span>
+                </motion.button>
+              </Link>
+
+              <p className="text-slate-500 text-sm">
+                No coding required • Deploy in minutes • Start earning immediately
+              </p>
+            </div>
+          </section>
+        </FadeIn>
+
+      </div>
     </div>
   )
 }
