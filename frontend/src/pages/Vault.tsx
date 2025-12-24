@@ -6,7 +6,6 @@ import {
   TrendingUp,
   ArrowDownToLine,
   ArrowUpFromLine,
-  ArrowRight,
   Loader2,
   ExternalLink,
   Users,
