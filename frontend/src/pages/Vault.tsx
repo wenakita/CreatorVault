@@ -179,7 +179,7 @@ export function Vault() {
   return (
     <div className="relative max-w-5xl mx-auto space-y-8 py-8">
       {/* Manifold Background */}
-      <ManifoldBackground opacity={0.08} variant="copper" />
+      <ManifoldBackground opacity={0.08} variant="purple" />
       
       {/* Header */}
       <motion.div
