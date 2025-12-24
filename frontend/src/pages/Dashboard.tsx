@@ -442,9 +442,9 @@ export function Dashboard() {
                               <span className="label block mb-2">Completion</span>
                               <h4 className="headline text-2xl mb-3">Liquidity Launch</h4>
                               <p className="text-zinc-600 font-light mb-4">
-                                Auction completes, Uniswap V4 pool created at discovered price, trading begins immediately
+                                Auction completes, Uniswap V4 pool created at discovered price, trading begins immediately with Swap to Win lottery
                               </p>
-                              <div className="grid grid-cols-2 gap-3">
+                              <div className="grid grid-cols-3 gap-3">
                                 <div className="bg-zinc-950 p-4 rounded-md border border-zinc-800">
                                   <span className="label block mb-2">Pool Created</span>
                                   <div className="value text-sm text-amber-400">wsAKITA/ETH V4</div>
@@ -452,6 +452,10 @@ export function Dashboard() {
                                 <div className="bg-zinc-950 p-4 rounded-md border border-zinc-800">
                                   <span className="label block mb-2">Fee Hook</span>
                                   <div className="value text-sm text-amber-400">6.9% Enabled</div>
+                                </div>
+                                <div className="bg-zinc-950 p-4 rounded-md border border-zinc-800">
+                                  <span className="label block mb-2">Lottery</span>
+                                  <div className="value text-sm glow-purple">Swap to Win</div>
                                 </div>
                               </div>
                             </div>
