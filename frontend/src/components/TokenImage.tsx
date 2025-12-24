@@ -71,10 +71,10 @@ export function TokenImage({
           )}
         </div>
         
-        {/* Bottom 31%: 3D Base vault (#0052FF) - 69% transparent (31% opacity) */}
+        {/* Bottom 31%: 3D Base vault (#0000FF) - 69% transparent (31% opacity) */}
         <div className="absolute inset-x-0 bottom-0 h-[31%] opacity-[0.31]">
           {/* Main vault body with proper Base blue gradient */}
-          <div className="absolute inset-0 bg-gradient-to-br from-[#0062FF] via-[#0052FF] to-[#0042DD]" />
+          <div className="absolute inset-0 bg-gradient-to-br from-[#0010FF] via-[#0000FF] to-[#0000DD]" />
           
           {/* Deep inset shadow for vault recess */}
           <div className="absolute inset-0 shadow-[inset_0_4px_12px_rgba(0,0,0,0.5),inset_0_-2px_8px_rgba(0,0,0,0.3)]" />
@@ -109,7 +109,7 @@ export function TokenImage({
               <div className="absolute inset-[4%] rounded-full bg-gradient-to-tl from-black/30 to-transparent" />
               
               {/* Middle ring - recessed */}
-              <div className="absolute inset-[12%] rounded-full bg-gradient-to-br from-[#0042DD] via-[#0052FF] to-[#0062FF] shadow-[inset_0_2px_8px_rgba(0,0,0,0.5)]" />
+              <div className="absolute inset-[12%] rounded-full bg-gradient-to-br from-[#0000DD] via-[#0000FF] to-[#0010FF] shadow-[inset_0_2px_8px_rgba(0,0,0,0.5)]" />
               
               {/* Dial markings */}
               <div className="absolute inset-[20%] rounded-full">
