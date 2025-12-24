@@ -307,84 +307,58 @@ export function Home() {
                         <span className="text-orange-400 text-sm font-semibold uppercase tracking-wider">Deflationary</span>
                       </div>
                       <h2 className="text-3xl sm:text-4xl font-bold text-white mb-4">
-                        Vault Tokens Burn.
+                        wsTokens Burn.
                         <br />
-                        <span className="text-gradient">Everyone Earns More.</span>
+                        <span className="text-gradient">You Own More.</span>
                       </h2>
                       <p className="text-slate-400 text-lg leading-relaxed">
-                        21% of trades burn <span className="text-white font-semibold">vault tokens (wsTokens)</span>. Your share of the underlying creator coins automatically grows.
+                        21% of trades burn wsTokens. Same share = more creator coins.
                       </p>
-                    </div>
-
-                    <div className="space-y-2">
-                      <div className="flex items-center gap-3 text-slate-300">
-                        <CheckCircle2 className="w-5 h-5 text-green-400 flex-shrink-0" />
-                        <span>Hold wsTokens = own % of the vault</span>
-                      </div>
-                      <div className="flex items-center gap-3 text-slate-300">
-                        <CheckCircle2 className="w-5 h-5 text-green-400 flex-shrink-0" />
-                        <span>Burns reduce wsToken supply</span>
-                      </div>
-                      <div className="flex items-center gap-3 text-slate-300">
-                        <CheckCircle2 className="w-5 h-5 text-green-400 flex-shrink-0" />
-                        <span>Same % = more creator coins per wsToken</span>
-                      </div>
                     </div>
 
                     {/* Example calculation */}
                     <div className="p-4 rounded-2xl bg-gradient-to-br from-green-500/5 to-emerald-500/5 border border-green-500/20">
-                      <div className="text-sm font-semibold text-green-400 mb-3">Simple Example:</div>
-                      <div className="space-y-2 text-sm">
+                      <div className="grid grid-cols-2 gap-3 text-sm">
                         <div className="p-3 rounded-xl bg-white/[0.03]">
-                          <div className="text-slate-500 text-xs mb-1.5">BEFORE BURN</div>
-                          <div className="flex justify-between mb-1">
-                            <span className="text-slate-400">You hold</span>
-                            <span className="text-white font-mono font-semibold">100 wsAKITA</span>
-                          </div>
-                          <div className="flex justify-between mb-1">
-                            <span className="text-slate-400">Total supply</span>
-                            <span className="text-white font-mono">10,000 wsAKITA</span>
-                          </div>
-                          <div className="flex justify-between pt-2 border-t border-white/5">
-                            <span className="text-slate-400">Your vault share</span>
-                            <span className="text-white font-bold">1.0%</span>
-                          </div>
-                          <div className="flex justify-between text-xs mt-1">
-                            <span className="text-slate-500">You own of vault</span>
-                            <span className="text-slate-300 font-mono">1,000 AKITA</span>
-                          </div>
-                        </div>
-                        
-                        <div className="flex justify-center">
-                          <div className="px-3 py-1 rounded-full bg-orange-500/10 border border-orange-500/20 text-orange-400 text-xs font-semibold">
-                            🔥 50% OF WSTOKENS BURNED
+                          <div className="text-slate-500 text-xs mb-2">BEFORE</div>
+                          <div className="space-y-1">
+                            <div className="flex justify-between">
+                              <span className="text-slate-400">You</span>
+                              <span className="text-white font-mono">100</span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span className="text-slate-400">Total</span>
+                              <span className="text-white font-mono">10K</span>
+                            </div>
+                            <div className="flex justify-between pt-1 border-t border-white/5 font-semibold">
+                              <span className="text-slate-400">Own</span>
+                              <span className="text-white">1K AKITA</span>
+                            </div>
                           </div>
                         </div>
                         
                         <div className="p-3 rounded-xl bg-gradient-to-br from-green-500/10 to-emerald-500/10 border border-green-500/20">
-                          <div className="text-xs text-green-400 font-semibold mb-1.5">AFTER BURN</div>
-                          <div className="flex justify-between mb-1">
-                            <span className="text-slate-400">You hold</span>
-                            <span className="text-white font-mono font-semibold">100 wsAKITA</span>
-                          </div>
-                          <div className="flex justify-between mb-1">
-                            <span className="text-slate-400">Total supply</span>
-                            <span className="text-white font-mono">5,000 wsAKITA</span>
-                          </div>
-                          <div className="flex justify-between pt-2 border-t border-white/5">
-                            <span className="text-slate-400">Your vault share</span>
-                            <span className="text-green-400 font-bold">2.0% ⬆</span>
-                          </div>
-                          <div className="flex justify-between text-xs mt-1">
-                            <span className="text-slate-500">You own of vault</span>
-                            <span className="text-green-400 font-mono font-semibold">2,000 AKITA ⬆</span>
+                          <div className="text-xs text-green-400 font-semibold mb-2">AFTER 50% BURN</div>
+                          <div className="space-y-1">
+                            <div className="flex justify-between">
+                              <span className="text-slate-400">You</span>
+                              <span className="text-white font-mono">100</span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span className="text-slate-400">Total</span>
+                              <span className="text-white font-mono">5K</span>
+                            </div>
+                            <div className="flex justify-between pt-1 border-t border-green-500/20 font-semibold">
+                              <span className="text-green-400">Own</span>
+                              <span className="text-green-400">2K AKITA</span>
+                            </div>
                           </div>
                         </div>
+                      </div>
 
-                        <div className="text-center pt-2">
-                          <div className="text-green-400 font-bold text-base">+100% more creator coins!</div>
-                          <div className="text-slate-500 text-xs">No action required. Automatic.</div>
-                        </div>
+                      <div className="text-center pt-3 mt-3 border-t border-white/5">
+                        <div className="text-green-400 font-bold">+100% more AKITA</div>
+                        <div className="text-slate-500 text-xs">Automatic</div>
                       </div>
                     </div>
                   </div>
