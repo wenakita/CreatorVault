@@ -20,6 +20,10 @@ import {
 import { AKITA } from '../config/contracts'
 import { ConnectButton } from '../components/ConnectButton'
 import { TokenImage } from '../components/TokenImage'
+import { FlowVisualization } from '../components/FlowVisualization'
+import { TechnicalMetric, MetricGrid } from '../components/TechnicalMetric'
+import { ManifoldBackground } from '../components/ManifoldBackground'
+import { BasinCard } from '../components/BasinCard'
 
 // Wrapper ABI - users deposit AKITA, get wsAKITA directly
 const WRAPPER_ABI = [
@@ -173,35 +177,49 @@ export function Vault() {
   }
 
   return (
-    <div className="max-w-4xl mx-auto space-y-8 py-8">
+    <div className="relative max-w-5xl mx-auto space-y-8 py-8">
+      {/* Manifold Background */}
+      <ManifoldBackground opacity={0.08} variant="copper" />
+      
       {/* Header */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4"
+        className="relative z-10 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4"
       >
-        <div className="flex items-center gap-4">
-          {/* wsToken - token deposited in Base vault */}
-          <TokenImage
-            tokenAddress={tokenAddress as `0x${string}`}
-            symbol="wsAKITA"
-            size="lg"
-            fallbackColor="from-orange-500 to-red-600"
-            isWrapped={true}
-          />
-          <div>
-            <h1 className="font-display text-2xl font-bold">AKITA Vault</h1>
-            <p className="text-surface-400">AKITA → wsAKITA • Base</p>
+        <div>
+          <div className="flex items-center gap-2 mb-2">
+            <div className="w-1.5 h-1.5 bg-magma-mint rounded-full" />
+            <span className="text-xs font-mono uppercase tracking-[0.3em] text-magma-mint/80">
+              Creator Vault
+            </span>
+          </div>
+          <div className="flex items-center gap-4">
+            <TokenImage
+              tokenAddress={tokenAddress as `0x${string}`}
+              symbol="wsAKITA"
+              size="lg"
+              fallbackColor="from-orange-500 to-red-600"
+              isWrapped={true}
+            />
+            <div>
+              <h1 className="font-display text-3xl font-bold tracking-tight bg-gradient-to-b from-white to-slate-400 bg-clip-text text-transparent">
+                AKITA Vault
+              </h1>
+              <p className="text-slate-400 text-sm font-mono uppercase tracking-wider">
+                AKITA → wsAKITA • Base
+              </p>
+            </div>
           </div>
         </div>
         <a
           href={`https://basescan.org/address/${wrapperAddress}`}
           target="_blank"
           rel="noopener noreferrer"
-          className="btn-ghost flex items-center gap-2"
+          className="bg-tension-cyan/10 hover:bg-tension-cyan/20 text-tension-cyan px-4 py-2 text-xs font-mono uppercase tracking-wider transition-all border border-tension-cyan/30 flex items-center gap-2"
         >
-          <ExternalLink className="w-4 h-4" />
-          View on Basescan
+          <ExternalLink className="w-3.5 h-3.5" />
+          Basescan
         </a>
       </motion.div>
 
@@ -210,39 +228,89 @@ export function Vault() {
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ delay: 0.2 }}
-        className="grid grid-cols-2 sm:grid-cols-4 gap-4"
+        className="relative z-10"
       >
-        <div className="stat-card">
-          <div className="flex items-center gap-2 text-surface-400">
-            <Coins className="w-4 h-4" />
-            <span className="stat-label">Total wsAKITA</span>
-          </div>
-          <p className="stat-value">{formatAmount(totalWsAkita)}</p>
-        </div>
-        <div className="stat-card">
-          <div className="flex items-center gap-2 text-surface-400">
-            <TrendingUp className="w-4 h-4" />
-            <span className="stat-label">APY</span>
-          </div>
-          <p className="stat-value text-brand-500">42.0%</p>
-        </div>
-        <div className="stat-card">
-          <div className="flex items-center gap-2 text-surface-400">
-            <Trophy className="w-4 h-4" />
-            <span className="stat-label">Global Jackpot</span>
-          </div>
-          <p className="stat-value text-brand-500">0.1 ETH</p>
-        </div>
-        <div className="stat-card">
-          <div className="flex items-center gap-2 text-surface-400">
-            <Zap className="w-4 h-4" />
-            <span className="stat-label">Trade Fee</span>
-          </div>
-          <p className="stat-value">6.9%</p>
-        </div>
+        <MetricGrid columns={4}>
+          <TechnicalMetric
+            label="Total wsAKITA"
+            value={formatAmount(totalWsAkita)}
+            icon={<Coins className="w-3 h-3" />}
+            loading={!totalWsAkita}
+          />
+          <TechnicalMetric
+            label="APY"
+            value="42.0"
+            suffix="%"
+            icon={<TrendingUp className="w-3 h-3" />}
+            highlight
+          />
+          <TechnicalMetric
+            label="Global Jackpot"
+            value="0.1"
+            suffix="ETH"
+            icon={<Trophy className="w-3 h-3" />}
+            highlight
+          />
+          <TechnicalMetric
+            label="Trade Fee"
+            value="6.9"
+            suffix="%"
+            icon={<Zap className="w-3 h-3" />}
+          />
+        </MetricGrid>
       </motion.div>
 
-      <div className="grid sm:grid-cols-5 gap-6">
+      {/* Vault Strategy Allocation */}
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ delay: 0.25 }}
+      >
+        <BasinCard
+          label="Multi-Strategy Allocation"
+          title="Vault Strategy Pipeline"
+          tag="Post-Launch"
+          accent="cyan"
+        >
+          <p className="text-slate-400 text-sm mb-6 leading-relaxed">
+            When the creator deposits to the vault, funds are automatically allocated across multiple yield strategies:
+          </p>
+          
+          <FlowVisualization
+            nodes={[
+              { label: '50M AKITA Deposited', value: 'Creator Action' },
+              { label: 'Strategy Router', highlight: true },
+            ]}
+            branches={[
+              [{ label: '12.5M', value: 'WETH LP' }],
+              [{ label: '12.5M', value: 'USDC LP' }],
+              [{ label: '12.5M', value: 'Ajna Lending' }],
+              [{ label: '12.5M', value: 'Idle Reserve' }],
+            ]}
+          />
+          
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mt-6">
+            <div className="p-3 bg-black/20 border border-basalt-light">
+              <div className="text-xs font-mono text-slate-500 mb-1">WETH LP</div>
+              <div className="text-sm font-mono text-magma-mint">25%</div>
+            </div>
+            <div className="p-3 bg-black/20 border border-basalt-light">
+              <div className="text-xs font-mono text-slate-500 mb-1">USDC LP</div>
+              <div className="text-sm font-mono text-magma-mint">25%</div>
+            </div>
+            <div className="p-3 bg-black/20 border border-basalt-light">
+              <div className="text-xs font-mono text-slate-500 mb-1">Ajna</div>
+              <div className="text-sm font-mono text-magma-mint">25%</div>
+            </div>
+            <div className="p-3 bg-black/20 border border-basalt-light">
+              <div className="text-xs font-mono text-slate-500 mb-1">Idle</div>
+              <div className="text-sm font-mono text-tension-cyan">25%</div>
+            </div>
+          </div>
+        </BasinCard>
+      </motion.div>
+
+      <div className="grid sm:grid-cols-5 gap-6 relative z-10">
         {/* Deposit/Withdraw Card */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
