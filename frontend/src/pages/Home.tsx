@@ -51,18 +51,19 @@ export function Home() {
           <div className="space-y-4">
             <SlideUp delay={0.2}>
               <h1 className="font-display text-5xl sm:text-6xl lg:text-7xl xl:text-8xl font-black tracking-tight leading-[1.1]">
-                <span className="text-white block">Creator Coins</span>
+                <span className="text-white block">Turn Your</span>
                 <span className="text-gradient block">
-                  <TechScramble text="That Actually Pay" delay={400} duration={800} />
+                  <TechScramble text="Creator Coins" delay={400} duration={800} />
                 </span>
+                <span className="text-white block">Into Earnings</span>
               </h1>
             </SlideUp>
 
             <FadeIn delay={1}>
               <p className="text-slate-400 text-xl sm:text-2xl max-w-3xl mx-auto leading-relaxed">
-                The first vault system that rewards holders, not just creators.
+                Deposit your existing creator coins. Earn from every trade. Win jackpots.
                 <br />
-                <span className="text-white font-medium">Deposit. Earn. Win.</span>
+                <span className="text-white font-medium">Everyone earns together.</span>
               </p>
             </FadeIn>
           </div>
@@ -70,9 +71,9 @@ export function Home() {
           {/* Hero CTA */}
           <FadeIn delay={1.2}>
             <div className="flex flex-col sm:flex-row items-center gap-4 pt-4">
-              <Link to="/launch">
+              <Link to="/dashboard">
                 <motion.button 
-                  className="group relative px-8 py-4 rounded-2xl bg-[#0052FF] text-white font-bold text-lg shadow-2xl shadow-[#0052FF]/30 overflow-hidden"
+                  className="group relative px-8 py-4 rounded-2xl bg-brand-500 text-white font-bold text-lg shadow-2xl shadow-brand-500/30 overflow-hidden"
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
                   transition={{ duration: DURATION.fast, ease: BASE_EASE }}
@@ -81,21 +82,21 @@ export function Home() {
                   <div className="absolute inset-0 -translate-x-full group-hover:translate-x-full transition-transform duration-1000 bg-gradient-to-r from-transparent via-white/20 to-transparent" />
                   
                   <span className="relative flex items-center gap-2">
-                    <Rocket className="w-5 h-5" />
-                    Launch Your Vault
+                    <Coins className="w-5 h-5" />
+                    Start Earning
                     <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
                   </span>
                 </motion.button>
               </Link>
 
-              <Link to="/dashboard">
+              <Link to="/launch">
                 <motion.button 
                   className="px-8 py-4 rounded-2xl bg-white/[0.04] hover:bg-white/[0.08] border border-white/10 text-white font-semibold text-lg backdrop-blur-xl transition-colors"
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
                   transition={{ duration: DURATION.fast, ease: BASE_EASE }}
                 >
-                  Explore Vaults
+                  Create New Vault
                 </motion.button>
               </Link>
             </div>
@@ -124,10 +125,10 @@ export function Home() {
           <FadeIn delay={0.1}>
             <div className="text-center mb-12">
               <h2 className="text-3xl sm:text-4xl font-bold text-white mb-4">
-                The Problem With Creator Coins
+                Stop Holding. Start Earning.
               </h2>
               <p className="text-slate-400 text-lg max-w-2xl mx-auto">
-                Until now, creator coins only benefited creators. We're changing that.
+                Got creator coins sitting in your wallet? Put them to work.
               </p>
             </div>
           </FadeIn>
@@ -139,11 +140,11 @@ export function Home() {
                 <div className="absolute inset-0 rounded-3xl bg-gradient-to-br from-red-500/5 to-transparent opacity-0 hover:opacity-100 transition-opacity" />
                 <div className="relative">
                   <div className="w-12 h-12 rounded-2xl bg-red-500/10 flex items-center justify-center mb-4">
-                    <TrendingUp className="w-6 h-6 text-red-400 rotate-180" />
+                    <Coins className="w-6 h-6 text-red-400" />
                   </div>
-                  <h3 className="text-xl font-bold text-white mb-3">The Old Way</h3>
+                  <h3 className="text-xl font-bold text-white mb-3">Idle Tokens</h3>
                   <p className="text-slate-400 leading-relaxed">
-                    Buy the token. Creator dumps. You hold the bag. The same tired memecoin cycle.
+                    You hold creator coins, but they just sit there. No yield. No rewards. Just hoping for price action.
                   </p>
                 </div>
               </div>
@@ -151,20 +152,20 @@ export function Home() {
 
             {/* Arrow */}
             <div className="hidden lg:flex items-center justify-center">
-              <ArrowRight className="w-12 h-12 text-[#0052FF]" />
+              <ArrowRight className="w-12 h-12 text-brand-500" />
             </div>
 
             {/* Solution */}
             <StaggerItem>
-              <div className="relative p-8 rounded-3xl bg-gradient-to-br from-[#0052FF]/10 via-transparent to-transparent border border-[#0052FF]/30 backdrop-blur-xl">
-                <div className="absolute inset-0 rounded-3xl bg-gradient-to-br from-[#0052FF]/10 to-transparent opacity-0 hover:opacity-100 transition-opacity" />
+              <div className="relative p-8 rounded-3xl bg-gradient-to-br from-brand-500/10 via-transparent to-transparent border border-brand-500/30 backdrop-blur-xl">
+                <div className="absolute inset-0 rounded-3xl bg-gradient-to-br from-brand-500/10 to-transparent opacity-0 hover:opacity-100 transition-opacity" />
                 <div className="relative">
-                  <div className="w-12 h-12 rounded-2xl bg-[#0052FF]/20 flex items-center justify-center mb-4">
-                    <Sparkles className="w-6 h-6 text-[#0052FF]" />
+                  <div className="w-12 h-12 rounded-2xl bg-brand-500/20 flex items-center justify-center mb-4">
+                    <TrendingUp className="w-6 h-6 text-brand-500" />
                   </div>
-                  <h3 className="text-xl font-bold text-white mb-3">The CreatorVault Way</h3>
+                  <h3 className="text-xl font-bold text-white mb-3">Productive Assets</h3>
                   <p className="text-slate-400 leading-relaxed">
-                    Vault your coins. Earn from every trade. Win the jackpot. Everyone wins together.
+                    Deposit into vaults. Earn fees from trading. Enter lotteries. Win with your community.
                   </p>
                 </div>
               </div>
@@ -333,17 +334,17 @@ export function Home() {
               { 
                 num: '01', 
                 icon: Coins, 
-                title: 'Deposit Creator Coins', 
-                desc: 'Lock your creator coins in the vault. Get wsTokens that represent your share.',
+                title: 'Deposit Your Tokens', 
+                desc: 'Anyone can deposit—creators and holders alike. Get wsTokens that represent your share of the vault.',
                 color: 'from-blue-500/20 to-cyan-500/20',
                 iconBg: 'bg-blue-500/10',
                 iconColor: 'text-blue-400'
               },
               { 
                 num: '02', 
-                icon: TrendingUp, 
-                title: 'Earn From Every Trade', 
-                desc: '6.9% fee on all trades. 69% goes to the jackpot pool. You earn as the vault grows.',
+                icon: Users, 
+                title: 'Earn Together', 
+                desc: '6.9% fee on all trades flows to the community. As the vault grows, everyone benefits proportionally.',
                 color: 'from-purple-500/20 to-pink-500/20',
                 iconBg: 'bg-purple-500/10',
                 iconColor: 'text-purple-400'
@@ -352,7 +353,7 @@ export function Home() {
                 num: '03', 
                 icon: Trophy, 
                 title: 'Win the Jackpot', 
-                desc: 'Every buy is a lottery entry. Chainlink VRF picks winners. Random and fair.',
+                desc: 'Every buy is a lottery entry. Winners split 69% of the prize pool. Fair and transparent.',
                 color: 'from-yellow-500/20 to-orange-500/20',
                 iconBg: 'bg-yellow-500/10',
                 iconColor: 'text-yellow-400'
@@ -474,8 +475,8 @@ export function Home() {
               },
               {
                 icon: Users,
-                title: 'Community First',
-                desc: 'Holders earn together, not against each other.',
+                title: 'Anyone Can Join',
+                desc: 'Creators and holders deposit together. Everyone earns from the same pool.',
                 gradient: 'from-blue-500/10 to-cyan-500/10',
                 iconColor: 'text-blue-400',
               },
@@ -554,39 +555,52 @@ export function Home() {
         {/* FINAL CTA - Big, bold */}
         <FadeIn delay={0.1}>
           <section className="relative py-20">
-            <div className="absolute inset-0 bg-gradient-to-b from-[#0052FF]/5 to-transparent rounded-3xl blur-3xl" />
+            <div className="absolute inset-0 bg-gradient-to-b from-brand-500/5 to-transparent rounded-3xl blur-3xl" />
             
             <div className="relative text-center space-y-8">
               <div>
                 <h2 className="text-4xl sm:text-5xl font-bold text-white mb-4">
-                  Ready to Launch?
+                  Have Creator Coins?
                 </h2>
                 <p className="text-slate-400 text-xl max-w-2xl mx-auto">
-                  Turn your creator coin into a revenue-generating vault.
+                  Stop letting them sit idle. Deposit into vaults and start earning.
                   <br />
-                  Your community deserves to win too.
+                  <span className="text-white font-semibold">Join your community. Win together.</span>
                 </p>
               </div>
 
-              <Link to="/launch">
-                <motion.button 
-                  className="group relative px-12 py-6 rounded-2xl bg-[#0052FF] text-white font-bold text-xl shadow-2xl shadow-[#0052FF]/40 overflow-hidden"
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                  transition={{ duration: DURATION.fast, ease: BASE_EASE }}
-                >
-                  <div className="absolute inset-0 -translate-x-full group-hover:translate-x-full transition-transform duration-1000 bg-gradient-to-r from-transparent via-white/30 to-transparent" />
-                  
-                  <span className="relative flex items-center gap-3">
-                    <Rocket className="w-6 h-6" />
-                    Launch Your Vault Now
-                    <ArrowRight className="w-6 h-6 group-hover:translate-x-2 transition-transform" />
-                  </span>
-                </motion.button>
-              </Link>
+              <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
+                <Link to="/dashboard">
+                  <motion.button 
+                    className="group relative px-12 py-6 rounded-2xl bg-brand-500 text-white font-bold text-xl shadow-2xl shadow-brand-500/40 overflow-hidden"
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                    transition={{ duration: DURATION.fast, ease: BASE_EASE }}
+                  >
+                    <div className="absolute inset-0 -translate-x-full group-hover:translate-x-full transition-transform duration-1000 bg-gradient-to-r from-transparent via-white/30 to-transparent" />
+                    
+                    <span className="relative flex items-center gap-3">
+                      <Coins className="w-6 h-6" />
+                      Browse Vaults
+                      <ArrowRight className="w-6 h-6 group-hover:translate-x-2 transition-transform" />
+                    </span>
+                  </motion.button>
+                </Link>
+
+                <Link to="/launch">
+                  <motion.button 
+                    className="px-12 py-6 rounded-2xl bg-white/[0.04] hover:bg-white/[0.08] border border-white/10 text-white font-semibold text-xl backdrop-blur-xl transition-colors"
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                    transition={{ duration: DURATION.fast, ease: BASE_EASE }}
+                  >
+                    Or Create a Vault
+                  </motion.button>
+                </Link>
+              </div>
 
               <p className="text-slate-500 text-sm">
-                No coding required • Deploy in minutes • Start earning immediately
+                Deposit anytime • Withdraw anytime • Earn automatically
               </p>
             </div>
           </section>
