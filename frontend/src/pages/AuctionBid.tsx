@@ -6,11 +6,11 @@ import { parseEther, formatEther, formatUnits } from 'viem'
 import {
   Clock,
   Users,
-  Coins,
   ArrowLeft,
   AlertCircle,
   Loader2,
   CheckCircle2,
+  Trophy,
 } from 'lucide-react'
 import { AKITA } from '../config/contracts'
 import { ConnectButton } from '../components/ConnectButton'
@@ -59,7 +59,7 @@ const CCA_STRATEGY_ABI = [
 
 export function AuctionBid() {
   const { address: vaultAddress } = useParams()
-  const { address, isConnected } = useAccount()
+  const { isConnected } = useAccount()
   const [ethAmount, setEthAmount] = useState('')
   const [tokenAmount, setTokenAmount] = useState('')
 
@@ -100,6 +100,9 @@ export function AuctionBid() {
   const timeRemaining = endTime ? Number(endTime) - now : 0
   const daysRemaining = Math.floor(timeRemaining / 86400)
   const hoursRemaining = Math.floor((timeRemaining % 86400) / 3600)
+
+  // Check if auction hasn't started yet
+  const auctionNotStarted = !isActive && !isGraduated && currencyRaised === 0n
 
   const handleSubmitBid = () => {
     if (!ethAmount || !tokenAmount) return
@@ -166,14 +169,41 @@ export function AuctionBid() {
           <ArrowLeft className="w-4 h-4" />
           Back to Vault
         </Link>
-        <div className="glass-card p-8 text-center space-y-4">
-          <div className="w-16 h-16 rounded-2xl bg-slate-700/10 flex items-center justify-center mx-auto">
-            <Clock className="w-8 h-8 text-slate-500" />
+        <div className="glass-card p-8 text-center space-y-6">
+          <div className="w-20 h-20 rounded-2xl bg-orange-500/10 flex items-center justify-center mx-auto">
+            <Clock className="w-10 h-10 text-orange-500" />
           </div>
-          <h2 className="font-display text-2xl font-bold">Auction Not Active</h2>
-          <p className="text-surface-400">
-            This auction hasn't started yet or has already ended.
-          </p>
+          <div>
+            <h2 className="font-display text-3xl font-bold mb-2">Auction Not Started Yet</h2>
+            <p className="text-surface-400 text-lg">
+              The creator needs to activate the auction before bidding can begin.
+            </p>
+          </div>
+
+          {auctionNotStarted && (
+            <div className="pt-4 space-y-4">
+              <div className="p-4 rounded-xl bg-brand-500/10 border border-brand-500/20 text-left">
+                <p className="text-sm font-semibold text-brand-300 mb-2">Are you the creator?</p>
+                <p className="text-xs text-slate-400 mb-3">
+                  Launch the 7-day auction and let your community get early access to your tokens.
+                </p>
+                <Link to="/activate-akita">
+                  <button className="btn-primary w-full">
+                    🚀 Launch Auction
+                  </button>
+                </Link>
+              </div>
+
+              <div className="p-4 rounded-xl bg-white/[0.02] border border-white/5 text-left">
+                <p className="text-xs text-slate-400 mb-2">How it works:</p>
+                <div className="space-y-1 text-xs text-slate-500">
+                  <p>1. Creator deposits tokens & launches auction</p>
+                  <p>2. Community bids for 7 days</p>
+                  <p>3. Highest bidders win at fair price</p>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     )
