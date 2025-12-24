@@ -382,62 +382,32 @@ export function Dashboard() {
               )}
             </AnimatePresence>
 
-            {/* Carousel Navigation */}
-            <div className="flex items-center justify-center gap-6 mt-12">
+            {/* Carousel Navigation - Arrows Only */}
+            <button
+              onClick={() => setCarouselPage((prev) => (prev === 0 ? 1 : 0))}
+              className="absolute right-0 top-1/2 -translate-y-1/2 p-4 rounded-full bg-zinc-900/80 hover:bg-purple-900/80 border border-zinc-800 hover:border-purple-500/50 transition-all group"
+            >
+              <ChevronRight className="w-6 h-6 text-zinc-400 group-hover:text-purple-400 transition-colors" />
+            </button>
+
+            {/* Dot Indicators */}
+            <div className="flex justify-center gap-3 mt-12">
               <button
                 onClick={() => setCarouselPage(0)}
-                disabled={carouselPage === 0}
-                className="p-3 rounded-full bg-zinc-900 hover:bg-zinc-800 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
-              >
-                <ChevronLeft className="w-5 h-5 text-zinc-400" />
-              </button>
-
-              <div className="flex gap-3">
-                <button
-                  onClick={() => setCarouselPage(0)}
-                  className={`transition-all ${
-                    carouselPage === 0
-                      ? 'w-8 h-2 bg-purple-500'
-                      : 'w-2 h-2 bg-zinc-700 hover:bg-zinc-600'
-                  } rounded-full`}
-                />
-                <button
-                  onClick={() => setCarouselPage(1)}
-                  className={`transition-all ${
-                    carouselPage === 1
-                      ? 'w-8 h-2 bg-purple-500'
-                      : 'w-2 h-2 bg-zinc-700 hover:bg-zinc-600'
-                  } rounded-full`}
-                />
-              </div>
-
+                className={`transition-all ${
+                  carouselPage === 0
+                    ? 'w-8 h-2 bg-purple-500'
+                    : 'w-2 h-2 bg-zinc-700 hover:bg-zinc-600'
+                } rounded-full`}
+              />
               <button
                 onClick={() => setCarouselPage(1)}
-                disabled={carouselPage === 1}
-                className="p-3 rounded-full bg-zinc-900 hover:bg-zinc-800 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
-              >
-                <ChevronRight className="w-5 h-5 text-zinc-400" />
-              </button>
-            </div>
-
-            {/* Page Labels */}
-            <div className="flex justify-center gap-8 mt-6">
-              <button
-                onClick={() => setCarouselPage(0)}
-                className={`label transition-colors ${
-                  carouselPage === 0 ? 'text-purple-400' : 'text-zinc-600 hover:text-zinc-500'
-                }`}
-              >
-                Token Transformation
-              </button>
-              <button
-                onClick={() => setCarouselPage(1)}
-                className={`label transition-colors ${
-                  carouselPage === 1 ? 'text-purple-400' : 'text-zinc-600 hover:text-zinc-500'
-                }`}
-              >
-                How Earnings Work
-              </button>
+                className={`transition-all ${
+                  carouselPage === 1
+                    ? 'w-8 h-2 bg-purple-500'
+                    : 'w-2 h-2 bg-zinc-700 hover:bg-zinc-600'
+                } rounded-full`}
+              />
             </div>
           </div>
         </div>
