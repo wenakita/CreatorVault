@@ -134,7 +134,7 @@ export function Dashboard() {
 
       {/* Token Transformation Flow */}
       <section className="cinematic-section">
-        <div className="max-w-7xl mx-auto px-6">
+        <div className="max-w-6xl mx-auto px-6">
           <motion.div
             initial={{ opacity: 0 }}
             whileInView={{ opacity: 1 }}
@@ -143,193 +143,120 @@ export function Dashboard() {
             className="mb-16"
           >
             <span className="label">How It Works</span>
-            <h2 className="headline text-5xl mt-6">Token Transformation</h2>
+            <h2 className="headline text-5xl mt-6">Deposit · Wrap · Earn</h2>
           </motion.div>
 
-          <div className="relative">
-            {/* Flow Container */}
-            <div className="grid lg:grid-cols-3 gap-8 items-center">
-              {/* Step 1: Underlying Token */}
-              <motion.div
-                initial={{ opacity: 0, x: -20 }}
-                whileInView={{ opacity: 1, x: 0 }}
-                viewport={{ once: true }}
-                transition={{ duration: 0.6 }}
-                className="card p-8 space-y-6"
-              >
-                <span className="label">Step 1: Deposit</span>
-                <div className="flex items-center justify-center py-8">
-                  <TokenImage
-                    tokenAddress={AKITA.token as `0x${string}`}
-                    symbol="AKITA"
-                    size="lg"
-                    wrapped={false}
-                  />
-                </div>
-                <div className="text-center space-y-2">
-                  <div className="headline text-2xl">AKITA</div>
-                  <p className="text-zinc-600 text-sm font-light">Underlying Creator Token</p>
-                </div>
-                <div className="pt-4 border-t border-zinc-900/50 space-y-2">
-                  <div className="flex justify-between text-sm">
-                    <span className="text-zinc-500">Type</span>
-                    <span className="value mono">ERC-20</span>
-                  </div>
-                  <div className="flex justify-between text-sm">
-                    <span className="text-zinc-500">Status</span>
-                    <span className="value mono">Tradeable</span>
-                  </div>
-                  <div className="flex justify-between text-sm">
-                    <span className="text-zinc-500">Yield</span>
-                    <span className="value mono text-zinc-600">None</span>
-                  </div>
-                </div>
-              </motion.div>
-
-              {/* Arrow */}
-              <div className="hidden lg:flex justify-center">
-                <motion.div
-                  initial={{ opacity: 0, scale: 0.8 }}
-                  whileInView={{ opacity: 1, scale: 1 }}
-                  viewport={{ once: true }}
-                  transition={{ duration: 0.6, delay: 0.2 }}
-                  className="flex flex-col items-center gap-4"
-                >
-                  <div className="w-12 h-12 rounded-full bg-purple-500/10 border border-purple-500/30 flex items-center justify-center">
-                    <ArrowRight className="w-6 h-6 text-purple-400" />
-                  </div>
-                  <span className="label text-purple-400">Vault Wraps</span>
-                </motion.div>
+          {/* Flow Container */}
+          <div className="grid lg:grid-cols-3 gap-8 items-center mb-12">
+            {/* Step 1: Underlying Token */}
+            <motion.div
+              initial={{ opacity: 0, x: -20 }}
+              whileInView={{ opacity: 1, x: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.6 }}
+              className="card p-8 space-y-6"
+            >
+              <span className="label">Step 1: Deposit</span>
+              <div className="flex items-center justify-center py-8">
+                <TokenImage
+                  tokenAddress={AKITA.token as `0x${string}`}
+                  symbol="AKITA"
+                  size="lg"
+                  wrapped={false}
+                />
               </div>
+              <div className="text-center space-y-2">
+                <div className="headline text-2xl">AKITA</div>
+                <p className="text-zinc-600 text-sm font-light">Creator Token</p>
+              </div>
+              <div className="pt-4 border-t border-zinc-900/50 space-y-2">
+                <div className="flex justify-between text-sm">
+                  <span className="text-zinc-500">Type</span>
+                  <span className="value mono">ERC-20</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-zinc-500">Yield</span>
+                  <span className="value mono text-zinc-600">None</span>
+                </div>
+              </div>
+            </motion.div>
 
-              {/* Step 2: ShareOFT Token */}
+            {/* Arrow */}
+            <div className="hidden lg:flex justify-center">
               <motion.div
-                initial={{ opacity: 0, x: 20 }}
-                whileInView={{ opacity: 1, x: 0 }}
+                initial={{ opacity: 0, scale: 0.8 }}
+                whileInView={{ opacity: 1, scale: 1 }}
                 viewport={{ once: true }}
                 transition={{ duration: 0.6, delay: 0.2 }}
-                className="card p-8 space-y-6 border-purple-500/30"
+                className="flex flex-col items-center gap-4"
               >
-                <span className="label text-purple-400">Step 2: Receive</span>
-                <div className="flex items-center justify-center py-8">
-                  <TokenImage
-                    tokenAddress={AKITA.token as `0x${string}`}
-                    symbol="AKITA"
-                    size="lg"
-                    wrapped={true}
-                  />
+                <div className="w-12 h-12 rounded-full bg-purple-500/10 border border-purple-500/30 flex items-center justify-center">
+                  <ArrowRight className="w-6 h-6 text-purple-400" />
                 </div>
-                <div className="text-center space-y-2">
-                  <div className="headline text-2xl glow-purple">wsAKITA</div>
-                  <p className="text-zinc-600 text-sm font-light">Vault Share Token (OFT)</p>
-                </div>
-                <div className="pt-4 border-t border-zinc-900/50 space-y-2">
-                  <div className="flex justify-between text-sm">
-                    <span className="text-zinc-500">Type</span>
-                    <span className="value mono text-cyan-400">LayerZero OFT</span>
-                  </div>
-                  <div className="flex justify-between text-sm">
-                    <span className="text-zinc-500">Status</span>
-                    <span className="value mono text-cyan-400">Cross-Chain</span>
-                  </div>
-                  <div className="flex justify-between text-sm">
-                    <span className="text-zinc-500">Yield</span>
-                    <span className="value mono glow-cyan">Auto-Compound</span>
-                  </div>
-                </div>
+                <span className="label text-purple-400">Vault Wraps</span>
               </motion.div>
             </div>
 
-            {/* Strategy Allocation Below */}
+            {/* Step 2: ShareOFT Token */}
             <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
+              initial={{ opacity: 0, x: 20 }}
+              whileInView={{ opacity: 1, x: 0 }}
               viewport={{ once: true }}
-              transition={{ duration: 0.6, delay: 0.4 }}
-              className="mt-12"
+              transition={{ duration: 0.6, delay: 0.2 }}
+              className="card p-8 space-y-6 border-purple-500/30"
             >
-              <div className="card p-10 space-y-8">
-                <div className="text-center space-y-4">
-                  <span className="label">Underlying Assets Deployed To</span>
-                  <h3 className="headline text-3xl">Multi-Strategy Allocation</h3>
-                  <p className="text-zinc-600 text-sm font-light max-w-2xl mx-auto">
-                    Your underlying AKITA tokens are automatically deployed across multiple yield strategies.
-                    Your wsAKITA represents proportional ownership of all strategies.
-                  </p>
+              <span className="label text-purple-400">Step 2: Receive</span>
+              <div className="flex items-center justify-center py-8">
+                <TokenImage
+                  tokenAddress={AKITA.token as `0x${string}`}
+                  symbol="AKITA"
+                  size="lg"
+                  wrapped={true}
+                />
+              </div>
+              <div className="text-center space-y-2">
+                <div className="headline text-2xl glow-purple">wsAKITA</div>
+                <p className="text-zinc-600 text-sm font-light">Vault Share (OFT)</p>
+              </div>
+              <div className="pt-4 border-t border-zinc-900/50 space-y-2">
+                <div className="flex justify-between text-sm">
+                  <span className="text-zinc-500">Type</span>
+                  <span className="value mono text-cyan-400">OFT</span>
                 </div>
-
-                <div className="grid grid-cols-2 lg:grid-cols-4 gap-px bg-zinc-900">
-                  <motion.div
-                    initial={{ opacity: 0 }}
-                    whileInView={{ opacity: 1 }}
-                    viewport={{ once: true }}
-                    transition={{ duration: 0.4, delay: 0.5 }}
-                    className="bg-black p-8 space-y-4"
-                  >
-                    <span className="label">Uniswap V3 WETH</span>
-                    <div className="value mono text-4xl glow-cyan">25%</div>
-                    <p className="text-zinc-700 text-xs font-light">LP Fees + Charm Rebalancing</p>
-                  </motion.div>
-
-                  <motion.div
-                    initial={{ opacity: 0 }}
-                    whileInView={{ opacity: 1 }}
-                    viewport={{ once: true }}
-                    transition={{ duration: 0.4, delay: 0.6 }}
-                    className="bg-black p-8 space-y-4"
-                  >
-                    <span className="label">Stable Pair USDC</span>
-                    <div className="value mono text-4xl glow-cyan">25%</div>
-                    <p className="text-zinc-700 text-xs font-light">Low Volatility LP Position</p>
-                  </motion.div>
-
-                  <motion.div
-                    initial={{ opacity: 0 }}
-                    whileInView={{ opacity: 1 }}
-                    viewport={{ once: true }}
-                    transition={{ duration: 0.4, delay: 0.7 }}
-                    className="bg-black p-8 space-y-4"
-                  >
-                    <span className="label">Ajna Lending</span>
-                    <div className="value mono text-4xl glow-purple">25%</div>
-                    <p className="text-zinc-700 text-xs font-light">Permissionless Lending Yield</p>
-                  </motion.div>
-
-                  <motion.div
-                    initial={{ opacity: 0 }}
-                    whileInView={{ opacity: 1 }}
-                    viewport={{ once: true }}
-                    transition={{ duration: 0.4, delay: 0.8 }}
-                    className="bg-black p-8 space-y-4"
-                  >
-                    <span className="label">Idle Reserve</span>
-                    <div className="value mono text-4xl">25%</div>
-                    <p className="text-zinc-700 text-xs font-light">Available for Withdrawals</p>
-                  </motion.div>
-                </div>
-
-                {/* Key Difference */}
-                <div className="pt-8 border-t border-zinc-900/50">
-                  <div className="grid lg:grid-cols-2 gap-6">
-                    <div className="space-y-3">
-                      <span className="label">You Hold</span>
-                      <div className="value mono text-2xl glow-purple">wsAKITA</div>
-                      <p className="text-zinc-600 text-sm font-light">
-                        Redeemable share token that auto-compounds earnings from all strategies
-                      </p>
-                    </div>
-                    <div className="space-y-3">
-                      <span className="label">Vault Holds</span>
-                      <div className="value mono text-2xl">AKITA</div>
-                      <p className="text-zinc-600 text-sm font-light">
-                        Underlying tokens deployed across LP, lending, and reserves
-                      </p>
-                    </div>
-                  </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-zinc-500">Yield</span>
+                  <span className="value mono glow-cyan">Auto-Compound</span>
                 </div>
               </div>
             </motion.div>
           </div>
+
+          {/* Key Difference */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.6, delay: 0.4 }}
+          >
+            <div className="card p-10">
+              <div className="grid lg:grid-cols-2 gap-12">
+                <div className="space-y-4">
+                  <span className="label">You Hold</span>
+                  <div className="value mono text-3xl glow-purple">wsAKITA</div>
+                  <p className="text-zinc-600 font-light leading-relaxed">
+                    Vault share token that auto-compounds earnings from all underlying strategies
+                  </p>
+                </div>
+                <div className="space-y-4">
+                  <span className="label">Vault Deploys</span>
+                  <div className="value mono text-3xl">AKITA</div>
+                  <p className="text-zinc-600 font-light leading-relaxed">
+                    Your deposited tokens work across LP, lending, and reserves
+                  </p>
+                </div>
+              </div>
+            </div>
+          </motion.div>
         </div>
       </section>
 
