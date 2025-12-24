@@ -1,19 +1,16 @@
 import { Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { 
-  Rocket, ArrowRight, Sparkles, 
-  Shield, Zap, Users, 
-  Coins, Gift, TrendingUp, Trophy, Flame, Building2,
-  CheckCircle2, ChevronRight
+  Rocket, ArrowRight,
+  Coins, TrendingUp,
+  ChevronRight
 } from 'lucide-react'
-import { LotteryDistributionCompact } from '../components/DistributionChart'
 import { TokenImage } from '../components/TokenImage'
 import { AKITA } from '../config/contracts'
 import { 
   TechScramble, 
   SlideUp, 
   FadeIn, 
-  Stagger, 
   StaggerItem,
   BASE_EASE,
   DURATION

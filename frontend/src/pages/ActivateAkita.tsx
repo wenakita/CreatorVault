@@ -56,7 +56,7 @@ export function ActivateAkita() {
 
   // Approve transaction
   const { writeContract: approve, data: approveTxHash, isPending: isApproving } = useWriteContract()
-  const { isLoading: isApproveConfirming, isSuccess: isApproveSuccess } = useWaitForTransactionReceipt({
+  const { isSuccess: isApproveSuccess } = useWaitForTransactionReceipt({
     hash: approveTxHash,
   })
 
