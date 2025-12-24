@@ -5,6 +5,7 @@ import { Launch } from './pages/Launch'
 import { Dashboard } from './pages/Dashboard'
 import { Vault } from './pages/Vault'
 import { CompleteAuction } from './pages/CompleteAuction'
+import { ActivateAkita } from './pages/ActivateAkita'
 
 function App() {
   return (
@@ -16,6 +17,7 @@ function App() {
         <Route element={<Layout />}>
           <Route path="/" element={<Home />} />
           <Route path="/launch" element={<Launch />} />
+          <Route path="/activate-akita" element={<ActivateAkita />} />
           <Route path="/complete-auction" element={<CompleteAuction />} />
           <Route path="/complete-auction/:strategy" element={<CompleteAuction />} />
           <Route path="/dashboard" element={<Dashboard />} />
