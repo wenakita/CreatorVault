@@ -307,32 +307,33 @@ export function Home() {
                         <span className="text-orange-400 text-sm font-semibold uppercase tracking-wider">Deflationary</span>
                       </div>
                       <h2 className="text-3xl sm:text-4xl font-bold text-white mb-4">
-                        wsTokens Burn.
+                        Tokens Burn.
                         <br />
                         <span className="text-gradient">You Own More.</span>
                       </h2>
                       <p className="text-slate-400 text-lg leading-relaxed">
-                        21% of trades burn wsTokens. Same share = more creator coins.
+                        21% of trades burn vault tokens. Your share of creator coins grows automatically.
                       </p>
                     </div>
 
                     {/* Example calculation */}
                     <div className="p-4 rounded-2xl bg-gradient-to-br from-green-500/5 to-emerald-500/5 border border-green-500/20">
+                      <div className="text-xs text-slate-500 mb-3">Example: Depositing AKITA</div>
                       <div className="grid grid-cols-2 gap-3 text-sm">
                         <div className="p-3 rounded-xl bg-white/[0.03]">
-                          <div className="text-slate-500 text-xs mb-2">BEFORE</div>
+                          <div className="text-slate-500 text-xs mb-2">BEFORE BURN</div>
                           <div className="space-y-1">
                             <div className="flex justify-between">
-                              <span className="text-slate-400">You</span>
+                              <span className="text-slate-400">You hold</span>
                               <span className="text-white font-mono">100</span>
                             </div>
                             <div className="flex justify-between">
                               <span className="text-slate-400">Total</span>
                               <span className="text-white font-mono">10K</span>
                             </div>
-                            <div className="flex justify-between pt-1 border-t border-white/5 font-semibold">
-                              <span className="text-slate-400">Own</span>
-                              <span className="text-white">1K AKITA</span>
+                            <div className="flex justify-between pt-1 mt-1 border-t border-white/5">
+                              <span className="text-slate-400 text-xs">AKITA owned</span>
+                              <span className="text-white font-semibold">1,000</span>
                             </div>
                           </div>
                         </div>
@@ -341,24 +342,24 @@ export function Home() {
                           <div className="text-xs text-green-400 font-semibold mb-2">AFTER 50% BURN</div>
                           <div className="space-y-1">
                             <div className="flex justify-between">
-                              <span className="text-slate-400">You</span>
+                              <span className="text-slate-400">You hold</span>
                               <span className="text-white font-mono">100</span>
                             </div>
                             <div className="flex justify-between">
                               <span className="text-slate-400">Total</span>
                               <span className="text-white font-mono">5K</span>
                             </div>
-                            <div className="flex justify-between pt-1 border-t border-green-500/20 font-semibold">
-                              <span className="text-green-400">Own</span>
-                              <span className="text-green-400">2K AKITA</span>
+                            <div className="flex justify-between pt-1 mt-1 border-t border-green-500/20">
+                              <span className="text-green-400 text-xs">AKITA owned</span>
+                              <span className="text-green-400 font-semibold">2,000</span>
                             </div>
                           </div>
                         </div>
                       </div>
 
                       <div className="text-center pt-3 mt-3 border-t border-white/5">
-                        <div className="text-green-400 font-bold">+100% more AKITA</div>
-                        <div className="text-slate-500 text-xs">Automatic</div>
+                        <div className="text-green-400 font-bold">2x more AKITA</div>
+                        <div className="text-slate-500 text-xs">No action needed</div>
                       </div>
                     </div>
                   </div>
@@ -384,7 +385,7 @@ export function Home() {
                 num: '01', 
                 icon: Coins, 
                 title: 'Deposit', 
-                desc: 'Lock tokens. Get wsTokens representing your vault share.',
+                desc: 'Lock creator coins. Get vault tokens representing your share.',
                 color: 'from-blue-500/20 to-cyan-500/20',
                 iconBg: 'bg-blue-500/10',
                 iconColor: 'text-blue-400'
