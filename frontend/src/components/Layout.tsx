@@ -1,7 +1,5 @@
 import { Outlet, Link, useLocation } from 'react-router-dom'
 import { Home, LayoutDashboard } from 'lucide-react'
-import { useAccount } from 'wagmi'
-import { base } from 'wagmi/chains'
 import { ConnectButton } from './ConnectButton'
 import { VaultLogo } from './VaultLogo'
 
@@ -12,7 +10,6 @@ const navItems = [
 
 export function Layout() {
   const location = useLocation()
-  const { isConnected } = useAccount()
 
   return (
     <div className="min-h-screen flex flex-col bg-[#1a1a1a]">

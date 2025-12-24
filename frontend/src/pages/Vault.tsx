@@ -174,14 +174,11 @@ export function Vault() {
 
   return (
     <div className="relative max-w-5xl mx-auto space-y-8 py-8">
-      {/* Manifold Background */}
-      <ManifoldBackground opacity={0.08} variant="purple" />
-      
       {/* Header */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="relative z-10 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4"
+        className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4"
       >
         <div>
           <div className="flex items-center gap-2 mb-2">
@@ -224,36 +221,38 @@ export function Vault() {
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ delay: 0.2 }}
-        className="relative z-10"
+        className="grid grid-cols-2 sm:grid-cols-4 gap-4"
       >
-        <MetricGrid columns={4}>
-          <TechnicalMetric
-            label="Total wsAKITA"
-            value={formatAmount(totalWsAkita)}
-            icon={<Coins className="w-3 h-3" />}
-            loading={!totalWsAkita}
-          />
-          <TechnicalMetric
-            label="APY"
-            value="42.0"
-            suffix="%"
-            icon={<TrendingUp className="w-3 h-3" />}
-            highlight
-          />
-          <TechnicalMetric
-            label="Global Jackpot"
-            value="0.1"
-            suffix="ETH"
-            icon={<Trophy className="w-3 h-3" />}
-            highlight
-          />
-          <TechnicalMetric
-            label="Trade Fee"
-            value="6.9"
-            suffix="%"
-            icon={<Zap className="w-3 h-3" />}
-          />
-        </MetricGrid>
+        <div className="neu-card-inset p-5 rounded-xl">
+          <div className="flex items-center gap-2 mb-2">
+            <Coins className="w-4 h-4 text-zinc-500" />
+            <div className="text-xs text-zinc-500">Total wsAKITA</div>
+          </div>
+          <div className="text-xl font-bold">
+            {totalWsAkita ? formatAmount(totalWsAkita) : '...'}
+          </div>
+        </div>
+        <div className="neu-card-inset p-5 rounded-xl">
+          <div className="flex items-center gap-2 mb-2">
+            <TrendingUp className="w-4 h-4 text-[#0052FF]" />
+            <div className="text-xs text-zinc-500">APY</div>
+          </div>
+          <div className="text-xl font-bold text-[#0052FF]">42.0%</div>
+        </div>
+        <div className="neu-card-inset p-5 rounded-xl">
+          <div className="flex items-center gap-2 mb-2">
+            <Trophy className="w-4 h-4 text-purple-500" />
+            <div className="text-xs text-zinc-500">Global Jackpot</div>
+          </div>
+          <div className="text-xl font-bold text-purple-500">0.1 ETH</div>
+        </div>
+        <div className="neu-card-inset p-5 rounded-xl">
+          <div className="flex items-center gap-2 mb-2">
+            <Zap className="w-4 h-4 text-zinc-500" />
+            <div className="text-xs text-zinc-500">Trade Fee</div>
+          </div>
+          <div className="text-xl font-bold">6.9%</div>
+        </div>
       </motion.div>
 
       <div className="grid sm:grid-cols-5 gap-6">
