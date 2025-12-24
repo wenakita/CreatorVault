@@ -231,17 +231,17 @@ export function Dashboard() {
                   <div className="card p-10">
                     <div className="grid lg:grid-cols-2 gap-12">
                       <div className="space-y-4">
-                        <span className="label">You Hold</span>
-                        <div className="value mono text-3xl glow-purple">wsAKITA</div>
-                        <p className="text-zinc-600 font-light leading-relaxed">
-                          Vault share token that auto-compounds earnings from all underlying strategies
-                        </p>
-                      </div>
-                      <div className="space-y-4">
                         <span className="label">Vault Deploys</span>
                         <div className="value mono text-3xl">AKITA</div>
                         <p className="text-zinc-600 font-light leading-relaxed">
                           Your deposited tokens work across LP, lending, and reserves
+                        </p>
+                      </div>
+                      <div className="space-y-4">
+                        <span className="label">You Hold</span>
+                        <div className="value mono text-3xl glow-purple">wsAKITA</div>
+                        <p className="text-zinc-600 font-light leading-relaxed">
+                          Vault share token that auto-compounds earnings from all underlying strategies
                         </p>
                       </div>
                     </div>
@@ -385,7 +385,7 @@ export function Dashboard() {
             {/* Carousel Navigation - Arrows Only */}
             <button
               onClick={() => setCarouselPage((prev) => (prev === 0 ? 1 : 0))}
-              className="absolute right-0 top-1/2 -translate-y-1/2 p-4 rounded-full bg-zinc-900/80 hover:bg-purple-900/80 border border-zinc-800 hover:border-purple-500/50 transition-all group"
+              className="absolute -right-16 top-1/2 -translate-y-1/2 p-4 rounded-full bg-zinc-900/80 hover:bg-purple-900/80 border border-zinc-800 hover:border-purple-500/50 transition-all group"
             >
               <ChevronRight className="w-6 h-6 text-zinc-400 group-hover:text-purple-400 transition-colors" />
             </button>
