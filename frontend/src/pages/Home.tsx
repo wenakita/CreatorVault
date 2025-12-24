@@ -376,6 +376,9 @@ export function Home() {
               <h2 className="text-3xl sm:text-4xl font-bold text-white mb-4">
                 How It Works
               </h2>
+              <p className="text-slate-400 text-lg">
+                Simple. Transparent. Profitable.
+              </p>
             </div>
           </FadeIn>
 
@@ -385,7 +388,7 @@ export function Home() {
                 num: '01', 
                 icon: Coins, 
                 title: 'Deposit', 
-                desc: 'Deposit creator coins. Get vault tokens representing your share.',
+                desc: 'Add your creator coins. Withdraw anytime.',
                 color: 'from-blue-500/20 to-cyan-500/20',
                 iconBg: 'bg-blue-500/10',
                 iconColor: 'text-blue-400'
@@ -393,8 +396,8 @@ export function Home() {
               { 
                 num: '02', 
                 icon: TrendingUp, 
-                title: 'Earn Fees', 
-                desc: '6.9% of every trade flows back to the vault.',
+                title: 'Earn Automatically', 
+                desc: 'Every trade generates fees for vault holders.',
                 color: 'from-purple-500/20 to-pink-500/20',
                 iconBg: 'bg-purple-500/10',
                 iconColor: 'text-purple-400'
@@ -402,8 +405,8 @@ export function Home() {
               { 
                 num: '03', 
                 icon: Flame, 
-                title: 'Burns Increase Value', 
-                desc: '21% of fees burn tokens. Less supply = bigger share.',
+                title: 'Value Grows', 
+                desc: 'Burns reduce supply. Your share increases.',
                 color: 'from-orange-500/20 to-red-500/20',
                 iconBg: 'bg-orange-500/10',
                 iconColor: 'text-orange-400'
@@ -435,45 +438,48 @@ export function Home() {
           </div>
         </section>
 
-        {/* FEATURES - Tight grid */}
+        {/* BENEFITS - What you get */}
         <section>
           <FadeIn delay={0.1}>
             <div className="text-center mb-12">
               <h2 className="text-3xl sm:text-4xl font-bold text-white mb-4">
-                Why CreatorVault
+                Why Deposit Your Tokens?
               </h2>
+              <p className="text-slate-400 text-lg">
+                Turn idle tokens into earning assets
+              </p>
             </div>
           </FadeIn>
 
           <Stagger className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
             {[
               {
-                icon: Zap,
-                title: 'Fair Launch',
-                desc: 'No snipers. Equal opportunity.',
-                gradient: 'from-yellow-500/10 to-orange-500/10',
-                iconColor: 'text-yellow-400',
-              },
-              {
-                icon: Shield,
-                title: 'Secure',
-                desc: 'Audited contracts. Battle-tested.',
+                icon: TrendingUp,
+                title: 'Passive Income',
+                desc: 'Earn from every trade. No work required.',
                 gradient: 'from-green-500/10 to-emerald-500/10',
                 iconColor: 'text-green-400',
               },
               {
                 icon: Users,
-                title: 'Open to All',
-                desc: 'Anyone deposits. Everyone earns.',
+                title: 'Community Aligned',
+                desc: 'Creators and holders earn together.',
                 gradient: 'from-blue-500/10 to-cyan-500/10',
                 iconColor: 'text-blue-400',
               },
               {
-                icon: Gift,
-                title: 'Real Yield',
-                desc: 'Trading fees + deflationary burns.',
-                gradient: 'from-purple-500/10 to-pink-500/10',
-                iconColor: 'text-purple-400',
+                icon: Flame,
+                title: 'Deflationary Growth',
+                desc: 'Your share grows with every burn.',
+                gradient: 'from-orange-500/10 to-red-500/10',
+                iconColor: 'text-orange-400',
+              },
+              {
+                icon: Zap,
+                title: 'Full Control',
+                desc: 'Withdraw anytime. No lock-ups.',
+                gradient: 'from-yellow-500/10 to-orange-500/10',
+                iconColor: 'text-yellow-400',
               },
             ].map(({ icon: Icon, title, desc, gradient, iconColor }) => (
               <StaggerItem key={title}>
