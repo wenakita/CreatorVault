@@ -11,11 +11,13 @@ export const CONTRACTS = {
   vrfConsumer: '0xE7Bdc1dA09E6fD92B1a1cb82F427ed8d53B4f3Cb' as const,
   payoutRouterFactory: '0x9C53cEaA15AdDB436c89A1F929fF12ED2BD26ea9' as const,
   vaultActivator: '0x1bf02C90B226C028720D25dE535b345e5FfB9743' as const,
+  lpDeployer: '0x0000000000000000000000000000000000000000' as const, // TODO: Deploy SimpleLPDeployer
 
   // External
   poolManager: '0x498581fF718922c3f8e6A244956aF099B2652b2b' as const,
   taxHook: '0xca975B9dAF772C71161f3648437c3616E5Be0088' as const,
   chainlinkEthUsd: '0x71041dddad3595F9CEd3DcCFBe3D1F4b0a16Bb70' as const,
+  weth: '0x4200000000000000000000000000000000000006' as const, // Base WETH
 } as const
 
 // Example: AKITA Vault (first creator)
@@ -27,6 +29,8 @@ export const AKITA = {
   gaugeController: '0xB471B53cD0A30289Bc3a2dc3c6dd913288F8baA1' as const,
   ccaStrategy: '0x00c7897e0554b34A477D9D144AcC613Cdc97046F' as const,
   oracle: '0x8C044aeF10d05bcC53912869db89f6e1f37bC6fC' as const,
+  lpManager: '0x0000000000000000000000000000000000000000' as const, // TODO: Deploy
+  charmVault: '0x0000000000000000000000000000000000000000' as const, // TODO: Deploy Charm vault for wsAKITA/WETH
 } as const
 
 export type ContractAddress = `0x${string}`
