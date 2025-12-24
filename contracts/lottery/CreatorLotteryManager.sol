@@ -11,21 +11,29 @@ pragma solidity ^0.8.20;
  *      It serves ALL Creator Coins by looking up their contracts from the registry.
  * 
  * @dev LOTTERY MECHANICS:
- *      1. User trades wsAKITA → lottery entry created
+ *      1. User trades ANY wsToken (wsAKITA, wsDRAGON, etc) → lottery entry created
  *      2. Win probability scales with trade size ($1 = base, $1000 = max)
- *      3. sAKITA holders get boosted win chances
- *      4. Winners receive % of jackpot (stored in GaugeController)
+ *      3. sToken holders get boosted win chances
+ *      4. Winners receive % from ALL active creator vaults (diversified prize!)
  *      5. Winners are broadcast to ALL chains via LayerZero
+ * 
+ * @dev MULTI-TOKEN PRIZE PAYOUT:
+ *      Winner gets shares from EVERY active creator vault:
+ *        - wsAKITA shares (69% of AKITA vault jackpot)
+ *        - wsDRAGON shares (69% of DRAGON vault jackpot)
+ *        - wsXYZ shares (69% of XYZ vault jackpot)
+ *        - ... etc for ALL active creators
+ *      Result: Winner gets a diversified portfolio of ALL creator tokens! 🎁
  * 
  * @dev CROSS-CHAIN FLOW (Hub = Base):
  *      Winner on Base:
- *        1. Pay local jackpot
+ *        1. Pay from ALL local vaults
  *        2. Broadcast to all remote chains
  *      
  *      Winner on Remote:
  *        1. Notify hub (Base)
  *        2. Hub broadcasts to ALL chains (including source)
- *        3. Each chain pays from their local jackpot
+ *        3. Each chain pays from ALL their local vaults
  */
 
 import {OApp, Origin, MessagingFee} from "@layerzerolabs/oapp-evm/contracts/oapp/OApp.sol";
@@ -60,6 +68,9 @@ interface ICreatorRegistryLottery {
     function isCreatorCoinRegistered(address _token) external view returns (bool);
     function isCreatorCoinActive(address _token) external view returns (bool);
     function getLotteryManager(uint16 _chainId) external view returns (address);
+    
+    // Global queries
+    function getAllCreatorCoins() external view returns (address[] memory);
 }
 
 interface ICreatorChainlinkOracle {
@@ -201,6 +212,7 @@ contract CreatorLotteryManager is OApp, OAppOptionsType3, ReentrancyGuard, Pausa
     event CrossChainJackpotPaid(address indexed creatorCoin, address indexed winner, uint256 shares, uint256 tokenValue);
     event CrossChainPayoutFailed(address indexed winner, uint256 attemptedShares);
     event LotteryWon(address indexed creatorCoin, uint256 indexed entryId, address indexed winner, uint256 shares, uint256 tokenValue);
+    event MultiTokenJackpotWon(address indexed triggeringCoin, address indexed winner, uint256 numVaultsPaid);
     event WinnerNotifiedToHub(address indexed creatorCoin, address indexed winner, uint16 payoutBps);
     event HubNotificationFailed(address indexed winner, string reason);
     event WinnerReceivedFromRemote(uint32 indexed srcEid, address indexed creatorCoin, address indexed winner, uint16 payoutBps);
@@ -659,41 +671,66 @@ contract CreatorLotteryManager is OApp, OAppOptionsType3, ReentrancyGuard, Pausa
         _payoutLocalJackpot(creatorCoin, winner, payoutBps);
     }
 
+    /**
+     * @notice Pay jackpot from ALL active creator vaults (multi-token prize!)
+     * @param triggeringCoin The creator coin that triggered the lottery
+     * @param winner The lottery winner
+     * @param payoutBps Percentage of each vault's jackpot to pay (6900 = 69%)
+     * @return totalPaidOut Total number of vaults that paid out
+     */
     function _payoutLocalJackpot(
-        address creatorCoin,
+        address triggeringCoin,
         address winner,
         uint16 payoutBps
     ) internal returns (uint256) {
-        // Look up per-creator contracts
-        address vaultAddr = registry.getVaultForToken(creatorCoin);
-        address gaugeAddr = registry.getGaugeControllerForToken(creatorCoin);
+        // Get ALL registered creator coins
+        address[] memory allCreators = registry.getAllCreatorCoins();
+        uint256 totalPaidOut = 0;
         
-        if (vaultAddr == address(0) || gaugeAddr == address(0)) return 0;
+        // Pay from EVERY active creator vault
+        for (uint256 i = 0; i < allCreators.length; i++) {
+            address creatorCoin = allCreators[i];
+            
+            // Skip inactive creators
+            if (!registry.isCreatorCoinActive(creatorCoin)) continue;
+            
+            // Look up per-creator contracts
+            address vaultAddr = registry.getVaultForToken(creatorCoin);
+            address gaugeAddr = registry.getGaugeControllerForToken(creatorCoin);
+            
+            if (vaultAddr == address(0) || gaugeAddr == address(0)) continue;
 
-        ICreatorGaugeController gaugeController = ICreatorGaugeController(gaugeAddr);
-        ICreatorOVault vault = ICreatorOVault(vaultAddr);
-        
-        uint256 jackpotShares = gaugeController.getJackpotReserve(vaultAddr);
+            ICreatorGaugeController gaugeController = ICreatorGaugeController(gaugeAddr);
+            ICreatorOVault vault = ICreatorOVault(vaultAddr);
+            
+            uint256 jackpotShares = gaugeController.getJackpotReserve(vaultAddr);
 
-        if (jackpotShares == 0) return 0;
+            if (jackpotShares == 0) continue;
 
-        uint256 rewardShares = (jackpotShares * payoutBps) / BASIS_POINTS;
+            uint256 rewardShares = (jackpotShares * payoutBps) / BASIS_POINTS;
 
-        if (rewardShares > 0) {
-            try gaugeController.payJackpot(vaultAddr, winner, rewardShares) {
-                uint256 rewardValue = vault.previewRedeem(rewardShares);
-                totalRewardsPaid += rewardValue;
-                creatorStats[creatorCoin].rewardsPaid += rewardValue;
+            if (rewardShares > 0) {
+                try gaugeController.payJackpot(vaultAddr, winner, rewardShares) {
+                    uint256 rewardValue = vault.previewRedeem(rewardShares);
+                    totalRewardsPaid += rewardValue;
+                    creatorStats[creatorCoin].rewardsPaid += rewardValue;
+                    totalPaidOut++;
 
-                emit LotteryWon(creatorCoin, 0, winner, rewardShares, rewardValue);
-                emit CrossChainJackpotPaid(creatorCoin, winner, rewardShares, rewardValue);
-                return rewardShares;
-            } catch {
-                emit CrossChainPayoutFailed(winner, rewardShares);
-                return 0;
+                    emit LotteryWon(creatorCoin, 0, winner, rewardShares, rewardValue);
+                    emit CrossChainJackpotPaid(creatorCoin, winner, rewardShares, rewardValue);
+                } catch {
+                    emit CrossChainPayoutFailed(winner, rewardShares);
+                    // Continue to next vault even if one fails
+                }
             }
         }
-        return 0;
+        
+        // Emit special event for multi-token win
+        if (totalPaidOut > 0) {
+            emit MultiTokenJackpotWon(triggeringCoin, winner, totalPaidOut);
+        }
+        
+        return totalPaidOut;
     }
 
     // ================================
