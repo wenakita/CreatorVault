@@ -5,13 +5,3 @@
   <!-- "base" text -->
   <text x="50" y="28" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="700" fill="white">base</text>
 </svg>
-
-
-  <!-- The Square -->
-  <rect width="40" height="40" rx="8" fill="#0052FF"/>
-  
-  <!-- "base" text -->
-  <text x="50" y="28" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="700" fill="white">base</text>
-</svg>
-
-
