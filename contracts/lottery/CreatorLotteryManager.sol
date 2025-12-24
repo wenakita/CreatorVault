@@ -54,10 +54,12 @@ interface ICreatorRegistryLottery {
     // Per-creator lookups
     function getVaultForToken(address _token) external view returns (address);
     function getShareOFTForToken(address _token) external view returns (address);
+    function getTokenForShareOFT(address _shareOFT) external view returns (address);
     function getOracleForToken(address _token) external view returns (address);
     function getGaugeControllerForToken(address _token) external view returns (address);
     function isCreatorCoinRegistered(address _token) external view returns (bool);
     function isCreatorCoinActive(address _token) external view returns (bool);
+    function getLotteryManager(uint16 _chainId) external view returns (address);
 }
 
 interface ICreatorChainlinkOracle {
@@ -264,22 +266,26 @@ contract CreatorLotteryManager is OApp, OAppOptionsType3, ReentrancyGuard, Pausa
 
     /**
      * @notice Process swap-based lottery entry for ANY Creator Coin
-     * @param creatorCoin The Creator Coin being traded
-     * @param trader User who made the swap
-     * @param tokenIn Token swapped (should be creator coin or its shareOFT)
+     * @param buyer User who made the swap (from tx.origin)
+     * @param tokenIn Token swapped (wsToken/ShareOFT)
      * @param amountIn Amount swapped
      * @return entryId VRF request ID (0 if no entry)
      */
     function processSwapLottery(
-        address creatorCoin,
-        address trader,
+        address buyer,
         address tokenIn,
         uint256 amountIn
     ) external payable nonReentrant onlyAuthorizedSwapContract whenNotPaused returns (uint256 entryId) {
-        if (creatorCoin == address(0)) revert ZeroAddress();
-        if (trader == address(0)) revert ZeroAddress();
+        if (buyer == address(0)) revert ZeroAddress();
         if (tokenIn == address(0)) revert ZeroAddress();
         if (amountIn == 0) revert InvalidAmount();
+        
+        // Derive creator coin from tokenIn (wsToken)
+        address creatorCoin = registry.getTokenForShareOFT(tokenIn);
+        if (creatorCoin == address(0)) {
+            // Silently skip unregistered tokens (no lottery entry)
+            return 0;
+        }
         
         // Verify creator coin is registered AND active
         if (!registry.isCreatorCoinActive(creatorCoin)) {
@@ -300,13 +306,13 @@ contract CreatorLotteryManager is OApp, OAppOptionsType3, ReentrancyGuard, Pausa
 
         // Calculate win probability with boost
         uint256 baseWinChance = calculateWinChance(swapValueUSD);
-        uint256 boostedWinChance = _applyBoost(trader, baseWinChance);
+        uint256 boostedWinChance = _applyBoost(buyer, baseWinChance);
 
         // Request VRF
         if (useLocalVRF && address(localVRFConsumer) != address(0)) {
-            return _requestLocalVRF(creatorCoin, trader, swapValueUSD, boostedWinChance);
+            return _requestLocalVRF(creatorCoin, buyer, swapValueUSD, boostedWinChance);
         } else {
-            return _requestCrossChainVRF(creatorCoin, trader, swapValueUSD, boostedWinChance);
+            return _requestCrossChainVRF(creatorCoin, buyer, swapValueUSD, boostedWinChance);
         }
     }
 
@@ -315,7 +321,7 @@ contract CreatorLotteryManager is OApp, OAppOptionsType3, ReentrancyGuard, Pausa
      */
     function _requestCrossChainVRF(
         address creatorCoin,
-        address trader,
+        address buyer,
         uint256 swapValueUSD,
         uint256 winChancePPM
     ) internal returns (uint256) {
@@ -332,7 +338,7 @@ contract CreatorLotteryManager is OApp, OAppOptionsType3, ReentrancyGuard, Pausa
                     uint64 sequence
                 ) {
                     vrfRequests[uint256(sequence)] = VRFRequest({
-                        user: trader,
+                        user: buyer,
                         creatorCoin: creatorCoin,
                         amountUSD: swapValueUSD,
                         vrfType: VRFType.CROSS_CHAIN
@@ -340,7 +346,7 @@ contract CreatorLotteryManager is OApp, OAppOptionsType3, ReentrancyGuard, Pausa
                     totalLotteryEntries++;
                     creatorStats[creatorCoin].entries++;
 
-                    emit LotteryEntryCreated(creatorCoin, trader, swapValueUSD, winChancePPM, uint256(sequence));
+                    emit LotteryEntryCreated(creatorCoin, buyer, swapValueUSD, winChancePPM, uint256(sequence));
                     return uint256(sequence);
                 } catch {
                     return 0;
@@ -358,7 +364,7 @@ contract CreatorLotteryManager is OApp, OAppOptionsType3, ReentrancyGuard, Pausa
      */
     function _requestLocalVRF(
         address creatorCoin,
-        address trader,
+        address buyer,
         uint256 swapValueUSD,
         uint256 winChancePPM
     ) internal returns (uint256) {
@@ -368,7 +374,7 @@ contract CreatorLotteryManager is OApp, OAppOptionsType3, ReentrancyGuard, Pausa
 
         try localVRFConsumer.requestRandomWords() returns (uint256 requestId) {
             vrfRequests[requestId] = VRFRequest({
-                user: trader,
+                user: buyer,
                 creatorCoin: creatorCoin,
                 amountUSD: swapValueUSD,
                 vrfType: VRFType.LOCAL
@@ -376,7 +382,7 @@ contract CreatorLotteryManager is OApp, OAppOptionsType3, ReentrancyGuard, Pausa
             totalLotteryEntries++;
             creatorStats[creatorCoin].entries++;
 
-            emit LotteryEntryCreated(creatorCoin, trader, swapValueUSD, winChancePPM, requestId);
+            emit LotteryEntryCreated(creatorCoin, buyer, swapValueUSD, winChancePPM, requestId);
             return requestId;
         } catch {
             return 0;

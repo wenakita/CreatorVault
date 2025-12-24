@@ -723,24 +723,3 @@ contract CCALaunchStrategy is Ownable, ReentrancyGuard {
 }
 
 
-
-        address token,
-        uint256 amount,
-        address to
-    ) external onlyOwner {
-        if (to == address(0)) revert ZeroAddress();
-        IERC20(token).safeTransfer(to, amount);
-    }
-
-    /**
-     * @notice Emergency withdraw ETH
-     */
-    function emergencyWithdrawETH(address payable to) external onlyOwner {
-        if (to == address(0)) revert ZeroAddress();
-        to.transfer(address(this).balance);
-    }
-
-    receive() external payable {}
-}
-
-

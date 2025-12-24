@@ -1,6 +1,7 @@
 export { Layout } from './Layout'
 export { ConnectButton } from './ConnectButton'
 export { TokenImage } from './TokenImage'
+export { VaultLogo } from './VaultLogo'
 
 // Base Motion System (https://www.base.org/brand/motion)
 export {

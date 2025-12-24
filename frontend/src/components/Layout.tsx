@@ -4,6 +4,7 @@ import { Home, Rocket, LayoutDashboard } from 'lucide-react'
 import { useAccount } from 'wagmi'
 import { base } from 'wagmi/chains'
 import { ConnectButton } from './ConnectButton'
+import { VaultLogo } from './VaultLogo'
 
 const navItems = [
   { path: '/', icon: Home, label: 'Home' },
@@ -34,18 +35,14 @@ export function Layout() {
       <header className="sticky top-0 z-50 bg-slate-950/80 backdrop-blur-xl border-b border-white/[0.06]">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-3 flex items-center justify-between">
           <Link to="/" className="flex items-center gap-2.5 group">
-            {/* Base Logo - The Square */}
+            {/* wsAKITA Logo - Real AKITA in Base Vault */}
             <motion.div
               className="relative"
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
               transition={baseTransition}
             >
-              <img 
-                src="/logo.svg" 
-                alt="CreatorVault" 
-                className="w-8 h-8"
-              />
+              <VaultLogo size="sm" />
             </motion.div>
             <div className="hidden sm:flex items-baseline gap-1">
               <span className="font-semibold text-white tracking-tight">Creator</span>

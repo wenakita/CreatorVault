@@ -133,7 +133,6 @@ contract CreatorVaultLauncherLite is Ownable, ReentrancyGuard {
      * @param creatorCoin Your token address
      * @param depositAmount Initial deposit (min 50M tokens)
      * @param auctionPercent Percent of deposit to auction (0-80)
-     * @param requiredRaise Minimum ETH to raise
      * @return vault The cloned vault address
      */
     function launch(

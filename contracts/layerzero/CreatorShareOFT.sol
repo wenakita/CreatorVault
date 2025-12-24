@@ -11,7 +11,11 @@ interface ICreatorRegistry {
 }
 
 interface ICreatorLotteryManager {
-    function processSwapLottery(address recipient, address token, uint256 amount) external returns (uint256);
+    function processSwapLottery(
+        address buyer,
+        address tokenIn,
+        uint256 amountIn
+    ) external payable returns (uint256);
 }
 
 interface ICreatorOVault {
@@ -345,22 +349,30 @@ contract CreatorShareOFT is OFT, ReentrancyGuard {
     // ================================
 
     /**
-     * @dev Trigger lottery for recipient (EOA only)
+     * @dev Trigger lottery entry for buyer
+     * @param amount Amount of tokens bought
+     * @notice Uses tx.origin to get actual buyer since msg.sender is the DEX router.
+     *         Only EOAs can win - prevents gaming via contracts.
+     *         Users should only interact with trusted DEX frontends.
      */
-    function _triggerLottery(address recipient, uint256 amount) internal {
+    function _triggerLottery(address, uint256 amount) internal {
         if (!lotteryEnabled) return;
         if (address(registry) == address(0)) return;
         
-        // Only EOAs can win lottery
-        if (recipient.code.length > 0) return;
+        // Use tx.origin to get actual buyer (recipient is router, not user)
+        address buyer = tx.origin;
+        
+        // Only EOAs can win lottery - prevents gaming via contracts
+        if (buyer.code.length > 0) return;
         
         address mgr = registry.getLotteryManager(uint16(block.chainid));
         if (mgr == address(0)) return;
         
-        try ICreatorLotteryManager(mgr).processSwapLottery(recipient, address(this), amount) returns (uint256 id) {
-            if (id > 0) emit LotteryTriggered(recipient, amount, id);
+        // External call wrapped in try-catch to prevent lottery issues from blocking transfers
+        try ICreatorLotteryManager(mgr).processSwapLottery(buyer, address(this), amount) returns (uint256 id) {
+            if (id > 0) emit LotteryTriggered(buyer, amount, id);
         } catch {
-            // Lottery failure should not block transfer
+            // Lottery failure should not block the transfer
         }
     }
 

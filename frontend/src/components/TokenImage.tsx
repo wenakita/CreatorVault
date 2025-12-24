@@ -90,7 +90,9 @@ export const TokenImage = memo(function TokenImage({
   // Wrapped version: Token deposited into prominent Base blue vault
   return (
     <div className={`relative ${className}`}>
-      <div className={`${sizeClass} rounded-xl overflow-hidden relative shadow-xl ring-2 ring-brand-500/30`}>
+      <div className={`${sizeClass} rounded-xl overflow-hidden relative shadow-xl ring-2`} style={{ 
+        '--tw-ring-color': 'rgba(0, 0, 255, 0.3)' 
+      } as React.CSSProperties}>
         {/* Full token image (background) */}
         <div className="absolute inset-0">
           {(!imageUrl || imgError || isLoading) ? (
@@ -110,8 +112,10 @@ export const TokenImage = memo(function TokenImage({
         
         {/* Bottom 40%: Prominent 3D Base vault - token is DEPOSITED INTO Base */}
         <div className="absolute inset-x-0 bottom-0 h-[40%] opacity-90">
-          {/* Main vault body with bright Base blue gradient */}
-          <div className="absolute inset-0 bg-gradient-to-br from-brand-400 via-brand-500 to-brand-600" />
+          {/* Main vault body with official Base blue gradient */}
+          <div className="absolute inset-0" style={{
+            background: 'linear-gradient(to bottom right, #0052FF, #0000FF, #0000CC)'
+          }} />
           
           {/* Deep inset shadow for vault recess */}
           <div className="absolute inset-0 shadow-[inset_0_4px_12px_rgba(0,0,0,0.5),inset_0_-2px_8px_rgba(0,0,0,0.3)]" />
@@ -146,7 +150,9 @@ export const TokenImage = memo(function TokenImage({
               <div className="absolute inset-[4%] rounded-full bg-gradient-to-tl from-black/30 to-transparent" />
               
               {/* Middle ring - recessed */}
-              <div className="absolute inset-[12%] rounded-full bg-gradient-to-br from-brand-600 via-brand-500 to-brand-400 shadow-[inset_0_2px_8px_rgba(0,0,0,0.5)]" />
+              <div className="absolute inset-[12%] rounded-full shadow-[inset_0_2px_8px_rgba(0,0,0,0.5)]" style={{
+                background: 'linear-gradient(to bottom right, #0000CC, #0000FF, #0052FF)'
+              }} />
               
               {/* Dial markings */}
               <div className="absolute inset-[20%] rounded-full">
@@ -180,7 +186,9 @@ export const TokenImage = memo(function TokenImage({
         <div className="absolute inset-x-0 top-[58%] h-[4%] bg-gradient-to-b from-black/0 via-black/20 to-black/30 pointer-events-none" />
         
         {/* Blue glow emanating from vault to emphasize Base blue */}
-        <div className="absolute inset-x-0 bottom-0 h-[40%] bg-gradient-to-t from-brand-500/20 to-transparent pointer-events-none blur-sm" />
+        <div className="absolute inset-x-0 bottom-0 h-[40%] pointer-events-none blur-sm" style={{
+          background: 'linear-gradient(to top, rgba(0, 0, 255, 0.2), transparent)'
+        }} />
       </div>
     </div>
   )
