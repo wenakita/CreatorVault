@@ -1,8 +1,8 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { useAccount, useReadContract, useWriteContract, useWaitForTransactionReceipt } from 'wagmi'
-import { parseEther, formatEther, formatUnits } from 'viem'
+import { parseEther, formatEther } from 'viem'
 import {
   Clock,
   ArrowLeft,
@@ -10,15 +10,10 @@ import {
   Loader2,
   CheckCircle2,
   TrendingUp,
-  Zap,
   Target,
 } from 'lucide-react'
 import { AKITA } from '../config/contracts'
 import { ConnectButton } from '../components/ConnectButton'
-import { VaultLogo } from '../components/VaultLogo'
-import { PriceDiscoveryChart } from '../components/PriceDiscoveryChart'
-import { TechnicalMetric, MetricGrid } from '../components/TechnicalMetric'
-import { ManifoldBackground } from '../components/ManifoldBackground'
 
 // CCA Strategy ABI
 const CCA_STRATEGY_ABI = [
@@ -61,13 +56,18 @@ const CCA_STRATEGY_ABI = [
   },
 ] as const
 
+const PRESET_BIDS = [
+  { label: '0.1 ETH', eth: '0.1' },
+  { label: '0.25 ETH', eth: '0.25' },
+  { label: '0.5 ETH', eth: '0.5' },
+  { label: '1 ETH', eth: '1' },
+]
+
 export function AuctionBid() {
   const { isConnected } = useAccount()
   const [ethAmount, setEthAmount] = useState('')
-  const [tokenAmount, setTokenAmount] = useState('')
-  const [selectedPreset, setSelectedPreset] = useState<string | null>(null)
+  const [now, setNow] = useState(Math.floor(Date.now() / 1000))
 
-  // For now, hardcode to AKITA
   const ccaStrategy = AKITA.ccaStrategy
 
   // Read auction data
@@ -89,81 +89,72 @@ export function AuctionBid() {
     functionName: 'tokenTarget',
   })
 
-  // Submit bid
-  const { writeContract: submitBid, data: bidTxHash, isPending: isBidding } = useWriteContract()
-  const { isLoading: isBidConfirming, isSuccess: isBidSuccess } = useWaitForTransactionReceipt({
-    hash: bidTxHash,
-  })
+  const { writeContract: writeBid, data: bidHash } = useWriteContract()
+  const { isLoading: isBidding } = useWaitForTransactionReceipt({ hash: bidHash })
 
   const isActive = auctionStatus?.[1] || false
   const isGraduated = auctionStatus?.[2] || false
   const clearingPrice = auctionStatus?.[3] || 0n
   const currencyRaised = auctionStatus?.[4] || 0n
 
-  // Calculate time remaining
-  const now = Math.floor(Date.now() / 1000)
+  const tokenAmount = ethAmount
+    ? clearingPrice > 0
+      ? (parseEther(ethAmount) * 10n ** 18n) / clearingPrice
+      : 0n
+    : 0n
+
   const timeRemaining = endTime ? Number(endTime) - now : 0
-  const daysRemaining = Math.floor(timeRemaining / 86400)
-  const hoursRemaining = Math.floor((timeRemaining % 86400) / 3600)
+  const progress = tokenTarget
+    ? Number((currencyRaised * 10000n) / tokenTarget) / 100
+    : 0
 
-  const auctionNotStarted = !isActive && !isGraduated && currencyRaised === 0n
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setNow(Math.floor(Date.now() / 1000))
+    }, 1000)
+    return () => clearInterval(interval)
+  }, [])
 
-  // Generate price discovery data from real metrics
-  const priceData = useMemo(() => {
-    const raised = Number(formatEther(currencyRaised))
-    if (raised === 0) return [30, 35, 42, 55, 68, 85, 70, 50, 40, 30]
-    
-    // Create data points based on actual raised amount
-    const baseData = [30, 35, 42, 55, 68]
-    const currentHeight = Math.min(Math.floor((raised / 100) * 100), 100)
-    const futureData = [70, 50, 40, 30, 25]
-    
-    return [...baseData, currentHeight, ...futureData]
-  }, [currencyRaised])
+  const formatTime = (seconds: number) => {
+    if (seconds <= 0) return '0:00:00'
+    const h = Math.floor(seconds / 3600)
+    const m = Math.floor((seconds % 3600) / 60)
+    const s = seconds % 60
+    return `${h}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`
+  }
 
-  const handleSubmitBid = () => {
-    if (!ethAmount || !tokenAmount) return
-    
-    submitBid({
+  const handleBid = () => {
+    if (!ethAmount) return
+    writeBid({
       address: ccaStrategy as `0x${string}`,
       abi: CCA_STRATEGY_ABI,
       functionName: 'bid',
-      args: [parseEther(ethAmount), parseEther(tokenAmount)],
+      args: [parseEther(ethAmount), tokenAmount],
       value: parseEther(ethAmount),
     })
   }
 
-  const handlePresetClick = (preset: { eth: string; tokens: string; label: string }) => {
-    setEthAmount(preset.eth)
-    setTokenAmount(preset.tokens)
-    setSelectedPreset(preset.label)
-  }
-
-  // Auto-refresh every 10 seconds
-  useEffect(() => {
-    const interval = setInterval(() => {
-      // Force refetch would go here
-    }, 10000)
-    return () => clearInterval(interval)
-  }, [])
-
   // Not connected
   if (!isConnected) {
     return (
-      <div className="min-h-[80vh] flex items-center justify-center">
+      <div className="min-h-[70vh] flex items-center justify-center">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="text-center space-y-6"
+          className="text-center space-y-6 max-w-md"
         >
-          <AlertCircle className="w-16 h-16 text-slate-500 mx-auto" />
+          <AlertCircle className="w-16 h-16 text-zinc-500 mx-auto" />
           <div>
             <h2 className="text-2xl font-bold mb-2">Connect Wallet to Bid</h2>
-            <p className="text-slate-400 mb-6">
-              You need to connect your wallet to participate in the auction
+            <p className="text-zinc-400 mb-6">
+              Connect your wallet to participate in the AKITA CCA auction
             </p>
-            <ConnectButton />
           </div>
+          <ConnectButton />
+          <Link to="/dashboard" className="text-blue-500 hover:text-blue-400 text-sm flex items-center justify-center gap-2">
+            <ArrowLeft className="w-4 h-4" />
+            Back to Vaults
+          </Link>
         </motion.div>
       </div>
     )
@@ -172,342 +163,200 @@ export function AuctionBid() {
   // Auction ended
   if (isGraduated) {
     return (
-      <div className="min-h-[80vh] flex items-center justify-center">
+      <div className="min-h-[70vh] flex items-center justify-center">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="text-center space-y-6"
+          className="text-center space-y-6 max-w-md"
         >
-          <CheckCircle2 className="w-16 h-16 text-green-400 mx-auto" />
+          <CheckCircle2 className="w-16 h-16 text-green-500 mx-auto" />
           <div>
             <h2 className="text-2xl font-bold mb-2">Auction Ended</h2>
-            <p className="text-slate-400 mb-6">
-              This auction has graduated and tokens are being distributed
+            <p className="text-zinc-400 mb-6">
+              The CCA auction has successfully concluded. Head to the vault to deposit.
             </p>
-            <Link to={`/complete-auction/${ccaStrategy}`}>
-              <button className="btn-primary">
-                Complete Auction →
-              </button>
-            </Link>
           </div>
+          <Link to={`/vault/${AKITA.vault}`} className="btn-primary inline-flex">
+            Go to Vault
+          </Link>
+          <Link to="/dashboard" className="text-blue-500 hover:text-blue-400 text-sm flex items-center justify-center gap-2">
+            <ArrowLeft className="w-4 h-4" />
+            Back to Vaults
+          </Link>
         </motion.div>
       </div>
     )
   }
 
   // Auction not started
-  if (auctionNotStarted) {
+  if (!isActive) {
     return (
-      <div className="min-h-[80vh] flex items-center justify-center">
+      <div className="min-h-[70vh] flex items-center justify-center">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="text-center space-y-6"
+          className="text-center space-y-6 max-w-md"
         >
-          <Clock className="w-16 h-16 text-slate-500 mx-auto" />
+          <Clock className="w-16 h-16 text-zinc-500 mx-auto" />
           <div>
             <h2 className="text-2xl font-bold mb-2">Auction Not Active</h2>
-            <p className="text-slate-400 mb-6">
-              This auction hasn't started yet. Creators can launch it.
+            <p className="text-zinc-400 mb-6">
+              The CCA auction hasn't started yet. Check back soon!
             </p>
-            <Link to="/activate-akita">
-              <button className="btn-secondary">
-                Launch Auction
-              </button>
-            </Link>
           </div>
+          <Link to="/dashboard" className="btn-secondary inline-flex items-center gap-2">
+            <ArrowLeft className="w-4 h-4" />
+            Back to Vaults
+          </Link>
         </motion.div>
       </div>
     )
   }
 
-  // Active auction - Main UI
+  // Active auction
   return (
-    <div className="relative space-y-6 py-6">
-      {/* Manifold Background */}
-      <ManifoldBackground opacity={0.1} variant="blue" />
-
-      {/* Wire Grid Overlay */}
-      <div 
-        className="fixed inset-0 pointer-events-none opacity-[0.015]"
-        style={{
-          backgroundImage: 'linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px)',
-          backgroundSize: '40px 40px'
-        }}
-      />
-
-      {/* Header with Back Button */}
-      <div className="flex items-center gap-4">
-        <Link to="/dashboard">
-          <button className="p-2 rounded-lg hover:bg-white/5 transition-colors">
-            <ArrowLeft className="w-5 h-5" />
-          </button>
-        </Link>
-        <div className="flex-1">
-          <div className="flex items-center gap-2 text-xs text-slate-500 font-mono mb-1 uppercase tracking-[0.2em]">
-            <span className="inline-block w-2 h-2 rounded-full bg-blue-500 animate-pulse shadow-lg shadow-blue-500/50" />
-            ACTIVE_AUCTION
+    <div className="max-w-4xl mx-auto px-6 py-12 space-y-8">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div className="space-y-1">
+          <Link to="/dashboard" className="text-blue-500 hover:text-blue-400 text-sm flex items-center gap-2 mb-2">
+            <ArrowLeft className="w-4 h-4" />
+            Back to Vaults
+          </Link>
+          <h1 className="text-4xl font-bold">AKITA CCA Auction</h1>
+          <p className="text-zinc-400">Get wsAKITA before anyone else</p>
+        </div>
+        <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg px-4 py-3 text-center">
+          <div className="text-sm text-zinc-500 mb-1">Time Remaining</div>
+          <div className="text-2xl font-bold font-mono text-blue-500">
+            {formatTime(timeRemaining)}
           </div>
-          <h1 className="text-4xl font-bold font-display tracking-tight bg-gradient-to-b from-white to-slate-400 bg-clip-text text-transparent">
-            CCA_STRATEGY_V4
-          </h1>
         </div>
       </div>
 
-      {/* Main Grid */}
-      <div className="grid lg:grid-cols-3 gap-6">
-        {/* Left: Price Discovery & Stats */}
-        <div className="lg:col-span-2 space-y-6">
-          {/* Price Discovery Panel */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="relative bg-basalt/80 backdrop-blur-md border border-basalt-light overflow-hidden"
-          >
-            {/* Top accent line */}
-            <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-transparent via-blue-500 to-transparent opacity-30" />
-
-            <div className="p-8 space-y-8">
-              {/* Current Metrics */}
-              <MetricGrid columns={2}>
-                <TechnicalMetric
-                  label="Clearing Price"
-                  value={formatEther(clearingPrice)}
-                  suffix="ETH"
-                  size="xl"
-                  loading={!auctionStatus}
-                />
-                <TechnicalMetric
-                  label="Currency Raised"
-                  value={formatEther(currencyRaised)}
-                  suffix="ETH"
-                  size="xl"
-                  highlight
-                  loading={!auctionStatus}
-                />
-              </MetricGrid>
-
-              {/* Price Discovery Visualization */}
-              <div className="relative">
-                <div className="text-xs font-mono uppercase tracking-[0.2em] text-purple-500/70 mb-4">
-                  Price Discovery Curve
-                </div>
-                <div className="relative bg-black/30 rounded-sm p-6 border border-white/5">
-                  <PriceDiscoveryChart 
-                    data={priceData}
-                    currentPrice={Number(formatEther(clearingPrice))}
-                  />
-                </div>
-              </div>
-
-              {/* Live Stats Grid */}
-              <MetricGrid columns={3}>
-                <TechnicalMetric
-                  label="Total Supply"
-                  value={tokenTarget ? (Number(formatUnits(tokenTarget, 18)) / 1000000).toFixed(1) : '0'}
-                  suffix="M AKITA"
-                  icon={<Target className="w-3 h-3" />}
-                  loading={!tokenTarget}
-                />
-                <TechnicalMetric
-                  label="Time Remaining"
-                  value={`${daysRemaining}d ${hoursRemaining}h`}
-                  icon={<Clock className="w-3 h-3" />}
-                  loading={!endTime}
-                />
-                <TechnicalMetric
-                  label="Progress"
-                  value={((Number(formatEther(currencyRaised)) / 100) * 100).toFixed(1)}
-                  suffix="%"
-                  icon={<TrendingUp className="w-3 h-3" />}
-                  loading={!auctionStatus}
-                />
-              </MetricGrid>
-
-            {/* Info Banner */}
-            <div className="relative p-6 bg-blue-500/5 border border-blue-500/20 overflow-hidden">
-              {/* Animated shine effect */}
-              <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent -translate-x-full animate-shimmer" />
-              
-              <div className="relative flex items-start gap-4">
-                <div className="p-2 rounded bg-blue-500/10 border border-blue-500/30">
-                  <Zap className="w-5 h-5 text-blue-500" />
-                </div>
-                <div className="flex-1">
-                  <div className="flex items-center gap-2 mb-2">
-                    <div className="w-1 h-1 bg-blue-500 rounded-full" />
-                    <p className="text-sm font-mono uppercase tracking-wider text-blue-500">
-                      Fair Price Discovery
-                    </p>
-                  </div>
-                  <p className="text-slate-400 text-sm leading-relaxed font-light">
-                    Everyone pays the same clearing price. Higher bids increase allocation.
-                    Unbought tokens refund automatically.
-                  </p>
-                </div>
-              </div>
-            </div>
-            </div>
-
-            {/* Grain overlay */}
-            <div 
-              className="absolute inset-0 pointer-events-none opacity-[0.02] mix-blend-overlay"
-              style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='filter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23filter)'/%3E%3C/svg%3E")` }}
+      {/* Stats */}
+      <div className="grid sm:grid-cols-3 gap-4">
+        <div className="stat-card">
+          <div className="flex items-center gap-2 mb-2">
+            <TrendingUp className="w-4 h-4 text-blue-500" />
+            <span className="text-xs text-zinc-500">Total Raised</span>
+          </div>
+          <div className="text-xl font-semibold">
+            {formatEther(currencyRaised)} ETH
+          </div>
+        </div>
+        <div className="stat-card">
+          <div className="flex items-center gap-2 mb-2">
+            <Target className="w-4 h-4 text-zinc-500" />
+            <span className="text-xs text-zinc-500">Current Price</span>
+          </div>
+          <div className="text-xl font-semibold">
+            {clearingPrice > 0 ? formatEther(clearingPrice) : '...'} ETH
+          </div>
+        </div>
+        <div className="stat-card">
+          <div className="flex items-center gap-2 mb-2">
+            <span className="text-xs text-zinc-500">Progress</span>
+          </div>
+          <div className="text-xl font-semibold">{progress.toFixed(1)}%</div>
+          <div className="w-full bg-zinc-900 rounded-full h-2 mt-2">
+            <div
+              className="bg-blue-500 h-2 rounded-full transition-all"
+              style={{ width: `${Math.min(progress, 100)}%` }}
             />
-          </motion.div>
+          </div>
+        </div>
+      </div>
+
+      {/* Bid Form */}
+      <div className="card p-8 space-y-6">
+        <div>
+          <h2 className="text-2xl font-semibold mb-2">Place Your Bid</h2>
+          <p className="text-zinc-400 text-sm">
+            Choose an amount or enter a custom bid. Higher bids get better prices.
+          </p>
         </div>
 
-        {/* Right: Bidding Interface */}
-        <div className="space-y-6">
-          {/* Bid Panel */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.1 }}
-            className="relative bg-basalt/80 backdrop-blur-md border border-basalt-light border-l-4 border-l-blue-500/50 overflow-hidden"
-          >
-            {/* Top accent */}
-            <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-purple-500/30 to-transparent" />
-            
-            <div className="p-6 space-y-6">
-            <div>
-              <div className="flex items-center gap-2 mb-6">
-                <div className="w-1.5 h-1.5 bg-purple-500 rounded-full" />
-                <h3 className="text-xs font-mono uppercase tracking-[0.3em] text-purple-500/80">
-                  Auction Parameters
-                </h3>
-              </div>
-
-              {/* Preset Amounts */}
-              <div className="grid grid-cols-3 gap-2 mb-6">
-                {[
-                  { label: '0.1', eth: '0.1', tokens: '200000' },
-                  { label: '0.5', eth: '0.5', tokens: '1000000' },
-                  { label: '1.0', eth: '1.0', tokens: '2000000' },
-                ].map((preset) => (
-                  <button
-                    key={preset.label}
-                    onClick={() => handlePresetClick(preset)}
-                    className={`p-3 text-sm font-mono transition-all border ${
-                      selectedPreset === preset.label
-                        ? 'bg-blue-500/10 text-blue-500 border-blue-500/30 shadow-lg shadow-blue-500/20'
-                        : 'bg-white/5 hover:bg-white/10 text-slate-300 border-white/10'
-                    }`}
-                  >
-                    {preset.label} ETH
-                  </button>
-                ))}
-              </div>
-
-              {/* Custom Input */}
-              <div className="space-y-4">
-                <div>
-                  <label className="text-[10px] font-mono uppercase tracking-[0.2em] text-slate-500 mb-2 block">
-                    ETH_AMOUNT
-                  </label>
-                  <input
-                    type="text"
-                    value={ethAmount}
-                    onChange={(e) => {
-                      setEthAmount(e.target.value)
-                      setSelectedPreset(null)
-                    }}
-                    placeholder="0.0"
-                    className="w-full bg-black/30 border border-basalt-light px-4 py-3 font-mono text-lg focus:border-blue-500 focus:outline-none transition-colors"
-                  />
-                </div>
-
-                <div>
-                  <label className="text-[10px] font-mono uppercase tracking-[0.2em] text-slate-500 mb-2 block">
-                    TOKEN_AMOUNT
-                  </label>
-                  <input
-                    type="text"
-                    value={tokenAmount}
-                    onChange={(e) => {
-                      setTokenAmount(e.target.value)
-                      setSelectedPreset(null)
-                    }}
-                    placeholder="0"
-                    className="w-full bg-black/30 border border-basalt-light px-4 py-3 font-mono text-lg focus:border-blue-500 focus:outline-none transition-colors"
-                  />
-                  <div className="text-xs text-slate-500 mt-1">AKITA tokens desired</div>
-                </div>
-              </div>
-            </div>
-
-            {/* Submit Button */}
-            <div className="space-y-3">
-              <div className="h-px bg-gradient-to-r from-transparent via-purple-500/30 to-transparent" />
-              
-              <button
-                onClick={handleSubmitBid}
-                disabled={!ethAmount || !tokenAmount || isBidding || isBidConfirming}
-                className="w-full bg-blue-500 hover:bg-blue-500/90 disabled:bg-slate-700 disabled:text-slate-500 text-black py-4 text-sm font-mono uppercase tracking-wider transition-all disabled:opacity-50 border border-blue-500/30"
-              >
-                {isBidding || isBidConfirming ? (
-                  <span className="flex items-center justify-center gap-2">
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                    Processing...
-                  </span>
-                ) : (
-                  'Submit Bid'
-                )}
-              </button>
-
-              {isBidSuccess && (
-                <motion.div
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className="p-3 rounded-lg bg-green-500/10 border border-green-500/20 text-center"
-                >
-                  <CheckCircle2 className="w-5 h-5 text-green-400 mx-auto mb-1" />
-                  <p className="text-xs font-mono text-green-400">Bid Submitted!</p>
-                </motion.div>
-              )}
-
-              <div className="text-center text-[10px] font-mono text-slate-600 tracking-wider">
-                TX_FEE: ~0.002 ETH
-              </div>
-            </div>
-            </div>
-
-            {/* Grain overlay */}
-            <div 
-              className="absolute inset-0 pointer-events-none opacity-[0.02] mix-blend-overlay"
-              style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='filter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23filter)'/%3E%3C/svg%3E")` }}
-            />
-          </motion.div>
-
-          {/* Token Info */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.2 }}
-            className="bg-basalt/80 backdrop-blur-md border border-basalt-light p-6"
-          >
-            <div className="flex items-center gap-4 mb-4">
-              <VaultLogo size="md" />
-              <div className="flex-1">
-                <h4 className="font-semibold">AKITA</h4>
-                <p className="text-xs text-slate-500 font-mono">wsAKITA Vault</p>
-              </div>
-            </div>
-            
-            <div className="space-y-2 text-xs">
-              <div className="flex justify-between">
-                <span className="text-slate-500">Contract</span>
-                <span className="font-mono text-slate-400">
-                  {AKITA.token.slice(0, 6)}...{AKITA.token.slice(-4)}
-                </span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-slate-500">Network</span>
-                <span className="text-slate-400">Base</span>
-              </div>
-            </div>
-          </motion.div>
+        {/* Preset Bids */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          {PRESET_BIDS.map((preset) => (
+            <button
+              key={preset.label}
+              onClick={() => setEthAmount(preset.eth)}
+              className={`p-4 rounded-lg border transition-all ${
+                ethAmount === preset.eth
+                  ? 'bg-blue-500 text-white border-blue-500'
+                  : 'bg-zinc-950 text-zinc-400 border-zinc-900 hover:border-zinc-800'
+              }`}
+            >
+              <div className="text-lg font-semibold">{preset.label}</div>
+            </button>
+          ))}
         </div>
+
+        {/* Custom Amount */}
+        <div className="space-y-2">
+          <label className="text-sm text-zinc-400">Custom Amount (ETH)</label>
+          <input
+            type="text"
+            value={ethAmount}
+            onChange={(e) => setEthAmount(e.target.value)}
+            placeholder="0.0"
+            className="input-field w-full text-2xl"
+          />
+        </div>
+
+        {/* You Get */}
+        {ethAmount && clearingPrice > 0 && (
+          <div className="bg-zinc-950 border border-zinc-900 rounded-lg p-4">
+            <div className="text-sm text-zinc-500 mb-1">You Will Receive</div>
+            <div className="text-2xl font-bold text-blue-500">
+              {(Number(tokenAmount) / 1e18).toLocaleString(undefined, {
+                maximumFractionDigits: 2,
+              })}{' '}
+              wsAKITA
+            </div>
+          </div>
+        )}
+
+        {/* Bid Button */}
+        <button
+          onClick={handleBid}
+          disabled={isBidding || !ethAmount}
+          className="btn-primary w-full text-lg py-4 disabled:opacity-50"
+        >
+          {isBidding ? (
+            <span className="flex items-center justify-center gap-2">
+              <Loader2 className="w-5 h-5 animate-spin" />
+              Bidding...
+            </span>
+          ) : (
+            'Place Bid'
+          )}
+        </button>
+      </div>
+
+      {/* Info */}
+      <div className="card p-6 bg-zinc-950/50">
+        <h3 className="font-semibold mb-3">How CCA Works</h3>
+        <ul className="space-y-2 text-sm text-zinc-400">
+          <li className="flex items-start gap-2">
+            <span className="text-blue-500 mt-0.5">•</span>
+            <span>Place your bid in ETH to receive wsAKITA tokens</span>
+          </li>
+          <li className="flex items-start gap-2">
+            <span className="text-blue-500 mt-0.5">•</span>
+            <span>Price adjusts dynamically based on demand</span>
+          </li>
+          <li className="flex items-start gap-2">
+            <span className="text-blue-500 mt-0.5">•</span>
+            <span>All participants get the same final clearing price</span>
+          </li>
+          <li className="flex items-start gap-2">
+            <span className="text-blue-500 mt-0.5">•</span>
+            <span>Fair launch mechanism for maximum transparency</span>
+          </li>
+        </ul>
       </div>
     </div>
   )

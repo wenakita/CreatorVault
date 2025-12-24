@@ -8,32 +8,30 @@ import {
   ArrowUpFromLine,
   Loader2,
   ExternalLink,
-  Users,
   Coins,
   Trophy,
   Zap,
   Clock,
-  DollarSign,
-  Shield,
   Target,
 } from 'lucide-react'
 import { AKITA } from '../config/contracts'
 import { ConnectButton } from '../components/ConnectButton'
 import { TokenImage } from '../components/TokenImage'
+import { Link } from 'react-router-dom'
 
-// Wrapper ABI - users deposit AKITA, get wsAKITA directly
+// Wrapper ABI
 const WRAPPER_ABI = [
   { name: 'deposit', type: 'function', inputs: [{ name: 'amount', type: 'uint256' }], outputs: [{ type: 'uint256' }], stateMutability: 'nonpayable' },
   { name: 'withdraw', type: 'function', inputs: [{ name: 'amount', type: 'uint256' }], outputs: [{ type: 'uint256' }], stateMutability: 'nonpayable' },
 ] as const
 
-// wsAKITA (ShareOFT) - what users hold
+// ShareOFT ABI
 const SHARE_OFT_ABI = [
   { name: 'balanceOf', type: 'function', inputs: [{ name: 'account', type: 'address' }], outputs: [{ type: 'uint256' }], stateMutability: 'view' },
   { name: 'totalSupply', type: 'function', inputs: [], outputs: [{ type: 'uint256' }], stateMutability: 'view' },
 ] as const
 
-// CCA Strategy ABI - for auction stats
+// CCA Strategy ABI
 const CCA_STRATEGY_ABI = [
   {
     name: 'auctionStatus',
@@ -48,13 +46,6 @@ const CCA_STRATEGY_ABI = [
     ],
     stateMutability: 'view',
   },
-  {
-    name: 'tokenTarget',
-    type: 'function',
-    inputs: [],
-    outputs: [{ type: 'uint256' }],
-    stateMutability: 'view',
-  },
 ] as const
 
 const tabs = ['Deposit', 'Withdraw'] as const
@@ -65,12 +56,12 @@ export function Vault() {
   const [activeTab, setActiveTab] = useState<TabType>('Deposit')
   const [amount, setAmount] = useState('')
 
-  // Use AKITA config - wrapper handles everything
   const tokenAddress = AKITA.token
   const wrapperAddress = AKITA.wrapper
   const shareOFTAddress = AKITA.shareOFT
+  const ccaStrategy = AKITA.ccaStrategy
 
-  // Read user's AKITA balance (for deposits)
+  // Read balances
   const { data: tokenBalance } = useReadContract({
     address: tokenAddress as `0x${string}`,
     abi: erc20Abi,
@@ -79,7 +70,6 @@ export function Vault() {
     query: { enabled: !!userAddress },
   })
 
-  // Read user's wsAKITA balance (for withdrawals)
   const { data: wsAkitaBalance } = useReadContract({
     address: shareOFTAddress as `0x${string}`,
     abi: SHARE_OFT_ABI,
@@ -88,15 +78,11 @@ export function Vault() {
     query: { enabled: !!userAddress },
   })
 
-  // Read total wsAKITA supply
   const { data: totalWsAkita } = useReadContract({
     address: shareOFTAddress as `0x${string}`,
     abi: SHARE_OFT_ABI,
     functionName: 'totalSupply',
   })
-
-  // Read CCA auction data
-  const ccaStrategy = AKITA.ccaStrategy
 
   const { data: auctionStatus } = useReadContract({
     address: ccaStrategy as `0x${string}`,
@@ -104,180 +90,182 @@ export function Vault() {
     functionName: 'auctionStatus',
   })
 
-  const { data: tokenTarget } = useReadContract({
-    address: ccaStrategy as `0x${string}`,
-    abi: CCA_STRATEGY_ABI,
-    functionName: 'tokenTarget',
-  })
-
-  const currencyRaised = auctionStatus?.[4] || 0n
-
-  // Check AKITA allowance for wrapper
   const { data: tokenAllowance } = useReadContract({
     address: tokenAddress as `0x${string}`,
     abi: erc20Abi,
     functionName: 'allowance',
     args: [userAddress!, wrapperAddress as `0x${string}`],
-    query: { enabled: !!userAddress },
+    query: { enabled: !!userAddress && activeTab === 'Deposit' },
   })
 
-  // Write functions
-  const { writeContract: approve, data: approveTxHash, isPending: isApproving } = useWriteContract()
-  const { isLoading: isApproveConfirming } = useWaitForTransactionReceipt({ hash: approveTxHash })
+  // Write contracts
+  const { writeContract: writeApprove, data: approveHash } = useWriteContract()
+  const { writeContract: writeDeposit, data: depositHash } = useWriteContract()
+  const { writeContract: writeWithdraw, data: withdrawHash } = useWriteContract()
 
-  const { writeContract: deposit, data: depositTxHash, isPending: isDepositing } = useWriteContract()
-  const { isLoading: isDepositConfirming, isSuccess: isDepositSuccess } = useWaitForTransactionReceipt({ hash: depositTxHash })
+  const { isLoading: isApproving } = useWaitForTransactionReceipt({ hash: approveHash })
+  const { isLoading: isDepositing } = useWaitForTransactionReceipt({ hash: depositHash })
+  const { isLoading: isWithdrawing } = useWaitForTransactionReceipt({ hash: withdrawHash })
 
-  const { writeContract: withdraw, data: withdrawTxHash, isPending: isWithdrawing } = useWriteContract()
-  const { isLoading: isWithdrawConfirming, isSuccess: isWithdrawSuccess } = useWaitForTransactionReceipt({ hash: withdrawTxHash })
+  const isAuctionActive = auctionStatus?.[0] || false
+  const isGraduated = auctionStatus?.[1] || false
 
-  const needsApproval = tokenAllowance !== undefined && 
-    parseUnits(amount || '0', 18) > tokenAllowance
-
-  const handleApprove = () => {
-    approve({
-      address: tokenAddress as `0x${string}`,
-      abi: erc20Abi,
-      functionName: 'approve',
-      args: [wrapperAddress as `0x${string}`, parseUnits(amount || '0', 18)],
-    })
-  }
-
-  // Deposit AKITA → get wsAKITA (wrapper handles sAKITA internally)
-  const handleDeposit = () => {
-    if (!userAddress) return
-    deposit({
-      address: wrapperAddress as `0x${string}`,
-      abi: WRAPPER_ABI,
-      functionName: 'deposit',
-      args: [parseUnits(amount || '0', 18)],
-    })
-  }
-
-  // Withdraw wsAKITA → get AKITA (wrapper handles sAKITA internally)
-  const handleWithdraw = () => {
-    if (!userAddress) return
-    withdraw({
-      address: wrapperAddress as `0x${string}`,
-      abi: WRAPPER_ABI,
-      functionName: 'withdraw',
-      args: [parseUnits(amount || '0', 18)],
-    })
-  }
-
-  const formatAmount = (value: bigint | undefined, decimals = 18) => {
+  const formatAmount = (value: bigint, decimals: number = 18) => {
     if (!value) return '0'
     return Number(formatUnits(value, decimals)).toLocaleString(undefined, {
       maximumFractionDigits: 4,
     })
   }
 
+  const handleApprove = () => {
+    if (!amount || !tokenAddress || !wrapperAddress) return
+    writeApprove({
+      address: tokenAddress as `0x${string}`,
+      abi: erc20Abi,
+      functionName: 'approve',
+      args: [wrapperAddress as `0x${string}`, parseUnits(amount, 18)],
+    })
+  }
+
+  const handleDeposit = () => {
+    if (!amount || !wrapperAddress) return
+    writeDeposit({
+      address: wrapperAddress as `0x${string}`,
+      abi: WRAPPER_ABI,
+      functionName: 'deposit',
+      args: [parseUnits(amount, 18)],
+    })
+  }
+
+  const handleWithdraw = () => {
+    if (!amount || !wrapperAddress) return
+    writeWithdraw({
+      address: wrapperAddress as `0x${string}`,
+      abi: WRAPPER_ABI,
+      functionName: 'withdraw',
+      args: [parseUnits(amount, 18)],
+    })
+  }
+
+  const needsApproval = activeTab === 'Deposit' && (!tokenAllowance || tokenAllowance < parseUnits(amount || '0', 18))
+
   return (
-    <div className="relative max-w-5xl mx-auto space-y-8 py-8">
+    <div className="max-w-5xl mx-auto px-6 py-12 space-y-8">
       {/* Header */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4"
       >
-        <div>
-          <div className="flex items-center gap-2 mb-2">
-            <div className="w-1.5 h-1.5 bg-purple-500 rounded-full" />
-            <span className="text-xs font-mono uppercase tracking-[0.3em] text-purple-500/80">
-              Creator Vault
-            </span>
-          </div>
-          <div className="flex items-center gap-4">
-            <TokenImage
-              tokenAddress={tokenAddress as `0x${string}`}
-              symbol="wsAKITA"
-              size="lg"
-              fallbackColor="from-orange-500 to-red-600"
-              isWrapped={true}
-            />
-            <div>
-              <h1 className="font-display text-3xl font-bold tracking-tight bg-gradient-to-b from-white to-slate-400 bg-clip-text text-transparent">
-                AKITA Vault
-              </h1>
-              <p className="text-slate-400 text-sm font-mono uppercase tracking-wider">
-                AKITA → wsAKITA • Base
-              </p>
-            </div>
+        <div className="flex items-center gap-4">
+          <TokenImage
+            tokenAddress={tokenAddress as `0x${string}`}
+            symbol="wsAKITA"
+            size="lg"
+            fallbackColor="from-orange-500 to-red-600"
+            isWrapped={true}
+          />
+          <div>
+            <h1 className="text-3xl font-bold">AKITA Vault</h1>
+            <p className="text-zinc-500 text-sm">AKITA → wsAKITA</p>
           </div>
         </div>
         <a
           href={`https://basescan.org/address/${wrapperAddress}`}
           target="_blank"
           rel="noopener noreferrer"
-          className="bg-blue-500/10 hover:bg-blue-500/20 text-blue-500 px-4 py-2 text-xs font-mono uppercase tracking-wider transition-all border border-blue-500/30 flex items-center gap-2"
+          className="btn-secondary flex items-center gap-2 text-sm"
         >
-          <ExternalLink className="w-3.5 h-3.5" />
+          <ExternalLink className="w-4 h-4" />
           Basescan
         </a>
       </motion.div>
 
-      {/* Stats Grid */}
+      {/* Auction Status */}
+      {isAuctionActive && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-6"
+        >
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <Clock className="w-5 h-5 text-blue-400" />
+              <div>
+                <h3 className="font-semibold text-blue-400">CCA Auction Active</h3>
+                <p className="text-sm text-zinc-400">Get wsAKITA before anyone else</p>
+              </div>
+            </div>
+            <Link to={`/auction/${wrapperAddress}`} className="btn-primary">
+              Join Auction
+            </Link>
+          </div>
+        </motion.div>
+      )}
+
+      {/* Stats */}
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
-        transition={{ delay: 0.2 }}
+        transition={{ delay: 0.1 }}
         className="grid grid-cols-2 sm:grid-cols-4 gap-4"
       >
-        <div className="neu-card-inset p-5 rounded-xl">
+        <div className="stat-card">
           <div className="flex items-center gap-2 mb-2">
             <Coins className="w-4 h-4 text-zinc-500" />
-            <div className="text-xs text-zinc-500">Total wsAKITA</div>
+            <span className="text-xs text-zinc-500">Total Supply</span>
           </div>
-          <div className="text-xl font-bold">
+          <div className="text-xl font-semibold">
             {totalWsAkita ? formatAmount(totalWsAkita) : '...'}
           </div>
         </div>
-        <div className="neu-card-inset p-5 rounded-xl">
+        <div className="stat-card">
           <div className="flex items-center gap-2 mb-2">
-            <TrendingUp className="w-4 h-4 text-[#0052FF]" />
-            <div className="text-xs text-zinc-500">APY</div>
+            <TrendingUp className="w-4 h-4 text-blue-500" />
+            <span className="text-xs text-zinc-500">APY</span>
           </div>
-          <div className="text-xl font-bold text-[#0052FF]">42.0%</div>
+          <div className="text-xl font-semibold text-blue-500">42.0%</div>
         </div>
-        <div className="neu-card-inset p-5 rounded-xl">
+        <div className="stat-card">
           <div className="flex items-center gap-2 mb-2">
-            <Trophy className="w-4 h-4 text-purple-500" />
-            <div className="text-xs text-zinc-500">Global Jackpot</div>
+            <Trophy className="w-4 h-4 text-zinc-500" />
+            <span className="text-xs text-zinc-500">Jackpot</span>
           </div>
-          <div className="text-xl font-bold text-purple-500">0.1 ETH</div>
+          <div className="text-xl font-semibold">0.1 ETH</div>
         </div>
-        <div className="neu-card-inset p-5 rounded-xl">
+        <div className="stat-card">
           <div className="flex items-center gap-2 mb-2">
             <Zap className="w-4 h-4 text-zinc-500" />
-            <div className="text-xs text-zinc-500">Trade Fee</div>
+            <span className="text-xs text-zinc-500">Trade Fee</span>
           </div>
-          <div className="text-xl font-bold">6.9%</div>
+          <div className="text-xl font-semibold">6.9%</div>
         </div>
       </motion.div>
 
-      <div className="grid sm:grid-cols-5 gap-6">
-        {/* Deposit/Withdraw Card */}
+      {/* Main Section */}
+      <div className="grid sm:grid-cols-3 gap-6">
+        {/* Deposit/Withdraw */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.3 }}
-          className="sm:col-span-3 glass-card p-6 space-y-6"
+          transition={{ delay: 0.2 }}
+          className="sm:col-span-2 card p-6 space-y-6"
         >
           {/* Tabs */}
-          <div className="flex gap-2 p-1 rounded-lg bg-surface-900/50">
+          <div className="flex gap-2 p-1 bg-zinc-950 rounded-lg border border-zinc-900">
             {tabs.map((tab) => (
               <button
                 key={tab}
                 onClick={() => setActiveTab(tab)}
-                className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors ${
+                className={`flex-1 py-2.5 px-4 rounded-lg text-sm font-medium transition-all ${
                   activeTab === tab
-                    ? 'bg-blue-500 text-black'
-                    : 'text-surface-400 hover:text-white'
+                    ? 'bg-blue-500 text-white'
+                    : 'text-zinc-400 hover:text-white'
                 }`}
               >
                 {tab === 'Deposit' ? (
                   <span className="flex items-center justify-center gap-2">
-                    <ArrowDownToLine className="w-4 h-4" /> Deposit AKITA
+                    <ArrowDownToLine className="w-4 h-4" /> Deposit
                   </span>
                 ) : (
                   <span className="flex items-center justify-center gap-2">
@@ -288,55 +276,27 @@ export function Vault() {
             ))}
           </div>
 
-          {/* Flow indicator */}
-          <div className="flex items-center justify-center gap-2 text-sm text-surface-400 bg-surface-900/30 rounded-lg py-2">
+          {/* Flow */}
+          <div className="flex items-center justify-center gap-2 text-sm bg-zinc-950 rounded-lg py-3 border border-zinc-900">
             {activeTab === 'Deposit' ? (
               <>
-                <span className="text-white font-medium">AKITA</span>
-                <span>→</span>
-                <span className="text-blue-500 font-medium">wsAKITA</span>
-                <span className="text-surface-500 ml-2">(~1:1)</span>
+                <span className="font-medium">AKITA</span>
+                <span className="text-zinc-600">→</span>
+                <span className="font-medium text-blue-500">wsAKITA</span>
               </>
             ) : (
               <>
-                <span className="text-blue-500 font-medium">wsAKITA</span>
-                <span>→</span>
-                <span className="text-white font-medium">AKITA</span>
+                <span className="font-medium text-blue-500">wsAKITA</span>
+                <span className="text-zinc-600">→</span>
+                <span className="font-medium">AKITA</span>
               </>
             )}
           </div>
 
-          {/* Amount Input */}
+          {/* Amount */}
           <div className="space-y-2">
             <div className="flex justify-between text-sm">
-              <span className="text-surface-400">Amount</span>
-              <span className="text-surface-400">
-                Balance:{' '}
-                <button
-                  onClick={() =>
-                    setAmount(
-                      activeTab === 'Deposit'
-                        ? formatUnits(tokenBalance || 0n, 18)
-                        : formatUnits(wsAkitaBalance || 0n, 18)
-                    )
-                  }
-                  className="text-blue-500 hover:text-blue-500/80"
-                >
-                  {activeTab === 'Deposit'
-                    ? formatAmount(tokenBalance)
-                    : formatAmount(wsAkitaBalance)}{' '}
-                  {activeTab === 'Deposit' ? 'AKITA' : 'wsAKITA'}
-                </button>
-              </span>
-            </div>
-            <div className="relative">
-              <input
-                type="text"
-                value={amount}
-                onChange={(e) => setAmount(e.target.value)}
-                placeholder="0.0"
-                className="input-field pr-20 text-xl font-semibold"
-              />
+              <span className="text-zinc-400">Amount</span>
               <button
                 onClick={() =>
                   setAmount(
@@ -345,80 +305,61 @@ export function Vault() {
                       : formatUnits(wsAkitaBalance || 0n, 18)
                   )
                 }
-                className="absolute right-3 top-1/2 -translate-y-1/2 px-3 py-1 rounded-lg bg-blue-500/10 text-blue-500 text-sm font-medium hover:bg-blue-500/20 transition-colors"
+                className="text-blue-500 hover:text-blue-400"
               >
-                MAX
+                Balance: {' '}
+                {activeTab === 'Deposit'
+                  ? formatAmount(tokenBalance || 0n)
+                  : formatAmount(wsAkitaBalance || 0n)}
               </button>
             </div>
+            <input
+              type="text"
+              value={amount}
+              onChange={(e) => setAmount(e.target.value)}
+              placeholder="0.0"
+              className="input-field w-full text-2xl"
+            />
           </div>
 
           {/* Action Button */}
           {!isConnected ? (
             <ConnectButton />
-          ) : activeTab === 'Deposit' ? (
-            needsApproval ? (
-              <button
-                onClick={handleApprove}
-                disabled={isApproving || isApproveConfirming}
-                className="btn-primary w-full flex items-center justify-center gap-2"
-              >
-                {isApproving || isApproveConfirming ? (
-                  <>
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                    Approving...
-                  </>
-                ) : (
-                  'Approve AKITA'
-                )}
-              </button>
-            ) : (
-              <button
-                onClick={handleDeposit}
-                disabled={isDepositing || isDepositConfirming || !amount}
-                className="btn-primary w-full flex items-center justify-center gap-2"
-              >
-                {isDepositing || isDepositConfirming ? (
-                  <>
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                    Depositing...
-                  </>
-                ) : (
-                  <>
-                    <ArrowDownToLine className="w-4 h-4" />
-                    Deposit AKITA → wsAKITA
-                  </>
-                )}
-              </button>
-            )
-          ) : (
+          ) : needsApproval ? (
             <button
-              onClick={handleWithdraw}
-              disabled={isWithdrawing || isWithdrawConfirming || !amount}
-              className="btn-primary w-full flex items-center justify-center gap-2"
+              onClick={handleApprove}
+              disabled={isApproving || !amount}
+              className="btn-primary w-full disabled:opacity-50"
             >
-              {isWithdrawing || isWithdrawConfirming ? (
+              {isApproving ? (
                 <>
                   <Loader2 className="w-4 h-4 animate-spin" />
-                  Withdrawing...
+                  Approving...
                 </>
               ) : (
-                <>
-                  <ArrowUpFromLine className="w-4 h-4" />
-                  Withdraw wsAKITA → AKITA
-                </>
+                'Approve AKITA'
               )}
             </button>
-          )}
-
-          {/* Success messages */}
-          {(isDepositSuccess || isWithdrawSuccess) && (
-            <motion.div
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="p-3 rounded-lg bg-purple-500/10 border border-purple-500/20 text-purple-500 text-sm text-center"
+          ) : (
+            <button
+              onClick={activeTab === 'Deposit' ? handleDeposit : handleWithdraw}
+              disabled={
+                (activeTab === 'Deposit' && isDepositing) ||
+                (activeTab === 'Withdraw' && isWithdrawing) ||
+                !amount
+              }
+              className="btn-primary w-full disabled:opacity-50"
             >
-              ✓ Transaction successful!
-            </motion.div>
+              {((activeTab === 'Deposit' && isDepositing) ||
+                (activeTab === 'Withdraw' && isWithdrawing)) ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  {activeTab === 'Deposit' ? 'Depositing...' : 'Withdrawing...'}
+                </>
+              ) : (
+                activeTab
+              )}
+            </button>
           )}
         </motion.div>
 
@@ -426,157 +367,28 @@ export function Vault() {
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.4 }}
-          className="sm:col-span-2 glass-card p-6 space-y-4"
+          transition={{ delay: 0.3 }}
+          className="card p-6 space-y-6"
         >
-          <h3 className="font-semibold flex items-center gap-2">
-            <Users className="w-4 h-4 text-blue-500" />
-            Your Position
-          </h3>
-
-          <div className="space-y-3">
-            <div className="flex justify-between">
-              <span className="text-surface-400">AKITA Balance</span>
-              <span className="font-mono">{formatAmount(tokenBalance)}</span>
+          <h3 className="font-semibold">Your Position</h3>
+          
+          <div className="space-y-4">
+            <div>
+              <div className="text-sm text-zinc-500 mb-1">wsAKITA Balance</div>
+              <div className="text-2xl font-bold">
+                {formatAmount(wsAkitaBalance || 0n)}
+              </div>
             </div>
-            <div className="flex justify-between">
-              <span className="text-surface-400">wsAKITA Balance</span>
-              <span className="font-mono text-blue-500">{formatAmount(wsAkitaBalance)}</span>
-            </div>
-          </div>
-
-          <div className="pt-4 border-t border-surface-800">
-            <div className="flex justify-between mb-2">
-              <span className="text-surface-400 text-sm">Pool Share</span>
-              <span className="text-sm">
-                {wsAkitaBalance && totalWsAkita && totalWsAkita > 0n
-                  ? ((Number(wsAkitaBalance) / Number(totalWsAkita)) * 100).toFixed(4)
-                  : '0'}
-                %
-              </span>
-            </div>
-            <div className="h-2 rounded-full bg-surface-800 overflow-hidden">
-              <motion.div
-                className="h-full bg-blue-500"
-                initial={{ width: 0 }}
-                animate={{
-                  width: `${
-                    wsAkitaBalance && totalWsAkita && totalWsAkita > 0n
-                      ? Math.min((Number(wsAkitaBalance) / Number(totalWsAkita)) * 100, 100)
-                      : 0
-                  }%`,
-                }}
-                transition={{ duration: 1, ease: 'easeOut' }}
-              />
+            
+            <div className="border-t border-zinc-900 pt-4">
+              <div className="text-sm text-zinc-500 mb-1">AKITA Balance</div>
+              <div className="text-lg font-semibold">
+                {formatAmount(tokenBalance || 0n)}
+              </div>
             </div>
           </div>
         </motion.div>
       </div>
-
-      {/* Fair Launch Info */}
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ delay: 0.5 }}
-        className="glass-card p-8 space-y-6"
-      >
-        {/* Header */}
-        <div className="text-center space-y-2">
-          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-orange-500/10 border border-orange-500/30 mb-2">
-            <Clock className="w-4 h-4 text-orange-400" />
-            <span className="text-orange-400 font-bold text-sm">5 days left to bid</span>
-          </div>
-          <h3 className="text-2xl font-bold">Early Access Auction</h3>
-          <p className="text-slate-400 text-lg">Get wsAKITA before anyone else</p>
-        </div>
-
-        {/* Real Auction Stats */}
-        <div className="flex items-center justify-center gap-8">
-          <div className="text-center">
-            <p className="text-3xl font-bold text-white">
-              {formatUnits(currencyRaised, 18)}
-            </p>
-            <p className="text-sm text-slate-400">ETH invested</p>
-          </div>
-          <div className="w-px h-12 bg-white/10" />
-          <div className="text-center">
-            <p className="text-3xl font-bold text-blue-500">
-              {tokenTarget ? (Number(formatUnits(tokenTarget, 18)) / 1000000).toFixed(1) : '0'}M
-            </p>
-            <p className="text-sm text-slate-400">AKITA available</p>
-          </div>
-        </div>
-
-        {/* How It Works - Dead Simple */}
-        <div className="p-6 rounded-2xl bg-gradient-to-br from-green-500/10 to-emerald-500/5 border border-green-500/20">
-          <p className="text-center text-lg font-bold text-white mb-4">How It Works</p>
-          
-          <div className="space-y-3">
-            <div className="flex items-start gap-3">
-              <div className="w-8 h-8 rounded-full bg-blue-500/20 flex items-center justify-center flex-shrink-0 text-sm font-bold text-blue-500">
-                1
-              </div>
-              <div>
-                <p className="text-white font-semibold mb-1">Choose your amount</p>
-                <p className="text-sm text-slate-400">Say how much ETH you'll pay for how many tokens</p>
-              </div>
-            </div>
-
-            <div className="flex items-start gap-3">
-              <div className="w-8 h-8 rounded-full bg-blue-500/20 flex items-center justify-center flex-shrink-0 text-sm font-bold text-blue-500">
-                2
-              </div>
-              <div>
-                <p className="text-white font-semibold mb-1">Submit your bid</p>
-                <p className="text-sm text-slate-400">Higher bids have better chance of winning</p>
-              </div>
-            </div>
-
-            <div className="flex items-start gap-3">
-              <div className="w-8 h-8 rounded-full bg-green-500/20 flex items-center justify-center flex-shrink-0 text-sm font-bold text-green-400">
-                3
-              </div>
-              <div>
-                <p className="text-white font-semibold mb-1">Get your tokens</p>
-                <p className="text-sm text-slate-400">After 5 days, winners get tokens at a fair price</p>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Key Advantages */}
-        <div className="grid sm:grid-cols-3 gap-4">
-          <div className="p-4 rounded-xl bg-white/[0.02] border border-white/5">
-            <DollarSign className="w-6 h-6 text-green-400 mb-3" />
-            <p className="text-white font-semibold mb-1 text-sm">Fair Pricing</p>
-            <p className="text-xs text-slate-400">All participants pay the same clearing price</p>
-          </div>
-          <div className="p-4 rounded-xl bg-white/[0.02] border border-white/5">
-            <Shield className="w-6 h-6 text-blue-400 mb-3" />
-            <p className="text-white font-semibold mb-1 text-sm">Protected Bids</p>
-            <p className="text-xs text-slate-400">Unsuccessful bids automatically refunded</p>
-          </div>
-          <div className="p-4 rounded-xl bg-white/[0.02] border border-white/5">
-            <Zap className="w-6 h-6 text-blue-500 mb-3" />
-            <p className="text-white font-semibold mb-1 text-sm">Early Access</p>
-            <p className="text-xs text-slate-400">Priority allocation before public markets</p>
-          </div>
-        </div>
-
-        {/* CTA to Bid */}
-        <a href={`/auction/bid/${AKITA.vault}`}>
-          <motion.button
-            className="w-full px-8 py-5 rounded-xl bg-blue-500 text-black font-semibold hover:bg-blue-500/90 transition-colors border border-blue-500/30 shadow-lg shadow-blue-500/20"
-            whileHover={{ scale: 1.01 }}
-            whileTap={{ scale: 0.99 }}
-          >
-            <span className="flex items-center justify-center gap-3">
-              <Target className="w-5 h-5" />
-              Join Auction
-            </span>
-          </motion.button>
-        </a>
-      </motion.div>
     </div>
   )
 }
