@@ -192,66 +192,113 @@ export function Home() {
                 </div>
 
                 <div className="relative grid md:grid-cols-2 gap-8 items-center">
-                  {/* Left: Visual */}
+                  {/* Left: Visual - Burn & Grow Animation */}
                   <div className="flex items-center justify-center">
-                    <div className="relative">
-                      {/* Animated flame icon */}
+                    <div className="relative w-64 h-64">
+                      {/* Center: Growing wsAKITA (your share grows) */}
                       <motion.div
-                        className="w-32 h-32 rounded-full bg-gradient-to-br from-orange-500/20 to-red-500/20 flex items-center justify-center"
+                        className="absolute inset-0 flex items-center justify-center"
                         animate={{ 
-                          scale: [1, 1.1, 1],
-                          opacity: [0.5, 0.8, 0.5]
+                          scale: [1, 1.15, 1],
                         }}
                         transition={{ 
-                          duration: 3, 
+                          duration: 4,
                           repeat: Infinity,
                           ease: "easeInOut"
                         }}
                       >
-                        <Flame className="w-16 h-16 text-orange-400" />
+                        <div className="relative">
+                          {/* Glow effect */}
+                          <div className="absolute inset-0 rounded-full bg-gradient-to-br from-green-500/30 to-emerald-500/30 blur-2xl" />
+                          <TokenImage
+                            tokenAddress={AKITA.token as `0x${string}`}
+                            symbol="wsAKITA"
+                            size="xl"
+                            fallbackColor="from-orange-500 to-red-600"
+                            isWrapped={true}
+                          />
+                        </div>
                       </motion.div>
                       
-                      {/* Orbiting wsAKITA tokens */}
-                      {[0, 120, 240].map((rotation, i) => (
-                        <motion.div
-                          key={rotation}
-                          className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2"
-                          style={{ originX: 0.5, originY: 0.5 }}
-                          animate={{ 
-                            rotate: 360,
-                          }}
-                          transition={{ 
-                            duration: 8,
-                            repeat: Infinity,
-                            ease: "linear",
-                            delay: i * 0.3
-                          }}
-                        >
+                      {/* Burning tokens floating up and fading */}
+                      {[...Array(6)].map((_, i) => {
+                        const angle = (i * 60) * (Math.PI / 180);
+                        const startX = Math.cos(angle) * 100;
+                        const startY = Math.sin(angle) * 100;
+                        
+                        return (
                           <motion.div
-                            className="absolute"
-                            style={{ 
-                              transform: `rotate(${rotation}deg) translateX(80px) rotate(-${rotation}deg)`
+                            key={i}
+                            className="absolute top-1/2 left-1/2"
+                            style={{
+                              x: startX,
+                              y: startY,
                             }}
-                            animate={{
-                              rotate: -360
+                            animate={{ 
+                              y: [startY, startY - 80],
+                              opacity: [0.8, 0],
+                              scale: [1, 0.3],
                             }}
                             transition={{ 
-                              duration: 8,
+                              duration: 3,
                               repeat: Infinity,
-                              ease: "linear",
-                              delay: i * 0.3
+                              ease: "easeOut",
+                              delay: i * 0.5,
                             }}
                           >
-                            <TokenImage
-                              tokenAddress={AKITA.token as `0x${string}`}
-                              symbol="wsAKITA"
-                              size="sm"
-                              fallbackColor="from-orange-500 to-red-600"
-                              isWrapped={true}
-                            />
+                            <div className="relative">
+                              {/* Flame effect on burning token */}
+                              <motion.div
+                                className="absolute -inset-2 rounded-full bg-gradient-to-t from-orange-500/40 via-red-500/20 to-transparent blur-md"
+                                animate={{ 
+                                  opacity: [0.8, 0.3],
+                                  scale: [1, 1.3],
+                                }}
+                                transition={{ 
+                                  duration: 0.8,
+                                  repeat: Infinity,
+                                  ease: "easeInOut",
+                                  delay: i * 0.5,
+                                }}
+                              />
+                              <TokenImage
+                                tokenAddress={AKITA.token as `0x${string}`}
+                                symbol="wsAKITA"
+                                size="sm"
+                                fallbackColor="from-orange-500 to-red-600"
+                                isWrapped={true}
+                              />
+                            </div>
                           </motion.div>
-                        </motion.div>
-                      ))}
+                        );
+                      })}
+                      
+                      {/* Burn particles */}
+                      {[...Array(12)].map((_, i) => {
+                        const angle = (i * 30) * (Math.PI / 180);
+                        const distance = 90 + (i % 3) * 20;
+                        const x = Math.cos(angle) * distance;
+                        const y = Math.sin(angle) * distance;
+                        
+                        return (
+                          <motion.div
+                            key={`particle-${i}`}
+                            className="absolute top-1/2 left-1/2 w-1 h-1 rounded-full bg-orange-400"
+                            style={{ x, y }}
+                            animate={{ 
+                              y: [y, y - 60],
+                              opacity: [0.6, 0],
+                              scale: [1, 0],
+                            }}
+                            transition={{ 
+                              duration: 2,
+                              repeat: Infinity,
+                              ease: "easeOut",
+                              delay: i * 0.2,
+                            }}
+                          />
+                        );
+                      })}
                     </div>
                   </div>
 
