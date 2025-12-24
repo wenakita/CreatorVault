@@ -13,11 +13,18 @@ export const CONTRACTS = {
   vaultActivator: '0x1bf02C90B226C028720D25dE535b345e5FfB9743' as const,
   lpDeployer: '0x0000000000000000000000000000000000000000' as const, // TODO: Deploy SimpleLPDeployer
 
-  // External
+  // External - Uniswap V4
   poolManager: '0x498581fF718922c3f8e6A244956aF099B2652b2b' as const,
   taxHook: '0xca975B9dAF772C71161f3648437c3616E5Be0088' as const,
   chainlinkEthUsd: '0x71041dddad3595F9CEd3DcCFBe3D1F4b0a16Bb70' as const,
   weth: '0x4200000000000000000000000000000000000006' as const, // Base WETH
+  
+  // External - Ajna Protocol (Base)
+  // Source: https://faqs.ajna.finance/info/deployment-addresses-and-bridges
+  ajnaErc20Factory: '0x214f62B5836D83f3D6c4f71F174209097B1A779C' as const,
+  ajnaErc721Factory: '0xeefEC5d1Cc4bde97279d01D88eFf9e0fEe981769' as const,
+  ajnaPoolInfoUtils: '0x97fa9b0909C238D170C1ab3B5c728A3a45BBEcBa' as const,
+  ajnaPositionManager: '0x59710a4149A27585f1841b5783ac704a08274e64' as const,
 } as const
 
 // Example: AKITA Vault (first creator)

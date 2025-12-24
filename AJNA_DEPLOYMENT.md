@@ -60,13 +60,20 @@ Bucket 7387 → Highest price (most aggressive)
 
 ### 1. Find or Create Ajna Pool
 
+#### Ajna Addresses on Base:
+Source: https://faqs.ajna.finance/info/deployment-addresses-and-bridges
+
+```bash
+AJNA_ERC20_FACTORY="0x214f62B5836D83f3D6c4f71F174209097B1A779C"
+AJNA_ERC721_FACTORY="0xeefEC5d1Cc4bde97279d01D88eFf9e0fEe981769"
+AJNA_POOL_INFO_UTILS="0x97fa9b0909C238D170C1ab3B5c728A3a45BBEcBa"
+AJNA_POSITION_MANAGER="0x59710a4149A27585f1841b5783ac704a08274e64"
+```
+
 #### Check if Pool Exists:
 ```bash
-# Ajna ERC20 Pool Factory on Base
-AJNA_FACTORY="0x..." # TODO: Get Base address
-
 # Check for AKITA pool
-cast call $AJNA_FACTORY \
+cast call $AJNA_ERC20_FACTORY \
   "deployedPools(address,address,uint256)(address)" \
   $AKITA_TOKEN \  # Collateral
   $WETH \         # Quote token
@@ -94,7 +101,7 @@ forge create AjnaStrategy \
   --constructor-args \
     "0xA015954E2606d08967Aee3787456bB3A86a46A42" \ # AKITA Vault
     "0x5b674196812451b7cec024fe9d22d2c0b172fa75" \ # AKITA Token
-    "$AJNA_FACTORY" \                                # Ajna Factory
+    "0x214f62B5836D83f3D6c4f71F174209097B1A779C" \ # Ajna ERC20 Factory
     "0x4200000000000000000000000000000000000006" \ # WETH (quote)
     "$YOUR_ADDRESS"                                   # Owner
 
@@ -107,7 +114,7 @@ forge verify-contract \
     "constructor(address,address,address,address,address)" \
     "0xA015954E2606d08967Aee3787456bB3A86a46A42" \
     "0x5b674196812451b7cec024fe9d22d2c0b172fa75" \
-    "$AJNA_FACTORY" \
+    "0x214f62B5836D83f3D6c4f71F174209097B1A779C" \
     "0x4200000000000000000000000000000000000006" \
     "$YOUR_ADDRESS")
 ```
