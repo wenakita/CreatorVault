@@ -387,7 +387,7 @@ export function ActivateAkita() {
             <div>
               <p className="text-xs text-slate-500 mb-1">Allocation</p>
               <p className="text-2xl font-bold text-white">50/50</p>
-              <p className="text-xs text-slate-400 mt-1">25M auction + 25M LP</p>
+              <p className="text-xs text-slate-400 mt-1">25M auction + 25M stays with creator</p>
             </div>
           </div>
 
@@ -400,9 +400,9 @@ export function ActivateAkita() {
             
             <div className="space-y-2">
               <div className="p-3 rounded-lg bg-green-500/10 border border-green-500/20 text-xs">
-                <p className="text-green-300 font-medium mb-1">✓ Multi-Strategy Allocation</p>
+                <p className="text-green-300 font-medium mb-1">✓ Vault Strategy Allocation (Post-Launch)</p>
                 <p className="text-green-400/80">
-                  50M AKITA split 4 ways: 12.5M to AKITA/WETH LP, 12.5M to AKITA/USDC LP, 12.5M to Ajna lending, 12.5M idle in vault
+                  When you deposit to vault: split 4 ways (12.5M AKITA/WETH LP, 12.5M AKITA/USDC LP, 12.5M Ajna lending, 12.5M idle)
                 </p>
               </div>
               
