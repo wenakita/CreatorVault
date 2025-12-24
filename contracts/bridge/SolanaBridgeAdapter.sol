@@ -518,7 +518,6 @@ contract SolanaBridgeAdapter is Ownable, ReentrancyGuard {
      * @param maxPrice Max price for bid
      * @param amount Token amount to bid for
      * @param prevTickPrice Previous tick
-     * @param ethValue ETH value to send with bid
      * 
      * @return calldata The encoded function call
      */

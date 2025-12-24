@@ -140,7 +140,7 @@ contract CreatorVaultLauncherLite is Ownable, ReentrancyGuard {
         address creatorCoin,
         uint256 depositAmount,
         uint8 auctionPercent,
-        uint128 requiredRaise
+        uint128 /* requiredRaise */
     ) external nonReentrant returns (address vault) {
         // Validations
         if (vaultImpl == address(0)) revert NotConfigured();
