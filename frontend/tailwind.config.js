@@ -9,18 +9,19 @@ export default {
     extend: {
       colors: {
         // Base brand colors - using 'brand' to avoid Tailwind's 'base' directive conflict
+        // Brighter scale for dark mode visibility
         brand: {
           50: '#eff6ff',
           100: '#dbeafe',
           200: '#bfdbfe',
           300: '#93c5fd',
           400: '#60a5fa',
-          500: '#0052FF', // Base primary blue
-          600: '#0047e1',
-          700: '#003bbf',
-          800: '#002d91',
-          900: '#001f66',
-          950: '#001133',
+          500: '#3B82F6', // Bright blue - great contrast on dark backgrounds
+          600: '#2563eb',
+          700: '#1d4ed8',
+          800: '#1e40af',
+          900: '#1e3a8a',
+          950: '#172554',
         },
         // Surface colors - cool slate
         surface: {

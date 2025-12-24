@@ -180,14 +180,14 @@ export function Vault() {
             <TrendingUp className="w-4 h-4" />
             <span className="stat-label">APY</span>
           </div>
-          <p className="stat-value text-[#0000FF]">42.0%</p>
+          <p className="stat-value text-brand-500">42.0%</p>
         </div>
         <div className="stat-card">
           <div className="flex items-center gap-2 text-surface-400">
             <Trophy className="w-4 h-4" />
             <span className="stat-label">Global Jackpot</span>
           </div>
-          <p className="stat-value text-[#0000FF]">0.1 ETH</p>
+          <p className="stat-value text-brand-500">0.1 ETH</p>
         </div>
         <div className="stat-card">
           <div className="flex items-center gap-2 text-surface-400">
@@ -214,7 +214,7 @@ export function Vault() {
                 onClick={() => setActiveTab(tab)}
                 className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors ${
                   activeTab === tab
-                    ? 'bg-[#0000FF] text-white'
+                    ? 'bg-brand-500 text-white'
                     : 'text-surface-400 hover:text-white'
                 }`}
               >
@@ -237,12 +237,12 @@ export function Vault() {
               <>
                 <span className="text-white font-medium">AKITA</span>
                 <span>→</span>
-                <span className="text-[#0000FF] font-medium">wsAKITA</span>
+                <span className="text-brand-500 font-medium">wsAKITA</span>
                 <span className="text-surface-500 ml-2">(~1:1)</span>
               </>
             ) : (
               <>
-                <span className="text-[#0000FF] font-medium">wsAKITA</span>
+                <span className="text-brand-500 font-medium">wsAKITA</span>
                 <span>→</span>
                 <span className="text-white font-medium">AKITA</span>
               </>
@@ -263,7 +263,7 @@ export function Vault() {
                         : formatUnits(wsAkitaBalance || 0n, 18)
                     )
                   }
-                  className="text-[#0000FF] hover:text-[#0000FF]/80"
+                  className="text-brand-500 hover:text-brand-400"
                 >
                   {activeTab === 'Deposit'
                     ? formatAmount(tokenBalance)
@@ -288,7 +288,7 @@ export function Vault() {
                       : formatUnits(wsAkitaBalance || 0n, 18)
                   )
                 }
-                className="absolute right-3 top-1/2 -translate-y-1/2 px-3 py-1 rounded-lg bg-[#0000FF]/10 text-[#0000FF] text-sm font-medium hover:bg-[#0000FF]/20 transition-colors"
+                className="absolute right-3 top-1/2 -translate-y-1/2 px-3 py-1 rounded-lg bg-brand-500/10 text-brand-500 text-sm font-medium hover:bg-brand-500/20 transition-colors"
               >
                 MAX
               </button>
@@ -358,7 +358,7 @@ export function Vault() {
             <motion.div
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
-              className="p-3 rounded-lg bg-[#0000FF]/10 border border-[#0000FF]/20 text-[#0000FF] text-sm text-center"
+              className="p-3 rounded-lg bg-brand-500/10 border border-brand-500/20 text-brand-500 text-sm text-center"
             >
               ✓ Transaction successful!
             </motion.div>
@@ -373,7 +373,7 @@ export function Vault() {
           className="sm:col-span-2 glass-card p-6 space-y-4"
         >
           <h3 className="font-semibold flex items-center gap-2">
-            <Users className="w-4 h-4 text-[#0000FF]" />
+            <Users className="w-4 h-4 text-brand-500" />
             Your Position
           </h3>
 
@@ -384,7 +384,7 @@ export function Vault() {
             </div>
             <div className="flex justify-between">
               <span className="text-surface-400">wsAKITA Balance</span>
-              <span className="font-mono text-[#0000FF]">{formatAmount(wsAkitaBalance)}</span>
+              <span className="font-mono text-brand-500">{formatAmount(wsAkitaBalance)}</span>
             </div>
           </div>
 
@@ -400,7 +400,7 @@ export function Vault() {
             </div>
             <div className="h-2 rounded-full bg-surface-800 overflow-hidden">
               <motion.div
-                className="h-full bg-[#0000FF]"
+                className="h-full bg-brand-500"
                 initial={{ width: 0 }}
                 animate={{
                   width: `${
@@ -425,10 +425,10 @@ export function Vault() {
       >
         <div className="flex items-center justify-between mb-6">
           <h3 className="font-semibold flex items-center gap-2">
-            <Trophy className="w-5 h-5 text-[#0000FF]" />
+            <Trophy className="w-5 h-5 text-brand-500" />
             Jackpot Distribution
           </h3>
-          <span className="px-2 py-0.5 rounded-full bg-[#0000FF]/10 text-[#0000FF] text-xs font-medium">
+          <span className="px-2 py-0.5 rounded-full bg-brand-500/10 text-brand-500 text-xs font-medium">
             Chainlink VRF
           </span>
         </div>
@@ -437,7 +437,7 @@ export function Vault() {
 
         <div className="mt-6 pt-4 border-t border-surface-800">
           <div className="flex items-center gap-2 text-sm text-surface-400 mb-2">
-            <Zap className="w-4 h-4 text-[#0000FF]" />
+            <Zap className="w-4 h-4 text-brand-500" />
             <span>How to enter</span>
           </div>
           <p className="text-surface-300 text-sm">

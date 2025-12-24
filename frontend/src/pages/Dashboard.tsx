@@ -94,7 +94,7 @@ function AuctionStatusBadge({ ccaStrategy }: { ccaStrategy: string }) {
     return (
       <Link 
         to={`/complete-auction/${ccaStrategy}`}
-        className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-[#0000FF]/10 text-[#0000FF] text-xs font-medium hover:bg-[#0000FF]/20 transition-colors"
+        className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-brand-500/10 text-brand-500 text-xs font-medium hover:bg-brand-500/20 transition-colors"
       >
         <AlertCircle className="w-3 h-3" />
         Action Required
@@ -105,7 +105,7 @@ function AuctionStatusBadge({ ccaStrategy }: { ccaStrategy: string }) {
   if (isActive) {
     const raised = currencyRaised ? Number(formatUnits(currencyRaised, 18)).toFixed(4) : '0'
     return (
-      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-[#0000FF]/10 text-[#0000FF] text-xs font-medium">
+      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-brand-500/10 text-brand-500 text-xs font-medium">
         <Clock className="w-3 h-3" />
         CCA ({raised} ETH)
       </span>
@@ -113,7 +113,7 @@ function AuctionStatusBadge({ ccaStrategy }: { ccaStrategy: string }) {
   }
   
   return (
-    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-[#0000FF]/10 text-[#0000FF] text-xs font-medium">
+    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-brand-500/10 text-brand-500 text-xs font-medium">
       <CheckCircle2 className="w-3 h-3" />
       Active
     </span>
@@ -159,7 +159,7 @@ export function Dashboard() {
             variants={item}
             className="p-3 rounded-xl bg-surface-900/50 border border-surface-800/50"
           >
-            <stat.icon className="w-4 h-4 text-[#0000FF] mb-2" />
+            <stat.icon className="w-4 h-4 text-brand-500 mb-2" />
             <p className="font-bold text-lg">{stat.value}</p>
             <p className="text-[10px] text-surface-500 uppercase tracking-wider">{stat.label}</p>
           </motion.div>
@@ -176,7 +176,7 @@ export function Dashboard() {
         {vaults.map((vault) => (
           <motion.div key={vault.id} variants={item}>
             <Link to={`/vault/${vault.vault}`}>
-              <div className="glass-card p-4 hover:border-[#0000FF]/30 transition-all group">
+              <div className="glass-card p-4 hover:border-brand-500/30 transition-all group">
                 <div className="flex items-center gap-4">
                   {/* Token logo only - wsToken shown inside vault */}
                   <TokenImage
@@ -202,12 +202,12 @@ export function Dashboard() {
                       <p className="text-[10px] text-surface-500 uppercase">TVL</p>
                     </div>
                     <div>
-                      <p className="font-semibold text-[#0000FF]">{vault.apy}</p>
+                      <p className="font-semibold text-brand-500">{vault.apy}</p>
                       <p className="text-[10px] text-surface-500 uppercase">APY</p>
                     </div>
                   </div>
 
-                  <ArrowUpRight className="w-4 h-4 text-surface-600 group-hover:text-[#0000FF] transition-colors" />
+                  <ArrowUpRight className="w-4 h-4 text-surface-600 group-hover:text-brand-500 transition-colors" />
                 </div>
               </div>
             </Link>
@@ -223,9 +223,9 @@ export function Dashboard() {
         className="glass-card p-4"
       >
         <div className="flex items-center gap-2 mb-4">
-          <Gift className="w-4 h-4 text-[#0000FF]" />
+          <Gift className="w-4 h-4 text-brand-500" />
           <span className="font-medium text-sm">Jackpot Distribution</span>
-          <span className="px-1.5 py-0.5 rounded bg-[#0000FF]/10 text-[#0000FF] text-[10px] font-medium">
+          <span className="px-1.5 py-0.5 rounded bg-brand-500/10 text-brand-500 text-[10px] font-medium">
             VRF
           </span>
         </div>
@@ -244,7 +244,7 @@ export function Dashboard() {
         transition={{ delay: 0.4 }}
         className="p-6 rounded-xl border border-dashed border-surface-800 text-center"
       >
-        <Sparkles className="w-8 h-8 text-[#0000FF]/50 mx-auto mb-3" />
+        <Sparkles className="w-8 h-8 text-brand-500/50 mx-auto mb-3" />
         <p className="text-surface-400 text-sm mb-3">Have a Creator Coin?</p>
         <Link to="/launch">
           <button className="btn-secondary text-sm px-4 py-2">Create Vault</button>

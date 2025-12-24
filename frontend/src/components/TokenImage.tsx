@@ -54,7 +54,7 @@ export function TokenImage({
   // Wrapped version: Token deposited into prominent Base blue vault
   return (
     <div className={`relative ${className}`}>
-      <div className={`${sizeClass} rounded-xl overflow-hidden relative shadow-xl ring-2 ring-[#0000FF]/30`}>
+      <div className={`${sizeClass} rounded-xl overflow-hidden relative shadow-xl ring-2 ring-brand-500/30`}>
         {/* Full token image (background) */}
         <div className="absolute inset-0">
           {(!imageUrl || imgError || isLoading) ? (
@@ -71,10 +71,10 @@ export function TokenImage({
           )}
         </div>
         
-        {/* Bottom 40%: Prominent 3D Base vault (#0000FF) - token is DEPOSITED INTO Base */}
+        {/* Bottom 40%: Prominent 3D Base vault - token is DEPOSITED INTO Base */}
         <div className="absolute inset-x-0 bottom-0 h-[40%] opacity-90">
-          {/* Main vault body with proper Base blue gradient */}
-          <div className="absolute inset-0 bg-gradient-to-br from-[#0010FF] via-[#0000FF] to-[#0000DD]" />
+          {/* Main vault body with bright Base blue gradient */}
+          <div className="absolute inset-0 bg-gradient-to-br from-brand-400 via-brand-500 to-brand-600" />
           
           {/* Deep inset shadow for vault recess */}
           <div className="absolute inset-0 shadow-[inset_0_4px_12px_rgba(0,0,0,0.5),inset_0_-2px_8px_rgba(0,0,0,0.3)]" />
@@ -109,7 +109,7 @@ export function TokenImage({
               <div className="absolute inset-[4%] rounded-full bg-gradient-to-tl from-black/30 to-transparent" />
               
               {/* Middle ring - recessed */}
-              <div className="absolute inset-[12%] rounded-full bg-gradient-to-br from-[#0000DD] via-[#0000FF] to-[#0010FF] shadow-[inset_0_2px_8px_rgba(0,0,0,0.5)]" />
+              <div className="absolute inset-[12%] rounded-full bg-gradient-to-br from-brand-600 via-brand-500 to-brand-400 shadow-[inset_0_2px_8px_rgba(0,0,0,0.5)]" />
               
               {/* Dial markings */}
               <div className="absolute inset-[20%] rounded-full">
@@ -143,7 +143,7 @@ export function TokenImage({
         <div className="absolute inset-x-0 top-[58%] h-[4%] bg-gradient-to-b from-black/0 via-black/20 to-black/30 pointer-events-none" />
         
         {/* Blue glow emanating from vault to emphasize Base blue */}
-        <div className="absolute inset-x-0 bottom-0 h-[40%] bg-gradient-to-t from-[#0000FF]/20 to-transparent pointer-events-none blur-sm" />
+        <div className="absolute inset-x-0 bottom-0 h-[40%] bg-gradient-to-t from-brand-500/20 to-transparent pointer-events-none blur-sm" />
       </div>
     </div>
   )
