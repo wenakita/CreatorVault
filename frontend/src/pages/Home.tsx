@@ -376,9 +376,6 @@ export function Home() {
               <h2 className="text-3xl sm:text-4xl font-bold text-white mb-4">
                 How It Works
               </h2>
-              <p className="text-slate-400 text-lg">
-                Simple. Transparent. Profitable.
-              </p>
             </div>
           </FadeIn>
 
@@ -387,8 +384,8 @@ export function Home() {
               { 
                 num: '01', 
                 icon: Coins, 
-                title: 'Deposit', 
-                desc: 'Add your creator coins. Withdraw anytime.',
+                title: 'Deposit Tokens', 
+                desc: 'Add creator coins to the vault.',
                 color: 'from-blue-500/20 to-cyan-500/20',
                 iconBg: 'bg-blue-500/10',
                 iconColor: 'text-blue-400'
@@ -396,8 +393,8 @@ export function Home() {
               { 
                 num: '02', 
                 icon: TrendingUp, 
-                title: 'Earn Automatically', 
-                desc: 'Every trade generates fees for vault holders.',
+                title: 'Earn From Trades', 
+                desc: 'Get a share of trading fees.',
                 color: 'from-purple-500/20 to-pink-500/20',
                 iconBg: 'bg-purple-500/10',
                 iconColor: 'text-purple-400'
@@ -405,8 +402,8 @@ export function Home() {
               { 
                 num: '03', 
                 icon: Flame, 
-                title: 'Value Grows', 
-                desc: 'Burns reduce supply. Your share increases.',
+                title: 'Burns Increase Share', 
+                desc: 'Own more as supply decreases.',
                 color: 'from-orange-500/20 to-red-500/20',
                 iconBg: 'bg-orange-500/10',
                 iconColor: 'text-orange-400'
@@ -443,11 +440,8 @@ export function Home() {
           <FadeIn delay={0.1}>
             <div className="text-center mb-12">
               <h2 className="text-3xl sm:text-4xl font-bold text-white mb-4">
-                Why Deposit Your Tokens?
+                Why Use CreatorVault?
               </h2>
-              <p className="text-slate-400 text-lg">
-                Turn idle tokens into earning assets
-              </p>
             </div>
           </FadeIn>
 
@@ -455,29 +449,29 @@ export function Home() {
             {[
               {
                 icon: TrendingUp,
-                title: 'Passive Income',
-                desc: 'Earn from every trade. No work required.',
+                title: 'Earn Passively',
+                desc: 'Trading fees flow to holders.',
                 gradient: 'from-green-500/10 to-emerald-500/10',
                 iconColor: 'text-green-400',
               },
               {
-                icon: Users,
-                title: 'Community Aligned',
-                desc: 'Creators and holders earn together.',
-                gradient: 'from-blue-500/10 to-cyan-500/10',
-                iconColor: 'text-blue-400',
-              },
-              {
                 icon: Flame,
-                title: 'Deflationary Growth',
-                desc: 'Your share grows with every burn.',
+                title: 'Deflationary',
+                desc: 'Burns increase your share.',
                 gradient: 'from-orange-500/10 to-red-500/10',
                 iconColor: 'text-orange-400',
               },
               {
+                icon: Users,
+                title: 'Fair to All',
+                desc: 'Everyone earns together.',
+                gradient: 'from-blue-500/10 to-cyan-500/10',
+                iconColor: 'text-blue-400',
+              },
+              {
                 icon: Zap,
-                title: 'Full Control',
-                desc: 'Withdraw anytime. No lock-ups.',
+                title: 'Flexible',
+                desc: 'Withdraw anytime.',
                 gradient: 'from-yellow-500/10 to-orange-500/10',
                 iconColor: 'text-yellow-400',
               },
