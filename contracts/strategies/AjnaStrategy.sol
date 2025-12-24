@@ -7,6 +7,7 @@ import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
 import {IStrategy} from "../interfaces/strategies/IStrategy.sol";
+import {IAjnaPool} from "../interfaces/ajna/IAjnaPool.sol";
 
 /**
  * @title AjnaStrategy
@@ -73,6 +74,13 @@ contract AjnaStrategy is IStrategy, Ownable, ReentrancyGuard {
     /// @notice Strategy name
     string public strategyName;
 
+    /// @notice Bucket index for Ajna lending (price point)
+    /// @dev Default is 3696 (middle bucket, ~1:1 price ratio)
+    uint256 public bucketIndex;
+
+    /// @notice Total LP tokens held in Ajna pool
+    uint256 public totalAjnaLP;
+
     // ================================
     // MODIFIERS
     // ================================
@@ -110,6 +118,7 @@ contract AjnaStrategy is IStrategy, Ownable, ReentrancyGuard {
         _isActive = true;
         
         strategyName = "Ajna Lending Strategy";
+        bucketIndex = 3696; // Middle bucket (~1:1 price ratio)
     }
 
     // ================================
@@ -229,50 +238,64 @@ contract AjnaStrategy is IStrategy, Ownable, ReentrancyGuard {
         // Approve Ajna pool
         CREATOR_COIN.forceApprove(ajnaPool, amount);
 
-        // Ajna addQuoteToken function (simplified interface)
-        // In reality, you need to specify a price bucket
-        // bytes memory callData = abi.encodeWithSignature(
-        //     "addQuoteToken(uint256,uint256,uint256)",
-        //     amount,
-        //     bucketIndex,  // Price bucket to lend at
-        //     block.timestamp
-        // );
-        // (bool success, ) = ajnaPool.call(callData);
-        // require(success, "Ajna deposit failed");
+        // Add quote tokens to lending bucket
+        // Returns: (LP tokens received, actual amount added)
+        (uint256 lpReceived, uint256 addedAmount) = IAjnaPool(ajnaPool).addQuoteToken(
+            amount,
+            bucketIndex,  // Price bucket to lend at
+            block.timestamp + 1 hours  // Expiry (1 hour from now)
+        );
 
-        // For now, simulate by just holding
-        // Real implementation needs Ajna-specific integration
-        return amount;
+        // Track LP tokens
+        totalAjnaLP += lpReceived;
+
+        return addedAmount;
     }
 
     /**
      * @notice Withdraw creator tokens from Ajna pool
      */
-    function _withdrawFromAjna(uint256 amount) internal pure returns (uint256) {
-        // Ajna removeQuoteToken function
-        // bytes memory callData = abi.encodeWithSignature(
-        //     "removeQuoteToken(uint256,uint256)",
-        //     amount,
-        //     bucketIndex
-        // );
-        // (bool success, bytes memory result) = ajnaPool.call(callData);
-        // require(success, "Ajna withdraw failed");
+    function _withdrawFromAjna(uint256 amount) internal returns (uint256) {
+        if (totalAjnaLP == 0) return 0;
 
-        // For now, return the amount (simulated)
-        return amount;
+        // Calculate LP tokens to burn for desired amount
+        // In Ajna, we need to burn LP tokens to withdraw quote tokens
+        uint256 lpToBurn = (amount * totalAjnaLP) / _totalDeposited;
+        if (lpToBurn > totalAjnaLP) lpToBurn = totalAjnaLP;
+
+        // Remove quote tokens from lending bucket
+        // Returns: (amount removed, LP tokens burned)
+        (uint256 removedAmount, uint256 burnedLP) = IAjnaPool(ajnaPool).removeQuoteToken(
+            lpToBurn,
+            bucketIndex
+        );
+
+        // Update LP tracking
+        totalAjnaLP -= burnedLP;
+
+        return removedAmount;
     }
 
     /**
      * @notice Get current creator token balance in Ajna (includes interest)
      */
     function _getAjnaBalance() internal view returns (uint256) {
-        if (ajnaPool == address(0)) {
+        if (ajnaPool == address(0) || totalAjnaLP == 0) {
             return CREATOR_COIN.balanceOf(address(this));
         }
 
-        // Query Ajna for our lender position value
-        // Real implementation needs Ajna-specific integration
-        // For now, return deposited amount
+        // Query Ajna for our LP balance in the bucket
+        (uint256 lpBalance, ) = IAjnaPool(ajnaPool).lenderInfo(bucketIndex, address(this));
+
+        // Get bucket info to calculate our share
+        (uint256 bucketLPTotal, , , uint256 bucketDeposit, ) = IAjnaPool(ajnaPool).bucketInfo(bucketIndex);
+
+        // Calculate our share of the bucket deposits
+        // Our value = (our LP / total LP) * total deposits
+        if (bucketLPTotal > 0) {
+            return (lpBalance * bucketDeposit) / bucketLPTotal;
+        }
+
         return _totalDeposited;
     }
 
@@ -335,6 +358,47 @@ contract AjnaStrategy is IStrategy, Ownable, ReentrancyGuard {
             revert("Withdraw from current pool first");
         }
         ajnaPool = _pool;
+    }
+
+    /**
+     * @notice Set the bucket index for lending
+     * @dev Lower index = lower price, higher index = higher price
+     *      Bucket 3696 is the middle (~ 1:1 price ratio)
+     */
+    function setBucketIndex(uint256 _index) external onlyOwner {
+        // Ajna has 7388 buckets (0-7387)
+        require(_index < 7388, "Invalid bucket index");
+        
+        // If we have funds deployed, must move them first
+        if (totalAjnaLP > 0) {
+            revert("Move liquidity before changing bucket");
+        }
+        
+        bucketIndex = _index;
+    }
+
+    /**
+     * @notice Move liquidity to a different bucket
+     * @dev Useful for rebalancing or adjusting to market conditions
+     */
+    function moveToBucket(uint256 newIndex, uint256 lpAmount) external onlyOwner {
+        require(newIndex < 7388, "Invalid bucket index");
+        require(ajnaPool != address(0), "Pool not set");
+        
+        if (lpAmount == 0) lpAmount = totalAjnaLP;
+        if (lpAmount == 0) return;
+
+        // Move LP tokens to new bucket
+        (uint256 fromLP, uint256 toLP, ) = IAjnaPool(ajnaPool).moveQuoteToken(
+            lpAmount,
+            bucketIndex,      // From current bucket
+            newIndex,         // To new bucket
+            block.timestamp + 1 hours
+        );
+
+        // Update tracking
+        totalAjnaLP = totalAjnaLP - fromLP + toLP;
+        bucketIndex = newIndex;
     }
 
     /**
