@@ -574,6 +574,22 @@ export function Vault() {
             </div>
           </div>
         </div>
+
+        {/* CTA to Bid */}
+        <div className="pt-6 border-t border-white/5">
+          <a href={`/auction/bid/${AKITA.vault}`}>
+            <motion.button
+              className="w-full px-6 py-4 rounded-xl bg-gradient-to-r from-brand-500 to-purple-500 text-white font-bold shadow-xl shadow-brand-500/20"
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+            >
+              <span className="flex items-center justify-center gap-2">
+                <Trophy className="w-5 h-5" />
+                Place Your Bid
+              </span>
+            </motion.button>
+          </a>
+        </div>
       </motion.div>
     </div>
   )
