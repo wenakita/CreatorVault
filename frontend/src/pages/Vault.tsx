@@ -12,6 +12,7 @@ import {
   Coins,
   Trophy,
   Zap,
+  Clock,
 } from 'lucide-react'
 import { AKITA } from '../config/contracts'
 import { ConnectButton } from '../components/ConnectButton'
@@ -415,181 +416,104 @@ export function Vault() {
         </motion.div>
       </div>
 
-      {/* Buy-To-Win Lottery Info with Distribution Chart */}
+      {/* Fair Launch Info */}
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ delay: 0.5 }}
-        className="glass-card p-6 space-y-6"
+        className="glass-card p-8 space-y-6"
       >
         {/* Header */}
-        <div className="flex items-center justify-between">
-          <h3 className="font-semibold flex items-center gap-2">
-            <TrendingUp className="w-5 h-5 text-brand-500" />
-            CCA Auction Strategy
-          </h3>
-          <span className="px-2 py-0.5 rounded-full bg-brand-500/10 text-brand-500 text-xs font-medium">
-            7-day fair launch
-          </span>
+        <div className="text-center space-y-2">
+          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-orange-500/10 border border-orange-500/30 mb-2">
+            <Clock className="w-4 h-4 text-orange-400" />
+            <span className="text-orange-400 font-bold text-sm">5 days left to bid</span>
+          </div>
+          <h3 className="text-2xl font-bold">Early Access Auction</h3>
+          <p className="text-slate-400 text-lg">Get AKITA before anyone else</p>
         </div>
 
-        {/* Timeline Visualization */}
-        <div className="relative p-6 rounded-2xl bg-gradient-to-br from-brand-500/10 via-purple-500/5 to-transparent border border-brand-500/20">
-          <div className="space-y-4">
-            <div className="flex items-center justify-between text-xs text-slate-400 mb-2">
-              <span>Day 1</span>
-              <span>Day 7</span>
-            </div>
-            
-            {/* Progress Bar */}
-            <div className="relative h-3 rounded-full bg-slate-900/50 overflow-hidden">
-              <motion.div
-                className="absolute inset-y-0 left-0 bg-gradient-to-r from-brand-500 to-purple-500 rounded-full"
-                initial={{ width: '0%' }}
-                animate={{ width: '35%' }}
-                transition={{ duration: 1.5, ease: 'easeOut' }}
-              />
-              <div className="absolute inset-0 flex items-center justify-center">
-                <span className="text-[10px] font-bold text-white/80">Auction in Progress</span>
-              </div>
-            </div>
+        {/* Simple Stats */}
+        <div className="flex items-center justify-center gap-8">
+          <div className="text-center">
+            <p className="text-3xl font-bold text-white">12</p>
+            <p className="text-sm text-slate-400">people bidding</p>
+          </div>
+          <div className="w-px h-12 bg-white/10" />
+          <div className="text-center">
+            <p className="text-3xl font-bold text-brand-400">0.124 ETH</p>
+            <p className="text-sm text-slate-400">invested so far</p>
+          </div>
+        </div>
 
-            {/* Current Status */}
-            <div className="flex items-center justify-between text-sm">
+        {/* How It Works - Dead Simple */}
+        <div className="p-6 rounded-2xl bg-gradient-to-br from-green-500/10 to-emerald-500/5 border border-green-500/20">
+          <p className="text-center text-lg font-bold text-white mb-4">How It Works</p>
+          
+          <div className="space-y-3">
+            <div className="flex items-start gap-3">
+              <div className="w-8 h-8 rounded-full bg-brand-500/20 flex items-center justify-center flex-shrink-0 text-sm font-bold text-brand-400">
+                1
+              </div>
               <div>
-                <p className="text-slate-500 text-xs">Current Bids</p>
-                <p className="text-white font-bold">12 participants</p>
+                <p className="text-white font-semibold mb-1">Choose your amount</p>
+                <p className="text-sm text-slate-400">Say how much ETH you'll pay for how many tokens</p>
               </div>
-              <div className="text-right">
-                <p className="text-slate-500 text-xs">Total Raised</p>
-                <p className="text-brand-400 font-bold">0.124 ETH</p>
+            </div>
+
+            <div className="flex items-start gap-3">
+              <div className="w-8 h-8 rounded-full bg-brand-500/20 flex items-center justify-center flex-shrink-0 text-sm font-bold text-brand-400">
+                2
+              </div>
+              <div>
+                <p className="text-white font-semibold mb-1">Submit your bid</p>
+                <p className="text-sm text-slate-400">Higher bids have better chance of winning</p>
+              </div>
+            </div>
+
+            <div className="flex items-start gap-3">
+              <div className="w-8 h-8 rounded-full bg-green-500/20 flex items-center justify-center flex-shrink-0 text-sm font-bold text-green-400">
+                3
+              </div>
+              <div>
+                <p className="text-white font-semibold mb-1">Get your tokens</p>
+                <p className="text-sm text-slate-400">After 5 days, winners get tokens at a fair price</p>
               </div>
             </div>
           </div>
         </div>
 
-        {/* How Bidding Works */}
-        <div className="space-y-3">
-          <p className="text-sm font-semibold text-white">How Bidding Works</p>
-          
-          {/* Example Bids */}
-          <div className="space-y-2">
-            <div className="flex items-center justify-between p-3 rounded-xl bg-green-500/10 border border-green-500/30">
-              <div className="flex items-center gap-3">
-                <div className="w-6 h-6 rounded-full bg-green-500/20 flex items-center justify-center text-xs font-bold text-green-400">
-                  1
-                </div>
-                <div>
-                  <p className="text-xs text-green-300 font-medium">Highest Bid</p>
-                  <p className="text-[10px] text-green-400/60">Will win tokens</p>
-                </div>
-              </div>
-              <div className="text-right">
-                <p className="text-white font-bold">0.05 ETH</p>
-                <p className="text-xs text-slate-400">per 1000 AKITA</p>
-              </div>
-            </div>
-
-            <div className="flex items-center justify-between p-3 rounded-xl bg-brand-500/10 border border-brand-500/20">
-              <div className="flex items-center gap-3">
-                <div className="w-6 h-6 rounded-full bg-brand-500/20 flex items-center justify-center text-xs font-bold text-brand-400">
-                  2
-                </div>
-                <div>
-                  <p className="text-xs text-brand-300 font-medium">Mid Bid</p>
-                  <p className="text-[10px] text-brand-400/60">Competitive</p>
-                </div>
-              </div>
-              <div className="text-right">
-                <p className="text-white font-bold">0.03 ETH</p>
-                <p className="text-xs text-slate-400">per 1000 AKITA</p>
-              </div>
-            </div>
-
-            <div className="flex items-center justify-between p-3 rounded-xl bg-slate-700/10 border border-slate-700/20">
-              <div className="flex items-center gap-3">
-                <div className="w-6 h-6 rounded-full bg-slate-700/20 flex items-center justify-center text-xs font-bold text-slate-400">
-                  3
-                </div>
-                <div>
-                  <p className="text-xs text-slate-400 font-medium">Low Bid</p>
-                  <p className="text-[10px] text-slate-500">Might not win</p>
-                </div>
-              </div>
-              <div className="text-right">
-                <p className="text-white font-bold">0.01 ETH</p>
-                <p className="text-xs text-slate-400">per 1000 AKITA</p>
-              </div>
-            </div>
+        {/* The Best Part */}
+        <div className="grid sm:grid-cols-3 gap-4">
+          <div className="p-4 rounded-xl bg-white/[0.02] border border-white/5 text-center">
+            <div className="text-3xl mb-2">💰</div>
+            <p className="text-white font-semibold mb-1 text-sm">Pay Less</p>
+            <p className="text-xs text-slate-400">Everyone pays the same low price</p>
           </div>
-
-          {/* Explainer */}
-          <div className="p-3 rounded-xl bg-white/[0.02] border border-white/5">
-            <p className="text-xs text-slate-400 leading-relaxed">
-              💡 Bids are ranked by price. When the auction ends, highest bidders get tokens at the <span className="text-white font-medium">clearing price</span> (lowest winning bid). Everyone pays the same fair price.
-            </p>
+          <div className="p-4 rounded-xl bg-white/[0.02] border border-white/5 text-center">
+            <div className="text-3xl mb-2">🔒</div>
+            <p className="text-white font-semibold mb-1 text-sm">Risk Free</p>
+            <p className="text-xs text-slate-400">Don't win? Full refund</p>
           </div>
-        </div>
-
-        {/* Token Allocation */}
-        <div className="space-y-3">
-          <p className="text-sm font-semibold text-white">Token Allocation</p>
-          
-          <div className="grid grid-cols-2 gap-3">
-            <div className="p-4 rounded-xl bg-purple-500/10 border border-purple-500/20 text-center">
-              <div className="w-10 h-10 rounded-xl bg-purple-500/20 flex items-center justify-center mx-auto mb-2">
-                <Trophy className="w-5 h-5 text-purple-400" />
-              </div>
-              <p className="text-2xl font-bold text-white mb-1">50%</p>
-              <p className="text-xs text-purple-300">To Auction</p>
-              <p className="text-[10px] text-slate-500 mt-1">For bidders</p>
-            </div>
-
-            <div className="p-4 rounded-xl bg-green-500/10 border border-green-500/20 text-center">
-              <div className="w-10 h-10 rounded-xl bg-green-500/20 flex items-center justify-center mx-auto mb-2">
-                <Users className="w-5 h-5 text-green-400" />
-              </div>
-              <p className="text-2xl font-bold text-white mb-1">50%</p>
-              <p className="text-xs text-green-300">To Vault</p>
-              <p className="text-[10px] text-slate-500 mt-1">For deposits</p>
-            </div>
-          </div>
-        </div>
-
-        {/* Benefits */}
-        <div className="pt-4 border-t border-white/5 space-y-2">
-          <p className="text-xs text-slate-500 font-medium uppercase tracking-wider">Why CCA?</p>
-          <div className="grid sm:grid-cols-3 gap-2 text-xs">
-            <div className="flex items-center gap-2 text-green-400">
-              <span>✓</span>
-              <span>No bot snipers</span>
-            </div>
-            <div className="flex items-center gap-2 text-green-400">
-              <span>✓</span>
-              <span>Fair pricing</span>
-            </div>
-            <div className="flex items-center gap-2 text-green-400">
-              <span>✓</span>
-              <span>Community first</span>
-            </div>
+          <div className="p-4 rounded-xl bg-white/[0.02] border border-white/5 text-center">
+            <div className="text-3xl mb-2">⚡</div>
+            <p className="text-white font-semibold mb-1 text-sm">First Access</p>
+            <p className="text-xs text-slate-400">Get tokens before market</p>
           </div>
         </div>
 
         {/* CTA to Bid */}
-        <div className="pt-6 border-t border-white/5">
-          <a href={`/auction/bid/${AKITA.vault}`}>
-            <motion.button
-              className="w-full px-6 py-4 rounded-xl bg-gradient-to-r from-brand-500 to-purple-500 text-white font-bold shadow-xl shadow-brand-500/20"
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
-            >
-              <span className="flex items-center justify-center gap-2">
-                <Trophy className="w-5 h-5" />
-                Place Your Bid
-              </span>
-            </motion.button>
-          </a>
-        </div>
+        <a href={`/auction/bid/${AKITA.vault}`}>
+          <motion.button
+            className="w-full px-8 py-5 rounded-2xl bg-gradient-to-r from-brand-500 to-purple-500 text-white text-xl font-bold shadow-2xl shadow-brand-500/30 hover:shadow-brand-500/50 transition-shadow"
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
+          >
+            <span className="flex items-center justify-center gap-3">
+              🎯 Join Auction Now
+            </span>
+          </motion.button>
+        </a>
       </motion.div>
     </div>
   )
