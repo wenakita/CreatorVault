@@ -172,6 +172,110 @@ export function Home() {
           </div>
         </section>
 
+        {/* FOR CREATORS - How to launch a vault */}
+        <section className="relative">
+          <FadeIn delay={0.1}>
+            <div className="text-center mb-12">
+              <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-brand-500/10 border border-brand-500/20 backdrop-blur-xl mb-4">
+                <Sparkles className="w-4 h-4 text-brand-400" />
+                <span className="text-brand-400 font-medium text-sm">For Creators</span>
+              </div>
+              <h2 className="text-3xl sm:text-4xl font-bold text-white mb-4">
+                Launch Your CreatorVault
+              </h2>
+              <p className="text-slate-400 text-lg max-w-2xl mx-auto">
+                Give your community a way to earn with you
+              </p>
+            </div>
+          </FadeIn>
+
+          <div className="grid md:grid-cols-3 gap-8 max-w-4xl mx-auto">
+            {[
+              { 
+                num: '01', 
+                icon: Rocket, 
+                title: 'Create Vault', 
+                desc: 'Launch a vault for your creator coin.',
+                color: 'from-purple-500/20 to-pink-500/20',
+                iconBg: 'bg-purple-500/10',
+                iconColor: 'text-purple-400'
+              },
+              { 
+                num: '02', 
+                icon: Users, 
+                title: 'Community Joins', 
+                desc: 'Your holders deposit tokens.',
+                color: 'from-blue-500/20 to-cyan-500/20',
+                iconBg: 'bg-blue-500/10',
+                iconColor: 'text-blue-400'
+              },
+              { 
+                num: '03', 
+                icon: TrendingUp, 
+                title: 'Everyone Earns', 
+                desc: 'All vault holders share trading fees.',
+                color: 'from-green-500/20 to-emerald-500/20',
+                iconBg: 'bg-green-500/10',
+                iconColor: 'text-green-400'
+              },
+            ].map(({ num, icon: Icon, title, desc, color, iconBg, iconColor }) => (
+              <StaggerItem key={num}>
+                <div className="relative h-full">
+                  {/* Connecting line (hidden on mobile) */}
+                  {num !== '03' && (
+                    <div className="hidden md:block absolute top-12 left-full w-8 h-0.5 bg-gradient-to-r from-white/20 to-transparent" />
+                  )}
+                  
+                  <div className={`relative p-8 rounded-3xl bg-white/[0.02] border border-white/10 backdrop-blur-xl h-full`}>
+                    {/* Gradient overlay on hover */}
+                    <div className={`absolute inset-0 rounded-3xl bg-gradient-to-br ${color} opacity-0 hover:opacity-100 transition-opacity duration-300`} />
+                    
+                    <div className="relative">
+                      {/* Number badge */}
+                      <div className="flex items-center gap-4 mb-6">
+                        <div className="text-4xl font-black text-white/10">
+                          {num}
+                        </div>
+                        <div className={`w-12 h-12 rounded-2xl ${iconBg} flex items-center justify-center`}>
+                          <Icon className={`w-6 h-6 ${iconColor}`} />
+                        </div>
+                      </div>
+
+                      {/* Content */}
+                      <h3 className="text-xl font-bold text-white mb-3">
+                        {title}
+                      </h3>
+                      <p className="text-slate-400 leading-relaxed">
+                        {desc}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </StaggerItem>
+            ))}
+          </div>
+
+          {/* Creator CTA */}
+          <FadeIn delay={0.3}>
+            <div className="text-center mt-12">
+              <Link to="/launch">
+                <motion.button 
+                  className="group px-8 py-4 rounded-2xl bg-gradient-to-r from-brand-500 to-purple-500 text-white font-bold text-lg shadow-2xl shadow-brand-500/20 overflow-hidden"
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  transition={{ duration: DURATION.fast, ease: BASE_EASE }}
+                >
+                  <span className="relative flex items-center gap-2">
+                    <Rocket className="w-5 h-5" />
+                    Launch Your Vault
+                    <ChevronRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+                  </span>
+                </motion.button>
+              </Link>
+            </div>
+          </FadeIn>
+        </section>
+
         {/* DEFLATIONARY MECHANISM - Key differentiator */}
         <section>
           <FadeIn delay={0.1}>
@@ -373,9 +477,16 @@ export function Home() {
         <section>
           <FadeIn delay={0.1}>
             <div className="text-center mb-12">
+              <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-green-500/10 border border-green-500/20 backdrop-blur-xl mb-4">
+                <Coins className="w-4 h-4 text-green-400" />
+                <span className="text-green-400 font-medium text-sm">For Holders</span>
+              </div>
               <h2 className="text-3xl sm:text-4xl font-bold text-white mb-4">
                 How It Works
               </h2>
+              <p className="text-slate-400 text-lg max-w-2xl mx-auto">
+                Deposit into existing vaults and start earning
+              </p>
             </div>
           </FadeIn>
 
