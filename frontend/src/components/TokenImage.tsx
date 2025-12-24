@@ -145,11 +145,6 @@ export function TokenImage({
         {/* Blue glow emanating from vault to emphasize Base blue */}
         <div className="absolute inset-x-0 bottom-0 h-[40%] bg-gradient-to-t from-[#0000FF]/20 to-transparent pointer-events-none blur-sm" />
       </div>
-      
-      {/* "ws" badge to indicate wrapped share */}
-      <div className="absolute -top-1 -right-1 w-6 h-6 rounded-full bg-gradient-to-br from-[#0000FF] to-[#0000DD] shadow-lg border-2 border-white flex items-center justify-center">
-        <span className="text-[8px] font-bold text-white tracking-tight">ws</span>
-      </div>
     </div>
   )
 }
