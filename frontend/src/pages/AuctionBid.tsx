@@ -347,6 +347,7 @@ export function AuctionBid() {
                 </div>
               </div>
             </div>
+            </div>
 
             {/* Grain overlay */}
             <div 
@@ -468,6 +469,7 @@ export function AuctionBid() {
               <div className="text-center text-[10px] font-mono text-slate-600 tracking-wider">
                 TX_FEE: ~0.002 ETH
               </div>
+            </div>
             </div>
 
             {/* Grain overlay */}
