@@ -11,7 +11,6 @@ import {
   AlertCircle,
   Loader2,
   CheckCircle2,
-  Trophy,
 } from 'lucide-react'
 import { AKITA } from '../config/contracts'
 import { ConnectButton } from '../components/ConnectButton'
@@ -192,104 +191,133 @@ export function AuctionBid() {
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="text-center space-y-3"
+        className="text-center space-y-4"
       >
-        <div className="flex items-center justify-center gap-3 mb-4">
-          <TokenImage
-            tokenAddress={AKITA.token as `0x${string}`}
-            symbol="AKITA"
-            size="lg"
-            fallbackColor="from-orange-500 to-red-600"
-          />
-          <div className="text-left">
-            <h1 className="font-display text-3xl font-bold">AKITA Auction</h1>
-            <p className="text-surface-400">Continuous Combinatorial Auction</p>
-          </div>
+        <TokenImage
+          tokenAddress={AKITA.token as `0x${string}`}
+          symbol="AKITA"
+          size="xl"
+          fallbackColor="from-orange-500 to-red-600"
+          className="mx-auto"
+        />
+        <div>
+          <h1 className="font-display text-4xl font-bold mb-2">Get AKITA Early</h1>
+          <p className="text-slate-400 text-lg">
+            Buy before it launches on the market
+          </p>
         </div>
         
-        {/* Time Remaining Badge */}
-        <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-brand-500/10 border border-brand-500/20">
-          <Clock className="w-4 h-4 text-brand-400" />
-          <span className="text-brand-400 font-medium">
-            {daysRemaining}d {hoursRemaining}h remaining
+        {/* Time Remaining - Urgent */}
+        <div className="inline-flex items-center gap-2 px-6 py-3 rounded-full bg-orange-500/10 border border-orange-500/30">
+          <Clock className="w-5 h-5 text-orange-400" />
+          <span className="text-orange-400 font-bold text-lg">
+            {daysRemaining} days {hoursRemaining} hours left
           </span>
         </div>
       </motion.div>
 
-      {/* Auction Stats */}
+      {/* Social Proof */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.1 }}
-        className="grid sm:grid-cols-3 gap-4"
+        className="flex items-center justify-center gap-8 text-center"
       >
-        <div className="p-4 rounded-xl bg-white/[0.02] border border-white/10">
-          <div className="flex items-center gap-2 mb-2">
-            <Coins className="w-4 h-4 text-brand-500" />
-            <span className="text-xs text-slate-500">Total Raised</span>
-          </div>
-          <p className="text-2xl font-bold text-white">
-            {formatEther(currencyRaised)} ETH
+        <div>
+          <p className="text-3xl font-bold text-white mb-1">
+            {formatEther(currencyRaised)}
           </p>
+          <p className="text-xs text-slate-400">ETH invested</p>
         </div>
-
-        <div className="p-4 rounded-xl bg-white/[0.02] border border-white/10">
-          <div className="flex items-center gap-2 mb-2">
-            <Trophy className="w-4 h-4 text-purple-500" />
-            <span className="text-xs text-slate-500">Tokens Available</span>
-          </div>
-          <p className="text-2xl font-bold text-white">
-            {tokenTarget ? formatUnits(tokenTarget, 18) : '0'}
+        <div className="w-px h-12 bg-white/10" />
+        <div>
+          <p className="text-3xl font-bold text-white mb-1">
+            {tokenTarget ? (Number(formatUnits(tokenTarget, 18)) / 1000000).toFixed(1) : '0'}M
           </p>
+          <p className="text-xs text-slate-400">AKITA available</p>
         </div>
-
-        <div className="p-4 rounded-xl bg-white/[0.02] border border-white/10">
-          <div className="flex items-center gap-2 mb-2">
-            <Users className="w-4 h-4 text-green-500" />
-            <span className="text-xs text-slate-500">Your Bids</span>
+        <div className="w-px h-12 bg-white/10" />
+        <div>
+          <div className="flex items-center gap-1 justify-center mb-1">
+            <Users className="w-4 h-4 text-green-400" />
+            <p className="text-3xl font-bold text-white">12</p>
           </div>
-          <p className="text-2xl font-bold text-white">0</p>
+          <p className="text-xs text-slate-400">people bidding</p>
         </div>
       </motion.div>
 
-      <div className="space-y-6">
-        {/* Simple Value Prop */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.2 }}
-          className="p-6 rounded-2xl bg-gradient-to-br from-green-500/10 to-emerald-500/5 border border-green-500/20"
-        >
-          <div className="flex items-start gap-4">
-            <div className="w-12 h-12 rounded-xl bg-green-500/20 flex items-center justify-center flex-shrink-0">
-              <CheckCircle2 className="w-6 h-6 text-green-400" />
+      {/* How It Works - Simple 3 Steps */}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.2 }}
+        className="max-w-4xl mx-auto"
+      >
+        <div className="grid md:grid-cols-3 gap-4">
+          <div className="p-4 rounded-xl bg-white/[0.02] border border-white/5 text-center">
+            <div className="w-12 h-12 rounded-full bg-brand-500/20 flex items-center justify-center mx-auto mb-3 text-xl font-bold text-brand-400">
+              1
             </div>
-            <div>
-              <h3 className="font-bold text-white text-lg mb-2">Why Bid Now?</h3>
-              <div className="space-y-1 text-sm text-slate-300">
-                <p>✓ Get tokens before they hit the market</p>
-                <p>✓ You might pay less than your bid (fair pricing)</p>
-                <p>✓ If you don't win, get a full refund</p>
-              </div>
-            </div>
+            <p className="font-semibold text-white mb-1">Choose Package</p>
+            <p className="text-xs text-slate-400">Pick your investment size</p>
           </div>
-        </motion.div>
+          <div className="p-4 rounded-xl bg-white/[0.02] border border-white/5 text-center">
+            <div className="w-12 h-12 rounded-full bg-brand-500/20 flex items-center justify-center mx-auto mb-3 text-xl font-bold text-brand-400">
+              2
+            </div>
+            <p className="font-semibold text-white mb-1">Lock In</p>
+            <p className="text-xs text-slate-400">Submit your bid</p>
+          </div>
+          <div className="p-4 rounded-xl bg-white/[0.02] border border-white/5 text-center">
+            <div className="w-12 h-12 rounded-full bg-green-500/20 flex items-center justify-center mx-auto mb-3 text-xl font-bold text-green-400">
+              3
+            </div>
+            <p className="font-semibold text-white mb-1">Get Tokens</p>
+            <p className="text-xs text-slate-400">Claim after {daysRemaining} days</p>
+          </div>
+        </div>
+      </motion.div>
 
+      <div className="max-w-2xl mx-auto space-y-6">
         {/* Simple Bid Form */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.3 }}
-          className="glass-card p-6 space-y-6"
+          transition={{ delay: 0.2 }}
+          className="glass-card p-8 space-y-8"
         >
-          <h2 className="text-2xl font-bold text-center">Choose Your Investment</h2>
+          <div className="text-center">
+            <h2 className="text-3xl font-bold mb-2">Choose Your Package</h2>
+            <p className="text-slate-400">Pick how much you want to invest</p>
+          </div>
 
-          {/* Preset Amounts */}
-          <div className="grid grid-cols-3 gap-3">
+          {/* Preset Amounts - Package Style */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             {[
-              { label: 'Small', eth: '0.1', tokens: '200000', popular: false },
-              { label: 'Medium', eth: '0.5', tokens: '1000000', popular: true },
-              { label: 'Large', eth: '1.0', tokens: '2000000', popular: false },
+              { 
+                label: 'Starter', 
+                emoji: '🌱',
+                eth: '0.1', 
+                tokens: '200000', 
+                popular: false,
+                desc: 'Try it out'
+              },
+              { 
+                label: 'Builder', 
+                emoji: '🚀',
+                eth: '0.5', 
+                tokens: '1000000', 
+                popular: true,
+                desc: 'Most popular'
+              },
+              { 
+                label: 'Whale', 
+                emoji: '🐋',
+                eth: '1.0', 
+                tokens: '2000000', 
+                popular: false,
+                desc: 'Go big'
+              },
             ].map((preset) => (
               <button
                 key={preset.label}
@@ -297,19 +325,30 @@ export function AuctionBid() {
                   setEthAmount(preset.eth)
                   setTokenAmount(preset.tokens)
                 }}
-                className={`relative p-4 rounded-xl border-2 transition-all ${
+                className={`relative p-6 rounded-2xl border-2 transition-all hover:scale-105 ${
                   ethAmount === preset.eth
-                    ? 'border-brand-500 bg-brand-500/10'
+                    ? 'border-brand-500 bg-brand-500/10 shadow-xl shadow-brand-500/20'
                     : 'border-white/10 bg-white/[0.02] hover:border-brand-500/50'
                 }`}
               >
                 {preset.popular && (
-                  <div className="absolute -top-2 left-1/2 -translate-x-1/2 px-2 py-0.5 rounded-full bg-brand-500 text-white text-[10px] font-bold">
-                    POPULAR
+                  <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-1 rounded-full bg-gradient-to-r from-brand-500 to-purple-500 text-white text-xs font-bold shadow-lg">
+                    ⭐ {preset.desc}
                   </div>
                 )}
-                <p className="text-xl font-bold text-white mb-1">{preset.eth} ETH</p>
-                <p className="text-xs text-slate-400">~{(parseFloat(preset.tokens) / 1000000).toFixed(1)}M AKITA</p>
+                <div className="text-center space-y-2">
+                  <div className="text-4xl mb-2">{preset.emoji}</div>
+                  <p className="text-lg font-bold text-white">{preset.label}</p>
+                  <div className="py-3 px-4 rounded-xl bg-white/5">
+                    <p className="text-2xl font-black text-white">{preset.eth} ETH</p>
+                  </div>
+                  <p className="text-sm text-slate-400">
+                    Get ~{(parseFloat(preset.tokens) / 1000000).toFixed(1)}M AKITA
+                  </p>
+                  {!preset.popular && (
+                    <p className="text-xs text-slate-500">{preset.desc}</p>
+                  )}
+                </div>
               </button>
             ))}
           </div>
@@ -371,44 +410,71 @@ export function AuctionBid() {
             </motion.div>
           )}
 
+          {/* What You Get */}
+          <div className="p-6 rounded-2xl bg-gradient-to-br from-green-500/10 to-emerald-500/5 border border-green-500/20">
+            <p className="text-center text-slate-300 mb-4">
+              🎁 <span className="font-bold text-white">Bonus:</span> Everyone pays the same lowest price
+            </p>
+            <div className="grid grid-cols-3 gap-4 text-center text-sm">
+              <div>
+                <p className="text-2xl mb-1">💰</p>
+                <p className="text-slate-400">Pay less than your bid</p>
+              </div>
+              <div>
+                <p className="text-2xl mb-1">🔒</p>
+                <p className="text-slate-400">100% refund if you lose</p>
+              </div>
+              <div>
+                <p className="text-2xl mb-1">⚡</p>
+                <p className="text-slate-400">Get tokens first</p>
+              </div>
+            </div>
+          </div>
+
           {/* Submit Button */}
           <button
             onClick={handleSubmitBid}
             disabled={!ethAmount || !tokenAmount || isBidding || isBidConfirming}
-            className="btn-primary w-full py-6 text-xl"
+            className="btn-primary w-full py-6 text-xl font-bold shadow-2xl hover:scale-105 transition-transform"
           >
             {isBidding || isBidConfirming ? (
               <>
-                <Loader2 className="w-5 h-5 animate-spin" />
-                Submitting...
+                <Loader2 className="w-6 h-6 animate-spin" />
+                Processing...
               </>
             ) : (
               <>
-                <Trophy className="w-5 h-5" />
-                Submit Bid ({ethAmount || '0'} ETH)
+                🎯 Lock In {ethAmount || '0'} ETH
               </>
             )}
           </button>
 
           {isBidSuccess && (
             <motion.div
-              initial={{ opacity: 0, scale: 0.95 }}
+              initial={{ opacity: 0, scale: 0.9 }}
               animate={{ opacity: 1, scale: 1 }}
-              className="p-4 rounded-xl bg-green-500/10 border border-green-500/20 text-center"
+              className="p-6 rounded-2xl bg-green-500/10 border border-green-500/20 text-center"
             >
-              <CheckCircle2 className="w-12 h-12 text-green-500 mx-auto mb-2" />
-              <p className="text-green-400 font-bold mb-1">Bid Submitted!</p>
-              <p className="text-xs text-slate-400">Check back after auction ends</p>
+              <div className="text-6xl mb-3">🎉</div>
+              <p className="text-2xl font-bold text-green-400 mb-2">You're In!</p>
+              <p className="text-slate-400">Check back after {daysRemaining} days to claim your tokens</p>
             </motion.div>
           )}
 
-          {/* Simple Explainer */}
-          <div className="p-4 rounded-xl bg-white/[0.02] border border-white/5 text-center">
-            <p className="text-xs text-slate-400">
-              💡 <span className="text-white font-medium">You might pay less!</span> Everyone pays the same fair price.
-              <br />
-              <span className="text-slate-500">No win? Full refund.</span>
-            </p>
+          {/* Trust Signals */}
+          <div className="flex items-center justify-center gap-6 text-xs text-slate-500">
+            <div className="flex items-center gap-1">
+              <CheckCircle2 className="w-3 h-3 text-green-400" />
+              <span>Secure</span>
+            </div>
+            <div className="flex items-center gap-1">
+              <CheckCircle2 className="w-3 h-3 text-green-400" />
+              <span>Fair pricing</span>
+            </div>
+            <div className="flex items-center gap-1">
+              <CheckCircle2 className="w-3 h-3 text-green-400" />
+              <span>Full refund</span>
+            </div>
           </div>
         </motion.div>
 
