@@ -80,36 +80,61 @@ function useAuctionStatus(ccaStrategy: string) {
   }
 }
 
-function AuctionStatusBadge({ ccaStrategy }: { ccaStrategy: string }) {
+function VaultPhaseCard({ ccaStrategy }: { ccaStrategy: string }) {
   const { isActive, isGraduated, currencyRaised } = useAuctionStatus(ccaStrategy)
   
+  // CCA Phase - Needs Completion
   if (isGraduated) {
     return (
-      <Link 
-        to={`/complete-auction/${ccaStrategy}`}
-        className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-brand-500/10 text-brand-500 text-xs font-medium hover:bg-brand-500/20 transition-colors"
-      >
-        <AlertCircle className="w-3 h-3" />
-        Action Required
-      </Link>
+      <div className="p-3 rounded-xl bg-orange-500/10 border border-orange-500/30">
+        <div className="flex items-center gap-2 mb-2">
+          <AlertCircle className="w-4 h-4 text-orange-400" />
+          <span className="font-semibold text-orange-400 text-sm">CCA Ended</span>
+        </div>
+        <p className="text-xs text-orange-300/80 mb-2">
+          Auction complete. Needs finalization.
+        </p>
+        <Link 
+          to={`/complete-auction/${ccaStrategy}`}
+          className="text-xs text-orange-400 hover:text-orange-300 font-medium underline"
+        >
+          Complete Auction →
+        </Link>
+      </div>
     )
   }
   
+  // CCA Phase - Active (7 days)
   if (isActive) {
     const raised = currencyRaised ? Number(formatUnits(currencyRaised, 18)).toFixed(4) : '0'
     return (
-      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-brand-500/10 text-brand-500 text-xs font-medium">
-        <Clock className="w-3 h-3" />
-        CCA ({raised} ETH)
-      </span>
+      <div className="p-3 rounded-xl bg-brand-500/10 border border-brand-500/30">
+        <div className="flex items-center gap-2 mb-2">
+          <Clock className="w-4 h-4 text-brand-400" />
+          <span className="font-semibold text-brand-400 text-sm">CCA Phase</span>
+        </div>
+        <p className="text-xs text-brand-300/80 mb-1">
+          7-day launch auction
+        </p>
+        <div className="flex items-baseline gap-1">
+          <span className="text-white font-bold text-lg">{raised}</span>
+          <span className="text-slate-400 text-xs">ETH raised</span>
+        </div>
+      </div>
     )
   }
   
+  // Active Trading Phase
   return (
-    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-brand-500/10 text-brand-500 text-xs font-medium">
-      <CheckCircle2 className="w-3 h-3" />
-      Active
-    </span>
+    <div className="p-3 rounded-xl bg-green-500/10 border border-green-500/30">
+      <div className="flex items-center gap-2 mb-2">
+        <CheckCircle2 className="w-4 h-4 text-green-400" />
+        <span className="font-semibold text-green-400 text-sm">Active</span>
+      </div>
+      <p className="text-xs text-green-300/80">
+        Deposit & earn from trading fees
+      </p>
+    </div>
   )
 }
 
@@ -130,9 +155,17 @@ export function Dashboard() {
             </button>
           </Link>
         </div>
-        <p className="text-slate-400 text-lg">
+        <p className="text-slate-400 text-lg mb-3">
           Choose a vault. Deposit tokens. Earn from trading fees.
         </p>
+        
+        {/* Phase Explainer */}
+        <div className="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-white/[0.02] border border-white/5">
+          <Clock className="w-4 h-4 text-slate-500" />
+          <p className="text-slate-500 text-xs">
+            New vaults start with a <span className="text-brand-400 font-medium">7-day CCA launch phase</span>
+          </p>
+        </div>
       </motion.div>
 
       {/* Quick Stats */}
@@ -176,8 +209,8 @@ export function Dashboard() {
             <motion.div key={vault.id} variants={item}>
               <Link to={`/vault/${vault.vault}`}>
                 <div className="relative p-6 rounded-2xl bg-white/[0.02] border border-white/10 backdrop-blur-xl hover:border-brand-500/30 hover:bg-white/[0.04] transition-all group">
-                  {/* Token Image - Large */}
-                  <div className="flex items-center gap-4 mb-4">
+                  {/* Token Image & Name */}
+                  <div className="flex items-center gap-3 mb-4">
                     <TokenImage
                       tokenAddress={vault.token as `0x${string}`}
                       symbol={vault.symbol}
@@ -185,14 +218,16 @@ export function Dashboard() {
                       fallbackColor={vault.color}
                     />
                     <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-1">
-                        <h3 className="font-bold text-lg text-white">{vault.name}</h3>
-                        <AuctionStatusBadge ccaStrategy={vault.ccaStrategy} />
-                      </div>
+                      <h3 className="font-bold text-xl text-white mb-1">{vault.name}</h3>
                       <p className="text-slate-500 text-xs">
                         {vault.symbol}
                       </p>
                     </div>
+                  </div>
+
+                  {/* Phase Card - Prominent */}
+                  <div className="mb-4">
+                    <VaultPhaseCard ccaStrategy={vault.ccaStrategy} />
                   </div>
 
                   {/* Stats Grid */}
@@ -214,7 +249,7 @@ export function Dashboard() {
                       <span>{vault.holders} holders</span>
                     </div>
                     <div className="flex items-center gap-1 text-brand-500 group-hover:gap-2 transition-all">
-                      <span className="font-medium text-sm">Deposit</span>
+                      <span className="font-medium text-sm">View Details</span>
                       <ArrowUpRight className="w-4 h-4" />
                     </div>
                   </div>
