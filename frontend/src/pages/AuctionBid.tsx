@@ -5,10 +5,8 @@ import { useAccount, useReadContract, useWriteContract, useWaitForTransactionRec
 import { parseEther, formatEther, formatUnits } from 'viem'
 import {
   Clock,
-  TrendingUp,
   Users,
   Coins,
-  Zap,
   ArrowLeft,
   AlertCircle,
   Loader2,
@@ -103,11 +101,6 @@ export function AuctionBid() {
   const timeRemaining = endTime ? Number(endTime) - now : 0
   const daysRemaining = Math.floor(timeRemaining / 86400)
   const hoursRemaining = Math.floor((timeRemaining % 86400) / 3600)
-
-  // Calculate price per token
-  const pricePerToken = ethAmount && tokenAmount 
-    ? (parseFloat(ethAmount) / parseFloat(tokenAmount)).toFixed(6)
-    : '0'
 
   const handleSubmitBid = () => {
     if (!ethAmount || !tokenAmount) return
@@ -259,194 +252,166 @@ export function AuctionBid() {
         </div>
       </motion.div>
 
-      <div className="grid lg:grid-cols-2 gap-6">
-        {/* Bid Form */}
+      <div className="space-y-6">
+        {/* Simple Value Prop */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.2 }}
-          className="glass-card p-6 space-y-6"
+          className="p-6 rounded-2xl bg-gradient-to-br from-green-500/10 to-emerald-500/5 border border-green-500/20"
         >
-          <h2 className="text-xl font-bold flex items-center gap-2">
-            <Zap className="w-5 h-5 text-brand-500" />
-            Place Your Bid
-          </h2>
-
-          {/* ETH Amount */}
-          <div className="space-y-2">
-            <label className="text-sm font-medium text-surface-300">
-              ETH Amount
-            </label>
-            <div className="relative">
-              <input
-                type="text"
-                value={ethAmount}
-                onChange={(e) => setEthAmount(e.target.value)}
-                placeholder="0.1"
-                className="input-field pr-16"
-              />
-              <div className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-surface-500">
-                ETH
-              </div>
+          <div className="flex items-start gap-4">
+            <div className="w-12 h-12 rounded-xl bg-green-500/20 flex items-center justify-center flex-shrink-0">
+              <CheckCircle2 className="w-6 h-6 text-green-400" />
             </div>
-          </div>
-
-          {/* Token Amount Desired */}
-          <div className="space-y-2">
-            <label className="text-sm font-medium text-surface-300">
-              AKITA Desired
-            </label>
-            <div className="relative">
-              <input
-                type="text"
-                value={tokenAmount}
-                onChange={(e) => setTokenAmount(e.target.value)}
-                placeholder="1000"
-                className="input-field pr-20"
-              />
-              <div className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-surface-500">
-                AKITA
-              </div>
-            </div>
-          </div>
-
-          {/* Price Calculation */}
-          {ethAmount && tokenAmount && (
-            <div className="p-4 rounded-xl bg-brand-500/10 border border-brand-500/20">
-              <div className="flex items-center justify-between mb-1">
-                <span className="text-sm text-brand-300">Your Bid Price</span>
-                <span className="text-lg font-bold text-white">{pricePerToken} ETH</span>
-              </div>
-              <p className="text-xs text-brand-400">per AKITA token</p>
-            </div>
-          )}
-
-          {/* Submit Button */}
-          <button
-            onClick={handleSubmitBid}
-            disabled={!ethAmount || !tokenAmount || isBidding || isBidConfirming}
-            className="btn-primary w-full"
-          >
-            {isBidding || isBidConfirming ? (
-              <>
-                <Loader2 className="w-4 h-4 animate-spin" />
-                Submitting Bid...
-              </>
-            ) : (
-              <>
-                <Trophy className="w-4 h-4" />
-                Submit Bid
-              </>
-            )}
-          </button>
-
-          {isBidSuccess && (
-            <motion.div
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="p-3 rounded-lg bg-green-500/10 border border-green-500/20 text-green-500 text-sm flex items-center gap-2"
-            >
-              <CheckCircle2 className="w-4 h-4" />
-              Bid submitted successfully!
-            </motion.div>
-          )}
-
-          {/* Info */}
-          <div className="p-4 rounded-xl bg-white/[0.02] border border-white/5">
-            <div className="flex items-start gap-2">
-              <AlertCircle className="w-4 h-4 text-slate-400 mt-0.5 flex-shrink-0" />
-              <div className="text-xs text-slate-400 leading-relaxed">
-                <p className="font-semibold text-slate-300 mb-1">How bidding works</p>
-                <ul className="space-y-1 list-disc list-inside">
-                  <li>Specify how much ETH you'll pay for how many tokens</li>
-                  <li>Higher price per token = better chance of winning</li>
-                  <li>Winners pay the clearing price (lowest winning bid)</li>
-                  <li>You can submit multiple bids</li>
-                </ul>
+            <div>
+              <h3 className="font-bold text-white text-lg mb-2">Why Bid Now?</h3>
+              <div className="space-y-1 text-sm text-slate-300">
+                <p>✓ Get tokens before they hit the market</p>
+                <p>✓ You might pay less than your bid (fair pricing)</p>
+                <p>✓ If you don't win, get a full refund</p>
               </div>
             </div>
           </div>
         </motion.div>
 
-        {/* Current Auction State */}
+        {/* Simple Bid Form */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.3 }}
           className="glass-card p-6 space-y-6"
         >
-          <h2 className="text-xl font-bold flex items-center gap-2">
-            <TrendingUp className="w-5 h-5 text-brand-500" />
-            Current State
-          </h2>
+          <h2 className="text-2xl font-bold text-center">Choose Your Investment</h2>
 
-          {/* Timeline */}
-          <div className="space-y-3">
-            <div className="flex items-center justify-between text-xs text-slate-400">
-              <span>Day 1</span>
-              <span>Day 7</span>
-            </div>
-            <div className="relative h-3 rounded-full bg-slate-900/50 overflow-hidden">
-              <motion.div
-                className="absolute inset-y-0 left-0 bg-gradient-to-r from-brand-500 to-purple-500"
-                initial={{ width: '0%' }}
-                animate={{ 
-                  width: `${Math.min(100, ((7 * 86400 - timeRemaining) / (7 * 86400)) * 100)}%` 
+          {/* Preset Amounts */}
+          <div className="grid grid-cols-3 gap-3">
+            {[
+              { label: 'Small', eth: '0.1', tokens: '200000', popular: false },
+              { label: 'Medium', eth: '0.5', tokens: '1000000', popular: true },
+              { label: 'Large', eth: '1.0', tokens: '2000000', popular: false },
+            ].map((preset) => (
+              <button
+                key={preset.label}
+                onClick={() => {
+                  setEthAmount(preset.eth)
+                  setTokenAmount(preset.tokens)
                 }}
-                transition={{ duration: 1, ease: 'easeOut' }}
-              />
-            </div>
-            <p className="text-center text-xs text-slate-500">
-              {daysRemaining} days, {hoursRemaining} hours remaining
-            </p>
+                className={`relative p-4 rounded-xl border-2 transition-all ${
+                  ethAmount === preset.eth
+                    ? 'border-brand-500 bg-brand-500/10'
+                    : 'border-white/10 bg-white/[0.02] hover:border-brand-500/50'
+                }`}
+              >
+                {preset.popular && (
+                  <div className="absolute -top-2 left-1/2 -translate-x-1/2 px-2 py-0.5 rounded-full bg-brand-500 text-white text-[10px] font-bold">
+                    POPULAR
+                  </div>
+                )}
+                <p className="text-xl font-bold text-white mb-1">{preset.eth} ETH</p>
+                <p className="text-xs text-slate-400">~{(parseFloat(preset.tokens) / 1000000).toFixed(1)}M AKITA</p>
+              </button>
+            ))}
           </div>
 
-          {/* Example Competitive Bids */}
-          <div className="space-y-3">
-            <p className="text-sm font-semibold text-white">Example Competitive Bids</p>
-            
-            <div className="space-y-2">
-              <div className="flex items-center justify-between p-3 rounded-xl bg-green-500/10 border border-green-500/20">
-                <span className="text-xs text-green-300">High (likely wins)</span>
-                <span className="text-white font-bold text-sm">0.0005 ETH</span>
-              </div>
-              <div className="flex items-center justify-between p-3 rounded-xl bg-brand-500/10 border border-brand-500/20">
-                <span className="text-xs text-brand-300">Medium</span>
-                <span className="text-white font-bold text-sm">0.0003 ETH</span>
-              </div>
-              <div className="flex items-center justify-between p-3 rounded-xl bg-slate-700/10 border border-slate-700/20">
-                <span className="text-xs text-slate-400">Low</span>
-                <span className="text-white font-bold text-sm">0.0001 ETH</span>
-              </div>
-            </div>
-            <p className="text-xs text-slate-500">per AKITA token</p>
+          {/* Custom Amount */}
+          <div className="text-center">
+            <button
+              onClick={() => {
+                setEthAmount('')
+                setTokenAmount('')
+              }}
+              className="text-sm text-brand-400 hover:text-brand-300"
+            >
+              Or enter custom amount →
+            </button>
           </div>
 
-          {/* Key Points */}
-          <div className="pt-4 border-t border-white/5 space-y-2">
-            <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
-              Remember
+          {(ethAmount === '' || !['0.1', '0.5', '1.0'].includes(ethAmount)) && (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: 'auto' }}
+              className="space-y-4 pt-4 border-t border-white/5"
+            >
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-surface-300">
+                  Custom ETH Amount
+                </label>
+                <div className="relative">
+                  <input
+                    type="text"
+                    value={ethAmount}
+                    onChange={(e) => setEthAmount(e.target.value)}
+                    placeholder="0.1"
+                    className="input-field pr-16 text-xl"
+                  />
+                  <div className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-surface-500">
+                    ETH
+                  </div>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-surface-300">
+                  AKITA Tokens You Want
+                </label>
+                <div className="relative">
+                  <input
+                    type="text"
+                    value={tokenAmount}
+                    onChange={(e) => setTokenAmount(e.target.value)}
+                    placeholder="1000000"
+                    className="input-field pr-20 text-xl"
+                  />
+                  <div className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-surface-500">
+                    AKITA
+                  </div>
+                </div>
+              </div>
+            </motion.div>
+          )}
+
+          {/* Submit Button */}
+          <button
+            onClick={handleSubmitBid}
+            disabled={!ethAmount || !tokenAmount || isBidding || isBidConfirming}
+            className="btn-primary w-full py-6 text-xl"
+          >
+            {isBidding || isBidConfirming ? (
+              <>
+                <Loader2 className="w-5 h-5 animate-spin" />
+                Submitting...
+              </>
+            ) : (
+              <>
+                <Trophy className="w-5 h-5" />
+                Submit Bid ({ethAmount || '0'} ETH)
+              </>
+            )}
+          </button>
+
+          {isBidSuccess && (
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              className="p-4 rounded-xl bg-green-500/10 border border-green-500/20 text-center"
+            >
+              <CheckCircle2 className="w-12 h-12 text-green-500 mx-auto mb-2" />
+              <p className="text-green-400 font-bold mb-1">Bid Submitted!</p>
+              <p className="text-xs text-slate-400">Check back after auction ends</p>
+            </motion.div>
+          )}
+
+          {/* Simple Explainer */}
+          <div className="p-4 rounded-xl bg-white/[0.02] border border-white/5 text-center">
+            <p className="text-xs text-slate-400">
+              💡 <span className="text-white font-medium">You might pay less!</span> Everyone pays the same fair price.
+              <br />
+              <span className="text-slate-500">No win? Full refund.</span>
             </p>
-            <ul className="space-y-2 text-xs text-slate-400">
-              <li className="flex items-start gap-2">
-                <span className="text-green-400 mt-0.5">✓</span>
-                <span>Bid early to secure your position</span>
-              </li>
-              <li className="flex items-start gap-2">
-                <span className="text-green-400 mt-0.5">✓</span>
-                <span>You can update your bid anytime</span>
-              </li>
-              <li className="flex items-start gap-2">
-                <span className="text-green-400 mt-0.5">✓</span>
-                <span>ETH is locked until auction ends</span>
-              </li>
-              <li className="flex items-start gap-2">
-                <span className="text-green-400 mt-0.5">✓</span>
-                <span>Losing bids get full refund</span>
-              </li>
-            </ul>
           </div>
         </motion.div>
+
       </div>
     </div>
   )
