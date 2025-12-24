@@ -10,14 +10,12 @@ import {
   ExternalLink,
   Users,
   Coins,
-  Zap,
   Trophy,
-  Building2,
+  Zap,
 } from 'lucide-react'
 import { AKITA } from '../config/contracts'
 import { ConnectButton } from '../components/ConnectButton'
 import { TokenImage } from '../components/TokenImage'
-import { LotteryDistributionChart } from '../components/DistributionChart'
 
 // Wrapper ABI - users deposit AKITA, get wsAKITA directly
 const WRAPPER_ABI = [
@@ -427,49 +425,76 @@ export function Vault() {
         <div className="flex items-center justify-between mb-6">
           <h3 className="font-semibold flex items-center gap-2">
             <TrendingUp className="w-5 h-5 text-brand-500" />
-            Fee Distribution
+            CCA Auction Strategy
           </h3>
           <span className="px-2 py-0.5 rounded-full bg-brand-500/10 text-brand-500 text-xs font-medium">
-            6.9% per trade
+            7-day fair launch
           </span>
         </div>
 
-        <LotteryDistributionChart jackpotAmount="0.1 ETH" />
+        {/* How CCA Works */}
+        <div className="space-y-4">
+          <div className="p-4 rounded-xl bg-brand-500/10 border border-brand-500/20">
+            <div className="flex items-center gap-2 mb-3">
+              <Coins className="w-5 h-5 text-brand-400" />
+              <span className="font-semibold text-brand-400">How It Works</span>
+            </div>
+            <ol className="space-y-2 text-sm text-surface-300">
+              <li className="flex gap-2">
+                <span className="text-brand-400 font-bold">1.</span>
+                <span>Users bid ETH for tokens over 7 days</span>
+              </li>
+              <li className="flex gap-2">
+                <span className="text-brand-400 font-bold">2.</span>
+                <span>Bids are continuously sorted by price</span>
+              </li>
+              <li className="flex gap-2">
+                <span className="text-brand-400 font-bold">3.</span>
+                <span>Highest bidders win when auction ends</span>
+              </li>
+              <li className="flex gap-2">
+                <span className="text-brand-400 font-bold">4.</span>
+                <span>ETH raised goes to initial liquidity</span>
+              </li>
+            </ol>
+          </div>
 
-        <div className="mt-6 space-y-4">
-          {/* Distribution Breakdown */}
+          {/* Allocation Breakdown */}
           <div className="space-y-3">
+            <p className="text-xs text-surface-500 font-medium uppercase tracking-wider">Token Allocation</p>
             <div className="flex items-center justify-between p-3 rounded-xl bg-purple-500/10 border border-purple-500/20">
               <div className="flex items-center gap-2">
                 <Trophy className="w-4 h-4 text-purple-400" />
-                <span className="text-sm font-medium text-purple-300">Jackpot Pool</span>
+                <span className="text-sm font-medium text-purple-300">To Auction</span>
               </div>
-              <span className="text-white font-bold">69%</span>
+              <span className="text-white font-bold">50%</span>
             </div>
-            <div className="flex items-center justify-between p-3 rounded-xl bg-orange-500/10 border border-orange-500/20">
+            <div className="flex items-center justify-between p-3 rounded-xl bg-green-500/10 border border-green-500/20">
               <div className="flex items-center gap-2">
-                <Zap className="w-4 h-4 text-orange-400" />
-                <span className="text-sm font-medium text-orange-300">Burned</span>
+                <Users className="w-4 h-4 text-green-400" />
+                <span className="text-sm font-medium text-green-300">To Vault (Community)</span>
               </div>
-              <span className="text-white font-bold">21%</span>
-            </div>
-            <div className="flex items-center justify-between p-3 rounded-xl bg-blue-500/10 border border-blue-500/20">
-              <div className="flex items-center gap-2">
-                <Building2 className="w-4 h-4 text-blue-400" />
-                <span className="text-sm font-medium text-blue-300">Treasury</span>
-              </div>
-              <span className="text-white font-bold">10%</span>
+              <span className="text-white font-bold">50%</span>
             </div>
           </div>
 
-          {/* Explainer */}
-          <div className="pt-4 border-t border-surface-800 text-sm text-surface-400">
-            <p>
-              <span className="text-brand-400 font-medium">6.9%</span> fee on every buy & sell.
-              <span className="text-white"> 69%</span> funds jackpot,
-              <span className="text-white"> 21%</span> burned forever,
-              <span className="text-white"> 10%</span> to treasury.
-            </p>
+          {/* Key Benefits */}
+          <div className="pt-4 border-t border-surface-800">
+            <p className="text-xs text-surface-500 font-medium uppercase tracking-wider mb-2">Why CCA?</p>
+            <ul className="space-y-1.5 text-sm text-surface-400">
+              <li className="flex items-start gap-2">
+                <span className="text-green-400 mt-0.5">✓</span>
+                <span>No bot snipers or instant dumps</span>
+              </li>
+              <li className="flex items-start gap-2">
+                <span className="text-green-400 mt-0.5">✓</span>
+                <span>Fair price discovery over time</span>
+              </li>
+              <li className="flex items-start gap-2">
+                <span className="text-green-400 mt-0.5">✓</span>
+                <span>Community gets 50% for deposits</span>
+              </li>
+            </ul>
           </div>
         </div>
       </motion.div>
