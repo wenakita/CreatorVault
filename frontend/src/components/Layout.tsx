@@ -13,32 +13,33 @@ export function Layout() {
 
   return (
     <div className="min-h-screen flex flex-col bg-black">
-      {/* Header */}
-      <header className="sticky top-0 z-50 border-b border-white/[0.08] bg-black/60 backdrop-blur-2xl">
+      {/* Minimal Header - Documentary Style */}
+      <header className="sticky top-0 z-50 border-b border-zinc-900/50 bg-black/80 backdrop-blur-xl">
         <div className="max-w-7xl mx-auto px-6">
-          <div className="flex items-center justify-between h-20">
-            <Link to="/" className="flex items-center gap-3 group">
-              <div className="w-9 h-9 transition-transform group-hover:scale-110 group-hover:rotate-6">
+          <div className="flex items-center justify-between h-16">
+            <Link to="/" className="flex items-center gap-4 group">
+              <div className="w-7 h-7 transition-opacity group-hover:opacity-70">
                 <VaultLogo size="sm" />
               </div>
-              <span className="font-bold text-xl tracking-tight">CreatorVault</span>
+              <span className="font-light text-sm tracking-[0.1em] uppercase text-zinc-400 group-hover:text-white transition-colors">
+                CreatorVault
+              </span>
             </Link>
 
-            {/* Nav */}
-            <nav className="hidden md:flex items-center gap-2">
-              {navItems.map(({ path, icon: Icon, label }) => {
+            {/* Minimal Nav */}
+            <nav className="hidden md:flex items-center gap-8">
+              {navItems.map(({ path, label }) => {
                 const isActive = location.pathname === path
                 return (
                   <Link
                     key={path}
                     to={path}
-                    className={`flex items-center gap-2.5 px-4 py-2.5 rounded-xl text-sm font-medium transition-all ${
+                    className={`label transition-colors ${
                       isActive
-                        ? 'bg-white/[0.06] text-white'
-                        : 'text-zinc-400 hover:text-white hover:bg-white/[0.03]'
+                        ? 'text-zinc-400'
+                        : 'text-zinc-600 hover:text-zinc-400'
                     }`}
                   >
-                    <Icon className="w-4 h-4" />
                     {label}
                   </Link>
                 )
@@ -55,21 +56,25 @@ export function Layout() {
         <Outlet />
       </main>
 
-      {/* Mobile Nav */}
-      <nav className="md:hidden fixed bottom-4 left-4 right-4 z-50">
-        <div className="card px-4 py-3 flex items-center justify-around">
+      {/* Mobile Nav - Minimal */}
+      <nav className="md:hidden fixed bottom-0 left-0 right-0 border-t border-zinc-900/50 bg-black/80 backdrop-blur-xl">
+        <div className="flex items-center justify-around py-4 px-6">
           {navItems.map(({ path, icon: Icon, label }) => {
             const isActive = location.pathname === path
             return (
               <Link
                 key={path}
                 to={path}
-                className={`flex flex-col items-center gap-1.5 px-4 py-2 rounded-xl transition-all ${
-                  isActive ? 'text-blue-500' : 'text-zinc-500'
-                }`}
+                className="flex flex-col items-center gap-2 group"
               >
-                <Icon className="w-5 h-5" />
-                <span className="text-xs font-medium">{label}</span>
+                <Icon
+                  className={`w-5 h-5 transition-colors ${
+                    isActive ? 'text-zinc-400' : 'text-zinc-600 group-hover:text-zinc-400'
+                  }`}
+                />
+                <span className={`label ${isActive ? 'text-zinc-400' : 'text-zinc-600'}`}>
+                  {label}
+                </span>
               </Link>
             )
           })}
