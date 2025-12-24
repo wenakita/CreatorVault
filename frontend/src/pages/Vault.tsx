@@ -12,7 +12,6 @@ import {
   Trophy,
   Zap,
   Clock,
-  Target,
 } from 'lucide-react'
 import { AKITA } from '../config/contracts'
 import { ConnectButton } from '../components/ConnectButton'
@@ -108,7 +107,6 @@ export function Vault() {
   const { isLoading: isWithdrawing } = useWaitForTransactionReceipt({ hash: withdrawHash })
 
   const isAuctionActive = auctionStatus?.[0] || false
-  const isGraduated = auctionStatus?.[1] || false
 
   const formatAmount = (value: bigint, decimals: number = 18) => {
     if (!value) return '0'
