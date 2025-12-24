@@ -7,6 +7,8 @@ import {
   CheckCircle2, ChevronRight
 } from 'lucide-react'
 import { LotteryDistributionCompact } from '../components/DistributionChart'
+import { TokenImage } from '../components/TokenImage'
+import { AKITA } from '../config/contracts'
 import { 
   TechScramble, 
   SlideUp, 
@@ -209,11 +211,11 @@ export function Home() {
                         <Flame className="w-16 h-16 text-orange-400" />
                       </motion.div>
                       
-                      {/* Orbiting tokens */}
+                      {/* Orbiting wsAKITA tokens */}
                       {[0, 120, 240].map((rotation, i) => (
                         <motion.div
                           key={rotation}
-                          className="absolute top-1/2 left-1/2 w-12 h-12"
+                          className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2"
                           style={{ originX: 0.5, originY: 0.5 }}
                           animate={{ 
                             rotate: 360,
@@ -225,14 +227,29 @@ export function Home() {
                             delay: i * 0.3
                           }}
                         >
-                          <div 
-                            className="absolute w-8 h-8 rounded-full bg-gradient-to-br from-orange-400 to-red-500 flex items-center justify-center text-white text-xs font-bold shadow-lg"
+                          <motion.div
+                            className="absolute"
                             style={{ 
-                              transform: `rotate(${rotation}deg) translateX(80px)`
+                              transform: `rotate(${rotation}deg) translateX(80px) rotate(-${rotation}deg)`
+                            }}
+                            animate={{
+                              rotate: -360
+                            }}
+                            transition={{ 
+                              duration: 8,
+                              repeat: Infinity,
+                              ease: "linear",
+                              delay: i * 0.3
                             }}
                           >
-                            ws
-                          </div>
+                            <TokenImage
+                              tokenAddress={AKITA.token as `0x${string}`}
+                              symbol="wsAKITA"
+                              size="sm"
+                              fallbackColor="from-orange-500 to-red-600"
+                              isWrapped={true}
+                            />
+                          </motion.div>
                         </motion.div>
                       ))}
                     </div>
