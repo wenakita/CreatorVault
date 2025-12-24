@@ -230,6 +230,161 @@ export function Vault() {
         </div>
       </section>
 
+      {/* Fee Mechanism */}
+      <section className="cinematic-section">
+        <div className="max-w-6xl mx-auto px-6">
+          <motion.div
+            initial={{ opacity: 0 }}
+            whileInView={{ opacity: 1 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.8 }}
+            className="mb-16"
+          >
+            <span className="label">Fee Architecture</span>
+            <h2 className="headline text-5xl mt-6">How Earnings Work</h2>
+          </motion.div>
+
+          <div className="grid lg:grid-cols-2 gap-8">
+            {/* Liquidity Pool */}
+            <motion.div
+              initial={{ opacity: 0, x: -20 }}
+              whileInView={{ opacity: 1, x: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.6 }}
+              className="card p-8 space-y-6"
+            >
+              <div className="flex items-start justify-between">
+                <div>
+                  <span className="label block mb-4">Trading Pair</span>
+                  <div className="headline text-3xl mb-2">wsAKITA/ETH</div>
+                  <p className="text-zinc-600 text-sm font-light">Uniswap V3 Liquidity Pool</p>
+                </div>
+                <div className="text-right">
+                  <span className="label block mb-2">Fee Tier</span>
+                  <div className="value mono text-2xl">1%</div>
+                </div>
+              </div>
+
+              <div className="h-px bg-zinc-900" />
+
+              <div className="space-y-4">
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-zinc-500 font-light">Trading Volume</span>
+                  <div className="value mono text-sm">Real-time</div>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-zinc-500 font-light">LP Rewards</span>
+                  <div className="value mono text-sm text-cyan-400">Auto-compound</div>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-zinc-500 font-light">Your Share</span>
+                  <div className="value mono text-sm text-cyan-400">Proportional</div>
+                </div>
+              </div>
+            </motion.div>
+
+            {/* Fee Distribution */}
+            <motion.div
+              initial={{ opacity: 0, x: 20 }}
+              whileInView={{ opacity: 1, x: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.6 }}
+              className="card p-8 space-y-6"
+            >
+              <div>
+                <span className="label block mb-4">Buy & Sell Fees</span>
+                <div className="headline text-3xl mb-2">6.9% Total</div>
+                <p className="text-zinc-600 text-sm font-light">Applied on every trade</p>
+              </div>
+
+              <div className="h-px bg-zinc-900" />
+
+              <div className="space-y-4">
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-zinc-500 font-light">To Jackpot</span>
+                  <div className="value mono text-sm glow-purple">69%</div>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-zinc-500 font-light">Burned</span>
+                  <div className="value mono text-sm glow-amber">21.4%</div>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-zinc-500 font-light">To Treasury</span>
+                  <div className="value mono text-sm">9.6%</div>
+                </div>
+              </div>
+            </motion.div>
+          </div>
+
+          {/* Flow Diagram */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.6, delay: 0.2 }}
+            className="mt-8"
+          >
+            <div className="card p-10">
+              <span className="label block mb-8">Fee Flow</span>
+              
+              <div className="space-y-0">
+                <div className="data-row group">
+                  <div className="flex items-center gap-6">
+                    <div className="w-8 h-8 rounded-full bg-cyan-500/10 border border-cyan-500/30 flex items-center justify-center flex-shrink-0">
+                      <div className="w-2 h-2 rounded-full bg-cyan-400" />
+                    </div>
+                    <div>
+                      <span className="label block mb-1">Trade Executed</span>
+                      <p className="text-zinc-600 text-sm font-light">User buys or sells wsAKITA</p>
+                    </div>
+                  </div>
+                  <div className="value mono text-xl">6.9%</div>
+                </div>
+
+                <div className="data-row group">
+                  <div className="flex items-center gap-6">
+                    <div className="w-8 h-8 rounded-full bg-purple-500/10 border border-purple-500/30 flex items-center justify-center flex-shrink-0">
+                      <div className="w-2 h-2 rounded-full bg-purple-400" />
+                    </div>
+                    <div>
+                      <span className="label block mb-1">Jackpot Funded</span>
+                      <p className="text-zinc-600 text-sm font-light">Largest portion goes to global prize pool</p>
+                    </div>
+                  </div>
+                  <div className="value mono text-xl glow-purple">4.8%</div>
+                </div>
+
+                <div className="data-row group">
+                  <div className="flex items-center gap-6">
+                    <div className="w-8 h-8 rounded-full bg-amber-500/10 border border-amber-500/30 flex items-center justify-center flex-shrink-0">
+                      <div className="w-2 h-2 rounded-full bg-amber-400" />
+                    </div>
+                    <div>
+                      <span className="label block mb-1">Tokens Burned</span>
+                      <p className="text-zinc-600 text-sm font-light">Deflationary mechanism increases value</p>
+                    </div>
+                  </div>
+                  <div className="value mono text-xl glow-amber">1.5%</div>
+                </div>
+
+                <div className="data-row border-none group">
+                  <div className="flex items-center gap-6">
+                    <div className="w-8 h-8 rounded-full bg-zinc-800/50 border border-zinc-700 flex items-center justify-center flex-shrink-0">
+                      <div className="w-2 h-2 rounded-full bg-zinc-600" />
+                    </div>
+                    <div>
+                      <span className="label block mb-1">Treasury</span>
+                      <p className="text-zinc-600 text-sm font-light">Protocol development and sustainability</p>
+                    </div>
+                  </div>
+                  <div className="value mono text-xl">0.6%</div>
+                </div>
+              </div>
+            </div>
+          </motion.div>
+        </div>
+      </section>
+
       {/* Deposit/Withdraw */}
       <section className="cinematic-section">
         <div className="max-w-6xl mx-auto px-6">
