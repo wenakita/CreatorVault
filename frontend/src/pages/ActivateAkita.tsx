@@ -50,8 +50,9 @@ const CCA_ABI = [
 
 export function ActivateAkita() {
   const { address, isConnected, connector } = useAccount()
-  const [depositAmount, setDepositAmount] = useState('100000000') // 100M AKITA
-  const [auctionPercent, setAuctionPercent] = useState('50') // 50% to auction
+  // Fixed parameters for AKITA launch
+  const depositAmount = '50000000' // 50M AKITA (locked)
+  const auctionPercent = '50' // 50% to auction, 50% to LP (locked)
   const [requiredRaise, setRequiredRaise] = useState('0.1') // 0.1 ETH minimum
 
   // Read AKITA balance
@@ -209,8 +210,12 @@ export function ActivateAkita() {
               <span className="font-semibold">7 Days</span>
             </div>
             <div className="flex justify-between items-center">
-              <span className="text-slate-400">Tokens Available</span>
-              <span className="font-semibold">{(Number(depositAmount) * Number(auctionPercent) / 100).toLocaleString()} wsAKITA</span>
+              <span className="text-slate-400">Tokens in Auction</span>
+              <span className="font-semibold">25M wsAKITA</span>
+            </div>
+            <div className="flex justify-between items-center">
+              <span className="text-slate-400">Tokens in LP</span>
+              <span className="font-semibold">25M wsAKITA</span>
             </div>
             <div className="flex justify-between items-center">
               <span className="text-slate-400">Minimum Raise</span>
@@ -263,7 +268,7 @@ export function ActivateAkita() {
               1
             </div>
             <div>
-              <p className="text-white font-medium">Deposit {depositAmount} AKITA</p>
+              <p className="text-white font-medium">Deposit 50M AKITA</p>
               <p className="text-slate-500">Into vault contract</p>
             </div>
           </div>
@@ -283,8 +288,8 @@ export function ActivateAkita() {
               3
             </div>
             <div>
-              <p className="text-white font-medium">Allocate {auctionPercent}% to auction</p>
-              <p className="text-slate-500">You keep {100 - Number(auctionPercent)}%</p>
+              <p className="text-white font-medium">50% to CCA Auction</p>
+              <p className="text-slate-500">25M wsAKITA for price discovery</p>
             </div>
           </div>
 
@@ -293,8 +298,8 @@ export function ActivateAkita() {
               4
             </div>
             <div>
-              <p className="text-white font-medium">Start 7-day auction</p>
-              <p className="text-slate-500">CCA price discovery begins</p>
+              <p className="text-white font-medium">50% to LP</p>
+              <p className="text-slate-500">25M wsAKITA for liquidity</p>
             </div>
           </div>
         </div>
@@ -319,37 +324,30 @@ export function ActivateAkita() {
         <h2 className="text-xl font-bold">Launch Parameters</h2>
 
         <div className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium mb-2">
-              Deposit Amount (AKITA)
-            </label>
-            <input
-              type="text"
-              value={depositAmount}
-              onChange={(e) => setDepositAmount(e.target.value)}
-              className="input-field w-full"
-              placeholder="100000000"
-            />
-            <p className="text-xs text-slate-500 mt-1">
-              Your balance: {tokenBalance ? formatUnits(tokenBalance, 18) : '0'} AKITA
-            </p>
+          {/* Fixed Parameters */}
+          <div className="grid grid-cols-2 gap-4 p-4 rounded-lg bg-white/[0.02] border border-white/10">
+            <div>
+              <p className="text-xs text-slate-500 mb-1">Deposit Amount</p>
+              <p className="text-2xl font-bold text-white">50M AKITA</p>
+              <p className="text-xs text-slate-400 mt-1">Fixed launch size</p>
+            </div>
+            <div>
+              <p className="text-xs text-slate-500 mb-1">Allocation</p>
+              <p className="text-2xl font-bold text-white">50/50</p>
+              <p className="text-xs text-slate-400 mt-1">25M auction + 25M LP</p>
+            </div>
           </div>
 
-          <div>
-            <label className="block text-sm font-medium mb-2">
-              Auction Allocation (%)
-            </label>
-            <input
-              type="text"
-              value={auctionPercent}
-              onChange={(e) => setAuctionPercent(e.target.value)}
-              className="input-field w-full"
-              placeholder="50"
-            />
-            <p className="text-xs text-slate-500 mt-1">
-              Auction: {(Number(depositAmount) * Number(auctionPercent) / 100).toLocaleString()} wsAKITA, 
-              You keep: {(Number(depositAmount) * (100 - Number(auctionPercent)) / 100).toLocaleString()} wsAKITA
-            </p>
+          <div className="space-y-2">
+            <div className="p-3 rounded-lg bg-brand-500/10 border border-brand-500/20 text-sm">
+              <p className="text-brand-300">
+                Your balance: <span className="font-semibold">{tokenBalance ? formatUnits(tokenBalance, 18) : '0'} AKITA</span>
+              </p>
+            </div>
+            
+            <div className="p-3 rounded-lg bg-white/[0.02] border border-white/5 text-xs text-slate-400">
+              <p>💡 The 25M wsAKITA allocated to LP remains yours for providing liquidity after the auction</p>
+            </div>
           </div>
 
           <div>
