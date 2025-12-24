@@ -358,7 +358,145 @@ export function Dashboard() {
                   exit={{ opacity: 0, x: -20 }}
                   transition={{ duration: 0.4 }}
                 >
-                  {/* Page 3: Fee Architecture */}
+                  {/* Page 3: CCA Launch Process */}
+                  <div className="space-y-8">
+                    <div className="text-center space-y-4">
+                      <span className="label">Fair Launch Mechanism</span>
+                      <h3 className="headline text-4xl">7-Day CCA Auction</h3>
+                      <p className="text-zinc-600 font-light max-w-2xl mx-auto">
+                        When a creator activates their vault, a Continuous Clearing Auction begins for transparent price discovery
+                      </p>
+                    </div>
+
+                    <div className="card p-10">
+                      <div className="space-y-8">
+                        {/* Timeline */}
+                        <div className="relative">
+                          {/* Timeline Line */}
+                          <div className="absolute left-8 top-8 bottom-8 w-px bg-zinc-800" />
+
+                          {/* Day 0 */}
+                          <div className="relative flex gap-6 mb-8">
+                            <div className="relative z-10">
+                              <div className="w-16 h-16 rounded-full bg-purple-500/10 border-2 border-purple-500 flex items-center justify-center flex-shrink-0">
+                                <span className="value text-xl text-purple-400">0</span>
+                              </div>
+                            </div>
+                            <div className="flex-1 pt-2">
+                              <span className="label block mb-2">Launch Day</span>
+                              <h4 className="headline text-2xl mb-3">Vault Activation</h4>
+                              <p className="text-zinc-600 font-light mb-4">
+                                Creator deposits tokens, vault is configured, and CCA auction begins automatically
+                              </p>
+                              <div className="grid grid-cols-2 gap-3">
+                                <div className="bg-zinc-950 p-4 rounded-md border border-zinc-800">
+                                  <span className="label block mb-2">Deposited</span>
+                                  <div className="value mono text-lg">50M AKITA</div>
+                                </div>
+                                <div className="bg-zinc-950 p-4 rounded-md border border-zinc-800">
+                                  <span className="label block mb-2">To Auction</span>
+                                  <div className="value mono text-lg glow-purple">25M wsAKITA</div>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Days 1-7 */}
+                          <div className="relative flex gap-6 mb-8">
+                            <div className="relative z-10">
+                              <div className="w-16 h-16 rounded-full bg-cyan-500/10 border-2 border-cyan-500 flex items-center justify-center flex-shrink-0">
+                                <span className="value text-xl text-cyan-400">1-7</span>
+                              </div>
+                            </div>
+                            <div className="flex-1 pt-2">
+                              <span className="label block mb-2">Auction Period</span>
+                              <h4 className="headline text-2xl mb-3">Price Discovery</h4>
+                              <p className="text-zinc-600 font-light mb-4">
+                                Community bids ETH for wsAKITA. Each block clears at market-discovered price. Fully transparent and onchain.
+                              </p>
+                              <div className="grid grid-cols-3 gap-3">
+                                <div className="bg-zinc-950 p-4 rounded-md border border-zinc-800">
+                                  <span className="label block mb-2">Mechanism</span>
+                                  <div className="value text-sm">Continuous Clearing</div>
+                                </div>
+                                <div className="bg-zinc-950 p-4 rounded-md border border-zinc-800">
+                                  <span className="label block mb-2">Access</span>
+                                  <div className="value text-sm text-cyan-400">Open to All</div>
+                                </div>
+                                <div className="bg-zinc-950 p-4 rounded-md border border-zinc-800">
+                                  <span className="label block mb-2">Pricing</span>
+                                  <div className="value text-sm text-cyan-400">Market-Driven</div>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Day 7+ */}
+                          <div className="relative flex gap-6">
+                            <div className="relative z-10">
+                              <div className="w-16 h-16 rounded-full bg-amber-500/10 border-2 border-amber-500 flex items-center justify-center flex-shrink-0">
+                                <span className="value text-xl text-amber-400">7+</span>
+                              </div>
+                            </div>
+                            <div className="flex-1 pt-2">
+                              <span className="label block mb-2">Completion</span>
+                              <h4 className="headline text-2xl mb-3">Liquidity Launch</h4>
+                              <p className="text-zinc-600 font-light mb-4">
+                                Auction completes, Uniswap V4 pool created at discovered price, trading begins immediately
+                              </p>
+                              <div className="grid grid-cols-2 gap-3">
+                                <div className="bg-zinc-950 p-4 rounded-md border border-zinc-800">
+                                  <span className="label block mb-2">Pool Created</span>
+                                  <div className="value text-sm text-amber-400">wsAKITA/ETH V4</div>
+                                </div>
+                                <div className="bg-zinc-950 p-4 rounded-md border border-zinc-800">
+                                  <span className="label block mb-2">Fee Hook</span>
+                                  <div className="value text-sm text-amber-400">6.9% Enabled</div>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Key Benefits */}
+                    <div className="grid lg:grid-cols-3 gap-6">
+                      <div className="card p-6 space-y-3">
+                        <span className="label">Fair Access</span>
+                        <div className="value text-2xl text-purple-400">No Gatekeeping</div>
+                        <p className="text-zinc-600 text-sm font-light">
+                          Everyone can participate from day one
+                        </p>
+                      </div>
+                      <div className="card p-6 space-y-3">
+                        <span className="label">Transparent</span>
+                        <div className="value text-2xl text-cyan-400">Fully Onchain</div>
+                        <p className="text-zinc-600 text-sm font-light">
+                          All bids and prices visible in real-time
+                        </p>
+                      </div>
+                      <div className="card p-6 space-y-3">
+                        <span className="label">Instant Liquidity</span>
+                        <div className="value text-2xl text-amber-400">V4 Pool</div>
+                        <p className="text-zinc-600 text-sm font-light">
+                          Trading starts immediately after auction
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </motion.div>
+              )}
+
+              {carouselPage === 3 && (
+                <motion.div
+                  key="page-3"
+                  initial={{ opacity: 0, x: 20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: -20 }}
+                  transition={{ duration: 0.4 }}
+                >
+                  {/* Page 4: Fee Architecture */}
                   <div className="space-y-8">
                     <div className="grid lg:grid-cols-2 gap-8">
                       {/* Liquidity Pool */}
@@ -485,7 +623,7 @@ export function Dashboard() {
 
             {/* Carousel Navigation - Arrows Only */}
             <button
-              onClick={() => setCarouselPage((prev) => (prev + 1) % 3)}
+              onClick={() => setCarouselPage((prev) => (prev + 1) % 4)}
               className="absolute -right-16 top-1/2 -translate-y-1/2 p-4 rounded-full bg-zinc-900/80 hover:bg-purple-900/80 border border-zinc-800 hover:border-purple-500/50 transition-all group"
             >
               <ChevronRight className="w-6 h-6 text-zinc-400 group-hover:text-purple-400 transition-colors" />
@@ -513,6 +651,14 @@ export function Dashboard() {
                 onClick={() => setCarouselPage(2)}
                 className={`transition-all ${
                   carouselPage === 2
+                    ? 'w-8 h-2 bg-purple-500'
+                    : 'w-2 h-2 bg-zinc-700 hover:bg-zinc-600'
+                } rounded-full`}
+              />
+              <button
+                onClick={() => setCarouselPage(3)}
+                className={`transition-all ${
+                  carouselPage === 3
                     ? 'w-8 h-2 bg-purple-500'
                     : 'w-2 h-2 bg-zinc-700 hover:bg-zinc-600'
                 } rounded-full`}
