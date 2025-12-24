@@ -51,10 +51,10 @@ export function TokenImage({
     return <div className={className}>{tokenElement}</div>
   }
 
-  // Wrapped version: Top 69% = token, bottom 31% = 3D Base vault (69% transparent)
+  // Wrapped version: Token deposited into prominent Base blue vault
   return (
     <div className={`relative ${className}`}>
-      <div className={`${sizeClass} rounded-xl overflow-hidden relative shadow-xl`}>
+      <div className={`${sizeClass} rounded-xl overflow-hidden relative shadow-xl ring-2 ring-[#0000FF]/30`}>
         {/* Full token image (background) */}
         <div className="absolute inset-0">
           {(!imageUrl || imgError || isLoading) ? (
@@ -71,8 +71,8 @@ export function TokenImage({
           )}
         </div>
         
-        {/* Bottom 31%: 3D Base vault (#0000FF) - 69% transparent (31% opacity) */}
-        <div className="absolute inset-x-0 bottom-0 h-[31%] opacity-[0.31]">
+        {/* Bottom 40%: Prominent 3D Base vault (#0000FF) - token is DEPOSITED INTO Base */}
+        <div className="absolute inset-x-0 bottom-0 h-[40%] opacity-90">
           {/* Main vault body with proper Base blue gradient */}
           <div className="absolute inset-0 bg-gradient-to-br from-[#0010FF] via-[#0000FF] to-[#0000DD]" />
           
@@ -139,8 +139,16 @@ export function TokenImage({
           </div>
         </div>
         
-        {/* Seamless blend transition */}
-        <div className="absolute inset-x-0 top-[66%] h-[6%] bg-gradient-to-b from-black/0 via-black/10 to-black/20 pointer-events-none" />
+        {/* Seamless blend transition - token submerged into vault */}
+        <div className="absolute inset-x-0 top-[58%] h-[4%] bg-gradient-to-b from-black/0 via-black/20 to-black/30 pointer-events-none" />
+        
+        {/* Blue glow emanating from vault to emphasize Base blue */}
+        <div className="absolute inset-x-0 bottom-0 h-[40%] bg-gradient-to-t from-[#0000FF]/20 to-transparent pointer-events-none blur-sm" />
+      </div>
+      
+      {/* "ws" badge to indicate wrapped share */}
+      <div className="absolute -top-1 -right-1 w-6 h-6 rounded-full bg-gradient-to-br from-[#0000FF] to-[#0000DD] shadow-lg border-2 border-white flex items-center justify-center">
+        <span className="text-[8px] font-bold text-white tracking-tight">ws</span>
       </div>
     </div>
   )
