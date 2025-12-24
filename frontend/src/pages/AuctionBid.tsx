@@ -9,8 +9,6 @@ import {
   AlertCircle,
   Loader2,
   CheckCircle2,
-  TrendingUp,
-  Target,
 } from 'lucide-react'
 import { AKITA } from '../config/contracts'
 import { ConnectButton } from '../components/ConnectButton'

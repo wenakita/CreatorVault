@@ -1,6 +1,6 @@
 import { useAccount, useConnect, useDisconnect, useSwitchChain } from 'wagmi'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Wallet, ChevronDown, LogOut, Copy, ExternalLink, Check, AlertCircle } from 'lucide-react'
+import { Wallet, ChevronDown, AlertCircle } from 'lucide-react'
 import { useState, useEffect } from 'react'
 import { base } from 'wagmi/chains'
 

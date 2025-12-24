@@ -3,14 +3,10 @@ import { motion } from 'framer-motion'
 import { useAccount, useReadContract, useWriteContract, useWaitForTransactionReceipt } from 'wagmi'
 import { formatUnits, parseUnits, erc20Abi } from 'viem'
 import {
-  TrendingUp,
   ArrowDownToLine,
   ArrowUpFromLine,
   Loader2,
   ExternalLink,
-  Coins,
-  Trophy,
-  Zap,
   Clock,
 } from 'lucide-react'
 import { AKITA } from '../config/contracts'
