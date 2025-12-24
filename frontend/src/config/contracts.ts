@@ -29,8 +29,12 @@ export const AKITA = {
   gaugeController: '0xB471B53cD0A30289Bc3a2dc3c6dd913288F8baA1' as const,
   ccaStrategy: '0x00c7897e0554b34A477D9D144AcC613Cdc97046F' as const,
   oracle: '0x8C044aeF10d05bcC53912869db89f6e1f37bC6fC' as const,
-  lpManager: '0x0000000000000000000000000000000000000000' as const, // TODO: Deploy
-  charmVault: '0x0000000000000000000000000000000000000000' as const, // TODO: Deploy Charm vault for wsAKITA/WETH
+  // Strategies for vault allocation
+  strategies: {
+    akitaWethLP: '0x0000000000000000000000000000000000000000' as const, // TODO: Deploy AKITA/WETH 1% LP strategy
+    akitaUsdcLP: '0x0000000000000000000000000000000000000000' as const, // TODO: Deploy AKITA/USDC 1% LP strategy
+    ajna: '0x0000000000000000000000000000000000000000' as const, // TODO: Deploy Ajna strategy
+  },
 } as const
 
 export type ContractAddress = `0x${string}`

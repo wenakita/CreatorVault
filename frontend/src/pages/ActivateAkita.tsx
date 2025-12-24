@@ -234,11 +234,30 @@ export function ActivateAkita() {
               <span className="text-slate-400">Your wsAKITA</span>
               <span className="font-semibold">25M (in wallet)</span>
             </div>
-            <div className="flex justify-between items-center">
-              <span className="text-slate-400">AKITA/WETH LP</span>
-              <span className="font-semibold">50M on Charm V3</span>
+            
+            <div className="pt-3 border-t border-white/5">
+              <p className="text-xs text-slate-500 mb-2">Vault AKITA Allocation:</p>
+              <div className="grid grid-cols-2 gap-2 text-xs">
+                <div className="flex justify-between">
+                  <span className="text-slate-400">AKITA/WETH 1%</span>
+                  <span className="text-white">12.5M</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-slate-400">AKITA/USDC 1%</span>
+                  <span className="text-white">12.5M</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-slate-400">Ajna Lending</span>
+                  <span className="text-white">12.5M</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-slate-400">Idle in Vault</span>
+                  <span className="text-white">12.5M</span>
+                </div>
+              </div>
             </div>
-            <div className="flex justify-between items-center">
+            
+            <div className="flex justify-between items-center pt-3 border-t border-white/5">
               <span className="text-slate-400">Minimum Raise</span>
               <span className="font-semibold">{requiredRaise} ETH</span>
             </div>
@@ -283,12 +302,12 @@ export function ActivateAkita() {
           <h2 className="text-xl font-bold">What Happens in One Transaction</h2>
         </div>
         
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
+        <div className="space-y-3 text-sm">
           <div className="flex items-start gap-2">
             <div className="w-6 h-6 rounded-full bg-brand-500/20 text-brand-400 flex items-center justify-center text-xs font-bold flex-shrink-0">
               1
             </div>
-            <div>
+            <div className="flex-1">
               <p className="text-white font-medium">Deposit 50M AKITA</p>
               <p className="text-slate-500">Into vault contract</p>
             </div>
@@ -298,9 +317,22 @@ export function ActivateAkita() {
             <div className="w-6 h-6 rounded-full bg-brand-500/20 text-brand-400 flex items-center justify-center text-xs font-bold flex-shrink-0">
               2
             </div>
-            <div>
-              <p className="text-white font-medium">Deploy to Charm</p>
-              <p className="text-slate-500">AKITA/WETH V3 liquidity</p>
+            <div className="flex-1">
+              <p className="text-white font-medium">Deploy to Strategies</p>
+              <div className="grid grid-cols-2 gap-2 mt-1 text-xs">
+                <div className="p-2 rounded bg-white/[0.02] border border-white/5">
+                  <p className="text-slate-400">12.5M → AKITA/WETH 1%</p>
+                </div>
+                <div className="p-2 rounded bg-white/[0.02] border border-white/5">
+                  <p className="text-slate-400">12.5M → AKITA/USDC 1%</p>
+                </div>
+                <div className="p-2 rounded bg-white/[0.02] border border-white/5">
+                  <p className="text-slate-400">12.5M → Ajna lending</p>
+                </div>
+                <div className="p-2 rounded bg-white/[0.02] border border-white/5">
+                  <p className="text-slate-400">12.5M → Keep idle</p>
+                </div>
+              </div>
             </div>
           </div>
 
@@ -308,7 +340,7 @@ export function ActivateAkita() {
             <div className="w-6 h-6 rounded-full bg-brand-500/20 text-brand-400 flex items-center justify-center text-xs font-bold flex-shrink-0">
               3
             </div>
-            <div>
+            <div className="flex-1">
               <p className="text-white font-medium">Wrap to wsAKITA</p>
               <p className="text-slate-500">50M vault shares</p>
             </div>
@@ -318,7 +350,7 @@ export function ActivateAkita() {
             <div className="w-6 h-6 rounded-full bg-brand-500/20 text-brand-400 flex items-center justify-center text-xs font-bold flex-shrink-0">
               4
             </div>
-            <div>
+            <div className="flex-1">
               <p className="text-white font-medium">Launch CCA</p>
               <p className="text-slate-500">25M wsAKITA price discovery</p>
             </div>
@@ -366,11 +398,20 @@ export function ActivateAkita() {
               </p>
             </div>
             
-            <div className="p-3 rounded-lg bg-green-500/10 border border-green-500/20 text-xs">
-              <p className="text-green-300 font-medium mb-1">✓ Charm Strategy Active</p>
-              <p className="text-green-400/80">
-                50M AKITA automatically deployed to Charm Finance for AKITA/WETH V3 liquidity with automated rebalancing
-              </p>
+            <div className="space-y-2">
+              <div className="p-3 rounded-lg bg-green-500/10 border border-green-500/20 text-xs">
+                <p className="text-green-300 font-medium mb-1">✓ Multi-Strategy Allocation</p>
+                <p className="text-green-400/80">
+                  50M AKITA split 4 ways: 12.5M to AKITA/WETH LP, 12.5M to AKITA/USDC LP, 12.5M to Ajna lending, 12.5M idle in vault
+                </p>
+              </div>
+              
+              <div className="p-3 rounded-lg bg-yellow-500/10 border border-yellow-500/20 text-xs">
+                <p className="text-yellow-300 font-medium mb-1">⚠️ Prerequisites</p>
+                <p className="text-yellow-400/80">
+                  Vault must have 3 strategies configured with equal weights and minimumTotalIdle set to 12.5M before activation
+                </p>
+              </div>
             </div>
           </div>
 
