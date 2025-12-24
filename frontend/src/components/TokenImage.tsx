@@ -58,40 +58,67 @@ export function TokenImage({
     return <div className={className}>{tokenElement}</div>
   }
 
-  // Wrapped version: Token nested inside Base square logo
+  // Wrapped version: Top 69% = token, bottom 31% = Base vault
   return (
     <div className={`relative ${className}`}>
-      {/* Base square logo background */}
-      <div className={`${sizeClass} rounded-xl bg-[#0052FF] flex items-center justify-center relative overflow-hidden`}>
-        {/* Base square subtle pattern */}
-        <div className="absolute inset-0 opacity-10">
-          <svg width="100%" height="100%" xmlns="http://www.w3.org/2000/svg">
-            <defs>
-              <pattern id="base-pattern" x="0" y="0" width="20" height="20" patternUnits="userSpaceOnUse">
-                <circle cx="1" cy="1" r="1" fill="white" />
-              </pattern>
-            </defs>
-            <rect width="100%" height="100%" fill="url(#base-pattern)" />
-          </svg>
+      <div className={`${sizeClass} rounded-xl overflow-hidden relative`}>
+        {/* Top 69%: Token image */}
+        <div className="absolute inset-0">
+          {(!imageUrl || imgError || isLoading) ? (
+            <div className={`w-full h-full bg-gradient-to-br ${fallbackColor} flex items-center justify-center font-display font-bold text-white`}>
+              {symbol[0]?.toUpperCase() || '?'}
+            </div>
+          ) : (
+            <img
+              src={imageUrl}
+              alt={symbol}
+              className="w-full h-full object-cover"
+              onError={() => setImgError(true)}
+            />
+          )}
         </div>
         
-        {/* Token image positioned to show top half */}
-        <div className="absolute inset-0 flex items-start justify-center pt-[15%]">
-          <div className="w-[70%] h-[70%] relative">
-            {(!imageUrl || imgError || isLoading) ? (
-              <div className={`w-full h-full rounded-lg bg-gradient-to-br ${fallbackColor} flex items-center justify-center font-display font-bold text-white text-xs`}>
-                {symbol[0]?.toUpperCase() || '?'}
-              </div>
-            ) : (
-              <img
-                src={imageUrl}
-                alt={symbol}
-                className="w-full h-full rounded-lg object-cover shadow-lg"
-                onError={() => setImgError(true)}
-              />
-            )}
+        {/* Bottom 31%: 3D Base vault */}
+        <div className="absolute inset-x-0 bottom-0 h-[31%] bg-gradient-to-b from-[#0066FF] to-[#0052FF]">
+          {/* Inner shadow for depth */}
+          <div className="absolute inset-0 shadow-[inset_0_2px_8px_rgba(0,0,0,0.3)]" />
+          
+          {/* Subtle metallic sheen */}
+          <div className="absolute inset-0 bg-gradient-to-br from-white/5 via-transparent to-black/10" />
+          
+          {/* Panel lines for vault door effect */}
+          <div className="absolute inset-0 opacity-20">
+            <div className="absolute top-0 left-1/2 w-px h-full bg-white" />
+            <div className="absolute top-1/2 left-0 w-full h-px bg-white" />
+          </div>
+          
+          {/* Circular vault dial/lock */}
+          <div className="absolute inset-0 flex items-center justify-center">
+            <div className="relative w-[35%] aspect-square">
+              {/* Outer ring */}
+              <div className="absolute inset-0 rounded-full bg-gradient-to-br from-white/30 to-white/10 shadow-lg" />
+              {/* Inner ring */}
+              <div className="absolute inset-[15%] rounded-full bg-gradient-to-tl from-[#0052FF] to-[#0066FF] shadow-inner" />
+              {/* Center dot */}
+              <div className="absolute inset-[40%] rounded-full bg-white/90 shadow-md" />
+            </div>
+          </div>
+          
+          {/* Subtle dot pattern overlay */}
+          <div className="absolute inset-0 opacity-5">
+            <svg width="100%" height="100%" xmlns="http://www.w3.org/2000/svg">
+              <defs>
+                <pattern id={`base-pattern-${symbol}`} x="0" y="0" width="20" height="20" patternUnits="userSpaceOnUse">
+                  <circle cx="1" cy="1" r="1" fill="white" />
+                </pattern>
+              </defs>
+              <rect width="100%" height="100%" fill={`url(#base-pattern-${symbol})`} />
+            </svg>
           </div>
         </div>
+        
+        {/* Smooth gradient blend between token and vault */}
+        <div className="absolute inset-x-0 top-[64%] h-[10%] bg-gradient-to-b from-transparent via-[#0052FF]/40 to-transparent pointer-events-none" />
       </div>
     </div>
   )
