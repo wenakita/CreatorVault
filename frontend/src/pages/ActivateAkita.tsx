@@ -23,10 +23,10 @@ const VAULT_ACTIVATOR_ABI = [
       { name: 'wrapper', type: 'address' },
       { name: 'ccaStrategy', type: 'address' },
       { name: 'depositAmount', type: 'uint256' },
-      { name: 'auctionPercent', type: 'uint256' },
-      { name: 'requiredRaise', type: 'uint256' },
+      { name: 'auctionPercent', type: 'uint8' },
+      { name: 'requiredRaise', type: 'uint128' },
     ],
-    outputs: [],
+    outputs: [{ name: 'auction', type: 'address' }],
     stateMutability: 'nonpayable',
   },
 ] as const
@@ -90,7 +90,7 @@ export function ActivateAkita() {
         AKITA.wrapper,
         AKITA.ccaStrategy,
         parseUnits(depositAmount, tokenDecimals),
-        BigInt(auctionPercent),
+        Number(auctionPercent), // uint8
         parseUnits(requiredRaise, 18),
       ],
     })
