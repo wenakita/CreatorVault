@@ -474,7 +474,7 @@ export function Vault() {
             <span className="text-orange-400 font-bold text-sm">5 days left to bid</span>
           </div>
           <h3 className="text-2xl font-bold">Early Access Auction</h3>
-          <p className="text-slate-400 text-lg">Get AKITA before anyone else</p>
+          <p className="text-slate-400 text-lg">Get wsAKITA before anyone else</p>
         </div>
 
         {/* Real Auction Stats */}
