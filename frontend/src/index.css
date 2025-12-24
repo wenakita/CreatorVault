@@ -53,13 +53,13 @@
     @apply bg-surface-900/80 backdrop-blur-xl border border-surface-800 rounded-2xl;
   }
 
-  /* Primary button - Tension Cyan */
+  /* Primary button - Base Blue */
   .btn-primary {
-    @apply relative overflow-hidden px-6 py-3 rounded-xl font-semibold text-black
-           bg-tension-cyan
-           hover:bg-tension-cyan/90
+    @apply relative overflow-hidden px-6 py-3 rounded-xl font-semibold text-white
+           bg-blue-600
+           hover:bg-blue-700
            transition-all duration-200 ease-out
-           shadow-lg shadow-tension-cyan/20 hover:shadow-tension-cyan/30
+           shadow-lg shadow-blue-600/20 hover:shadow-blue-600/30
            active:scale-[0.98];
   }
 
@@ -90,7 +90,7 @@
     @apply w-full px-4 py-3 rounded-xl
            bg-surface-800 border border-surface-700
            text-white placeholder:text-surface-500
-           focus:outline-none focus:border-tension-cyan focus:ring-1 focus:ring-tension-cyan/50
+           focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500/50
            transition-all duration-200;
   }
 
@@ -114,14 +114,14 @@
 
   .glow::after {
     content: '';
-    @apply absolute -inset-1 bg-tension-cyan/20 blur-xl rounded-full -z-10;
+    @apply absolute -inset-1 bg-blue-500/20 blur-xl rounded-full -z-10;
   }
 }
 
 @layer utilities {
-  /* Text gradient - Tension Cyan */
+  /* Text gradient - Base Blue to Purple */
   .text-gradient {
-    @apply bg-gradient-to-r from-tension-cyan via-magma-mint to-tension-cyan bg-clip-text text-transparent;
+    @apply bg-gradient-to-r from-blue-500 via-purple-500 to-blue-500 bg-clip-text text-transparent;
   }
 
   /* Hide scrollbar but allow scrolling */
@@ -192,7 +192,7 @@
 
   /* Base Number Step (01, 02, 03 style) */
   .step-number {
-    @apply font-mono text-xs text-tension-cyan tracking-widest;
+    @apply font-mono text-xs text-blue-500 tracking-widest;
   }
 
   .step-number::before {
@@ -210,9 +210,9 @@
 }
 
 .glass-card:hover {
-  border-color: rgba(0, 242, 255, 0.3);
+  border-color: rgba(59, 130, 246, 0.3);
   transform: translateY(-2px);
-  box-shadow: 0 8px 32px rgba(0, 242, 255, 0.08);
+  box-shadow: 0 8px 32px rgba(59, 130, 246, 0.08);
 }
 
 /* Button with Base snappy feel */
@@ -242,7 +242,7 @@
 
 .feature-card::before {
   content: '';
-  @apply absolute inset-0 bg-gradient-to-br from-tension-cyan/5 to-transparent opacity-0;
+  @apply absolute inset-0 bg-gradient-to-br from-blue-500/5 to-transparent opacity-0;
   transition: opacity var(--base-duration-normal) var(--base-ease);
 }
 
@@ -256,7 +256,7 @@
 }
 
 .command-display code {
-  @apply text-tension-cyan;
+  @apply text-blue-400;
 }
 
 /* Numbered section (Base Account 01, 02, 03 style) */
@@ -265,7 +265,7 @@
 }
 
 .numbered-section::before {
-  @apply absolute left-0 top-0 font-mono text-4xl font-bold text-tension-cyan/20;
+  @apply absolute left-0 top-0 font-mono text-4xl font-bold text-blue-500/20;
   content: attr(data-step);
 }
 

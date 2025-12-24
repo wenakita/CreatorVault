@@ -245,7 +245,7 @@ export function AuctionBid() {
         </Link>
         <div className="flex-1">
           <div className="flex items-center gap-2 text-xs text-slate-500 font-mono mb-1 uppercase tracking-[0.2em]">
-            <span className="inline-block w-2 h-2 rounded-full bg-tension-cyan animate-pulse shadow-glow-cyan" />
+            <span className="inline-block w-2 h-2 rounded-full bg-blue-500 animate-pulse shadow-glow-cyan" />
             ACTIVE_AUCTION
           </div>
           <h1 className="text-4xl font-bold font-display tracking-tight bg-gradient-to-b from-white to-slate-400 bg-clip-text text-transparent">
@@ -265,7 +265,7 @@ export function AuctionBid() {
             className="relative bg-basalt/80 backdrop-blur-md border border-basalt-light overflow-hidden"
           >
             {/* Top accent line */}
-            <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-transparent via-tension-cyan to-transparent opacity-30" />
+            <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-transparent via-blue-500 to-transparent opacity-30" />
 
             <div className="p-8 space-y-8">
               {/* Current Metrics */}
@@ -289,7 +289,7 @@ export function AuctionBid() {
 
               {/* Price Discovery Visualization */}
               <div className="relative">
-                <div className="text-xs font-mono uppercase tracking-[0.2em] text-magma-mint/70 mb-4">
+                <div className="text-xs font-mono uppercase tracking-[0.2em] text-purple-500/70 mb-4">
                   Price Discovery Curve
                 </div>
                 <div className="relative bg-black/30 rounded-sm p-6 border border-white/5">
@@ -325,18 +325,18 @@ export function AuctionBid() {
               </MetricGrid>
 
             {/* Info Banner */}
-            <div className="relative p-6 bg-tension-cyan/5 border border-tension-cyan/20 overflow-hidden">
+            <div className="relative p-6 bg-blue-500/5 border border-blue-500/20 overflow-hidden">
               {/* Animated shine effect */}
               <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent -translate-x-full animate-shimmer" />
               
               <div className="relative flex items-start gap-4">
-                <div className="p-2 rounded bg-tension-cyan/10 border border-tension-cyan/30">
-                  <Zap className="w-5 h-5 text-tension-cyan" />
+                <div className="p-2 rounded bg-blue-500/10 border border-blue-500/30">
+                  <Zap className="w-5 h-5 text-blue-500" />
                 </div>
                 <div className="flex-1">
                   <div className="flex items-center gap-2 mb-2">
-                    <div className="w-1 h-1 bg-tension-cyan rounded-full" />
-                    <p className="text-sm font-mono uppercase tracking-wider text-tension-cyan">
+                    <div className="w-1 h-1 bg-blue-500 rounded-full" />
+                    <p className="text-sm font-mono uppercase tracking-wider text-blue-500">
                       Fair Price Discovery
                     </p>
                   </div>
@@ -364,16 +364,16 @@ export function AuctionBid() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.1 }}
-            className="relative bg-basalt/80 backdrop-blur-md border border-basalt-light border-l-4 border-l-tension-cyan/50 overflow-hidden"
+            className="relative bg-basalt/80 backdrop-blur-md border border-basalt-light border-l-4 border-l-blue-500/50 overflow-hidden"
           >
             {/* Top accent */}
-            <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-magma-mint/30 to-transparent" />
+            <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-purple-500/30 to-transparent" />
             
             <div className="p-6 space-y-6">
             <div>
               <div className="flex items-center gap-2 mb-6">
-                <div className="w-1.5 h-1.5 bg-magma-mint rounded-full" />
-                <h3 className="text-xs font-mono uppercase tracking-[0.3em] text-magma-mint/80">
+                <div className="w-1.5 h-1.5 bg-purple-500 rounded-full" />
+                <h3 className="text-xs font-mono uppercase tracking-[0.3em] text-purple-500/80">
                   Auction Parameters
                 </h3>
               </div>
@@ -390,7 +390,7 @@ export function AuctionBid() {
                     onClick={() => handlePresetClick(preset)}
                     className={`p-3 text-sm font-mono transition-all border ${
                       selectedPreset === preset.label
-                        ? 'bg-tension-cyan/10 text-tension-cyan border-tension-cyan/30 shadow-glow-cyan'
+                        ? 'bg-blue-500/10 text-blue-500 border-blue-500/30 shadow-glow-cyan'
                         : 'bg-white/5 hover:bg-white/10 text-slate-300 border-white/10'
                     }`}
                   >
@@ -413,7 +413,7 @@ export function AuctionBid() {
                       setSelectedPreset(null)
                     }}
                     placeholder="0.0"
-                    className="w-full bg-black/30 border border-basalt-light px-4 py-3 font-mono text-lg focus:border-tension-cyan focus:outline-none transition-colors"
+                    className="w-full bg-black/30 border border-basalt-light px-4 py-3 font-mono text-lg focus:border-blue-500 focus:outline-none transition-colors"
                   />
                 </div>
 
@@ -429,7 +429,7 @@ export function AuctionBid() {
                       setSelectedPreset(null)
                     }}
                     placeholder="0"
-                    className="w-full bg-black/30 border border-basalt-light px-4 py-3 font-mono text-lg focus:border-tension-cyan focus:outline-none transition-colors"
+                    className="w-full bg-black/30 border border-basalt-light px-4 py-3 font-mono text-lg focus:border-blue-500 focus:outline-none transition-colors"
                   />
                   <div className="text-xs text-slate-500 mt-1">AKITA tokens desired</div>
                 </div>
@@ -438,12 +438,12 @@ export function AuctionBid() {
 
             {/* Submit Button */}
             <div className="space-y-3">
-              <div className="h-px bg-gradient-to-r from-transparent via-magma-mint/30 to-transparent" />
+              <div className="h-px bg-gradient-to-r from-transparent via-purple-500/30 to-transparent" />
               
               <button
                 onClick={handleSubmitBid}
                 disabled={!ethAmount || !tokenAmount || isBidding || isBidConfirming}
-                className="w-full bg-tension-cyan hover:bg-tension-cyan/90 disabled:bg-slate-700 disabled:text-slate-500 text-black py-4 text-sm font-mono uppercase tracking-wider transition-all disabled:opacity-50 border border-tension-cyan/30"
+                className="w-full bg-blue-500 hover:bg-blue-500/90 disabled:bg-slate-700 disabled:text-slate-500 text-black py-4 text-sm font-mono uppercase tracking-wider transition-all disabled:opacity-50 border border-blue-500/30"
               >
                 {isBidding || isBidConfirming ? (
                   <span className="flex items-center justify-center gap-2">

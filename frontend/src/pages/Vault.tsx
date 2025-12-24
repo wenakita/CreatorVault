@@ -189,8 +189,8 @@ export function Vault() {
       >
         <div>
           <div className="flex items-center gap-2 mb-2">
-            <div className="w-1.5 h-1.5 bg-magma-mint rounded-full" />
-            <span className="text-xs font-mono uppercase tracking-[0.3em] text-magma-mint/80">
+            <div className="w-1.5 h-1.5 bg-purple-500 rounded-full" />
+            <span className="text-xs font-mono uppercase tracking-[0.3em] text-purple-500/80">
               Creator Vault
             </span>
           </div>
@@ -216,7 +216,7 @@ export function Vault() {
           href={`https://basescan.org/address/${wrapperAddress}`}
           target="_blank"
           rel="noopener noreferrer"
-          className="bg-tension-cyan/10 hover:bg-tension-cyan/20 text-tension-cyan px-4 py-2 text-xs font-mono uppercase tracking-wider transition-all border border-tension-cyan/30 flex items-center gap-2"
+          className="bg-blue-500/10 hover:bg-blue-500/20 text-blue-500 px-4 py-2 text-xs font-mono uppercase tracking-wider transition-all border border-blue-500/30 flex items-center gap-2"
         >
           <ExternalLink className="w-3.5 h-3.5" />
           Basescan
@@ -292,19 +292,19 @@ export function Vault() {
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mt-6">
             <div className="p-3 bg-black/20 border border-basalt-light">
               <div className="text-xs font-mono text-slate-500 mb-1">WETH LP</div>
-              <div className="text-sm font-mono text-magma-mint">25%</div>
+              <div className="text-sm font-mono text-purple-500">25%</div>
             </div>
             <div className="p-3 bg-black/20 border border-basalt-light">
               <div className="text-xs font-mono text-slate-500 mb-1">USDC LP</div>
-              <div className="text-sm font-mono text-magma-mint">25%</div>
+              <div className="text-sm font-mono text-purple-500">25%</div>
             </div>
             <div className="p-3 bg-black/20 border border-basalt-light">
               <div className="text-xs font-mono text-slate-500 mb-1">Ajna</div>
-              <div className="text-sm font-mono text-magma-mint">25%</div>
+              <div className="text-sm font-mono text-purple-500">25%</div>
             </div>
             <div className="p-3 bg-black/20 border border-basalt-light">
               <div className="text-xs font-mono text-slate-500 mb-1">Idle</div>
-              <div className="text-sm font-mono text-tension-cyan">25%</div>
+              <div className="text-sm font-mono text-blue-500">25%</div>
             </div>
           </div>
         </BasinCard>
@@ -326,7 +326,7 @@ export function Vault() {
                 onClick={() => setActiveTab(tab)}
                 className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors ${
                   activeTab === tab
-                    ? 'bg-tension-cyan text-black'
+                    ? 'bg-blue-500 text-black'
                     : 'text-surface-400 hover:text-white'
                 }`}
               >
@@ -349,12 +349,12 @@ export function Vault() {
               <>
                 <span className="text-white font-medium">AKITA</span>
                 <span>→</span>
-                <span className="text-tension-cyan font-medium">wsAKITA</span>
+                <span className="text-blue-500 font-medium">wsAKITA</span>
                 <span className="text-surface-500 ml-2">(~1:1)</span>
               </>
             ) : (
               <>
-                <span className="text-tension-cyan font-medium">wsAKITA</span>
+                <span className="text-blue-500 font-medium">wsAKITA</span>
                 <span>→</span>
                 <span className="text-white font-medium">AKITA</span>
               </>
@@ -375,7 +375,7 @@ export function Vault() {
                         : formatUnits(wsAkitaBalance || 0n, 18)
                     )
                   }
-                  className="text-tension-cyan hover:text-tension-cyan/80"
+                  className="text-blue-500 hover:text-blue-500/80"
                 >
                   {activeTab === 'Deposit'
                     ? formatAmount(tokenBalance)
@@ -400,7 +400,7 @@ export function Vault() {
                       : formatUnits(wsAkitaBalance || 0n, 18)
                   )
                 }
-                className="absolute right-3 top-1/2 -translate-y-1/2 px-3 py-1 rounded-lg bg-tension-cyan/10 text-tension-cyan text-sm font-medium hover:bg-tension-cyan/20 transition-colors"
+                className="absolute right-3 top-1/2 -translate-y-1/2 px-3 py-1 rounded-lg bg-blue-500/10 text-blue-500 text-sm font-medium hover:bg-blue-500/20 transition-colors"
               >
                 MAX
               </button>
@@ -470,7 +470,7 @@ export function Vault() {
             <motion.div
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
-              className="p-3 rounded-lg bg-magma-mint/10 border border-magma-mint/20 text-magma-mint text-sm text-center"
+              className="p-3 rounded-lg bg-purple-500/10 border border-purple-500/20 text-purple-500 text-sm text-center"
             >
               ✓ Transaction successful!
             </motion.div>
@@ -485,7 +485,7 @@ export function Vault() {
           className="sm:col-span-2 glass-card p-6 space-y-4"
         >
           <h3 className="font-semibold flex items-center gap-2">
-            <Users className="w-4 h-4 text-tension-cyan" />
+            <Users className="w-4 h-4 text-blue-500" />
             Your Position
           </h3>
 
@@ -496,7 +496,7 @@ export function Vault() {
             </div>
             <div className="flex justify-between">
               <span className="text-surface-400">wsAKITA Balance</span>
-              <span className="font-mono text-tension-cyan">{formatAmount(wsAkitaBalance)}</span>
+              <span className="font-mono text-blue-500">{formatAmount(wsAkitaBalance)}</span>
             </div>
           </div>
 
@@ -512,7 +512,7 @@ export function Vault() {
             </div>
             <div className="h-2 rounded-full bg-surface-800 overflow-hidden">
               <motion.div
-                className="h-full bg-tension-cyan"
+                className="h-full bg-blue-500"
                 initial={{ width: 0 }}
                 animate={{
                   width: `${
@@ -555,7 +555,7 @@ export function Vault() {
           </div>
           <div className="w-px h-12 bg-white/10" />
           <div className="text-center">
-            <p className="text-3xl font-bold text-tension-cyan">
+            <p className="text-3xl font-bold text-blue-500">
               {tokenTarget ? (Number(formatUnits(tokenTarget, 18)) / 1000000).toFixed(1) : '0'}M
             </p>
             <p className="text-sm text-slate-400">AKITA available</p>
@@ -568,7 +568,7 @@ export function Vault() {
           
           <div className="space-y-3">
             <div className="flex items-start gap-3">
-              <div className="w-8 h-8 rounded-full bg-tension-cyan/20 flex items-center justify-center flex-shrink-0 text-sm font-bold text-tension-cyan">
+              <div className="w-8 h-8 rounded-full bg-blue-500/20 flex items-center justify-center flex-shrink-0 text-sm font-bold text-blue-500">
                 1
               </div>
               <div>
@@ -578,7 +578,7 @@ export function Vault() {
             </div>
 
             <div className="flex items-start gap-3">
-              <div className="w-8 h-8 rounded-full bg-tension-cyan/20 flex items-center justify-center flex-shrink-0 text-sm font-bold text-tension-cyan">
+              <div className="w-8 h-8 rounded-full bg-blue-500/20 flex items-center justify-center flex-shrink-0 text-sm font-bold text-blue-500">
                 2
               </div>
               <div>
@@ -612,7 +612,7 @@ export function Vault() {
             <p className="text-xs text-slate-400">Unsuccessful bids automatically refunded</p>
           </div>
           <div className="p-4 rounded-xl bg-white/[0.02] border border-white/5">
-            <Zap className="w-6 h-6 text-tension-cyan mb-3" />
+            <Zap className="w-6 h-6 text-blue-500 mb-3" />
             <p className="text-white font-semibold mb-1 text-sm">Early Access</p>
             <p className="text-xs text-slate-400">Priority allocation before public markets</p>
           </div>
@@ -621,7 +621,7 @@ export function Vault() {
         {/* CTA to Bid */}
         <a href={`/auction/bid/${AKITA.vault}`}>
           <motion.button
-            className="w-full px-8 py-5 rounded-xl bg-tension-cyan text-black font-semibold hover:bg-tension-cyan/90 transition-colors border border-tension-cyan/30 shadow-lg shadow-tension-cyan/20"
+            className="w-full px-8 py-5 rounded-xl bg-blue-500 text-black font-semibold hover:bg-blue-500/90 transition-colors border border-blue-500/30 shadow-lg shadow-blue-500/20"
             whileHover={{ scale: 1.01 }}
             whileTap={{ scale: 0.99 }}
           >
