@@ -25,9 +25,51 @@ If you set your bucket too far from the current market price:
 
 ## How to Calculate the Right Bucket
 
-### From Uniswap V4 Pool (Recommended for AKITA/ZORA)
+### From Token Contract (Easiest - Recommended for AKITA)
 
-If there's an existing Uniswap V4 pool for your token pair, use its current tick:
+Many tokens store their Uniswap V4 pool configuration directly in the contract:
+
+```bash
+# Query token contract for pool key
+TOKEN="0x5b674196812451b7cec024fe9d22d2c0b172fa75"  # AKITA
+POOL_KEY_RESULT=$(cast call $TOKEN \
+  "getPoolKey()(address,address,uint24,int24,address)")
+
+# Parse the result
+CURRENCY0=$(echo $POOL_KEY_RESULT | awk '{print $1}')
+CURRENCY1=$(echo $POOL_KEY_RESULT | awk '{print $2}')
+FEE=$(echo $POOL_KEY_RESULT | awk '{print $3}')
+TICK_SPACING=$(echo $POOL_KEY_RESULT | awk '{print $4}')
+HOOKS=$(echo $POOL_KEY_RESULT | awk '{print $5}')
+
+# Calculate PoolId
+POOL_KEY=$(cast abi-encode "f(address,address,uint24,int24,address)" \
+  $CURRENCY0 $CURRENCY1 $FEE $TICK_SPACING $HOOKS)
+POOL_ID=$(cast keccak $POOL_KEY)
+
+# Get current tick from PoolManager
+POOL_MANAGER="0x498581fF718922c3f8e6A244956aF099B2652b2b"
+SLOT0=$(cast call $POOL_MANAGER "getSlot0(bytes32)(uint160,int24,uint24,uint24)" $POOL_ID)
+TICK=$(echo $SLOT0 | awk '{print $2}')
+
+# Invert if needed (if token is currency1)
+if [[ "$CURRENCY1" == "$TOKEN" ]]; then
+  TICK=$((-1 * TICK))
+fi
+
+# Calculate Ajna bucket
+BUCKET=$((3696 + ($TICK / 100)))
+
+# Clamp to valid range
+if [ $BUCKET -lt 0 ]; then BUCKET=0; fi
+if [ $BUCKET -gt 7387 ]; then BUCKET=7387; fi
+
+echo "Suggested bucket: $BUCKET"
+```
+
+### From Uniswap V4 Pool (Manual Method)
+
+If the token doesn't have `getPoolKey()`, you need to manually construct it:
 
 ```bash
 # 1. Sort tokens (currency0 < currency1)
@@ -40,8 +82,8 @@ else
 fi
 
 # 2. Build PoolKey (currency0, currency1, fee, tickSpacing, hooks)
-FEE=3000  # 0.3%
-TICK_SPACING=60
+FEE=30000  # 3% (common for ZORA pools)
+TICK_SPACING=200
 HOOKS="0x0000000000000000000000000000000000000000"
 
 # 3. Calculate PoolId
@@ -54,9 +96,8 @@ POOL_MANAGER="0x498581fF718922c3f8e6A244956aF099B2652b2b"
 SLOT0=$(cast call $POOL_MANAGER "getSlot0(bytes32)(uint160,int24,uint24,uint24)" $POOL_ID)
 TICK=$(echo $SLOT0 | awk '{print $2}')
 
-# 5. Calculate Ajna bucket (approximation)
-BUCKET_OFFSET=$(($TICK / 100))
-BUCKET=$((3696 + $BUCKET_OFFSET))
+# 5. Calculate Ajna bucket
+BUCKET=$((3696 + ($TICK / 100)))
 
 # 6. Clamp to valid range
 if [ $BUCKET -lt 0 ]; then BUCKET=0; fi
@@ -65,40 +106,45 @@ if [ $BUCKET -gt 7387 ]; then BUCKET=7387; fi
 echo "Suggested bucket: $BUCKET"
 ```
 
-### Example: AKITA/ZORA (Uniswap V4)
+### Example: AKITA Token (from Contract)
 
 ```bash
-# AKITA/ZORA pool on Base (V4)
+# AKITA token has getPoolKey() built-in!
 AKITA="0x5b674196812451b7cec024fe9d22d2c0b172fa75"
-ZORA="0x4200000000000000000000000000000000000777"
-POOL_MANAGER="0x498581fF718922c3f8e6A244956aF099B2652b2b"
 
-# Sort tokens
-if [[ "$AKITA" < "$ZORA" ]]; then
-  CURRENCY0=$AKITA
-  CURRENCY1=$ZORA
-else
-  CURRENCY0=$ZORA
-  CURRENCY1=$AKITA
-fi
+# Query pool key directly
+POOL_KEY_RESULT=$(cast call $AKITA \
+  "getPoolKey()(address,address,uint24,int24,address)")
 
-# Calculate PoolId for 0.3% pool
+# Returns (actual values from AKITA contract):
+# currency0:    0x1111111111166b7FE7bd91427724B487980aFc69
+# currency1:    0x5b674196812451B7cEC024FE9d22D2c0b172fa75 (AKITA)
+# fee:          30000 (3%)
+# tickSpacing:  200
+# hooks:        0xd61A675F8a0c67A73DC3B54FB7318B4D91409040
+
+# Calculate PoolId
+CURRENCY0="0x1111111111166b7FE7bd91427724B487980aFc69"
+CURRENCY1="0x5b674196812451B7cEC024FE9d22D2c0b172fa75"
+FEE=30000
+TICK_SPACING=200
+HOOKS="0xd61A675F8a0c67A73DC3B54FB7318B4D91409040"
+
 POOL_KEY=$(cast abi-encode "f(address,address,uint24,int24,address)" \
-  $CURRENCY0 $CURRENCY1 3000 60 "0x0000000000000000000000000000000000000000")
+  $CURRENCY0 $CURRENCY1 $FEE $TICK_SPACING $HOOKS)
 POOL_ID=$(cast keccak $POOL_KEY)
 
-# Get tick
+# Get current tick
+POOL_MANAGER="0x498581fF718922c3f8e6A244956aF099B2652b2b"
 SLOT0=$(cast call $POOL_MANAGER "getSlot0(bytes32)(uint160,int24,uint24,uint24)" $POOL_ID)
 TICK=$(echo $SLOT0 | awk '{print $2}')
 
-# If tokens were swapped, invert tick
-if [[ "$CURRENCY0" == "$ZORA" ]]; then
-  TICK=$((-1 * TICK))
-fi
+# AKITA is currency1, so invert tick
+TICK=$((-1 * TICK))
 
-# Current tick: e.g., -50000
-# Bucket offset: -50000 / 100 = -500
-# Suggested bucket: 3696 + (-500) = 3196
+# Calculate bucket
+# If tick = -50000: bucket = 3696 + (-500) = 3196
+BUCKET=$((3696 + ($TICK / 100)))
 ```
 
 ### From Uniswap V3 Pool (Alternative)
@@ -191,10 +237,15 @@ bytes32 poolId = keccak256(abi.encode(poolKey));
 ### Common V4 Fee Tiers
 
 ```
-Fee:  3000 (0.3%) → tickSpacing: 60
+Fee: 30000 (3.0%) → tickSpacing: 200  ← AKITA/ZORA uses 3% with tickSpacing 200!
 Fee: 10000 (1.0%) → tickSpacing: 200
+Fee:  3000 (0.3%) → tickSpacing: 60
 Fee:   500 (0.05%)→ tickSpacing: 10
 ```
+
+**Note**: The AKITA token's V4 pool uses the **3% fee tier with tickSpacing 200** (confirmed from contract).
+
+**Important**: Some tokens may use custom tick spacings. Always check the token contract's `getPoolKey()` function if available!
 
 ---
 

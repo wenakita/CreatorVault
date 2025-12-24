@@ -42,40 +42,61 @@ echo -e "${GREEN}Deployer:${NC} $DEPLOYER"
 echo ""
 
 # ============================================
-# STEP 0: Get current AKITA price from AKITA/ZORA V4 pool
+# STEP 0: Get current AKITA price from V4 pool
 # ============================================
-echo -e "${BLUE}Step 0: Fetching current AKITA price from AKITA/ZORA V4 pool...${NC}"
-
-# Uniswap V4 uses PoolKey to identify pools
-# PoolKey: (currency0, currency1, fee, tickSpacing, hooks)
-# PoolId = keccak256(abi.encode(PoolKey))
-
-# Sort tokens (V4 requires currency0 < currency1)
-if [[ "$AKITA_TOKEN" < "$ZORA" ]]; then
-    CURRENCY0=$AKITA_TOKEN
-    CURRENCY1=$ZORA
-else
-    CURRENCY0=$ZORA
-    CURRENCY1=$AKITA_TOKEN
-fi
-
-# Common V4 fee tiers and tick spacings
-# fee=3000 (0.3%), tickSpacing=60
-# fee=10000 (1%), tickSpacing=200
+echo -e "${BLUE}Step 0: Fetching current AKITA price from Uniswap V4 pool...${NC}"
 
 SUGGESTED_BUCKET=3696  # Default middle bucket
 POOL_FOUND=false
 
-# Try 0.3% fee tier
-FEE=3000
-TICK_SPACING=60
-HOOKS="0x0000000000000000000000000000000000000000"  # No hooks
+# Query AKITA token contract for its pool key
+echo -e "${BLUE}   Getting pool configuration from AKITA token contract...${NC}"
+POOL_KEY_RESULT=$(cast call $AKITA_TOKEN \
+    "getPoolKey()(address,address,uint24,int24,address)" \
+    2>/dev/null || echo "")
 
-# Encode PoolKey for 0.3% pool
-POOL_KEY=$(cast abi-encode "f(address,address,uint24,int24,address)" $CURRENCY0 $CURRENCY1 $FEE $TICK_SPACING $HOOKS)
-POOL_ID=$(cast keccak $POOL_KEY)
+if [ ! -z "$POOL_KEY_RESULT" ]; then
+    # Parse the pool key tuple
+    CURRENCY0=$(echo $POOL_KEY_RESULT | awk '{print $1}')
+    CURRENCY1=$(echo $POOL_KEY_RESULT | awk '{print $2}')
+    FEE=$(echo $POOL_KEY_RESULT | awk '{print $3}')
+    TICK_SPACING=$(echo $POOL_KEY_RESULT | awk '{print $4}')
+    HOOKS=$(echo $POOL_KEY_RESULT | awk '{print $5}')
+    
+    echo -e "${GREEN}✅ Pool key from token contract:${NC}"
+    echo -e "${GREEN}   Currency0:    $CURRENCY0${NC}"
+    echo -e "${GREEN}   Currency1:    $CURRENCY1${NC}"
+    echo -e "${GREEN}   Fee:          $FEE ($(echo "scale=2; $FEE / 10000" | bc)%)${NC}"
+    echo -e "${GREEN}   TickSpacing:  $TICK_SPACING${NC}"
+    echo -e "${GREEN}   Hooks:        $HOOKS${NC}"
+    
+    # Encode PoolKey
+    POOL_KEY=$(cast abi-encode "f(address,address,uint24,int24,address)" \
+        $CURRENCY0 $CURRENCY1 $FEE $TICK_SPACING $HOOKS)
+    POOL_ID=$(cast keccak $POOL_KEY)
+else
+    echo -e "${YELLOW}⚠️  Could not get pool key from token, trying manual discovery...${NC}"
+    
+    # Fallback: Sort tokens manually
+    if [[ "$AKITA_TOKEN" < "$ZORA" ]]; then
+        CURRENCY0=$AKITA_TOKEN
+        CURRENCY1=$ZORA
+    else
+        CURRENCY0=$ZORA
+        CURRENCY1=$AKITA_TOKEN
+    fi
+    
+    # Try 3% fee tier (ZORA pools)
+    FEE=30000
+    TICK_SPACING=200  # Actual tick spacing from contract
+    HOOKS="0x0000000000000000000000000000000000000000"
+    
+    POOL_KEY=$(cast abi-encode "f(address,address,uint24,int24,address)" \
+        $CURRENCY0 $CURRENCY1 $FEE $TICK_SPACING $HOOKS)
+    POOL_ID=$(cast keccak $POOL_KEY)
+fi
 
-echo -e "${BLUE}   Checking AKITA/ZORA 0.3% pool...${NC}"
+echo -e "${BLUE}   Querying PoolManager for current price...${NC}"
 echo -e "${BLUE}   PoolId: $POOL_ID${NC}"
 
 # Query slot0 from PoolManager
@@ -85,19 +106,22 @@ SLOT0=$(cast call $UNISWAP_V4_POOL_MANAGER \
 
 if [ ! -z "$SLOT0" ] && [ "$SLOT0" != "0" ]; then
     POOL_FOUND=true
-    echo -e "${GREEN}✅ Found AKITA/ZORA V4 pool (0.3% fee)${NC}"
+    echo -e "${GREEN}✅ Found Uniswap V4 pool${NC}"
     
     # Extract tick (second value)
     TICK=$(echo $SLOT0 | awk '{print $2}')
     echo -e "${GREEN}   Current tick:${NC} $TICK"
     
-    # If tokens were swapped, invert the tick
-    if [[ "$CURRENCY0" == "$ZORA" ]]; then
+    # Check if we need to invert tick (if AKITA is currency1)
+    if [[ "$CURRENCY1" == "$AKITA_TOKEN" ]]; then
+        # Tick represents currency0/currency1, we want AKITA/other
+        # So we invert
         TICK=$((-1 * TICK))
-        echo -e "${GREEN}   Adjusted tick (AKITA/ZORA):${NC} $TICK"
+        echo -e "${GREEN}   Adjusted tick (AKITA price):${NC} $TICK"
     fi
     
     # Ajna buckets: bucket = 3696 + (tick / 100)
+    # This is an approximation since Ajna uses 1.005 and UniV4 uses 1.0001
     TICK_OFFSET=$((TICK / 100))
     SUGGESTED_BUCKET=$((3696 + TICK_OFFSET))
     
@@ -109,50 +133,9 @@ if [ ! -z "$SLOT0" ] && [ "$SLOT0" != "0" ]; then
     fi
     
     echo -e "${GREEN}   Suggested Ajna bucket:${NC} $SUGGESTED_BUCKET"
-    echo -e "${GREEN}   (Based on current V4 market price)${NC}"
-fi
-
-# If 0.3% not found, try 1% fee tier
-if [ "$POOL_FOUND" = false ]; then
-    echo -e "${BLUE}   Checking AKITA/ZORA 1% pool...${NC}"
-    FEE=10000
-    TICK_SPACING=200
-    
-    POOL_KEY=$(cast abi-encode "f(address,address,uint24,int24,address)" $CURRENCY0 $CURRENCY1 $FEE $TICK_SPACING $HOOKS)
-    POOL_ID=$(cast keccak $POOL_KEY)
-    
-    SLOT0=$(cast call $UNISWAP_V4_POOL_MANAGER \
-        "getSlot0(bytes32)(uint160,int24,uint24,uint24)" \
-        $POOL_ID 2>/dev/null || echo "")
-    
-    if [ ! -z "$SLOT0" ] && [ "$SLOT0" != "0" ]; then
-        POOL_FOUND=true
-        echo -e "${GREEN}✅ Found AKITA/ZORA V4 pool (1% fee)${NC}"
-        
-        TICK=$(echo $SLOT0 | awk '{print $2}')
-        echo -e "${GREEN}   Current tick:${NC} $TICK"
-        
-        if [[ "$CURRENCY0" == "$ZORA" ]]; then
-            TICK=$((-1 * TICK))
-            echo -e "${GREEN}   Adjusted tick (AKITA/ZORA):${NC} $TICK"
-        fi
-        
-        TICK_OFFSET=$((TICK / 100))
-        SUGGESTED_BUCKET=$((3696 + TICK_OFFSET))
-        
-        if [ $SUGGESTED_BUCKET -lt 0 ]; then
-            SUGGESTED_BUCKET=0
-        elif [ $SUGGESTED_BUCKET -gt 7387 ]; then
-            SUGGESTED_BUCKET=7387
-        fi
-        
-        echo -e "${GREEN}   Suggested Ajna bucket:${NC} $SUGGESTED_BUCKET"
-        echo -e "${GREEN}   (Based on current V4 market price)${NC}"
-    fi
-fi
-
-if [ "$POOL_FOUND" = false ]; then
-    echo -e "${YELLOW}⚠️  Could not find AKITA/ZORA V4 pool, using default bucket 3696${NC}"
+    echo -e "${GREEN}   (Based on current market price)${NC}"
+else
+    echo -e "${YELLOW}⚠️  Could not query V4 pool, using default bucket 3696${NC}"
 fi
 
 echo ""
