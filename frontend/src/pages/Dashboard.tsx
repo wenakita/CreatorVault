@@ -121,6 +121,37 @@ export function Dashboard() {
         </div>
       </div>
 
+      {/* How It Works */}
+      <div className="neu-card p-8">
+        <h2 className="text-2xl font-semibold mb-6">How Vault Strategies Work</h2>
+        <p className="text-zinc-400 mb-8">
+          When creators deposit tokens, funds are automatically allocated across multiple yield-generating strategies:
+        </p>
+        
+        <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="neu-card-inset p-5 rounded-xl">
+            <div className="text-sm text-zinc-500 mb-2">WETH LP</div>
+            <div className="text-2xl font-bold text-[#0052FF]">25%</div>
+            <div className="text-xs text-zinc-600 mt-2">Uniswap V3 liquidity</div>
+          </div>
+          <div className="neu-card-inset p-5 rounded-xl">
+            <div className="text-sm text-zinc-500 mb-2">USDC LP</div>
+            <div className="text-2xl font-bold text-[#0052FF]">25%</div>
+            <div className="text-xs text-zinc-600 mt-2">Stable pair liquidity</div>
+          </div>
+          <div className="neu-card-inset p-5 rounded-xl">
+            <div className="text-sm text-zinc-500 mb-2">Ajna</div>
+            <div className="text-2xl font-bold text-[#0052FF]">25%</div>
+            <div className="text-xs text-zinc-600 mt-2">Lending protocol</div>
+          </div>
+          <div className="neu-card-inset p-5 rounded-xl">
+            <div className="text-sm text-zinc-500 mb-2">Idle</div>
+            <div className="text-2xl font-bold text-purple-500">25%</div>
+            <div className="text-xs text-zinc-600 mt-2">Available reserve</div>
+          </div>
+        </div>
+      </div>
+
       {/* Vaults Grid */}
       <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
         {vaults.map((vault) => (

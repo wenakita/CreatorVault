@@ -20,10 +20,6 @@ import {
 import { AKITA } from '../config/contracts'
 import { ConnectButton } from '../components/ConnectButton'
 import { TokenImage } from '../components/TokenImage'
-import { FlowVisualization } from '../components/FlowVisualization'
-import { TechnicalMetric, MetricGrid } from '../components/TechnicalMetric'
-import { ManifoldBackground } from '../components/ManifoldBackground'
-import { BasinCard } from '../components/BasinCard'
 
 // Wrapper ABI - users deposit AKITA, get wsAKITA directly
 const WRAPPER_ABI = [
@@ -260,57 +256,7 @@ export function Vault() {
         </MetricGrid>
       </motion.div>
 
-      {/* Vault Strategy Allocation */}
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ delay: 0.25 }}
-      >
-        <BasinCard
-          label="Multi-Strategy Allocation"
-          title="Vault Strategy Pipeline"
-          tag="Post-Launch"
-          accent="blue"
-        >
-          <p className="text-slate-400 text-sm mb-6 leading-relaxed">
-            When the creator deposits to the vault, funds are automatically allocated across multiple yield strategies:
-          </p>
-          
-          <FlowVisualization
-            nodes={[
-              { label: '50M AKITA Deposited', value: 'Creator Action' },
-              { label: 'Strategy Router', highlight: true },
-            ]}
-            branches={[
-              [{ label: '12.5M', value: 'WETH LP' }],
-              [{ label: '12.5M', value: 'USDC LP' }],
-              [{ label: '12.5M', value: 'Ajna Lending' }],
-              [{ label: '12.5M', value: 'Idle Reserve' }],
-            ]}
-          />
-          
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mt-6">
-            <div className="p-3 bg-black/20 border border-basalt-light">
-              <div className="text-xs font-mono text-slate-500 mb-1">WETH LP</div>
-              <div className="text-sm font-mono text-purple-500">25%</div>
-            </div>
-            <div className="p-3 bg-black/20 border border-basalt-light">
-              <div className="text-xs font-mono text-slate-500 mb-1">USDC LP</div>
-              <div className="text-sm font-mono text-purple-500">25%</div>
-            </div>
-            <div className="p-3 bg-black/20 border border-basalt-light">
-              <div className="text-xs font-mono text-slate-500 mb-1">Ajna</div>
-              <div className="text-sm font-mono text-purple-500">25%</div>
-            </div>
-            <div className="p-3 bg-black/20 border border-basalt-light">
-              <div className="text-xs font-mono text-slate-500 mb-1">Idle</div>
-              <div className="text-sm font-mono text-blue-500">25%</div>
-            </div>
-          </div>
-        </BasinCard>
-      </motion.div>
-
-      <div className="grid sm:grid-cols-5 gap-6 relative z-10">
+      <div className="grid sm:grid-cols-5 gap-6">
         {/* Deposit/Withdraw Card */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
