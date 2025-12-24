@@ -236,14 +236,14 @@ export function ActivateAkita() {
             </div>
             
             <div className="pt-3 border-t border-white/5">
-              <p className="text-xs text-slate-500 mb-2">Vault AKITA Allocation:</p>
+              <p className="text-xs text-slate-500 mb-2">Underlying AKITA Allocation (Vault Strategies):</p>
               <div className="grid grid-cols-2 gap-2 text-xs">
                 <div className="flex justify-between">
-                  <span className="text-slate-400">AKITA/WETH 1%</span>
+                  <span className="text-slate-400">AKITA/WETH V3</span>
                   <span className="text-white">12.5M</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-slate-400">AKITA/USDC 1%</span>
+                  <span className="text-slate-400">AKITA/USDC V3</span>
                   <span className="text-white">12.5M</span>
                 </div>
                 <div className="flex justify-between">
@@ -253,6 +253,28 @@ export function ActivateAkita() {
                 <div className="flex justify-between">
                   <span className="text-slate-400">Idle in Vault</span>
                   <span className="text-white">12.5M</span>
+                </div>
+              </div>
+            </div>
+            
+            <div className="pt-3 border-t border-white/5">
+              <p className="text-xs text-purple-400 font-medium mb-2">wsAKITA Trading Pool:</p>
+              <div className="grid grid-cols-2 gap-2 text-xs">
+                <div className="flex justify-between">
+                  <span className="text-slate-400">Pair</span>
+                  <span className="text-purple-300">wsAKITA/ETH</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-slate-400">Protocol</span>
+                  <span className="text-purple-300">Uniswap V4</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-slate-400">Fee Tier</span>
+                  <span className="text-purple-300">0.3%</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-slate-400">Hook Tax</span>
+                  <span className="text-purple-300">6.9%</span>
                 </div>
               </div>
             </div>
@@ -318,13 +340,13 @@ export function ActivateAkita() {
               2
             </div>
             <div className="flex-1">
-              <p className="text-white font-medium">Deploy to Strategies</p>
+              <p className="text-white font-medium">Deploy Underlying AKITA to Strategies</p>
               <div className="grid grid-cols-2 gap-2 mt-1 text-xs">
                 <div className="p-2 rounded bg-white/[0.02] border border-white/5">
-                  <p className="text-slate-400">12.5M → AKITA/WETH 1%</p>
+                  <p className="text-slate-400">12.5M → AKITA/WETH V3 (Charm)</p>
                 </div>
                 <div className="p-2 rounded bg-white/[0.02] border border-white/5">
-                  <p className="text-slate-400">12.5M → AKITA/USDC 1%</p>
+                  <p className="text-slate-400">12.5M → AKITA/USDC V3 (Charm)</p>
                 </div>
                 <div className="p-2 rounded bg-white/[0.02] border border-white/5">
                   <p className="text-slate-400">12.5M → Ajna lending</p>
@@ -351,8 +373,8 @@ export function ActivateAkita() {
               4
             </div>
             <div className="flex-1">
-              <p className="text-white font-medium">Launch CCA</p>
-              <p className="text-slate-500">25M wsAKITA price discovery</p>
+              <p className="text-white font-medium">Launch CCA + wsAKITA/ETH V4 Pool</p>
+              <p className="text-slate-500">25M wsAKITA auction · 0.3% fee tier with 6.9% hook</p>
             </div>
           </div>
         </div>
@@ -399,10 +421,17 @@ export function ActivateAkita() {
             </div>
             
             <div className="space-y-2">
-              <div className="p-3 rounded-lg bg-green-500/10 border border-green-500/20 text-xs">
-                <p className="text-green-300 font-medium mb-1">✓ Vault Strategy Allocation (Post-Launch)</p>
+              <div className="p-3 rounded-lg bg-green-500/10 border border-green-500/20 text-xs space-y-2">
+                <p className="text-green-300 font-medium">✓ Underlying AKITA Strategies (Vault):</p>
                 <p className="text-green-400/80">
-                  When you deposit to vault: split 4 ways (12.5M AKITA/WETH LP, 12.5M AKITA/USDC LP, 12.5M Ajna lending, 12.5M idle)
+                  4-way split: AKITA/WETH V3 Charm · AKITA/USDC V3 Charm · Ajna Lending · Idle Reserve
+                </p>
+              </div>
+              
+              <div className="p-3 rounded-lg bg-purple-500/10 border border-purple-500/20 text-xs space-y-2">
+                <p className="text-purple-300 font-medium">✓ wsAKITA Trading Pool (Created Post-Auction):</p>
+                <p className="text-purple-400/80">
+                  wsAKITA/ETH on Uniswap V4 · 0.3% fee tier · 6.9% hook tax for jackpot & burns
                 </p>
               </div>
               

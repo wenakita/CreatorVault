@@ -309,11 +309,11 @@ export function Dashboard() {
                 <div>
                   <span className="label block mb-4">Trading Pair</span>
                   <div className="headline text-3xl mb-2">wsAKITA/ETH</div>
-                  <p className="text-zinc-600 text-sm font-light">Uniswap V3 Liquidity Pool</p>
+                  <p className="text-zinc-600 text-sm font-light">Uniswap V4 with Hook</p>
                 </div>
                 <div className="text-right">
                   <span className="label block mb-2">Fee Tier</span>
-                  <div className="value mono text-2xl">1%</div>
+                  <div className="value mono text-2xl">0.3%</div>
                 </div>
               </div>
 
@@ -321,16 +321,16 @@ export function Dashboard() {
 
               <div className="space-y-4">
                 <div className="flex justify-between items-center">
-                  <span className="text-sm text-zinc-500 font-light">Trading Volume</span>
-                  <div className="value mono text-sm">Real-time</div>
+                  <span className="text-sm text-zinc-500 font-light">Protocol</span>
+                  <div className="value mono text-sm text-cyan-400">Uniswap V4</div>
                 </div>
                 <div className="flex justify-between items-center">
-                  <span className="text-sm text-zinc-500 font-light">LP Rewards</span>
-                  <div className="value mono text-sm text-cyan-400">Auto-compound</div>
+                  <span className="text-sm text-zinc-500 font-light">Hook Enabled</span>
+                  <div className="value mono text-sm text-purple-400">6.9% Tax</div>
                 </div>
                 <div className="flex justify-between items-center">
-                  <span className="text-sm text-zinc-500 font-light">Your Share</span>
-                  <div className="value mono text-sm text-cyan-400">Proportional</div>
+                  <span className="text-sm text-zinc-500 font-light">Status</span>
+                  <div className="value mono text-sm text-cyan-400">Live Trading</div>
                 </div>
               </div>
             </motion.div>
