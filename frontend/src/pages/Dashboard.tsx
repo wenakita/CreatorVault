@@ -257,7 +257,108 @@ export function Dashboard() {
                   exit={{ opacity: 0, x: -20 }}
                   transition={{ duration: 0.4 }}
                 >
-                  {/* Page 2: Fee Architecture */}
+                  {/* Page 2: Strategy Allocation */}
+                  <div className="space-y-8">
+                    <div className="text-center space-y-4">
+                      <span className="label">Automated Deployment</span>
+                      <h3 className="headline text-4xl">Multi-Strategy Allocation</h3>
+                      <p className="text-zinc-600 font-light max-w-2xl mx-auto">
+                        Your underlying AKITA tokens are automatically deployed across four strategies
+                      </p>
+                    </div>
+
+                    <div className="grid grid-cols-2 lg:grid-cols-4 gap-px bg-zinc-900">
+                      <motion.div
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.4, delay: 0.1 }}
+                        className="bg-black p-8 space-y-4"
+                      >
+                        <span className="label">Uniswap V3 WETH</span>
+                        <div className="value mono text-5xl glow-cyan">25%</div>
+                        <p className="text-zinc-700 text-xs font-light mt-4">
+                          LP Fees + Charm Rebalancing
+                        </p>
+                      </motion.div>
+
+                      <motion.div
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.4, delay: 0.2 }}
+                        className="bg-black p-8 space-y-4"
+                      >
+                        <span className="label">Stable Pair USDC</span>
+                        <div className="value mono text-5xl glow-cyan">25%</div>
+                        <p className="text-zinc-700 text-xs font-light mt-4">
+                          Low Volatility LP Position
+                        </p>
+                      </motion.div>
+
+                      <motion.div
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.4, delay: 0.3 }}
+                        className="bg-black p-8 space-y-4"
+                      >
+                        <span className="label">Ajna Lending</span>
+                        <div className="value mono text-5xl glow-purple">25%</div>
+                        <p className="text-zinc-700 text-xs font-light mt-4">
+                          Permissionless Lending Yield
+                        </p>
+                      </motion.div>
+
+                      <motion.div
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.4, delay: 0.4 }}
+                        className="bg-black p-8 space-y-4"
+                      >
+                        <span className="label">Idle Reserve</span>
+                        <div className="value mono text-5xl">25%</div>
+                        <p className="text-zinc-700 text-xs font-light mt-4">
+                          Available for Withdrawals
+                        </p>
+                      </motion.div>
+                    </div>
+
+                    <div className="card p-10">
+                      <div className="grid lg:grid-cols-3 gap-8">
+                        <div className="space-y-4">
+                          <span className="label">Total Deployed</span>
+                          <div className="value mono text-3xl glow-cyan">75%</div>
+                          <p className="text-zinc-600 text-sm font-light">
+                            Actively earning yield across LP and lending
+                          </p>
+                        </div>
+                        <div className="space-y-4">
+                          <span className="label">Idle Reserve</span>
+                          <div className="value mono text-3xl">25%</div>
+                          <p className="text-zinc-600 text-sm font-light">
+                            Available for instant withdrawals
+                          </p>
+                        </div>
+                        <div className="space-y-4">
+                          <span className="label">Rebalancing</span>
+                          <div className="value mono text-3xl text-purple-400">Auto</div>
+                          <p className="text-zinc-600 text-sm font-light">
+                            Charm strategies optimize LP positions
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </motion.div>
+              )}
+
+              {carouselPage === 2 && (
+                <motion.div
+                  key="page-2"
+                  initial={{ opacity: 0, x: 20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: -20 }}
+                  transition={{ duration: 0.4 }}
+                >
+                  {/* Page 3: Fee Architecture */}
                   <div className="space-y-8">
                     <div className="grid lg:grid-cols-2 gap-8">
                       {/* Liquidity Pool */}
@@ -384,7 +485,7 @@ export function Dashboard() {
 
             {/* Carousel Navigation - Arrows Only */}
             <button
-              onClick={() => setCarouselPage((prev) => (prev === 0 ? 1 : 0))}
+              onClick={() => setCarouselPage((prev) => (prev + 1) % 3)}
               className="absolute -right-16 top-1/2 -translate-y-1/2 p-4 rounded-full bg-zinc-900/80 hover:bg-purple-900/80 border border-zinc-800 hover:border-purple-500/50 transition-all group"
             >
               <ChevronRight className="w-6 h-6 text-zinc-400 group-hover:text-purple-400 transition-colors" />
@@ -404,6 +505,14 @@ export function Dashboard() {
                 onClick={() => setCarouselPage(1)}
                 className={`transition-all ${
                   carouselPage === 1
+                    ? 'w-8 h-2 bg-purple-500'
+                    : 'w-2 h-2 bg-zinc-700 hover:bg-zinc-600'
+                } rounded-full`}
+              />
+              <button
+                onClick={() => setCarouselPage(2)}
+                className={`transition-all ${
+                  carouselPage === 2
                     ? 'w-8 h-2 bg-purple-500'
                     : 'w-2 h-2 bg-zinc-700 hover:bg-zinc-600'
                 } rounded-full`}
