@@ -8,7 +8,7 @@ import {
   Loader2,
   Zap,
 } from 'lucide-react'
-import { AKITA, CONTRACTS } from '../config/contracts'
+import { AKITA } from '../config/contracts'
 import { ConnectButton } from '../components/ConnectButton'
 
 // ABIs for batch encoding
@@ -21,6 +21,13 @@ const VAULT_ABI = [
       { name: 'receiver', type: 'address' },
     ],
     outputs: [{ name: 'shares', type: 'uint256' }],
+    stateMutability: 'nonpayable',
+  },
+  {
+    name: 'forceDeployToStrategies',
+    type: 'function',
+    inputs: [],
+    outputs: [],
     stateMutability: 'nonpayable',
   },
 ] as const
@@ -48,30 +55,12 @@ const CCA_ABI = [
   },
 ] as const
 
-const LP_DEPLOYER_ABI = [
-  {
-    name: 'deployLP',
-    type: 'function',
-    inputs: [
-      { name: 'wsToken', type: 'address' },
-      { name: 'tokenAmount', type: 'uint256' },
-      { name: 'minETH', type: 'uint256' },
-    ],
-    outputs: [
-      { name: 'tokenId', type: 'uint256' },
-      { name: 'liquidity', type: 'uint128' },
-    ],
-    stateMutability: 'payable',
-  },
-] as const
-
 export function ActivateAkita() {
   const { address, isConnected, connector } = useAccount()
   // Fixed parameters for AKITA launch
   const depositAmount = '50000000' // 50M AKITA (locked)
-  const auctionPercent = '50' // 50% to auction, 50% to LP (locked)
+  const auctionPercent = '50' // 50% to auction, 50% stays in vault (locked)
   const [requiredRaise, setRequiredRaise] = useState('0.1') // 0.1 ETH minimum
-  const [lpEthAmount, setLpEthAmount] = useState('0.5') // ETH to pair with wsAKITA for LP
 
   // Read AKITA balance
   const { data: tokenBalance } = useReadContract({
@@ -90,9 +79,7 @@ export function ActivateAkita() {
 
   const depositAmountBigInt = parseUnits(depositAmount, 18)
   const auctionAmountBigInt = (depositAmountBigInt * BigInt(auctionPercent)) / 100n
-  const lpAmountBigInt = depositAmountBigInt - auctionAmountBigInt // Remaining 50% for LP
   const requiredRaiseBigInt = parseUnits(requiredRaise, 18)
-  const lpEthBigInt = parseUnits(lpEthAmount, 18)
 
   // Check if using smart wallet (Coinbase Smart Wallet supports batching)
   const isSmartWallet = connector?.id === 'coinbaseWalletSDK'
@@ -123,7 +110,17 @@ export function ActivateAkita() {
           }),
           value: 0n,
         },
-        // 3. Approve vault shares to Wrapper
+        // 3. Deploy vault's AKITA to Charm strategy (AKITA/WETH V3)
+        {
+          to: AKITA.vault as `0x${string}`,
+          data: encodeFunctionData({
+            abi: VAULT_ABI,
+            functionName: 'forceDeployToStrategies',
+            args: [],
+          }),
+          value: 0n,
+        },
+        // 4. Approve vault shares to Wrapper
         {
           to: AKITA.vault as `0x${string}`,
           data: encodeFunctionData({
@@ -133,7 +130,7 @@ export function ActivateAkita() {
           }),
           value: 0n,
         },
-        // 4. Wrap shares to wsAKITA
+        // 5. Wrap shares to wsAKITA
         {
           to: AKITA.wrapper as `0x${string}`,
           data: encodeFunctionData({
@@ -143,7 +140,7 @@ export function ActivateAkita() {
           }),
           value: 0n,
         },
-        // 5. Approve wsAKITA to CCA
+        // 6. Approve wsAKITA to CCA
         {
           to: AKITA.shareOFT as `0x${string}`,
           data: encodeFunctionData({
@@ -153,7 +150,7 @@ export function ActivateAkita() {
           }),
           value: 0n,
         },
-        // 6. Launch CCA Auction
+        // 7. Launch CCA Auction
         {
           to: AKITA.ccaStrategy as `0x${string}`,
           data: encodeFunctionData({
@@ -163,37 +160,13 @@ export function ActivateAkita() {
           }),
           value: 0n,
         },
-        // 7. Approve wsAKITA to LP Deployer
-        {
-          to: AKITA.shareOFT as `0x${string}`,
-          data: encodeFunctionData({
-            abi: erc20Abi,
-            functionName: 'approve',
-            args: [CONTRACTS.lpDeployer as `0x${string}`, lpAmountBigInt],
-          }),
-          value: 0n,
-        },
-        // 8. Deploy LP (wsAKITA/WETH)
-        {
-          to: CONTRACTS.lpDeployer as `0x${string}`,
-          data: encodeFunctionData({
-            abi: LP_DEPLOYER_ABI,
-            functionName: 'deployLP',
-            args: [
-              AKITA.shareOFT as `0x${string}`,
-              lpAmountBigInt,
-              (lpEthBigInt * 95n) / 100n, // 5% slippage on ETH
-            ],
-          }),
-          value: lpEthBigInt, // Send ETH for pairing
-        },
       ]
 
       // Send as batched transaction
       sendTransaction({
         to: address, // Smart wallet will batch these
         data: '0x',
-        value: lpEthBigInt, // Total ETH needed for LP
+        value: 0n,
         // @ts-ignore - Coinbase Smart Wallet supports calls array
         calls,
       })
@@ -258,12 +231,12 @@ export function ActivateAkita() {
               <span className="font-semibold">25M wsAKITA</span>
             </div>
             <div className="flex justify-between items-center">
-              <span className="text-slate-400">LP Deployed</span>
-              <span className="font-semibold">25M wsAKITA + {lpEthAmount} ETH</span>
+              <span className="text-slate-400">Your wsAKITA</span>
+              <span className="font-semibold">25M (in wallet)</span>
             </div>
             <div className="flex justify-between items-center">
-              <span className="text-slate-400">LP NFT</span>
-              <span className="font-semibold">In your wallet ✓</span>
+              <span className="text-slate-400">AKITA/WETH LP</span>
+              <span className="font-semibold">50M on Charm V3</span>
             </div>
             <div className="flex justify-between items-center">
               <span className="text-slate-400">Minimum Raise</span>
@@ -326,8 +299,8 @@ export function ActivateAkita() {
               2
             </div>
             <div>
-              <p className="text-white font-medium">Wrap to wsAKITA</p>
-              <p className="text-slate-500">Convert to wrapped shares</p>
+              <p className="text-white font-medium">Deploy to Charm</p>
+              <p className="text-slate-500">AKITA/WETH V3 liquidity</p>
             </div>
           </div>
 
@@ -336,8 +309,8 @@ export function ActivateAkita() {
               3
             </div>
             <div>
-              <p className="text-white font-medium">25M to CCA Auction</p>
-              <p className="text-slate-500">7-day price discovery</p>
+              <p className="text-white font-medium">Wrap to wsAKITA</p>
+              <p className="text-slate-500">50M vault shares</p>
             </div>
           </div>
 
@@ -346,8 +319,8 @@ export function ActivateAkita() {
               4
             </div>
             <div>
-              <p className="text-white font-medium">25M to Uniswap V4</p>
-              <p className="text-slate-500">Instant liquidity + LP NFT</p>
+              <p className="text-white font-medium">Launch CCA</p>
+              <p className="text-slate-500">25M wsAKITA price discovery</p>
             </div>
           </div>
         </div>
@@ -394,45 +367,27 @@ export function ActivateAkita() {
             </div>
             
             <div className="p-3 rounded-lg bg-green-500/10 border border-green-500/20 text-xs">
-              <p className="text-green-300 font-medium mb-1">✓ LP Auto-Deployed</p>
+              <p className="text-green-300 font-medium mb-1">✓ Charm Strategy Active</p>
               <p className="text-green-400/80">
-                25M wsAKITA + {lpEthAmount} ETH deployed to Uniswap V4. LP NFT sent to your wallet - you own and control the liquidity!
+                50M AKITA automatically deployed to Charm Finance for AKITA/WETH V3 liquidity with automated rebalancing
               </p>
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium mb-2">
-                Minimum Raise (ETH)
-              </label>
-              <input
-                type="text"
-                value={requiredRaise}
-                onChange={(e) => setRequiredRaise(e.target.value)}
-                className="input-field w-full"
-                placeholder="0.1"
-              />
-              <p className="text-xs text-slate-500 mt-1">
-                For CCA auction
-              </p>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium mb-2">
-                LP ETH Amount
-              </label>
-              <input
-                type="text"
-                value={lpEthAmount}
-                onChange={(e) => setLpEthAmount(e.target.value)}
-                className="input-field w-full"
-                placeholder="0.5"
-              />
-              <p className="text-xs text-slate-500 mt-1">
-                To pair with 25M wsAKITA
-              </p>
-            </div>
+          <div>
+            <label className="block text-sm font-medium mb-2">
+              Minimum Raise (ETH)
+            </label>
+            <input
+              type="text"
+              value={requiredRaise}
+              onChange={(e) => setRequiredRaise(e.target.value)}
+              className="input-field w-full"
+              placeholder="0.1"
+            />
+            <p className="text-xs text-slate-500 mt-1">
+              Auction must raise at least this much ETH to succeed
+            </p>
           </div>
         </div>
       </motion.div>
@@ -459,14 +414,14 @@ export function ActivateAkita() {
 
         <p className="text-xs text-slate-500 text-center max-w-md">
           {isSmartWallet 
-            ? 'All 8 steps batched into one gasless transaction via Coinbase Smart Wallet'
+            ? 'All 7 steps batched into one gasless transaction via Coinbase Smart Wallet'
             : 'Powered by ERC-4337 Account Abstraction'
           }
         </p>
 
         <div className="text-center text-xs text-slate-600 space-y-1">
-          <p>Transaction includes: approve + deposit + wrap + auction + LP deployment</p>
-          <p>ETH needed: {lpEthAmount} (for LP pairing) + gas {isSmartWallet && '(potentially sponsored)'}</p>
+          <p>Transaction includes: approve + deposit + charm deploy + wrap + approve + auction</p>
+          <p>Estimated gas: ~0.006 ETH {isSmartWallet && '(potentially sponsored)'}</p>
         </div>
       </div>
     </div>
