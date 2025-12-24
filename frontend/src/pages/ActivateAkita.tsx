@@ -1,17 +1,17 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { motion } from 'framer-motion'
-import { useAccount, useWriteContract, useWaitForTransactionReceipt, useReadContract } from 'wagmi'
-import { parseUnits, formatUnits, erc20Abi } from 'viem'
+import { useAccount, useWaitForTransactionReceipt, useReadContract, useSendTransaction } from 'wagmi'
+import { parseUnits, formatUnits, erc20Abi, encodeFunctionData } from 'viem'
 import {
   Rocket,
   CheckCircle2,
   Loader2,
-  ArrowRight,
+  Zap,
 } from 'lucide-react'
 import { AKITA } from '../config/contracts'
 import { ConnectButton } from '../components/ConnectButton'
 
-// ABIs for the 3-step process
+// ABIs for batch encoding
 const VAULT_ABI = [
   {
     name: 'deposit',
@@ -48,20 +48,11 @@ const CCA_ABI = [
   },
 ] as const
 
-type Step = {
-  id: string
-  label: string
-  description: string
-  status: 'pending' | 'current' | 'completed' | 'error'
-}
-
 export function ActivateAkita() {
-  const { address, isConnected } = useAccount()
+  const { address, isConnected, connector } = useAccount()
   const [depositAmount, setDepositAmount] = useState('100000000') // 100M AKITA
   const [auctionPercent, setAuctionPercent] = useState('50') // 50% to auction
   const [requiredRaise, setRequiredRaise] = useState('0.1') // 0.1 ETH minimum
-  
-  const [currentStepIndex, setCurrentStepIndex] = useState(0)
 
   // Read AKITA balance
   const { data: tokenBalance } = useReadContract({
@@ -72,144 +63,97 @@ export function ActivateAkita() {
     query: { enabled: !!address },
   })
 
-  // Read vault shares balance (to continue from step 2 if interrupted)
-  const { data: vaultSharesBalance } = useReadContract({
-    address: AKITA.vault as `0x${string}`,
-    abi: erc20Abi,
-    functionName: 'balanceOf',
-    args: address ? [address] : undefined,
-    query: { enabled: !!address },
-  })
-
-  // Read wsAKITA balance
-  const { data: wsAkitaBalance } = useReadContract({
-    address: AKITA.shareOFT as `0x${string}`,
-    abi: erc20Abi,
-    functionName: 'balanceOf',
-    args: address ? [address] : undefined,
-    query: { enabled: !!address },
-  })
-
-  // Transaction hooks
-  const { writeContract, data: txHash, isPending, reset } = useWriteContract()
-  const { isLoading: isConfirming, isSuccess, isError, error } = useWaitForTransactionReceipt({
+  // Single batched transaction using smart wallet
+  const { sendTransaction, data: txHash, isPending } = useSendTransaction()
+  const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({
     hash: txHash,
   })
 
   const depositAmountBigInt = parseUnits(depositAmount, 18)
+  const auctionAmountBigInt = (depositAmountBigInt * BigInt(auctionPercent)) / 100n
   const requiredRaiseBigInt = parseUnits(requiredRaise, 18)
 
-  const steps: Step[] = [
-    {
-      id: 'approve-vault',
-      label: 'Approve AKITA',
-      description: 'Allow vault to receive your AKITA tokens',
-      status: currentStepIndex > 0 ? 'completed' : currentStepIndex === 0 ? 'current' : 'pending',
-    },
-    {
-      id: 'deposit-vault',
-      label: 'Deposit to Vault',
-      description: 'Deposit AKITA into vault',
-      status: currentStepIndex > 1 ? 'completed' : currentStepIndex === 1 ? 'current' : 'pending',
-    },
-    {
-      id: 'approve-wrapper',
-      label: 'Approve Vault Shares',
-      description: 'Allow wrapper to convert your shares',
-      status: currentStepIndex > 2 ? 'completed' : currentStepIndex === 2 ? 'current' : 'pending',
-    },
-    {
-      id: 'wrap-shares',
-      label: 'Wrap to wsAKITA',
-      description: 'Convert vault shares to wsAKITA tokens',
-      status: currentStepIndex > 3 ? 'completed' : currentStepIndex === 3 ? 'current' : 'pending',
-    },
-    {
-      id: 'approve-cca',
-      label: 'Approve wsAKITA',
-      description: 'Allow CCA to access tokens for auction',
-      status: currentStepIndex > 4 ? 'completed' : currentStepIndex === 4 ? 'current' : 'pending',
-    },
-    {
-      id: 'launch-auction',
-      label: 'Launch Auction',
-      description: 'Start the 7-day CCA auction',
-      status: currentStepIndex > 5 ? 'completed' : currentStepIndex === 5 ? 'current' : 'pending',
-    },
-  ]
+  // Check if using smart wallet (Coinbase Smart Wallet supports batching)
+  const isSmartWallet = connector?.id === 'coinbaseWalletSDK'
 
-  // Auto-advance when transaction succeeds
-  useEffect(() => {
-    if (isSuccess && currentStepIndex < 6) {
-      // Small delay for better UX
-      setTimeout(() => {
-        setCurrentStepIndex(prev => prev + 1)
-        reset()
-      }, 1000)
-    }
-  }, [isSuccess, currentStepIndex, reset])
+  const handleBatchedActivation = async () => {
+    if (!address) return
 
-  const executeCurrentStep = () => {
-    switch (currentStepIndex) {
-      case 0: // Approve AKITA to Vault
-        writeContract({
-          address: AKITA.token as `0x${string}`,
-          abi: erc20Abi,
-          functionName: 'approve',
-          args: [AKITA.vault as `0x${string}`, depositAmountBigInt],
-        })
-        break
+    try {
+      // Prepare all transaction data
+      const calls = [
+        // 1. Approve AKITA to Vault
+        {
+          to: AKITA.token as `0x${string}`,
+          data: encodeFunctionData({
+            abi: erc20Abi,
+            functionName: 'approve',
+            args: [AKITA.vault as `0x${string}`, depositAmountBigInt],
+          }),
+          value: 0n,
+        },
+        // 2. Deposit AKITA to Vault
+        {
+          to: AKITA.vault as `0x${string}`,
+          data: encodeFunctionData({
+            abi: VAULT_ABI,
+            functionName: 'deposit',
+            args: [depositAmountBigInt, address],
+          }),
+          value: 0n,
+        },
+        // 3. Approve vault shares to Wrapper
+        {
+          to: AKITA.vault as `0x${string}`,
+          data: encodeFunctionData({
+            abi: erc20Abi,
+            functionName: 'approve',
+            args: [AKITA.wrapper as `0x${string}`, depositAmountBigInt],
+          }),
+          value: 0n,
+        },
+        // 4. Wrap shares to wsAKITA
+        {
+          to: AKITA.wrapper as `0x${string}`,
+          data: encodeFunctionData({
+            abi: WRAPPER_ABI,
+            functionName: 'wrap',
+            args: [depositAmountBigInt],
+          }),
+          value: 0n,
+        },
+        // 5. Approve wsAKITA to CCA
+        {
+          to: AKITA.shareOFT as `0x${string}`,
+          data: encodeFunctionData({
+            abi: erc20Abi,
+            functionName: 'approve',
+            args: [AKITA.ccaStrategy as `0x${string}`, auctionAmountBigInt],
+          }),
+          value: 0n,
+        },
+        // 6. Launch CCA Auction
+        {
+          to: AKITA.ccaStrategy as `0x${string}`,
+          data: encodeFunctionData({
+            abi: CCA_ABI,
+            functionName: 'launchAuctionSimple',
+            args: [auctionAmountBigInt, requiredRaiseBigInt],
+          }),
+          value: 0n,
+        },
+      ]
 
-      case 1: // Deposit AKITA to Vault
-        writeContract({
-          address: AKITA.vault as `0x${string}`,
-          abi: VAULT_ABI,
-          functionName: 'deposit',
-          args: [depositAmountBigInt, address!],
-        })
-        break
-
-      case 2: // Approve vault shares to Wrapper
-        const sharesToApprove = vaultSharesBalance || depositAmountBigInt
-        writeContract({
-          address: AKITA.vault as `0x${string}`,
-          abi: erc20Abi,
-          functionName: 'approve',
-          args: [AKITA.wrapper as `0x${string}`, sharesToApprove],
-        })
-        break
-
-      case 3: // Wrap shares to wsAKITA
-        const sharesToWrap = vaultSharesBalance || depositAmountBigInt
-        writeContract({
-          address: AKITA.wrapper as `0x${string}`,
-          abi: WRAPPER_ABI,
-          functionName: 'wrap',
-          args: [sharesToWrap],
-        })
-        break
-
-      case 4: // Approve wsAKITA to CCA
-        const wsTokensToApprove = wsAkitaBalance || depositAmountBigInt
-        const auctionAmount = (wsTokensToApprove * BigInt(auctionPercent)) / 100n
-        writeContract({
-          address: AKITA.shareOFT as `0x${string}`,
-          abi: erc20Abi,
-          functionName: 'approve',
-          args: [AKITA.ccaStrategy as `0x${string}`, auctionAmount],
-        })
-        break
-
-      case 5: // Launch CCA Auction
-        const wsTokensToAuction = wsAkitaBalance || depositAmountBigInt
-        const finalAuctionAmount = (wsTokensToAuction * BigInt(auctionPercent)) / 100n
-        writeContract({
-          address: AKITA.ccaStrategy as `0x${string}`,
-          abi: CCA_ABI,
-          functionName: 'launchAuctionSimple',
-          args: [finalAuctionAmount, BigInt(requiredRaiseBigInt)],
-        })
-        break
+      // Send as batched transaction
+      sendTransaction({
+        to: address, // Smart wallet will batch these
+        data: '0x',
+        value: 0n,
+        // @ts-ignore - Coinbase Smart Wallet supports calls array
+        calls,
+      })
+    } catch (error) {
+      console.error('Batch transaction error:', error)
     }
   }
 
@@ -235,7 +179,7 @@ export function ActivateAkita() {
   }
 
   // Success state
-  if (currentStepIndex >= 6) {
+  if (isSuccess) {
     return (
       <div className="min-h-[80vh] flex items-center justify-center">
         <motion.div
@@ -277,7 +221,7 @@ export function ActivateAkita() {
           <div className="flex gap-4 justify-center">
             <a href={`/auction/bid/${AKITA.vault}`}>
               <button className="btn-primary px-8 py-3">
-                View Auction →
+                View Auction
               </button>
             </a>
             <a href="/dashboard">
@@ -298,143 +242,165 @@ export function ActivateAkita() {
         <Rocket className="w-12 h-12 text-brand-500 mx-auto mb-4" />
         <h1 className="text-4xl font-bold mb-2">Launch AKITA Auction</h1>
         <p className="text-slate-400">
-          Multi-step activation process to start the CCA auction
+          One-click activation powered by account abstraction
         </p>
       </div>
 
-      {/* Progress Steps */}
-      <div className="glass-card p-6">
-        <div className="space-y-4">
-          {steps.map((step, index) => (
-            <div
-              key={step.id}
-              className={`flex items-start gap-4 p-4 rounded-lg transition-colors ${
-                step.status === 'current'
-                  ? 'bg-brand-500/10 border border-brand-500/30'
-                  : step.status === 'completed'
-                  ? 'bg-green-500/10 border border-green-500/30'
-                  : 'bg-white/[0.02] border border-white/5'
-              }`}
-            >
-              <div
-                className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${
-                  step.status === 'completed'
-                    ? 'bg-green-500 text-white'
-                    : step.status === 'current'
-                    ? 'bg-brand-500 text-white'
-                    : 'bg-white/10 text-slate-500'
-                }`}
-              >
-                {step.status === 'completed' ? (
-                  <CheckCircle2 className="w-5 h-5" />
-                ) : (
-                  <span className="text-sm font-bold">{index + 1}</span>
-                )}
-              </div>
-              <div className="flex-1">
-                <h3 className="font-semibold text-white mb-1">{step.label}</h3>
-                <p className="text-sm text-slate-400">{step.description}</p>
-              </div>
-              {step.status === 'current' && (isPending || isConfirming) && (
-                <Loader2 className="w-5 h-5 animate-spin text-brand-400" />
-              )}
-            </div>
-          ))}
+      {/* What Happens */}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="glass-card p-6"
+      >
+        <div className="flex items-center gap-3 mb-4">
+          <Zap className="w-6 h-6 text-brand-400" />
+          <h2 className="text-xl font-bold">What Happens in One Transaction</h2>
         </div>
-      </div>
-
-      {/* Configuration (only show on first step) */}
-      {currentStepIndex === 0 && (
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="glass-card p-6 space-y-6"
-        >
-          <h2 className="text-xl font-bold">Launch Parameters</h2>
-
-          <div className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium mb-2">
-                Deposit Amount (AKITA)
-              </label>
-              <input
-                type="text"
-                value={depositAmount}
-                onChange={(e) => setDepositAmount(e.target.value)}
-                className="input-field w-full"
-                placeholder="100000000"
-              />
-              <p className="text-xs text-slate-500 mt-1">
-                Your balance: {tokenBalance ? formatUnits(tokenBalance, 18) : '0'} AKITA
-              </p>
+        
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
+          <div className="flex items-start gap-2">
+            <div className="w-6 h-6 rounded-full bg-brand-500/20 text-brand-400 flex items-center justify-center text-xs font-bold flex-shrink-0">
+              1
             </div>
-
             <div>
-              <label className="block text-sm font-medium mb-2">
-                Auction Allocation (%)
-              </label>
-              <input
-                type="text"
-                value={auctionPercent}
-                onChange={(e) => setAuctionPercent(e.target.value)}
-                className="input-field w-full"
-                placeholder="50"
-              />
-              <p className="text-xs text-slate-500 mt-1">
-                Auction: {(Number(depositAmount) * Number(auctionPercent) / 100).toLocaleString()} wsAKITA, 
-                You keep: {(Number(depositAmount) * (100 - Number(auctionPercent)) / 100).toLocaleString()} wsAKITA
-              </p>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium mb-2">
-                Minimum Raise (ETH)
-              </label>
-              <input
-                type="text"
-                value={requiredRaise}
-                onChange={(e) => setRequiredRaise(e.target.value)}
-                className="input-field w-full"
-                placeholder="0.1"
-              />
-              <p className="text-xs text-slate-500 mt-1">
-                Auction must raise at least this much ETH to succeed
-              </p>
+              <p className="text-white font-medium">Deposit {depositAmount} AKITA</p>
+              <p className="text-slate-500">Into vault contract</p>
             </div>
           </div>
-        </motion.div>
-      )}
 
-      {/* Action Button */}
+          <div className="flex items-start gap-2">
+            <div className="w-6 h-6 rounded-full bg-brand-500/20 text-brand-400 flex items-center justify-center text-xs font-bold flex-shrink-0">
+              2
+            </div>
+            <div>
+              <p className="text-white font-medium">Wrap to wsAKITA</p>
+              <p className="text-slate-500">Convert to wrapped shares</p>
+            </div>
+          </div>
+
+          <div className="flex items-start gap-2">
+            <div className="w-6 h-6 rounded-full bg-brand-500/20 text-brand-400 flex items-center justify-center text-xs font-bold flex-shrink-0">
+              3
+            </div>
+            <div>
+              <p className="text-white font-medium">Allocate {auctionPercent}% to auction</p>
+              <p className="text-slate-500">You keep {100 - Number(auctionPercent)}%</p>
+            </div>
+          </div>
+
+          <div className="flex items-start gap-2">
+            <div className="w-6 h-6 rounded-full bg-brand-500/20 text-brand-400 flex items-center justify-center text-xs font-bold flex-shrink-0">
+              4
+            </div>
+            <div>
+              <p className="text-white font-medium">Start 7-day auction</p>
+              <p className="text-slate-500">CCA price discovery begins</p>
+            </div>
+          </div>
+        </div>
+
+        {!isSmartWallet && (
+          <div className="mt-4 p-3 rounded-lg bg-yellow-500/10 border border-yellow-500/20 text-sm">
+            <p className="text-yellow-400 font-medium mb-1">💡 Pro Tip</p>
+            <p className="text-yellow-300/80">
+              Connect with Coinbase Smart Wallet for gasless batched transactions
+            </p>
+          </div>
+        )}
+      </motion.div>
+
+      {/* Configuration */}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.1 }}
+        className="glass-card p-6 space-y-6"
+      >
+        <h2 className="text-xl font-bold">Launch Parameters</h2>
+
+        <div className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium mb-2">
+              Deposit Amount (AKITA)
+            </label>
+            <input
+              type="text"
+              value={depositAmount}
+              onChange={(e) => setDepositAmount(e.target.value)}
+              className="input-field w-full"
+              placeholder="100000000"
+            />
+            <p className="text-xs text-slate-500 mt-1">
+              Your balance: {tokenBalance ? formatUnits(tokenBalance, 18) : '0'} AKITA
+            </p>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium mb-2">
+              Auction Allocation (%)
+            </label>
+            <input
+              type="text"
+              value={auctionPercent}
+              onChange={(e) => setAuctionPercent(e.target.value)}
+              className="input-field w-full"
+              placeholder="50"
+            />
+            <p className="text-xs text-slate-500 mt-1">
+              Auction: {(Number(depositAmount) * Number(auctionPercent) / 100).toLocaleString()} wsAKITA, 
+              You keep: {(Number(depositAmount) * (100 - Number(auctionPercent)) / 100).toLocaleString()} wsAKITA
+            </p>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium mb-2">
+              Minimum Raise (ETH)
+            </label>
+            <input
+              type="text"
+              value={requiredRaise}
+              onChange={(e) => setRequiredRaise(e.target.value)}
+              className="input-field w-full"
+              placeholder="0.1"
+            />
+            <p className="text-xs text-slate-500 mt-1">
+              Auction must raise at least this much ETH to succeed
+            </p>
+          </div>
+        </div>
+      </motion.div>
+
+      {/* Launch Button */}
       <div className="flex flex-col items-center gap-4">
         <button
-          onClick={executeCurrentStep}
+          onClick={handleBatchedActivation}
           disabled={isPending || isConfirming}
-          className="btn-primary px-12 py-4 text-lg disabled:opacity-50"
+          className="btn-primary px-16 py-5 text-xl font-bold disabled:opacity-50 shadow-2xl shadow-brand-500/30"
         >
           {isPending || isConfirming ? (
-            <span className="flex items-center gap-2">
-              <Loader2 className="w-5 h-5 animate-spin" />
-              {isPending ? 'Confirm in Wallet...' : 'Processing...'}
+            <span className="flex items-center gap-3">
+              <Loader2 className="w-6 h-6 animate-spin" />
+              {isPending ? 'Confirm in Wallet...' : 'Launching Auction...'}
             </span>
           ) : (
-            <span className="flex items-center gap-2">
-              {steps[currentStepIndex].label}
-              <ArrowRight className="w-5 h-5" />
+            <span className="flex items-center gap-3">
+              <Zap className="w-6 h-6" />
+              Launch Auction (1-Click)
             </span>
           )}
         </button>
 
-        {isError && (
-          <div className="text-red-400 text-sm text-center">
-            Transaction failed. Please try again.
-            {error && <div className="text-xs mt-1">{error.message}</div>}
-          </div>
-        )}
-
         <p className="text-xs text-slate-500 text-center max-w-md">
-          Step {currentStepIndex + 1} of 6 • Each step requires wallet confirmation
+          {isSmartWallet 
+            ? 'All steps batched into one gasless transaction via Coinbase Smart Wallet'
+            : 'Powered by ERC-4337 Account Abstraction'
+          }
         </p>
+
+        <div className="text-center text-xs text-slate-600 space-y-1">
+          <p>Transaction includes: approve + deposit + wrap + approve + auction</p>
+          <p>Estimated gas: ~0.005 ETH {isSmartWallet && '(potentially sponsored)'}</p>
+        </div>
       </div>
     </div>
   )
