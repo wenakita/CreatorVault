@@ -1,0 +1,515 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ajna Strategy Deployment</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Lexend+Exa:wght@300;400;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --obsidian: #0a0a0b;
+            --basalt: #16161a;
+            --ash: #2a2a32;
+            --sifted-light: #e0e0e0;
+            --magma-mint: #00ffa3;
+            --void-shadow: 0 20px 50px rgba(0,0,0,0.8);
+            --basalt-border: 1px solid rgba(255,255,255,0.08);
+            --transition: all 0.4s cubic-bezier(0.23, 1, 0.32, 1);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            background-color: var(--obsidian);
+            color: var(--sifted-light);
+            font-family: 'Lexend Exa', sans-serif;
+            line-height: 1.6;
+            overflow-x: hidden;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        /* Basalt Grain Texture Overlay */
+        .grain-overlay {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            pointer-events: none;
+            z-index: 9999;
+            opacity: 0.04;
+            background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3BaseFilter id='filter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23filter)'/%3E%3C/svg%3E");
+        }
+
+        .basin-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 80px 40px;
+            position: relative;
+        }
+
+        header {
+            margin-bottom: 120px;
+            position: relative;
+        }
+
+        .graduated-label {
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            letter-spacing: 0.4em;
+            color: var(--magma-mint);
+            margin-bottom: 1rem;
+            display: block;
+            opacity: 0.8;
+        }
+
+        h1 {
+            font-size: clamp(2.5rem, 8vw, 5rem);
+            font-weight: 700;
+            line-height: 0.9;
+            letter-spacing: -0.04em;
+            margin-bottom: 2rem;
+            background: linear-gradient(180deg, #fff 0%, #444 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .overview-grid {
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            gap: 40px;
+            align-items: end;
+        }
+
+        .p-lead {
+            font-size: 1.2rem;
+            color: #999;
+            max-width: 600px;
+        }
+
+        /* Basin Card Components */
+        .basin-card {
+            background: var(--basalt);
+            border: var(--basalt-border);
+            padding: 40px;
+            position: relative;
+            margin-bottom: 60px;
+            transition: var(--transition);
+            box-shadow: var(--void-shadow);
+        }
+
+        .basin-card:hover {
+            border-color: rgba(0, 255, 163, 0.3);
+            transform: translateY(-5px);
+        }
+
+        .basin-card::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; width: 4px; height: 100%;
+            background: var(--magma-mint);
+            opacity: 0.3;
+        }
+
+        .basin-tag {
+            position: absolute;
+            top: -12px;
+            right: 40px;
+            background: var(--obsidian);
+            padding: 4px 12px;
+            font-size: 0.6rem;
+            border: var(--basalt-border);
+            text-transform: uppercase;
+            letter-spacing: 0.2em;
+        }
+
+        h2 {
+            font-size: 1.8rem;
+            margin-bottom: 1.5rem;
+            letter-spacing: -0.02em;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        h2::before {
+            content: '';
+            width: 20px;
+            height: 2px;
+            background: var(--magma-mint);
+            display: inline-block;
+        }
+
+        /* Code Block Styling */
+        code, pre {
+            font-family: 'Space Mono', monospace;
+            font-size: 0.9rem;
+        }
+
+        .code-basin {
+            background: #050505;
+            padding: 24px;
+            border-radius: 4px;
+            overflow-x: auto;
+            border: 1px solid rgba(255,255,255,0.03);
+            margin: 20px 0;
+            position: relative;
+        }
+
+        .code-basin::after {
+            content: 'TERMINAL';
+            position: absolute;
+            top: 8px; right: 12px;
+            font-size: 0.5rem;
+            opacity: 0.3;
+        }
+
+        .hljs-keyword { color: var(--magma-mint); }
+        .hljs-comment { color: #555; }
+        .hljs-string { color: #888; }
+
+        /* Step Graduation UI */
+        .steps-wrapper {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .step-item {
+            display: flex;
+            gap: 30px;
+            padding: 20px;
+            background: rgba(255,255,255,0.02);
+            border-left: 2px solid #333;
+            transition: var(--transition);
+        }
+
+        .step-item:hover {
+            background: rgba(255,255,255,0.05);
+            border-left-color: var(--magma-mint);
+        }
+
+        .step-num {
+            font-family: 'Space Mono', monospace;
+            font-weight: 700;
+            color: var(--magma-mint);
+            opacity: 0.5;
+        }
+
+        /* Metric Grid */
+        .metrics {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 2px;
+            background: rgba(255,255,255,0.05);
+            border: 1px solid rgba(255,255,255,0.05);
+            margin-top: 30px;
+        }
+
+        .metric-cell {
+            background: var(--basalt);
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .metric-val {
+            font-family: 'Space Mono', monospace;
+            font-size: 1.1rem;
+            color: var(--magma-mint);
+        }
+
+        .metric-label {
+            font-size: 0.6rem;
+            text-transform: uppercase;
+            opacity: 0.5;
+            margin-top: 5px;
+        }
+
+        /* Logic Flow - The "Sifter" */
+        .sifter-visual {
+            padding: 40px;
+            border: 1px dashed #333;
+            margin: 40px 0;
+            position: relative;
+        }
+
+        .logic-node {
+            padding: 15px;
+            border: 1px solid #444;
+            margin-bottom: 10px;
+            font-size: 0.8rem;
+            background: var(--obsidian);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .logic-arrow {
+            text-align: center;
+            font-size: 1rem;
+            margin: 10px 0;
+            color: #444;
+        }
+
+        /* Footer */
+        footer {
+            margin-top: 100px;
+            padding-top: 60px;
+            border-top: 1px solid #222;
+            text-align: center;
+            opacity: 0.4;
+            font-size: 0.7rem;
+            letter-spacing: 0.1em;
+        }
+
+        /* Progress Sifter (Sticky) */
+        .sifter-nav {
+            position: fixed;
+            right: 40px;
+            top: 50%;
+            transform: translateY(-50%);
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            z-index: 100;
+        }
+
+        .nav-dot {
+            width: 8px;
+            height: 8px;
+            background: #333;
+            border-radius: 50%;
+            cursor: pointer;
+            transition: var(--transition);
+        }
+
+        .nav-dot:hover, .nav-dot.active {
+            background: var(--magma-mint);
+            box-shadow: 0 0 15px var(--magma-mint);
+        }
+
+        @media (max-width: 900px) {
+            .overview-grid { grid-template-columns: 1fr; }
+            .basin-container { padding: 40px 20px; }
+            .sifter-nav { display: none; }
+        }
+
+        [data-reveal] {
+            opacity: 0;
+            transform: translateY(30px);
+            transition: all 0.8s ease-out;
+        }
+
+        [data-reveal].visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    </style>
+</head>
+<body>
+    <div class="grain-overlay"></div>
+
+    <nav class="sifter-nav">
+        <div class="nav-dot active"></div>
+        <div class="nav-dot"></div>
+        <div class="nav-dot"></div>
+        <div class="nav-dot"></div>
+        <div class="nav-dot"></div>
+    </nav>
+
+    <div class="basin-container">
+        <header>
+            <span class="graduated-label">Protocol Architecture 01-B</span>
+            <h1>Creator Ajna<br>Deployment</h1>
+            <div class="overview-grid">
+                <p class="p-lead">Deploy high-efficiency Ajna lending strategies to monetize token reserves. Automated sifting of market price data ensures optimal bucket graduation.</p>
+                <div class="metrics">
+                    <div class="metric-cell">
+                        <span class="metric-val">0x214F...779C</span>
+                        <span class="metric-label">Ajna Factory</span>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <!-- Prerequisites -->
+        <section class="basin-card" data-reveal>
+            <span class="basin-tag">Ground Layer</span>
+            <h2>Prerequisites</h2>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 30px; margin-top: 20px;">
+                <div>
+                    <h3 style="font-size: 0.8rem; margin-bottom: 15px; color: var(--magma-mint);">For Creators</h3>
+                    <ul style="list-style: none; font-size: 0.9rem; color: #bbb;">
+                        <li>↳ Deployed Vault (Base)</li>
+                        <li>↳ Token Contract Address</li>
+                        <li>↳ WETH / USDC Liquidity</li>
+                    </ul>
+                </div>
+                <div>
+                    <h3 style="font-size: 0.8rem; margin-bottom: 15px; color: var(--magma-mint);">Infrastructure</h3>
+                    <ul style="list-style: none; font-size: 0.9rem; color: #bbb;">
+                        <li>↳ Ajna ERC20 Factory</li>
+                        <li>↳ Uniswap V4 PoolManager</li>
+                        <li>↳ Forge / Cast CLI</li>
+                    </ul>
+                </div>
+            </div>
+        </section>
+
+        <!-- Quick Deployment -->
+        <section class="basin-card" data-reveal>
+            <span class="basin-tag">Automated Sifting</span>
+            <h2>Quick Deployment</h2>
+            <p style="margin-bottom: 20px; opacity: 0.7;">Execute the bash sequence to auto-configure the basin parameters.</p>
+            <div class="code-basin">
+                <pre><code><span class="hljs-comment"># Initialise deployment sequence</span>
+./DEPLOY_CREATOR_AJNA.sh <span class="hljs-string">&lt;TOKEN_ADDRESS&gt; &lt;VAULT_ADDRESS&gt;</span>
+
+<span class="hljs-comment"># Example: Graduating AKITA Basin</span>
+./DEPLOY_CREATOR_AJNA.sh \
+  0x5b674196812451b7cec024fe9d22d2c0b172fa75 \
+  0xA015954E2606d08967Aee3787456bB3A86a46A42</code></pre>
+            </div>
+            <div class="metrics">
+                <div class="metric-cell"><span class="metric-val">TOKEN NAME</span><span class="metric-label">Auto-fetch symbols</span></div>
+                <div class="metric-cell"><span class="metric-val">V4 POOL</span><span class="metric-label">Query config</span></div>
+                <div class="metric-cell"><span class="metric-val">BUCKET</span><span class="metric-label">Auto-calibration</span></div>
+            </div>
+        </section>
+
+        <!-- Price Discovery Logic -->
+        <section class="basin-card" data-reveal>
+            <span class="basin-tag">Algorithmic Graduation</span>
+            <h2>Price Discovery Logic</h2>
+            <div class="sifter-visual">
+                <div class="logic-node"><span>1. GET UNISWAP V4 TICK</span><span class="metric-val">fetchSlot0()</span></div>
+                <div class="logic-arrow">↓</div>
+                <div class="logic-node"><span>2. INVERT IF CURRENCY1</span><span class="metric-val">TICK * -1</span></div>
+                <div class="logic-arrow">↓</div>
+                <div class="logic-node"><span>3. CALC AJNA BUCKET</span><span class="metric-val">3696 + (TICK/100)</span></div>
+                <div class="logic-arrow">↓</div>
+                <div class="logic-node"><span>4. CLAMP RANGE</span><span class="metric-val">0-7387</span></div>
+            </div>
+            <p style="font-size: 0.8rem; color: #777;">Result: Lending price aligns with current market conditions for optimal capital efficiency.</p>
+        </section>
+
+        <!-- Manual Graduation -->
+        <section class="basin-card" data-reveal>
+            <span class="basin-tag">Manual Sculpting</span>
+            <h2>Manual Deployment</h2>
+            <div class="steps-wrapper">
+                <div class="step-item">
+                    <div class="step-num">01</div>
+                    <div>
+                        <p><strong>Validate Ajna Pool</strong></p>
+                        <p style="font-size: 0.8rem; opacity: 0.6;">Check if the specific token/quote pair exists in the factory registry.</p>
+                    </div>
+                </div>
+                <div class="step-item">
+                    <div class="step-num">02</div>
+                    <div>
+                        <p><strong>Deploy Strategy Contract</strong></p>
+                        <p style="font-size: 0.8rem; opacity: 0.6;">Forge create AjnaStrategy.sol with vault and token constructor arguments.</p>
+                    </div>
+                </div>
+                <div class="step-item">
+                    <div class="step-num">03</div>
+                    <div>
+                        <p><strong>Initialize Approvals</strong></p>
+                        <p style="font-size: 0.8rem; opacity: 0.6;">Trigger internal approval flows for Ajna pool interactions.</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Integration Patterns -->
+        <section class="basin-card" data-reveal>
+            <span class="basin-tag">Structural Patterns</span>
+            <h2>Pattern: Registry-Based</h2>
+            <div class="code-basin">
+<pre><code><span class="hljs-keyword">function</span> <span class="hljs-keyword">deployAjnaStrategy</span>(
+    <span class="hljs-keyword">address</span> creatorToken,
+    <span class="hljs-keyword">address</span> vault
+) <span class="hljs-keyword">external</span> <span class="hljs-keyword">returns</span> (<span class="hljs-keyword">address</span> strategy) {
+    strategy = <span class="hljs-keyword">new</span> AjnaStrategy(vault, creatorToken...);
+    <span class="hljs-keyword">address</span> pool = _getOrDeployAjnaPool(creatorToken);
+    AjnaStrategy(strategy).setAjnaPool(pool);
+    IVault(vault).addStrategy(strategy, <span class="hljs-keyword">100</span>);
+}</code></pre>
+            </div>
+        </section>
+
+        <section style="display: grid; grid-template-columns: 1fr 1fr; gap: 40px;" data-reveal>
+            <div class="basin-card" style="margin-bottom: 0;">
+                <span class="basin-tag">Risk Settings</span>
+                <h3>Bucket Bias</h3>
+                <div class="metrics">
+                    <div class="metric-cell"><span class="metric-val">-500</span><span class="metric-label">Conservative</span></div>
+                    <div class="metric-cell"><span class="metric-val">0</span><span class="metric-label">Balanced</span></div>
+                    <div class="metric-cell"><span class="metric-val">+500</span><span class="metric-label">Aggressive</span></div>
+                </div>
+            </div>
+            <div class="basin-card" style="margin-bottom: 0;">
+                <span class="basin-tag">Interest</span>
+                <h3>Pool Rates</h3>
+                <div class="metrics">
+                    <div class="metric-cell"><span class="metric-val">5%</span><span class="metric-label">Low Vol</span></div>
+                    <div class="metric-cell"><span class="metric-val">10%</span><span class="metric-label">Mid Vol</span></div>
+                    <div class="metric-cell"><span class="metric-val">15%</span><span class="metric-label">High Vol</span></div>
+                </div>
+            </div>
+        </section>
+
+        <footer>
+            BASALT GRADUATION SYSTEM &copy; 2024 // AJNA DEPLOYMENT ENGINE // BASE NETWORK
+        </footer>
+    </div>
+
+    <script>
+        // Reveal animation on scroll
+        const observerOptions = {
+            threshold: 0.1
+        };
+
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    entry.target.classList.add('visible');
+                }
+            });
+        }, observerOptions);
+
+        document.querySelectorAll('[data-reveal]').forEach(el => observer.observe(el));
+
+        // Subtle parallax on grain
+        window.addEventListener('mousemove', (e) => {
+            const grain = document.querySelector('.grain-overlay');
+            const x = (e.clientX / window.innerWidth) * 20;
+            const y = (e.clientY / window.innerHeight) * 20;
+            grain.style.transform = `translate(${x}px, ${y}px)`;
+        });
+
+        // Sticky dots logic
+        const dots = document.querySelectorAll('.nav-dot');
+        const sections = document.querySelectorAll('section');
+        
+        window.addEventListener('scroll', () => {
+            let current = 0;
+            sections.forEach((section, index) => {
+                const sectionTop = section.offsetTop;
+                if (pageYOffset >= sectionTop - 200) {
+                    current = index + 1;
+                }
+            });
+            dots.forEach((dot, index) => {
+                dot.classList.remove('active');
+                if (index === current) dot.classList.add('active');
+            });
+        });
+    </script>
+</body>
+</html>

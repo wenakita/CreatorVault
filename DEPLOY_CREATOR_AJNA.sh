@@ -30,8 +30,8 @@ CREATOR_TOKEN=$1
 CREATOR_VAULT=$2
 
 # Common addresses
-WETH="0x4200000000000000000000000000000000000006"
-USDC="0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913"
+ZORA="0x4200000000000000000000000000000000000777"  # All creator coins paired to ZORA
+WETH="0x4200000000000000000000000000000000000006"  # Fallback if needed
 
 # Ajna Addresses on Base (official)
 AJNA_ERC20_FACTORY="0x214f62B5836D83f3D6c4f71F174209097B1A779C"
@@ -153,9 +153,10 @@ echo -e "${GREEN}Using bucket index:${NC} $SUGGESTED_BUCKET"
 echo ""
 
 # ============================================
-# STEP 1: Check if Creator/WETH Ajna pool exists
+# STEP 1: Check if Creator/ZORA Ajna pool exists
 # ============================================
-echo -e "${BLUE}Step 1: Checking if ${TOKEN_SYMBOL}/WETH Ajna pool exists...${NC}"
+echo -e "${BLUE}Step 1: Checking if ${TOKEN_SYMBOL}/ZORA Ajna pool exists...${NC}"
+echo -e "${BLUE}   (All creator coins use ZORA as quote token)${NC}"
 
 # Try different interest rates
 RATES=(
@@ -168,7 +169,7 @@ POOL_ADDRESS=""
 for RATE in "${RATES[@]}"; do
     RESULT=$(cast call $AJNA_ERC20_FACTORY \
         "deployedPools(bytes32,address)(address)" \
-        $(cast keccak $(cast abi-encode "f(address,address,uint256)" $CREATOR_TOKEN $WETH $RATE)) \
+        $(cast keccak $(cast abi-encode "f(address,address,uint256)" $CREATOR_TOKEN $ZORA $RATE)) \
         $AJNA_ERC20_FACTORY 2>/dev/null || echo "0x0000000000000000000000000000000000000000")
     
     if [ "$RESULT" != "0x0000000000000000000000000000000000000000" ]; then
@@ -180,24 +181,24 @@ for RATE in "${RATES[@]}"; do
 done
 
 if [ -z "$POOL_ADDRESS" ] || [ "$POOL_ADDRESS" == "0x0000000000000000000000000000000000000000" ]; then
-    echo -e "${YELLOW}⚠️  No existing ${TOKEN_SYMBOL}/WETH Ajna pool found${NC}"
+    echo -e "${YELLOW}⚠️  No existing ${TOKEN_SYMBOL}/ZORA Ajna pool found${NC}"
     echo ""
     echo -e "${BLUE}To deploy a new pool:${NC}"
     echo "cast send $AJNA_ERC20_FACTORY \\"
     echo "  \"deployPool(address,address,uint256)(address)\" \\"
     echo "  $CREATOR_TOKEN \\"
-    echo "  $WETH \\"
+    echo "  $ZORA \\"
     echo "  50000000000000000 \\"
     echo "  --rpc-url base --private-key \$PRIVATE_KEY"
     echo ""
     read -p "Deploy new pool? (y/N): " -n 1 -r
     echo ""
     if [[ $REPLY =~ ^[Yy]$ ]]; then
-        echo -e "${BLUE}Deploying ${TOKEN_SYMBOL}/WETH pool with 5% interest rate...${NC}"
+        echo -e "${BLUE}Deploying ${TOKEN_SYMBOL}/ZORA pool with 5% interest rate...${NC}"
         POOL_ADDRESS=$(cast send $AJNA_ERC20_FACTORY \
             "deployPool(address,address,uint256)(address)" \
             $CREATOR_TOKEN \
-            $WETH \
+            $ZORA \
             50000000000000000 \
             --rpc-url base \
             --private-key $PRIVATE_KEY \
@@ -222,7 +223,7 @@ STRATEGY_ADDRESS=$(forge create contracts/strategies/AjnaStrategy.sol:AjnaStrate
         $CREATOR_VAULT \
         $CREATOR_TOKEN \
         $AJNA_ERC20_FACTORY \
-        $WETH \
+        $ZORA \
         $DEPLOYER \
     --json | jq -r '.deployedTo')
 

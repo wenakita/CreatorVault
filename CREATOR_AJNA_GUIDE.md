@@ -13,12 +13,13 @@ Any creator coin can deploy an Ajna lending strategy to earn yield on their toke
 1. **Deployed Creator Vault** on Base
 2. **Creator Token** contract address
 3. **(Optional) Uniswap V4 Pool** with price data
-4. **WETH** or **USDC** as quote token
+4. **ZORA** as quote token (standard for all creator coins)
 
 ### For Protocol:
 
 - Ajna ERC20 Factory: `0x214f62B5836D83f3D6c4f71F174209097B1A779C`
 - Uniswap V4 PoolManager: `0x498581fF718922c3f8e6A244956aF099B2652b2b`
+- ZORA Token: `0x4200000000000000000000000000000000000777`
 
 ---
 
@@ -122,13 +123,13 @@ if [ $BUCKET -gt 7387 ]; then BUCKET=7387; fi
 
 ```bash
 TOKEN="0x..."
-WETH="0x4200000000000000000000000000000000000006"
+ZORA="0x4200000000000000000000000000000000000777"  # All creator coins paired to ZORA
 AJNA_FACTORY="0x214f62B5836D83f3D6c4f71F174209097B1A779C"
 
 # Check if pool exists
 cast call $AJNA_FACTORY \
   "deployedPools(bytes32,address)(address)" \
-  $(cast keccak $(cast abi-encode "f(address,address,uint256)" $TOKEN $WETH 50000000000000000)) \
+  $(cast keccak $(cast abi-encode "f(address,address,uint256)" $TOKEN $ZORA 50000000000000000)) \
   $AJNA_FACTORY
 ```
 
@@ -138,7 +139,7 @@ cast call $AJNA_FACTORY \
 cast send $AJNA_FACTORY \
   "deployPool(address,address,uint256)(address)" \
   $TOKEN \
-  $WETH \
+  $ZORA \
   50000000000000000 \  # 5% interest rate
   --rpc-url base --private-key $PK
 ```
@@ -153,7 +154,7 @@ forge create contracts/strategies/AjnaStrategy.sol:AjnaStrategy \
     $VAULT_ADDRESS \
     $TOKEN_ADDRESS \
     $AJNA_FACTORY \
-    $WETH \
+    $ZORA \
     $YOUR_ADDRESS
 ```
 
@@ -215,12 +216,12 @@ function deployAjnaStrategy(
         vault,
         creatorToken,
         AJNA_FACTORY,
-        WETH,
+        ZORA,  // All creator coins paired to ZORA
         msg.sender
     );
     
     // Find or deploy Ajna pool
-    address pool = _getOrDeployAjnaPool(creatorToken, WETH);
+    address pool = _getOrDeployAjnaPool(creatorToken, ZORA);
     
     // Configure
     AjnaStrategy(strategy).setAjnaPool(pool);
@@ -354,8 +355,8 @@ For diversified yield:
 ./DEPLOY_CREATOR_AJNA.sh $TOKEN $VAULT  # Ajna lending
 
 # Deploy LP strategies
-# ... AKITA/WETH LP (Charm)
-# ... AKITA/USDC LP (Charm)
+# ... AKITA/ZORA LP (Charm)
+# ... Other strategies as needed
 
 # Set weights
 cast send $VAULT "addStrategy(address,uint256)" $AJNA_STRATEGY 100
@@ -368,9 +369,9 @@ cast send $VAULT "setMinimumTotalIdle(uint256)" 25000000000000000000000000
 
 **Result:**
 - 25% idle
-- 25% Ajna lending
-- 25% WETH LP
-- 25% USDC LP
+- 25% Ajna lending (ZORA pair)
+- 25% ZORA LP
+- 25% Other strategies
 
 ---
 
@@ -451,12 +452,16 @@ Balanced:      bucket = market_price        (recommended)
 Aggressive:    bucket = market_price + 500  (higher yield, more risk)
 ```
 
-### 2. Quote Token Choice
+### 2. Quote Token (Standard: ZORA)
 
 ```
-WETH:  Better for volatile tokens, deeper liquidity
-USDC:  Better for stable pricing, predictable yield
+ZORA:  Standard for all creator coins in CreatorVault ecosystem
+       - Unified liquidity across all creators
+       - Simplified price discovery
+       - Consistent valuation base
 ```
+
+**Note**: All creator coins use ZORA as the quote token for Ajna lending pools.
 
 ### 3. Pool Interest Rates
 
