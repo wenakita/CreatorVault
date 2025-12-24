@@ -25,51 +25,98 @@ If you set your bucket too far from the current market price:
 
 ## How to Calculate the Right Bucket
 
-### From Uniswap V3 Pool (Recommended)
+### From Uniswap V4 Pool (Recommended for AKITA/ZORA)
 
-If there's an existing Uniswap V3 pool for your token pair, use its current tick:
+If there's an existing Uniswap V4 pool for your token pair, use its current tick:
 
 ```bash
-# 1. Get the pool address
-POOL=$(cast call $UNISWAP_V3_FACTORY \
-  "getPool(address,address,uint24)" \
-  $TOKEN0 \
-  $TOKEN1 \
-  3000)  # Fee tier (3000 = 0.3%)
+# 1. Sort tokens (currency0 < currency1)
+if [[ "$TOKEN0" < "$TOKEN1" ]]; then
+  CURRENCY0=$TOKEN0
+  CURRENCY1=$TOKEN1
+else
+  CURRENCY0=$TOKEN1
+  CURRENCY1=$TOKEN0
+fi
 
-# 2. Get current tick from slot0
-SLOT0=$(cast call $POOL "slot0()(uint160,int24,uint16,uint16,uint16,uint8,bool)")
-TICK=$(echo $SLOT0 | cut -d',' -f2)
+# 2. Build PoolKey (currency0, currency1, fee, tickSpacing, hooks)
+FEE=3000  # 0.3%
+TICK_SPACING=60
+HOOKS="0x0000000000000000000000000000000000000000"
 
-# 3. Calculate Ajna bucket (approximation)
+# 3. Calculate PoolId
+POOL_KEY=$(cast abi-encode "f(address,address,uint24,int24,address)" \
+  $CURRENCY0 $CURRENCY1 $FEE $TICK_SPACING $HOOKS)
+POOL_ID=$(cast keccak $POOL_KEY)
+
+# 4. Get current tick from PoolManager
+POOL_MANAGER="0x498581fF718922c3f8e6A244956aF099B2652b2b"
+SLOT0=$(cast call $POOL_MANAGER "getSlot0(bytes32)(uint160,int24,uint24,uint24)" $POOL_ID)
+TICK=$(echo $SLOT0 | awk '{print $2}')
+
+# 5. Calculate Ajna bucket (approximation)
 BUCKET_OFFSET=$(($TICK / 100))
 BUCKET=$((3696 + $BUCKET_OFFSET))
 
-# 4. Clamp to valid range
+# 6. Clamp to valid range
 if [ $BUCKET -lt 0 ]; then BUCKET=0; fi
 if [ $BUCKET -gt 7387 ]; then BUCKET=7387; fi
 
 echo "Suggested bucket: $BUCKET"
 ```
 
-### Example: AKITA/ZORA
+### Example: AKITA/ZORA (Uniswap V4)
 
 ```bash
-# AKITA/ZORA pool on Base
+# AKITA/ZORA pool on Base (V4)
 AKITA="0x5b674196812451b7cec024fe9d22d2c0b172fa75"
 ZORA="0x4200000000000000000000000000000000000777"
-FACTORY="0x33128a8fC17869897dcE68Ed026d694621f6FDfD"
+POOL_MANAGER="0x498581fF718922c3f8e6A244956aF099B2652b2b"
 
-# Get pool
-POOL=$(cast call $FACTORY "getPool(address,address,uint24)" $AKITA $ZORA 3000)
+# Sort tokens
+if [[ "$AKITA" < "$ZORA" ]]; then
+  CURRENCY0=$AKITA
+  CURRENCY1=$ZORA
+else
+  CURRENCY0=$ZORA
+  CURRENCY1=$AKITA
+fi
+
+# Calculate PoolId for 0.3% pool
+POOL_KEY=$(cast abi-encode "f(address,address,uint24,int24,address)" \
+  $CURRENCY0 $CURRENCY1 3000 60 "0x0000000000000000000000000000000000000000")
+POOL_ID=$(cast keccak $POOL_KEY)
 
 # Get tick
-SLOT0=$(cast call $POOL "slot0()(uint160,int24,uint16,uint16,uint16,uint8,bool)")
-TICK=$(echo $SLOT0 | cut -d',' -f2)
+SLOT0=$(cast call $POOL_MANAGER "getSlot0(bytes32)(uint160,int24,uint24,uint24)" $POOL_ID)
+TICK=$(echo $SLOT0 | awk '{print $2}')
+
+# If tokens were swapped, invert tick
+if [[ "$CURRENCY0" == "$ZORA" ]]; then
+  TICK=$((-1 * TICK))
+fi
 
 # Current tick: e.g., -50000
 # Bucket offset: -50000 / 100 = -500
 # Suggested bucket: 3696 + (-500) = 3196
+```
+
+### From Uniswap V3 Pool (Alternative)
+
+For V3 pools:
+
+```bash
+# Get pool from factory
+POOL=$(cast call $UNISWAP_V3_FACTORY \
+  "getPool(address,address,uint24)" \
+  $TOKEN0 $TOKEN1 3000)
+
+# Get tick from slot0
+SLOT0=$(cast call $POOL "slot0()(uint160,int24,...)")
+TICK=$(echo $SLOT0 | cut -d',' -f2)
+
+# Calculate bucket
+BUCKET=$((3696 + ($TICK / 100)))
 ```
 
 ---
@@ -97,20 +144,25 @@ Bucket 7387 → price = 1.005^3691 ≈ ∞ (very expensive)
 
 ---
 
-## Uniswap V3 Tick to Price
+## Uniswap V3/V4 Tick to Price
 
-For Uniswap V3, the price formula is:
+Both Uniswap V3 and V4 use the same price formula:
 
 ```
 price = 1.0001^tick
 ```
+
+**Key Differences:**
+- **V3**: Pools are separate contracts with `slot0()` function
+- **V4**: Pools are managed by PoolManager with `getSlot0(poolId)` function
+- **V4**: Requires calculating PoolId from PoolKey (currency0, currency1, fee, tickSpacing, hooks)
 
 ### Converting Tick to Bucket (Approximation)
 
 Since Ajna uses `1.005` and Uniswap uses `1.0001`:
 
 ```python
-# Rough approximation
+# Rough approximation (used in deployment script)
 bucket_offset = tick / 100
 bucket = 3696 + bucket_offset
 
@@ -118,6 +170,30 @@ bucket = 3696 + bucket_offset
 import math
 uniswap_price = 1.0001 ** tick
 ajna_bucket = math.log(uniswap_price) / math.log(1.005) + 3696
+```
+
+### Uniswap V4 PoolId Calculation
+
+```solidity
+// PoolKey struct
+struct PoolKey {
+    Currency currency0;  // Lower address token
+    Currency currency1;  // Higher address token
+    uint24 fee;          // Fee tier (3000 = 0.3%)
+    int24 tickSpacing;   // Tick spacing (60 for 0.3%, 200 for 1%)
+    IHooks hooks;        // Hook contract (0x0 for no hooks)
+}
+
+// PoolId = keccak256(abi.encode(poolKey))
+bytes32 poolId = keccak256(abi.encode(poolKey));
+```
+
+### Common V4 Fee Tiers
+
+```
+Fee:  3000 (0.3%) → tickSpacing: 60
+Fee: 10000 (1.0%) → tickSpacing: 200
+Fee:   500 (0.05%)→ tickSpacing: 10
 ```
 
 ---
@@ -230,15 +306,30 @@ cast call $AJNA_POOL \
 
 - [Ajna Price Buckets Explained](https://faqs.ajna.finance/concepts/choosing-a-price-bucket)
 - [Ajna Inverse Pricing](https://faqs.ajna.finance/concepts/inverse-pricing)
+- [Uniswap V4 Documentation](https://docs.uniswap.org/contracts/v4/overview)
 - [Uniswap V3 Price Formula](https://docs.uniswap.org/concepts/protocol/concentrated-liquidity)
 
 ---
 
 ## Quick Reference
 
+### Uniswap V4 (AKITA/ZORA)
+
 ```bash
-# Get current market price from Uniswap pool
-TICK=$(cast call $POOL "slot0()(uint160,int24,...)" | cut -d',' -f2)
+# Sort tokens
+if [[ "$AKITA" < "$ZORA" ]]; then C0=$AKITA; C1=$ZORA; else C0=$ZORA; C1=$AKITA; fi
+
+# Calculate PoolId (0.3% fee, tickSpacing 60)
+POOL_KEY=$(cast abi-encode "f(address,address,uint24,int24,address)" $C0 $C1 3000 60 0x0)
+POOL_ID=$(cast keccak $POOL_KEY)
+
+# Get tick from PoolManager
+POOL_MANAGER="0x498581fF718922c3f8e6A244956aF099B2652b2b"
+SLOT0=$(cast call $POOL_MANAGER "getSlot0(bytes32)(uint160,int24,uint24,uint24)" $POOL_ID)
+TICK=$(echo $SLOT0 | awk '{print $2}')
+
+# Invert if needed
+if [[ "$C0" == "$ZORA" ]]; then TICK=$((-1 * TICK)); fi
 
 # Calculate bucket
 BUCKET=$((3696 + ($TICK / 100)))
@@ -247,8 +338,24 @@ BUCKET=$((3696 + ($TICK / 100)))
 if [ $BUCKET -lt 0 ]; then BUCKET=0; fi
 if [ $BUCKET -gt 7387 ]; then BUCKET=7387; fi
 
-# Deploy with this bucket in mind
-# (Set after deployment via setBucketIndex)
+echo "Suggested bucket: $BUCKET"
+```
+
+### Uniswap V3 (Alternative)
+
+```bash
+# Get pool from factory
+POOL=$(cast call $FACTORY "getPool(address,address,uint24)" $TOKEN0 $TOKEN1 3000)
+
+# Get tick from slot0
+TICK=$(cast call $POOL "slot0()(uint160,int24,...)" | cut -d',' -f2)
+
+# Calculate bucket
+BUCKET=$((3696 + ($TICK / 100)))
+
+# Clamp to range
+if [ $BUCKET -lt 0 ]; then BUCKET=0; fi
+if [ $BUCKET -gt 7387 ]; then BUCKET=7387; fi
 ```
 
 ---

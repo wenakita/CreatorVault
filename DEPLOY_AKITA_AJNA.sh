@@ -26,8 +26,8 @@ ZORA="0x4200000000000000000000000000000000000777"
 AJNA_ERC20_FACTORY="0x214f62B5836D83f3D6c4f71F174209097B1A779C"
 AJNA_POOL_INFO_UTILS="0x97fa9b0909C238D170C1ab3B5c728A3a45BBEcBa"
 
-# Uniswap V3 Factory for price lookup
-UNISWAP_V3_FACTORY="0x33128a8fC17869897dcE68Ed026d694621f6FDfD"
+# Uniswap V4 PoolManager for price lookup
+UNISWAP_V4_POOL_MANAGER="0x498581fF718922c3f8e6A244956aF099B2652b2b"
 
 # Check if private key is set
 if [ -z "$PRIVATE_KEY" ]; then
@@ -42,45 +42,104 @@ echo -e "${GREEN}Deployer:${NC} $DEPLOYER"
 echo ""
 
 # ============================================
-# STEP 0: Get current AKITA price from AKITA/ZORA pool
+# STEP 0: Get current AKITA price from AKITA/ZORA V4 pool
 # ============================================
-echo -e "${BLUE}Step 0: Fetching current AKITA price from AKITA/ZORA pool...${NC}"
+echo -e "${BLUE}Step 0: Fetching current AKITA price from AKITA/ZORA V4 pool...${NC}"
 
-# Try to find AKITA/ZORA pool
-AKITA_ZORA_POOL=$(cast call $UNISWAP_V3_FACTORY \
-    "getPool(address,address,uint24)" \
-    $AKITA_TOKEN \
-    $ZORA \
-    3000 2>/dev/null || echo "")
+# Uniswap V4 uses PoolKey to identify pools
+# PoolKey: (currency0, currency1, fee, tickSpacing, hooks)
+# PoolId = keccak256(abi.encode(PoolKey))
 
-if [ -z "$AKITA_ZORA_POOL" ] || [ "$AKITA_ZORA_POOL" == "0x0000000000000000000000000000000000000000" ]; then
-    # Try other fee tiers
-    AKITA_ZORA_POOL=$(cast call $UNISWAP_V3_FACTORY \
-        "getPool(address,address,uint24)" \
-        $AKITA_TOKEN \
-        $ZORA \
-        10000 2>/dev/null || echo "0x0000000000000000000000000000000000000000")
+# Sort tokens (V4 requires currency0 < currency1)
+if [[ "$AKITA_TOKEN" < "$ZORA" ]]; then
+    CURRENCY0=$AKITA_TOKEN
+    CURRENCY1=$ZORA
+else
+    CURRENCY0=$ZORA
+    CURRENCY1=$AKITA_TOKEN
 fi
 
-SUGGESTED_BUCKET=3696  # Default middle bucket
+# Common V4 fee tiers and tick spacings
+# fee=3000 (0.3%), tickSpacing=60
+# fee=10000 (1%), tickSpacing=200
 
-if [ ! -z "$AKITA_ZORA_POOL" ] && [ "$AKITA_ZORA_POOL" != "0x0000000000000000000000000000000000000000" ]; then
-    echo -e "${GREEN}✅ Found AKITA/ZORA pool:${NC} $AKITA_ZORA_POOL"
+SUGGESTED_BUCKET=3696  # Default middle bucket
+POOL_FOUND=false
+
+# Try 0.3% fee tier
+FEE=3000
+TICK_SPACING=60
+HOOKS="0x0000000000000000000000000000000000000000"  # No hooks
+
+# Encode PoolKey for 0.3% pool
+POOL_KEY=$(cast abi-encode "f(address,address,uint24,int24,address)" $CURRENCY0 $CURRENCY1 $FEE $TICK_SPACING $HOOKS)
+POOL_ID=$(cast keccak $POOL_KEY)
+
+echo -e "${BLUE}   Checking AKITA/ZORA 0.3% pool...${NC}"
+echo -e "${BLUE}   PoolId: $POOL_ID${NC}"
+
+# Query slot0 from PoolManager
+SLOT0=$(cast call $UNISWAP_V4_POOL_MANAGER \
+    "getSlot0(bytes32)(uint160,int24,uint24,uint24)" \
+    $POOL_ID 2>/dev/null || echo "")
+
+if [ ! -z "$SLOT0" ] && [ "$SLOT0" != "0" ]; then
+    POOL_FOUND=true
+    echo -e "${GREEN}✅ Found AKITA/ZORA V4 pool (0.3% fee)${NC}"
     
-    # Get slot0 (sqrtPriceX96, tick, etc.)
-    SLOT0=$(cast call $AKITA_ZORA_POOL "slot0()(uint160,int24,uint16,uint16,uint16,uint8,bool)" 2>/dev/null || echo "")
+    # Extract tick (second value)
+    TICK=$(echo $SLOT0 | awk '{print $2}')
+    echo -e "${GREEN}   Current tick:${NC} $TICK"
     
-    if [ ! -z "$SLOT0" ]; then
-        # Extract tick (second value)
-        TICK=$(echo $SLOT0 | cut -d',' -f2)
+    # If tokens were swapped, invert the tick
+    if [[ "$CURRENCY0" == "$ZORA" ]]; then
+        TICK=$((-1 * TICK))
+        echo -e "${GREEN}   Adjusted tick (AKITA/ZORA):${NC} $TICK"
+    fi
+    
+    # Ajna buckets: bucket = 3696 + (tick / 100)
+    TICK_OFFSET=$((TICK / 100))
+    SUGGESTED_BUCKET=$((3696 + TICK_OFFSET))
+    
+    # Clamp to valid range (0-7387)
+    if [ $SUGGESTED_BUCKET -lt 0 ]; then
+        SUGGESTED_BUCKET=0
+    elif [ $SUGGESTED_BUCKET -gt 7387 ]; then
+        SUGGESTED_BUCKET=7387
+    fi
+    
+    echo -e "${GREEN}   Suggested Ajna bucket:${NC} $SUGGESTED_BUCKET"
+    echo -e "${GREEN}   (Based on current V4 market price)${NC}"
+fi
+
+# If 0.3% not found, try 1% fee tier
+if [ "$POOL_FOUND" = false ]; then
+    echo -e "${BLUE}   Checking AKITA/ZORA 1% pool...${NC}"
+    FEE=10000
+    TICK_SPACING=200
+    
+    POOL_KEY=$(cast abi-encode "f(address,address,uint24,int24,address)" $CURRENCY0 $CURRENCY1 $FEE $TICK_SPACING $HOOKS)
+    POOL_ID=$(cast keccak $POOL_KEY)
+    
+    SLOT0=$(cast call $UNISWAP_V4_POOL_MANAGER \
+        "getSlot0(bytes32)(uint160,int24,uint24,uint24)" \
+        $POOL_ID 2>/dev/null || echo "")
+    
+    if [ ! -z "$SLOT0" ] && [ "$SLOT0" != "0" ]; then
+        POOL_FOUND=true
+        echo -e "${GREEN}✅ Found AKITA/ZORA V4 pool (1% fee)${NC}"
+        
+        TICK=$(echo $SLOT0 | awk '{print $2}')
         echo -e "${GREEN}   Current tick:${NC} $TICK"
         
-        # Ajna buckets: bucket = 3696 + (tick / 100)
-        # This is a rough approximation - Ajna uses different math but this gets us close
+        if [[ "$CURRENCY0" == "$ZORA" ]]; then
+            TICK=$((-1 * TICK))
+            echo -e "${GREEN}   Adjusted tick (AKITA/ZORA):${NC} $TICK"
+        fi
+        
         TICK_OFFSET=$((TICK / 100))
         SUGGESTED_BUCKET=$((3696 + TICK_OFFSET))
         
-        # Clamp to valid range (0-7387)
         if [ $SUGGESTED_BUCKET -lt 0 ]; then
             SUGGESTED_BUCKET=0
         elif [ $SUGGESTED_BUCKET -gt 7387 ]; then
@@ -88,10 +147,12 @@ if [ ! -z "$AKITA_ZORA_POOL" ] && [ "$AKITA_ZORA_POOL" != "0x0000000000000000000
         fi
         
         echo -e "${GREEN}   Suggested Ajna bucket:${NC} $SUGGESTED_BUCKET"
-        echo -e "${GREEN}   (Based on current market price)${NC}"
+        echo -e "${GREEN}   (Based on current V4 market price)${NC}"
     fi
-else
-    echo -e "${YELLOW}⚠️  Could not find AKITA/ZORA pool, using default bucket 3696${NC}"
+fi
+
+if [ "$POOL_FOUND" = false ]; then
+    echo -e "${YELLOW}⚠️  Could not find AKITA/ZORA V4 pool, using default bucket 3696${NC}"
 fi
 
 echo ""
@@ -247,8 +308,9 @@ echo -e "${GREEN}Ajna Pool:${NC}      $POOL_ADDRESS"
 echo -e "${GREEN}Strategy:${NC}       $STRATEGY_ADDRESS"
 echo -e "${GREEN}Vault:${NC}          $AKITA_VAULT"
 echo -e "${GREEN}Bucket Index:${NC}   $SUGGESTED_BUCKET"
-if [ ! -z "$AKITA_ZORA_POOL" ] && [ "$AKITA_ZORA_POOL" != "0x0000000000000000000000000000000000000000" ]; then
-    echo -e "${GREEN}Price Source:${NC}   AKITA/ZORA pool ($AKITA_ZORA_POOL)"
+if [ "$POOL_FOUND" = true ]; then
+    echo -e "${GREEN}Price Source:${NC}   AKITA/ZORA Uniswap V4 pool"
+    echo -e "${GREEN}PoolManager:${NC}    $UNISWAP_V4_POOL_MANAGER"
 else
     echo -e "${GREEN}Price Source:${NC}   Default (middle bucket)"
 fi
