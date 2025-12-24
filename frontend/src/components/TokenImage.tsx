@@ -58,30 +58,40 @@ export function TokenImage({
     return <div className={className}>{tokenElement}</div>
   }
 
-  // Wrapped version with vault overlay covering bottom half
+  // Wrapped version: Token nested inside Base square logo
   return (
     <div className={`relative ${className}`}>
-      {/* Original token image (slightly faded at bottom) */}
-      <div className="relative">
-        {tokenElement}
-        {/* Gradient overlay to fade into vault */}
-        <div className="absolute inset-0 rounded-xl bg-gradient-to-t from-slate-900/60 via-transparent to-transparent pointer-events-none" />
-      </div>
-      
-      {/* Vault icon overlay - bottom half */}
-      <div className="absolute inset-x-0 bottom-0 h-1/2 flex items-end justify-center pb-1">
-        <svg 
-          className="w-[45%] h-[45%] text-[#0052FF] drop-shadow-lg" 
-          viewBox="0 0 24 24" 
-          fill="currentColor"
-          xmlns="http://www.w3.org/2000/svg"
-        >
-          {/* Vault/Safe icon */}
-          <rect x="3" y="6" width="18" height="14" rx="2" fill="currentColor" opacity="0.9"/>
-          <circle cx="12" cy="13" r="3" fill="white" opacity="0.3"/>
-          <circle cx="12" cy="13" r="2" fill="white" opacity="0.5"/>
-          <circle cx="12" cy="13" r="0.8" fill="currentColor"/>
-        </svg>
+      {/* Base square logo background */}
+      <div className={`${sizeClass} rounded-xl bg-[#0052FF] flex items-center justify-center relative overflow-hidden`}>
+        {/* Base square subtle pattern */}
+        <div className="absolute inset-0 opacity-10">
+          <svg width="100%" height="100%" xmlns="http://www.w3.org/2000/svg">
+            <defs>
+              <pattern id="base-pattern" x="0" y="0" width="20" height="20" patternUnits="userSpaceOnUse">
+                <circle cx="1" cy="1" r="1" fill="white" />
+              </pattern>
+            </defs>
+            <rect width="100%" height="100%" fill="url(#base-pattern)" />
+          </svg>
+        </div>
+        
+        {/* Token image positioned to show top half */}
+        <div className="absolute inset-0 flex items-start justify-center pt-[15%]">
+          <div className="w-[70%] h-[70%] relative">
+            {(!imageUrl || imgError || isLoading) ? (
+              <div className={`w-full h-full rounded-lg bg-gradient-to-br ${fallbackColor} flex items-center justify-center font-display font-bold text-white text-xs`}>
+                {symbol[0]?.toUpperCase() || '?'}
+              </div>
+            ) : (
+              <img
+                src={imageUrl}
+                alt={symbol}
+                className="w-full h-full rounded-lg object-cover shadow-lg"
+                onError={() => setImgError(true)}
+              />
+            )}
+          </div>
+        </div>
       </div>
     </div>
   )
