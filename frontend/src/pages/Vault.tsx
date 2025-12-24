@@ -232,48 +232,97 @@ export function Vault() {
 
       {/* Deposit/Withdraw */}
       <section className="cinematic-section">
-        <div className="max-w-5xl mx-auto px-6">
-          <div className="grid lg:grid-cols-3 gap-12">
+        <div className="max-w-6xl mx-auto px-6">
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.8 }}
+            className="mb-16"
+          >
+            <span className="label">Vault Operations</span>
+            <h2 className="headline text-5xl mt-6">Manage Position</h2>
+          </motion.div>
+
+          <div className="grid lg:grid-cols-5 gap-8">
             {/* Main Form */}
-            <div className="lg:col-span-2 space-y-8">
-              {/* Tabs */}
-              <div className="flex gap-4 border-b border-zinc-900">
+            <div className="lg:col-span-3 space-y-12">
+              {/* Mode Selector */}
+              <div className="flex gap-2">
                 {tabs.map((tab) => (
                   <button
                     key={tab}
                     onClick={() => setActiveTab(tab)}
-                    className={`pb-4 transition-colors ${
+                    className={`flex-1 py-4 transition-all duration-300 ${
                       activeTab === tab
-                        ? 'text-white border-b-2 border-white'
-                        : 'text-zinc-600 hover:text-zinc-400'
+                        ? 'card bg-zinc-950/50'
+                        : 'bg-transparent border border-transparent text-zinc-600 hover:text-zinc-400'
                     }`}
                   >
-                    <span className="label">{tab}</span>
+                    <div className="flex items-center justify-center gap-3">
+                      {tab === 'Deposit' ? (
+                        <ArrowDownToLine className="w-4 h-4" />
+                      ) : (
+                        <ArrowUpFromLine className="w-4 h-4" />
+                      )}
+                      <span className="label">{tab}</span>
+                    </div>
                   </button>
                 ))}
               </div>
 
-              {/* Flow */}
-              <div className="flex items-center justify-center gap-4 py-6 border-y border-zinc-900/50">
-                {activeTab === 'Deposit' ? (
-                  <>
-                    <span className="value mono">AKITA</span>
-                    <ArrowDownToLine className="w-4 h-4 text-zinc-600" />
-                    <span className="value mono text-cyan-400">wsAKITA</span>
-                  </>
-                ) : (
-                  <>
-                    <span className="value mono text-cyan-400">wsAKITA</span>
-                    <ArrowUpFromLine className="w-4 h-4 text-zinc-600" />
-                    <span className="value mono">AKITA</span>
-                  </>
-                )}
+              {/* Flow Indicator */}
+              <div className="card p-8">
+                <span className="label block mb-6">Transaction Flow</span>
+                <div className="flex items-center justify-between">
+                  {activeTab === 'Deposit' ? (
+                    <>
+                      <div className="text-center">
+                        <div className="value mono text-3xl mb-2">AKITA</div>
+                        <span className="label">Input Token</span>
+                      </div>
+                      <div className="flex-1 flex items-center justify-center">
+                        <div className="h-px w-full bg-gradient-to-r from-zinc-800 via-cyan-500 to-zinc-800" />
+                        <ArrowDownToLine className="w-5 h-5 text-cyan-400 mx-4" />
+                        <div className="h-px w-full bg-gradient-to-r from-zinc-800 via-cyan-500 to-zinc-800" />
+                      </div>
+                      <div className="text-center">
+                        <div className="value mono text-3xl mb-2 glow-cyan">wsAKITA</div>
+                        <span className="label text-cyan-400">Vault Token</span>
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <div className="text-center">
+                        <div className="value mono text-3xl mb-2 glow-cyan">wsAKITA</div>
+                        <span className="label text-cyan-400">Vault Token</span>
+                      </div>
+                      <div className="flex-1 flex items-center justify-center">
+                        <div className="h-px w-full bg-gradient-to-r from-zinc-800 via-purple-500 to-zinc-800" />
+                        <ArrowUpFromLine className="w-5 h-5 text-purple-400 mx-4" />
+                        <div className="h-px w-full bg-gradient-to-r from-zinc-800 via-purple-500 to-zinc-800" />
+                      </div>
+                      <div className="text-center">
+                        <div className="value mono text-3xl mb-2">AKITA</div>
+                        <span className="label">Output Token</span>
+                      </div>
+                    </>
+                  )}
+                </div>
+                <div className="mt-6 pt-6 border-t border-zinc-900">
+                  <div className="flex justify-between items-center">
+                    <span className="label">Exchange Rate</span>
+                    <div className="value mono">~1:1</div>
+                  </div>
+                </div>
               </div>
 
-              {/* Amount */}
-              <div className="space-y-4">
-                <div className="flex justify-between">
-                  <span className="label">Amount</span>
+              {/* Amount Input */}
+              <div className="space-y-6">
+                <div className="flex justify-between items-end">
+                  <div>
+                    <span className="label block mb-2">Amount</span>
+                    <p className="text-zinc-600 text-xs font-light">Enter the amount to {activeTab.toLowerCase()}</p>
+                  </div>
                   <button
                     onClick={() =>
                       setAmount(
@@ -282,38 +331,59 @@ export function Vault() {
                           : formatUnits(wsAkitaBalance || 0n, 18)
                       )
                     }
-                    className="label text-zinc-600 hover:text-zinc-400 transition-colors"
+                    className="label text-zinc-600 hover:text-cyan-400 transition-colors"
                   >
-                    Balance: {activeTab === 'Deposit'
+                    Max: {activeTab === 'Deposit'
                       ? formatAmount(tokenBalance || 0n)
                       : formatAmount(wsAkitaBalance || 0n)}
                   </button>
                 </div>
-                <input
-                  type="text"
-                  value={amount}
-                  onChange={(e) => setAmount(e.target.value)}
-                  placeholder="0.0"
-                  className="input-field w-full text-4xl font-light"
-                />
+                
+                <div className="card p-8">
+                  <input
+                    type="text"
+                    value={amount}
+                    onChange={(e) => setAmount(e.target.value)}
+                    placeholder="0.0"
+                    className="input-field w-full text-5xl font-light text-center"
+                  />
+                  <div className="mt-4 text-center">
+                    <span className="label">{activeTab === 'Deposit' ? 'AKITA' : 'wsAKITA'}</span>
+                  </div>
+                </div>
+
+                {amount && (
+                  <div className="flex justify-between items-center py-4 border-y border-zinc-900/50">
+                    <span className="label">You Will Receive</span>
+                    <div className="value mono text-xl glow-cyan">
+                      {amount} {activeTab === 'Deposit' ? 'wsAKITA' : 'AKITA'}
+                    </div>
+                  </div>
+                )}
               </div>
 
-              {/* Action */}
+              {/* Action Button */}
               {!isConnected ? (
-                <ConnectButton />
+                <div className="space-y-4">
+                  <span className="label block">Connect Required</span>
+                  <ConnectButton />
+                </div>
               ) : needsApproval ? (
                 <button
                   onClick={handleApprove}
                   disabled={isApproving || !amount}
-                  className="btn-accent w-full disabled:opacity-50"
+                  className="btn-accent w-full py-5 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {isApproving ? (
                     <>
                       <Loader2 className="w-4 h-4 animate-spin inline mr-2" />
-                      Approving...
+                      <span className="label">Approving Token...</span>
                     </>
                   ) : (
-                    'Approve AKITA'
+                    <>
+                      <span className="label">Approve AKITA</span>
+                      <span className="text-xs text-zinc-600 block mt-1">Step 1 of 2</span>
+                    </>
                   )}
                 </button>
               ) : (
@@ -324,39 +394,65 @@ export function Vault() {
                     (activeTab === 'Withdraw' && isWithdrawing) ||
                     !amount
                   }
-                  className="btn-accent w-full disabled:opacity-50"
+                  className="btn-accent w-full py-5 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {((activeTab === 'Deposit' && isDepositing) ||
                     (activeTab === 'Withdraw' && isWithdrawing)) ? (
                     <>
                       <Loader2 className="w-4 h-4 animate-spin inline mr-2" />
-                      {activeTab === 'Deposit' ? 'Depositing...' : 'Withdrawing...'}
+                      <span className="label">Processing...</span>
                     </>
                   ) : (
-                    activeTab
+                    <>
+                      <span className="label">{activeTab}</span>
+                      <span className="text-xs text-zinc-600 block mt-1">Confirm transaction in wallet</span>
+                    </>
                   )}
                 </button>
               )}
             </div>
 
-            {/* Position */}
-            <div className="space-y-8">
+            {/* Position Panel */}
+            <div className="lg:col-span-2 space-y-8">
               <div>
-                <span className="label mb-6 block">Your Position</span>
+                <span className="label mb-6 block">Your Holdings</span>
                 
-                <div className="space-y-6">
-                  <div className="data-row">
-                    <span className="label">wsAKITA Balance</span>
-                    <div className="value mono text-xl">
+                <div className="card p-8 space-y-8">
+                  <div>
+                    <span className="label block mb-4">Vault Token</span>
+                    <div className="value mono text-4xl glow-cyan mb-2">
                       {formatAmount(wsAkitaBalance || 0n)}
                     </div>
+                    <span className="label text-cyan-400">wsAKITA</span>
                   </div>
                   
-                  <div className="data-row border-none">
-                    <span className="label">AKITA Balance</span>
-                    <div className="value mono">
+                  <div className="h-px bg-zinc-900" />
+                  
+                  <div>
+                    <span className="label block mb-4">Creator Token</span>
+                    <div className="value mono text-2xl mb-2">
                       {formatAmount(tokenBalance || 0n)}
                     </div>
+                    <span className="label">AKITA</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Info Card */}
+              <div className="card p-8 space-y-4">
+                <span className="label">Exchange Info</span>
+                <div className="space-y-4 pt-4">
+                  <div className="flex justify-between">
+                    <span className="text-xs text-zinc-600 font-light">Rate</span>
+                    <span className="text-xs text-zinc-400 mono">1:1</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-xs text-zinc-600 font-light">Gas Fee</span>
+                    <span className="text-xs text-zinc-400 mono">Network</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-xs text-zinc-600 font-light">Processing</span>
+                    <span className="text-xs text-zinc-400 mono">Instant</span>
                   </div>
                 </div>
               </div>
