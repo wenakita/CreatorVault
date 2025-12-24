@@ -1,0 +1,441 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CreatorVault | Solana Bridge</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg: #050505;
+            --chrome-light: #f0f0f0;
+            --chrome-dark: #1a1a1a;
+            --accent-solana: #9945FF;
+            --accent-base: #0052FF;
+            --glass: rgba(255, 255, 255, 0.03);
+            --border: rgba(255, 255, 255, 0.1);
+            --reflection: linear-gradient(135deg, transparent 45%, rgba(255,255,255,0.15) 50%, transparent 55%);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        body {
+            background-color: var(--bg);
+            color: var(--chrome-light);
+            font-family: 'Inter', sans-serif;
+            overflow-x: hidden;
+            background-image: 
+                radial-gradient(circle at 20% 20%, rgba(153, 69, 255, 0.05) 0%, transparent 40%),
+                radial-gradient(circle at 80% 80%, rgba(0, 82, 255, 0.05) 0%, transparent 40%);
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 80px 20px;
+        }
+
+        /* --- Bilateral Header --- */
+        .header {
+            text-align: center;
+            margin-bottom: 100px;
+            position: relative;
+        }
+
+        .header h1 {
+            font-size: clamp(3rem, 8vw, 6rem);
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: -0.04em;
+            line-height: 0.9;
+            background: linear-gradient(to bottom, #fff 30%, #666 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 20px;
+        }
+
+        .bridge-status {
+            display: inline-flex;
+            align-items: center;
+            gap: 12px;
+            padding: 8px 16px;
+            background: var(--glass);
+            border: 1px solid var(--border);
+            border-radius: 100px;
+            font-size: 0.8rem;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            backdrop-filter: blur(10px);
+        }
+
+        .pulse {
+            width: 8px;
+            height: 8px;
+            background: #00ffaa;
+            border-radius: 50%;
+            box-shadow: 0 0 10px #00ffaa;
+            animation: pulse-ring 2s infinite;
+        }
+
+        /* --- Mirrored Visualizer --- */
+        .mirror-flow {
+            display: grid;
+            grid-template-columns: 1fr 200px 1fr;
+            align-items: center;
+            margin: 60px 0;
+            position: relative;
+        }
+
+        .side-panel {
+            padding: 40px;
+            background: linear-gradient(145deg, rgba(255,255,255,0.05), rgba(255,255,255,0.01));
+            border: 1px solid var(--border);
+            position: relative;
+            overflow: hidden;
+            border-radius: 4px;
+        }
+
+        .side-panel::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: var(--reflection);
+            background-size: 200% 200%;
+            pointer-events: none;
+        }
+
+        .solana-side { border-right: none; }
+        .base-side { border-left: none; }
+
+        .bridge-axis {
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+        }
+
+        .bridge-axis::after {
+            content: '';
+            position: absolute;
+            width: 1px;
+            height: 150%;
+            background: linear-gradient(to bottom, transparent, var(--border), var(--border), transparent);
+        }
+
+        .vortex {
+            width: 60px;
+            height: 60px;
+            border: 2px solid var(--chrome-light);
+            border-radius: 50%;
+            z-index: 2;
+            background: var(--bg);
+            display: grid;
+            place-items: center;
+            animation: rotate 10s linear infinite;
+        }
+
+        /* --- Content Sections --- */
+        .grid-features {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 2px;
+            background: var(--border);
+            border: 1px solid var(--border);
+            margin-top: 80px;
+        }
+
+        .feature-card {
+            background: var(--bg);
+            padding: 40px;
+            transition: all 0.4s cubic-bezier(0.23, 1, 0.32, 1);
+        }
+
+        .feature-card:hover {
+            background: var(--glass);
+        }
+
+        .feature-card h3 {
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.2em;
+            color: #888;
+            margin-bottom: 20px;
+        }
+
+        .feature-card p {
+            font-size: 1.1rem;
+            line-height: 1.5;
+            font-weight: 300;
+        }
+
+        /* --- Technical Etching --- */
+        .tech-spec {
+            margin-top: 100px;
+            border-top: 1px solid var(--border);
+            padding-top: 40px;
+        }
+
+        .spec-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 40px;
+        }
+
+        .code-block {
+            background: #0a0a0a;
+            padding: 30px;
+            border: 1px solid #1a1a1a;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.85rem;
+            line-height: 1.6;
+            color: #a0a0a0;
+            position: relative;
+            overflow-x: auto;
+        }
+
+        .code-block::after {
+            content: 'VIEW_SOURCE';
+            position: absolute;
+            top: 10px;
+            right: 15px;
+            font-size: 10px;
+            color: #444;
+        }
+
+        .keyword { color: var(--accent-solana); }
+        .func { color: var(--accent-base); }
+        .string { color: #00ffaa; }
+
+        .address-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.75rem;
+        }
+
+        .address-table td {
+            padding: 15px 0;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .address-table tr:last-child td { border: none; }
+
+        .label { color: #666; width: 40%; }
+        .val { color: var(--chrome-light); text-align: right; word-break: break-all; }
+
+        /* --- Twin Contract Visualization --- */
+        .twin-module {
+            margin: 100px 0;
+            padding: 60px;
+            background: radial-gradient(circle at center, rgba(255,255,255,0.02) 0%, transparent 100%);
+            border: 1px solid var(--border);
+            text-align: center;
+        }
+
+        .twin-visual {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 40px;
+            margin: 40px 0;
+        }
+
+        .node {
+            width: 120px;
+            height: 160px;
+            background: var(--chrome-dark);
+            border: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.4);
+        }
+
+        .node-icon {
+            font-size: 2rem;
+            margin-bottom: 10px;
+        }
+
+        .connector {
+            flex-grow: 1;
+            height: 1px;
+            background: repeating-linear-gradient(90deg, var(--border) 0, var(--border) 10px, transparent 10px, transparent 20px);
+            max-width: 200px;
+        }
+
+        /* --- Animations --- */
+        @keyframes pulse-ring {
+            0% { transform: scale(0.8); opacity: 0.5; }
+            100% { transform: scale(2.4); opacity: 0; }
+        }
+
+        @keyframes rotate {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+
+        .hover-reveal {
+            position: relative;
+            overflow: hidden;
+        }
+
+        .hover-reveal::after {
+            content: '';
+            position: absolute;
+            top: 0; left: -100%;
+            width: 100%; height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.05), transparent);
+            transition: 0.5s;
+        }
+
+        .hover-reveal:hover::after {
+            left: 100%;
+        }
+
+        /* --- Mobile Responsive --- */
+        @media (max-width: 850px) {
+            .mirror-flow { grid-template-columns: 1fr; }
+            .bridge-axis { height: 100px; }
+            .bridge-axis::after { width: 100%; height: 1px; }
+            .grid-features { grid-template-columns: 1fr; }
+            .spec-grid { grid-template-columns: 1fr; }
+            .twin-visual { flex-direction: column; }
+            .connector { height: 60px; width: 1px; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <header class="header">
+        <div class="bridge-status">
+            <div class="pulse"></div>
+            Mainnet Operational • 0.1s Cross-Verification
+        </div>
+        <h1>Solana<br>Integration</h1>
+        <p style="color: #888; letter-spacing: 0.1em; font-weight: 300;">BILATERAL LIQUIDITY VIA BASE-SOLANA BRIDGE</p>
+    </header>
+
+    <div class="mirror-flow">
+        <div class="side-panel solana-side hover-reveal">
+            <h2 style="font-weight: 800; margin-bottom: 10px; color: var(--accent-solana);">SOLANA</h2>
+            <p style="font-size: 0.8rem; opacity: 0.6;">PHANTOM WALLET / SOL</p>
+            <div style="margin-top: 40px;">
+                <div style="font-size: 0.7rem; color: #555;">ACTION</div>
+                <div style="font-family: 'JetBrains Mono'; font-size: 0.9rem;">Lock SOL</div>
+            </div>
+        </div>
+        
+        <div class="bridge-axis">
+            <div class="vortex">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                    <path d="M7 16V4M7 4L3 8M7 4L11 8M17 8V20M17 20L13 16M17 20L21 16" />
+                </svg>
+            </div>
+        </div>
+
+        <div class="side-panel base-side hover-reveal">
+            <h2 style="font-weight: 800; margin-bottom: 10px; color: var(--accent-base);">BASE</h2>
+            <p style="font-size: 0.8rem; opacity: 0.6;">TWIN CONTRACT / wsTOKEN</p>
+            <div style="margin-top: 40px;">
+                <div style="font-size: 0.7rem; color: #555;">EXECUTION</div>
+                <div style="font-family: 'JetBrains Mono'; font-size: 0.9rem;">Mint + Call</div>
+            </div>
+        </div>
+    </div>
+
+    <section class="grid-features">
+        <div class="feature-card">
+            <h3>01 / CCA Bidding</h3>
+            <p>Participate in fair launch auctions directly from your Solana wallet. Secure wsTokens at equilibrium price without bridging ETH.</p>
+        </div>
+        <div class="feature-card">
+            <h3>02 / Win Lottery</h3>
+            <p>Every bridge-and-buy transaction automatically enters you into the 6.9% jackpot. Tax hooks register entries for your Solana Twin.</p>
+        </div>
+        <div class="feature-card">
+            <h3>03 / Gasless Relay</h3>
+            <p>Pay all transaction costs in SOL. The BaseRelayer handles the destination gas, ensuring a seamless single-click experience.</p>
+        </div>
+    </section>
+
+    <div class="twin-module">
+        <h2 style="font-weight: 800; text-transform: uppercase;">The Deterministic Twin</h2>
+        <p style="max-width: 600px; margin: 20px auto; color: #888; line-height: 1.6;">Your Solana wallet address is mathematically mapped to a unique smart contract on Base. This Twin acts as your agent, holding assets and executing calls on your behalf.</p>
+        
+        <div class="twin-visual">
+            <div class="node">
+                <span class="node-icon">◎</span>
+                <span style="font-size: 0.6rem; color: #666;">SOLANA WALLET</span>
+                <span style="font-family: 'JetBrains Mono'; font-size: 0.7rem; margin-top: 10px;">9aYk...CA</span>
+            </div>
+            <div class="connector"></div>
+            <div class="node" style="border-color: var(--accent-base);">
+                <span class="node-icon">⚓</span>
+                <span style="font-size: 0.6rem; color: #666;">BASE TWIN</span>
+                <span style="font-family: 'JetBrains Mono'; font-size: 0.7rem; margin-top: 10px;">0x12...34</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="tech-spec">
+        <div class="spec-grid">
+            <div>
+                <h3 style="margin-bottom: 25px; font-size: 0.8rem; letter-spacing: 0.2em; color: #666;">REGISTRY ADAPTERS</h3>
+                <table class="address-table">
+                    <tr>
+                        <td class="label">Bridge Program</td>
+                        <td class="val">HNCne2...VWLM</td>
+                    </tr>
+                    <tr>
+                        <td class="label">Base Relayer</td>
+                        <td class="val">g1et5V...sfb9</td>
+                    </tr>
+                    <tr>
+                        <td class="label">SOL Token (Base)</td>
+                        <td class="val">0x3119...cf82</td>
+                    </tr>
+                    <tr>
+                        <td class="label">Validator Set</td>
+                        <td class="val">0xAF24...794B</td>
+                    </tr>
+                </table>
+            </div>
+            <div>
+                <h3 style="margin-bottom: 25px; font-size: 0.8rem; letter-spacing: 0.2em; color: #666;">IMPLEMENTATION</h3>
+                <div class="code-block">
+                    <span class="keyword">const</span> ixs = [<br>
+                    &nbsp;&nbsp;<span class="func">getBridgeSolInstruction</span>({<br>
+                    &nbsp;&nbsp;&nbsp;&nbsp;amount: <span class="string">BigInt(0.1 * 1e9)</span>,<br>
+                    &nbsp;&nbsp;&nbsp;&nbsp;to: <span class="string">SOL_BRIDGE_ADAPTER</span><br>
+                    &nbsp;&nbsp;}),<br>
+                    &nbsp;&nbsp;<span class="keyword">await</span> <span class="func">buildPayForRelayIx</span>(<br>
+                    &nbsp;&nbsp;&nbsp;&nbsp;RELAYER_ID, <br>
+                    &nbsp;&nbsp;&nbsp;&nbsp;msg, <br>
+                    &nbsp;&nbsp;&nbsp;&nbsp;pubKey<br>
+                    &nbsp;&nbsp;)<br>
+                    ];
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <footer style="margin-top: 100px; text-align: center; border-top: 1px solid var(--border); padding-top: 40px;">
+        <p style="font-size: 0.7rem; color: #444; text-transform: uppercase; letter-spacing: 0.3em;">
+            &copy; CreatorVault Protocol // Terminal Mirrored Chromium v1.0.4
+        </p>
+    </footer>
+</div>
+
+</body>
+</html>
