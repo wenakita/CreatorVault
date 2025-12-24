@@ -50,12 +50,12 @@ function VaultCard({ vault }: { vault: typeof vaults[0] }) {
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        whileHover={{ y: -6 }}
-        transition={{ duration: 0.2 }}
-        className="card p-8 group"
+        transition={{ duration: 0.6 }}
+        className="card p-8 group hover:bg-zinc-950/50 transition-all duration-300"
       >
-        <div className="flex items-center gap-5 mb-7">
-          <div className="relative transition-transform group-hover:scale-110 group-hover:rotate-3">
+        {/* Token Header */}
+        <div className="flex items-center gap-4 mb-8">
+          <div className="transition-opacity group-hover:opacity-70">
             <TokenImage
               tokenAddress={vault.token as `0x${string}`}
               symbol={vault.symbol}
@@ -63,46 +63,40 @@ function VaultCard({ vault }: { vault: typeof vaults[0] }) {
             />
           </div>
           <div>
-            <h3 className="font-semibold text-2xl tracking-tight mb-1">{vault.name}</h3>
-            <p className="text-sm text-zinc-500 font-medium">{vault.symbol}</p>
+            <h3 className="headline text-2xl mb-1">{vault.name}</h3>
+            <span className="label">{vault.symbol}</span>
           </div>
         </div>
 
         {/* Status */}
-        {isActive && (
-          <div className="badge bg-blue-500/10 border-blue-500/20 mb-6">
-            <span className="relative flex h-2 w-2">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75" />
-              <span className="relative inline-flex rounded-full h-2 w-2 bg-blue-500" />
-            </span>
-            <span className="text-blue-400 font-semibold">CCA Active</span>
-          </div>
-        )}
-        {isGraduated && (
-          <div className="badge mb-6">
-            <span className="text-zinc-400 font-semibold">Vault Active</span>
-          </div>
-        )}
-        {!isActive && !isGraduated && (
-          <div className="badge mb-6">
-            <span className="text-zinc-500 font-semibold">Not Launched</span>
-          </div>
-        )}
+        <div className="mb-6">
+          {isActive && (
+            <div className="status-active">
+              <span className="label text-cyan-400">CCA Active</span>
+            </div>
+          )}
+          {isGraduated && (
+            <span className="label">Vault Active</span>
+          )}
+          {!isActive && !isGraduated && (
+            <span className="label">Not Launched</span>
+          )}
+        </div>
 
         {/* Stats */}
         {isActive && (
-          <div className="stat-card mb-6">
-            <div className="text-sm font-medium text-zinc-500 mb-2">Total Raised</div>
-            <div className="text-2xl font-bold text-gradient-blue">
+          <div className="space-y-3 mb-6 pb-6 border-b border-zinc-900/50">
+            <span className="label">Total Raised</span>
+            <div className="value mono text-2xl glow-cyan">
               {formatUnits(currencyRaised, 18)} ETH
             </div>
           </div>
         )}
 
-        {/* Arrow */}
-        <div className="flex items-center gap-2 text-sm font-semibold text-zinc-400 group-hover:text-blue-500 transition-colors">
-          <span>View Vault</span>
-          <ArrowRight className="w-5 h-5 group-hover:translate-x-2 transition-transform" />
+        {/* Action */}
+        <div className="flex items-center gap-2 text-zinc-600 group-hover:text-zinc-400 transition-colors">
+          <span className="label">View Vault</span>
+          <ArrowRight className="w-3 h-3 transition-transform group-hover:translate-x-1" />
         </div>
       </motion.div>
     </Link>
@@ -111,62 +105,116 @@ function VaultCard({ vault }: { vault: typeof vaults[0] }) {
 
 export function Dashboard() {
   return (
-    <div className="relative max-w-7xl mx-auto px-6 py-20 space-y-24">
-      {/* Ambient background */}
-      <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute top-0 right-1/4 w-[400px] h-[400px] bg-blue-500/10 rounded-full blur-[100px] animate-gradient" />
+    <div className="relative">
+      {/* Particle atmosphere */}
+      <div className="particles">
+        <div className="absolute top-1/4 left-1/3 w-px h-px bg-purple-500 rounded-full" style={{ animation: 'particle-float 8s ease-in-out infinite' }} />
+        <div className="absolute top-1/2 right-1/4 w-px h-px bg-cyan-500 rounded-full" style={{ animation: 'particle-float 10s ease-in-out infinite', animationDelay: '2s' }} />
       </div>
 
       {/* Header */}
-      <div className="relative space-y-6">
-        <h1 className="text-6xl lg:text-7xl font-bold tracking-[-0.02em]">Creator Vaults</h1>
-        <p className="text-zinc-400 text-xl lg:text-2xl max-w-3xl leading-relaxed font-light">
-          Deposit creator coins, earn yield, and participate in community growth
-        </p>
-      </div>
+      <section className="cinematic-section">
+        <div className="max-w-6xl mx-auto px-6">
+          <motion.div
+            initial={{ opacity: 0, y: 30 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.8 }}
+            className="space-y-6"
+          >
+            <span className="label">Vault Marketplace</span>
+            <h1 className="headline text-7xl lg:text-8xl leading-[1.05]">
+              Creator Vaults
+            </h1>
+            <p className="text-zinc-500 text-xl font-light max-w-2xl">
+              Deposit creator coins · Earn yield · Grow together
+            </p>
+          </motion.div>
+        </div>
+      </section>
 
-      {/* How It Works */}
-      <div className="relative card p-12 lg:p-16">
-        <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-blue-500 via-purple-500 to-transparent" />
-        
-        <h2 className="text-3xl lg:text-4xl font-semibold mb-6 tracking-tight">How Vault Strategies Work</h2>
-        <p className="text-zinc-400 mb-12 text-lg lg:text-xl leading-relaxed font-light max-w-3xl">
-          When creators deposit tokens, funds are automatically allocated across multiple yield-generating strategies:
-        </p>
-        
-        <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
-          <div className="stat-card group">
-            <div className="text-sm font-medium text-zinc-500 mb-4">WETH LP</div>
-            <div className="text-4xl font-bold text-gradient-blue mb-3 group-hover:scale-110 transition-transform">25%</div>
-            <div className="text-sm text-zinc-500 leading-relaxed">Uniswap V3 liquidity</div>
-          </div>
-          <div className="stat-card group">
-            <div className="text-sm font-medium text-zinc-500 mb-4">USDC LP</div>
-            <div className="text-4xl font-bold text-gradient-blue mb-3 group-hover:scale-110 transition-transform">25%</div>
-            <div className="text-sm text-zinc-500 leading-relaxed">Stable pair liquidity</div>
-          </div>
-          <div className="stat-card group">
-            <div className="text-sm font-medium text-zinc-500 mb-4">Ajna</div>
-            <div className="text-4xl font-bold text-gradient-blue mb-3 group-hover:scale-110 transition-transform">25%</div>
-            <div className="text-sm text-zinc-500 leading-relaxed">Lending protocol</div>
-          </div>
-          <div className="stat-card group">
-            <div className="text-sm font-medium text-zinc-500 mb-4">Idle</div>
-            <div className="text-4xl font-bold mb-3 group-hover:scale-110 transition-transform">25%</div>
-            <div className="text-sm text-zinc-500 leading-relaxed">Available reserve</div>
+      {/* Strategy Grid */}
+      <section className="cinematic-section bg-zinc-950/20">
+        <div className="max-w-6xl mx-auto px-6">
+          <motion.div
+            initial={{ opacity: 0 }}
+            whileInView={{ opacity: 1 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.8 }}
+            className="mb-16"
+          >
+            <span className="label">Automated Allocation</span>
+            <h2 className="headline text-5xl mt-6">Multi-Strategy Yield</h2>
+          </motion.div>
+
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-px bg-zinc-900">
+            <motion.div
+              initial={{ opacity: 0 }}
+              whileInView={{ opacity: 1 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.4 }}
+              className="bg-black p-8 space-y-4"
+            >
+              <span className="label">Uniswap V3 WETH</span>
+              <div className="value mono text-4xl glow-cyan">25%</div>
+            </motion.div>
+
+            <motion.div
+              initial={{ opacity: 0 }}
+              whileInView={{ opacity: 1 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.4, delay: 0.1 }}
+              className="bg-black p-8 space-y-4"
+            >
+              <span className="label">Stable Pair USDC</span>
+              <div className="value mono text-4xl glow-cyan">25%</div>
+            </motion.div>
+
+            <motion.div
+              initial={{ opacity: 0 }}
+              whileInView={{ opacity: 1 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.4, delay: 0.2 }}
+              className="bg-black p-8 space-y-4"
+            >
+              <span className="label">Ajna Lending</span>
+              <div className="value mono text-4xl glow-purple">25%</div>
+            </motion.div>
+
+            <motion.div
+              initial={{ opacity: 0 }}
+              whileInView={{ opacity: 1 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.4, delay: 0.3 }}
+              className="bg-black p-8 space-y-4"
+            >
+              <span className="label">Idle Reserve</span>
+              <div className="value mono text-4xl">25%</div>
+            </motion.div>
           </div>
         </div>
-      </div>
+      </section>
 
       {/* Vaults */}
-      <div className="relative">
-        <h2 className="text-4xl font-semibold mb-10 tracking-tight">Available Vaults</h2>
-        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
-          {vaults.map((vault) => (
-            <VaultCard key={vault.id} vault={vault} />
-          ))}
+      <section className="cinematic-section">
+        <div className="max-w-6xl mx-auto px-6">
+          <motion.div
+            initial={{ opacity: 0 }}
+            whileInView={{ opacity: 1 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.8 }}
+            className="mb-16"
+          >
+            <span className="label">Available Now</span>
+            <h2 className="headline text-5xl mt-6">Active Vaults</h2>
+          </motion.div>
+
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            {vaults.map((vault) => (
+              <VaultCard key={vault.id} vault={vault} />
+            ))}
+          </div>
         </div>
-      </div>
+      </section>
     </div>
   )
 }
