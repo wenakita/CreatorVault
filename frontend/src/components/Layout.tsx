@@ -12,73 +12,68 @@ export function Layout() {
   const location = useLocation()
 
   return (
-    <div className="min-h-screen flex flex-col bg-[#1a1a1a]">
+    <div className="min-h-screen flex flex-col bg-black">
       {/* Header */}
-      <header className="neu-card mx-6 mt-6 mb-4">
-        <div className="max-w-7xl mx-auto px-6 py-5 flex items-center justify-between">
-          <Link to="/" className="flex items-center gap-3 group">
-            <div className="neu-card-inset p-2 rounded-xl">
-              <VaultLogo size="sm" />
-            </div>
-            <div className="hidden sm:flex items-baseline gap-2">
-              <span className="font-bold text-white text-xl">Creator</span>
-              <span className="font-bold text-[#0052FF] text-xl">Vault</span>
-            </div>
-          </Link>
+      <header className="border-b border-zinc-900">
+        <div className="max-w-7xl mx-auto px-6">
+          <div className="flex items-center justify-between h-16">
+            <Link to="/" className="flex items-center gap-3">
+              <div className="w-8 h-8">
+                <VaultLogo size="sm" />
+              </div>
+              <span className="font-bold text-lg">CreatorVault</span>
+            </Link>
 
-          {/* Nav - Desktop */}
-          <nav className="hidden md:flex items-center gap-4">
-            {navItems.map(({ path, label }) => {
-              const isActive = location.pathname === path
-              return (
-                <Link
-                  key={path}
-                  to={path}
-                  className={`
-                    px-5 py-2.5 rounded-xl font-medium transition-all duration-200
-                    ${isActive 
-                      ? 'neu-card-inset text-[#0052FF]' 
-                      : 'neu-card text-zinc-400 hover:text-white'
-                    }
-                  `}
-                >
-                  {label}
-                </Link>
-              )
-            })}
-          </nav>
+            {/* Nav */}
+            <nav className="hidden md:flex items-center gap-6">
+              {navItems.map(({ path, icon: Icon, label }) => {
+                const isActive = location.pathname === path
+                return (
+                  <Link
+                    key={path}
+                    to={path}
+                    className={`flex items-center gap-2 text-sm font-medium transition-colors ${
+                      isActive
+                        ? 'text-blue-500'
+                        : 'text-zinc-400 hover:text-white'
+                    }`}
+                  >
+                    <Icon className="w-4 h-4" />
+                    {label}
+                  </Link>
+                )
+              })}
+            </nav>
 
-          <ConnectButton />
+            <ConnectButton />
+          </div>
         </div>
       </header>
 
-      {/* Main content */}
+      {/* Main */}
       <main className="flex-1">
         <Outlet />
       </main>
 
-      {/* Mobile bottom nav */}
-      <nav className="md:hidden fixed bottom-6 left-6 right-6 z-50">
-        <div className="neu-card p-3 flex items-center justify-around">
+      {/* Mobile Nav */}
+      <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-black border-t border-zinc-900">
+        <div className="flex items-center justify-around p-4">
           {navItems.map(({ path, icon: Icon, label }) => {
             const isActive = location.pathname === path
             return (
               <Link
                 key={path}
                 to={path}
-                className={`
-                  flex flex-col items-center gap-1 px-6 py-2 rounded-xl transition-all duration-200
-                  ${isActive ? 'neu-card-inset' : ''}
-                `}
+                className="flex flex-col items-center gap-1"
               >
                 <Icon
                   className={`w-5 h-5 ${
-                    isActive ? 'text-[#0052FF]' : 'text-zinc-500'
+                    isActive ? 'text-blue-500' : 'text-zinc-500'
                   }`}
                 />
                 <span
-                  className={`text-xs font-medium ${
-                    isActive ? 'text-[#0052FF]' : 'text-zinc-500'
+                  className={`text-xs ${
+                    isActive ? 'text-blue-500' : 'text-zinc-500'
                   }`}
                 >
                   {label}

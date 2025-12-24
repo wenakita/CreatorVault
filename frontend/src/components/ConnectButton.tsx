@@ -43,7 +43,7 @@ export function ConnectButton() {
       return (
         <button
           onClick={() => switchChain?.({ chainId: base.id })}
-          className="btn-neu-primary flex items-center gap-2"
+          className="btn-primary flex items-center gap-2"
         >
           <AlertCircle className="w-4 h-4" />
           <span>Switch to Base</span>
@@ -55,9 +55,9 @@ export function ConnectButton() {
       <div className="relative">
         <button
           onClick={() => setShowMenu(!showMenu)}
-          className="btn-neu flex items-center gap-3"
+          className="btn-secondary flex items-center gap-3"
         >
-          <div className="neu-dot w-8 h-8 rounded-full bg-[#0052FF]" />
+          <div className="w-2 h-2 rounded-full bg-blue-500" />
           <span className="font-mono text-sm">{formatAddress(address)}</span>
           <ChevronDown
             className={`w-4 h-4 text-zinc-500 transition-transform ${
@@ -80,11 +80,11 @@ export function ConnectButton() {
                 initial={{ opacity: 0, y: -10, scale: 0.95 }}
                 animate={{ opacity: 1, y: 0, scale: 1 }}
                 exit={{ opacity: 0, y: -10, scale: 0.95 }}
-                className="absolute right-0 top-full mt-3 w-56 neu-card p-2 z-50"
+                className="absolute right-0 top-full mt-3 w-56 card p-2 z-50"
               >
                 <button
                   onClick={copyAddress}
-                  className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-zinc-400 hover:text-white transition-colors hover:neu-card-inset"
+                  className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-zinc-400 hover:text-white hover:bg-zinc-900 transition-colors"
                 >
                   {copied ? (
                     <Check className="w-4 h-4 text-green-500" />
@@ -99,7 +99,7 @@ export function ConnectButton() {
                   href={`https://basescan.org/address/${address}`}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-zinc-400 hover:text-white transition-colors hover:neu-card-inset"
+                  className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-zinc-400 hover:text-white hover:bg-zinc-900 transition-colors"
                 >
                   <ExternalLink className="w-4 h-4" />
                   <span className="text-sm font-medium">View on Basescan</span>
@@ -110,7 +110,7 @@ export function ConnectButton() {
                     disconnect()
                     setShowMenu(false)
                   }}
-                  className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-red-400 hover:text-red-300 transition-colors"
+                  className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-red-400 hover:text-red-300 hover:bg-zinc-900 transition-colors"
                 >
                   <LogOut className="w-4 h-4" />
                   <span className="text-sm font-medium">Disconnect</span>
@@ -127,7 +127,7 @@ export function ConnectButton() {
     <button
       onClick={() => connect({ connector: connectors[0] })}
       disabled={isPending}
-      className="btn-neu-primary flex items-center gap-2 disabled:opacity-50"
+      className="btn-primary flex items-center gap-2 disabled:opacity-50"
     >
       <Wallet className="w-4 h-4" />
       <span>{isPending ? 'Connecting...' : 'Connect Wallet'}</span>

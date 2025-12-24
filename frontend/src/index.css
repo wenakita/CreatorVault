@@ -1,143 +1,40 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
-
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-:root {
-  --bg-base: #1a1a1a;
-  --bg-raised: #212121;
-  --shadow-dark: rgba(0, 0, 0, 0.5);
-  --shadow-light: rgba(255, 255, 255, 0.05);
-  --base-blue: #0052FF;
-}
-
 @layer base {
-  html {
-    font-family: 'Inter', system-ui, sans-serif;
-    -webkit-font-smoothing: antialiased;
-    -moz-osx-font-smoothing: grayscale;
-  }
-
   body {
-    @apply bg-[#1a1a1a] text-white min-h-screen;
-  }
-
-  /* Minimal scrollbar */
-  ::-webkit-scrollbar {
-    width: 6px;
-  }
-
-  ::-webkit-scrollbar-track {
-    @apply bg-transparent;
-  }
-
-  ::-webkit-scrollbar-thumb {
-    @apply bg-zinc-800 rounded-full;
+    @apply bg-black text-white antialiased;
   }
 }
 
 @layer components {
-  /* Neumorphic card - raised */
-  .neu-card {
-    @apply bg-[#212121] rounded-2xl;
-    box-shadow: 
-      8px 8px 16px rgba(0, 0, 0, 0.5),
-      -8px -8px 16px rgba(255, 255, 255, 0.05);
+  /* Clean Flat Cards */
+  .card {
+    @apply bg-zinc-950/50 border border-zinc-900 rounded-lg backdrop-blur-sm;
   }
-
-  /* Neumorphic card - pressed/inset */
-  .neu-card-inset {
-    @apply bg-[#1a1a1a] rounded-2xl;
-    box-shadow: 
-      inset 6px 6px 12px rgba(0, 0, 0, 0.5),
-      inset -6px -6px 12px rgba(255, 255, 255, 0.05);
+  
+  /* Buttons */
+  .btn-primary {
+    @apply bg-blue-500 hover:bg-blue-600 text-white font-medium px-6 py-3 rounded-lg transition-all;
   }
-
-  /* Neumorphic button - primary */
-  .btn-neu-primary {
-    @apply px-6 py-3 rounded-xl font-medium text-white bg-[#0052FF] 
-           transition-all duration-200;
-    box-shadow: 
-      6px 6px 12px rgba(0, 0, 0, 0.4),
-      -4px -4px 8px rgba(0, 82, 255, 0.2);
+  
+  .btn-secondary {
+    @apply bg-zinc-900 hover:bg-zinc-800 text-white font-medium px-6 py-3 rounded-lg border border-zinc-800 transition-all;
   }
-
-  .btn-neu-primary:hover {
-    box-shadow: 
-      8px 8px 16px rgba(0, 0, 0, 0.5),
-      -6px -6px 12px rgba(0, 82, 255, 0.3);
+  
+  /* Inputs */
+  .input-field {
+    @apply bg-zinc-950 border border-zinc-800 text-white px-4 py-3 rounded-lg focus:outline-none focus:border-blue-500 transition-all;
   }
-
-  .btn-neu-primary:active {
-    box-shadow: 
-      inset 4px 4px 8px rgba(0, 0, 0, 0.4),
-      inset -2px -2px 4px rgba(0, 82, 255, 0.2);
+  
+  /* Stats */
+  .stat-card {
+    @apply bg-zinc-950/50 border border-zinc-900 rounded-lg p-5 backdrop-blur-sm;
   }
-
-  /* Neumorphic button - secondary */
-  .btn-neu {
-    @apply px-6 py-3 rounded-xl font-medium text-zinc-200 bg-[#212121]
-           transition-all duration-200;
-    box-shadow: 
-      6px 6px 12px rgba(0, 0, 0, 0.5),
-      -6px -6px 12px rgba(255, 255, 255, 0.05);
-  }
-
-  .btn-neu:hover {
-    box-shadow: 
-      8px 8px 16px rgba(0, 0, 0, 0.6),
-      -8px -8px 16px rgba(255, 255, 255, 0.08);
-  }
-
-  .btn-neu:active {
-    box-shadow: 
-      inset 4px 4px 8px rgba(0, 0, 0, 0.5),
-      inset -4px -4px 8px rgba(255, 255, 255, 0.05);
-  }
-
-  /* Neumorphic input */
-  .input-neu {
-    @apply w-full px-5 py-3 rounded-xl
-           bg-[#1a1a1a] text-white placeholder:text-zinc-600
-           focus:outline-none transition-all duration-200;
-    box-shadow: 
-      inset 6px 6px 12px rgba(0, 0, 0, 0.5),
-      inset -6px -6px 12px rgba(255, 255, 255, 0.05);
-  }
-
-  .input-neu:focus {
-    box-shadow: 
-      inset 6px 6px 12px rgba(0, 0, 0, 0.5),
-      inset -6px -6px 12px rgba(255, 255, 255, 0.05),
-      0 0 0 2px rgba(0, 82, 255, 0.3);
-  }
-
-  /* Small neumorphic element */
-  .neu-badge {
-    @apply px-4 py-2 rounded-full text-sm font-medium bg-[#212121];
-    box-shadow: 
-      4px 4px 8px rgba(0, 0, 0, 0.4),
-      -4px -4px 8px rgba(255, 255, 255, 0.05);
-  }
-
-  /* Neumorphic accent dot */
-  .neu-dot {
-    @apply w-3 h-3 rounded-full bg-[#212121];
-    box-shadow: 
-      2px 2px 4px rgba(0, 0, 0, 0.5),
-      -2px -2px 4px rgba(255, 255, 255, 0.08);
-  }
-}
-
-@layer utilities {
-  /* Hide scrollbar */
-  .scrollbar-hide {
-    -ms-overflow-style: none;
-    scrollbar-width: none;
-  }
-
-  .scrollbar-hide::-webkit-scrollbar {
-    display: none;
+  
+  /* Badge */
+  .badge {
+    @apply bg-zinc-900 text-zinc-400 px-3 py-1.5 rounded-lg text-xs font-medium border border-zinc-800;
   }
 }
