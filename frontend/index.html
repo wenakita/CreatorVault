@@ -57,3 +57,19 @@
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
+
+    <script>
+      (function() {
+        const savedTheme = localStorage.getItem('theme');
+        // Only apply dark mode if explicitly saved (default is light mode)
+        if (savedTheme === 'dark') {
+          document.documentElement.classList.add('dark');
+        }
+      })();
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

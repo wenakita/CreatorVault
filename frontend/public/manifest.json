@@ -29,3 +29,33 @@
   }
 }
 
+
+  "short_name": "Vault",
+  "description": "Turn creator coins into earnings. Launch vaults. Reward holders. All onchain.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#020617",
+  "theme_color": "#0052FF",
+  "icons": [
+    {
+      "src": "https://tomato-abundant-urial-204.mypinata.cloud/ipfs/bafybeigzyatm2pgrkqbnskyvflnagtqli6rgh7wv7t2znaywkm2pixmkxy",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "https://tomato-abundant-urial-204.mypinata.cloud/ipfs/bafybeigzyatm2pgrkqbnskyvflnagtqli6rgh7wv7t2znaywkm2pixmkxy",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ],
+  "miniApp": {
+    "type": "frame",
+    "version": "1.0.0",
+    "homeUrl": "/",
+    "iconUrl": "https://tomato-abundant-urial-204.mypinata.cloud/ipfs/bafybeigzyatm2pgrkqbnskyvflnagtqli6rgh7wv7t2znaywkm2pixmkxy",
+    "splashImageUrl": "https://tomato-abundant-urial-204.mypinata.cloud/ipfs/bafybeigzyatm2pgrkqbnskyvflnagtqli6rgh7wv7t2znaywkm2pixmkxy",
+    "splashBackgroundColor": "#020617",
+    "webhookUrl": ""
+  }
+}
+

@@ -17,13 +17,6 @@ const sizeClasses = {
   xl: 'w-16 h-16 text-2xl',
 }
 
-const badgeSizes = {
-  sm: 'w-3 h-3 text-[8px]',
-  md: 'w-4 h-4 text-[9px]',
-  lg: 'w-5 h-5 text-[10px]',
-  xl: 'w-6 h-6 text-[11px]',
-}
-
 export function TokenImage({
   tokenAddress,
   symbol,
@@ -58,11 +51,11 @@ export function TokenImage({
     return <div className={className}>{tokenElement}</div>
   }
 
-  // Wrapped version: Top 69% = token, bottom 31% = Base vault
+  // Wrapped version: Top 69% = token, bottom 31% = 3D Base vault (69% transparent)
   return (
     <div className={`relative ${className}`}>
-      <div className={`${sizeClass} rounded-xl overflow-hidden relative`}>
-        {/* Top 69%: Token image */}
+      <div className={`${sizeClass} rounded-xl overflow-hidden relative shadow-xl`}>
+        {/* Full token image (background) */}
         <div className="absolute inset-0">
           {(!imageUrl || imgError || isLoading) ? (
             <div className={`w-full h-full bg-gradient-to-br ${fallbackColor} flex items-center justify-center font-display font-bold text-white`}>
@@ -78,49 +71,77 @@ export function TokenImage({
           )}
         </div>
         
-        {/* Bottom 31%: 3D Base vault */}
-        <div className="absolute inset-x-0 bottom-0 h-[31%] bg-gradient-to-b from-[#0066FF] to-[#0052FF]">
-          {/* Inner shadow for depth */}
-          <div className="absolute inset-0 shadow-[inset_0_2px_8px_rgba(0,0,0,0.3)]" />
+        {/* Bottom 31%: 3D Base vault (#0052FF) - 69% transparent (31% opacity) */}
+        <div className="absolute inset-x-0 bottom-0 h-[31%] opacity-[0.31]">
+          {/* Main vault body with proper Base blue gradient */}
+          <div className="absolute inset-0 bg-gradient-to-br from-[#0062FF] via-[#0052FF] to-[#0042DD]" />
           
-          {/* Subtle metallic sheen */}
-          <div className="absolute inset-0 bg-gradient-to-br from-white/5 via-transparent to-black/10" />
+          {/* Deep inset shadow for vault recess */}
+          <div className="absolute inset-0 shadow-[inset_0_4px_12px_rgba(0,0,0,0.5),inset_0_-2px_8px_rgba(0,0,0,0.3)]" />
           
-          {/* Panel lines for vault door effect */}
-          <div className="absolute inset-0 opacity-20">
-            <div className="absolute top-0 left-1/2 w-px h-full bg-white" />
-            <div className="absolute top-1/2 left-0 w-full h-px bg-white" />
+          {/* Top highlight edge */}
+          <div className="absolute top-0 inset-x-0 h-[2px] bg-gradient-to-r from-transparent via-white/20 to-transparent" />
+          
+          {/* Brushed metal texture */}
+          <div className="absolute inset-0 opacity-[0.15]" style={{
+            backgroundImage: 'repeating-linear-gradient(90deg, transparent, transparent 2px, rgba(255,255,255,0.1) 2px, rgba(255,255,255,0.1) 4px)'
+          }} />
+          
+          {/* Vault door frame */}
+          <div className="absolute inset-[8%] rounded-sm border border-white/10 shadow-lg" />
+          
+          {/* Panel separator lines */}
+          <div className="absolute inset-0">
+            {/* Vertical line */}
+            <div className="absolute top-[20%] bottom-[20%] left-1/2 w-[1px] bg-gradient-to-b from-transparent via-black/40 to-transparent" />
+            <div className="absolute top-[20%] bottom-[20%] left-1/2 w-[1px] ml-[1px] bg-gradient-to-b from-transparent via-white/20 to-transparent" />
+            
+            {/* Horizontal line */}
+            <div className="absolute left-[20%] right-[20%] top-1/2 h-[1px] bg-gradient-to-r from-transparent via-black/40 to-transparent" />
+            <div className="absolute left-[20%] right-[20%] top-1/2 h-[1px] mt-[1px] bg-gradient-to-r from-transparent via-white/20 to-transparent" />
           </div>
           
-          {/* Circular vault dial/lock */}
+          {/* Circular vault lock dial */}
           <div className="absolute inset-0 flex items-center justify-center">
-            <div className="relative w-[35%] aspect-square">
-              {/* Outer ring */}
-              <div className="absolute inset-0 rounded-full bg-gradient-to-br from-white/30 to-white/10 shadow-lg" />
-              {/* Inner ring */}
-              <div className="absolute inset-[15%] rounded-full bg-gradient-to-tl from-[#0052FF] to-[#0066FF] shadow-inner" />
-              {/* Center dot */}
-              <div className="absolute inset-[40%] rounded-full bg-white/90 shadow-md" />
+            <div className="relative w-[40%] aspect-square">
+              {/* Outer bezel ring with shine */}
+              <div className="absolute inset-0 rounded-full bg-gradient-to-br from-white/40 via-white/20 to-transparent shadow-2xl" />
+              <div className="absolute inset-[4%] rounded-full bg-gradient-to-tl from-black/30 to-transparent" />
+              
+              {/* Middle ring - recessed */}
+              <div className="absolute inset-[12%] rounded-full bg-gradient-to-br from-[#0042DD] via-[#0052FF] to-[#0062FF] shadow-[inset_0_2px_8px_rgba(0,0,0,0.5)]" />
+              
+              {/* Dial markings */}
+              <div className="absolute inset-[20%] rounded-full">
+                {[...Array(8)].map((_, i) => (
+                  <div
+                    key={i}
+                    className="absolute top-[2%] left-1/2 w-[2px] h-[15%] bg-white/30 origin-bottom"
+                    style={{ transform: `translateX(-50%) rotate(${i * 45}deg)` }}
+                  />
+                ))}
+              </div>
+              
+              {/* Center button */}
+              <div className="absolute inset-[35%] rounded-full bg-gradient-to-br from-white/90 via-white/70 to-white/50 shadow-xl" />
+              <div className="absolute inset-[38%] rounded-full bg-gradient-to-tl from-black/20 to-transparent" />
             </div>
           </div>
           
-          {/* Subtle dot pattern overlay */}
-          <div className="absolute inset-0 opacity-5">
+          {/* Subtle noise texture for realism */}
+          <div className="absolute inset-0 opacity-[0.03] mix-blend-overlay">
             <svg width="100%" height="100%" xmlns="http://www.w3.org/2000/svg">
-              <defs>
-                <pattern id={`base-pattern-${symbol}`} x="0" y="0" width="20" height="20" patternUnits="userSpaceOnUse">
-                  <circle cx="1" cy="1" r="1" fill="white" />
-                </pattern>
-              </defs>
-              <rect width="100%" height="100%" fill={`url(#base-pattern-${symbol})`} />
+              <filter id={`noise-${symbol}`}>
+                <feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="4" stitchTiles="stitch"/>
+              </filter>
+              <rect width="100%" height="100%" filter={`url(#noise-${symbol})`}/>
             </svg>
           </div>
         </div>
         
-        {/* Smooth gradient blend between token and vault */}
-        <div className="absolute inset-x-0 top-[64%] h-[10%] bg-gradient-to-b from-transparent via-[#0052FF]/40 to-transparent pointer-events-none" />
+        {/* Seamless blend transition */}
+        <div className="absolute inset-x-0 top-[66%] h-[6%] bg-gradient-to-b from-black/0 via-black/10 to-black/20 pointer-events-none" />
       </div>
     </div>
   )
 }
-

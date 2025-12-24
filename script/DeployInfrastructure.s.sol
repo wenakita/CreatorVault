@@ -611,3 +611,9 @@ contract DeployPayoutRouter is Script {
     }
 }
 
+
+        console.log(unicode"│  Vault → Wrap → Weekly Burn                                     │");
+        console.log(unicode"└─────────────────────────────────────────────────────────────────┘");
+    }
+}
+
