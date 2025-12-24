@@ -5,6 +5,23 @@ import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
+// ================================
+// INTERFACES
+// ================================
+
+interface IVault {
+        function deposit(uint256 assets, address receiver) external returns (uint256 shares);
+    }
+
+    interface IWrapper {
+        function wrap(uint256 amount) external returns (uint256 wsTokens);
+        function shareOFT() external view returns (address);
+    }
+
+interface ICCAStrategy {
+    function launchAuctionSimple(uint256 amount, uint128 requiredRaise) external returns (address auction);
+}
+
 /**
  * @title VaultActivationBatcher
  * @notice Helper contract to batch all vault activation steps into 1 transaction
@@ -23,23 +40,6 @@ import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol
  */
 contract VaultActivationBatcher is ReentrancyGuard {
     using SafeERC20 for IERC20;
-
-    // ================================
-    // INTERFACES
-    // ================================
-
-    interface IVault {
-        function deposit(uint256 assets, address receiver) external returns (uint256 shares);
-    }
-
-    interface IWrapper {
-        function wrap(uint256 amount) external returns (uint256 wsTokens);
-        function shareOFT() external view returns (address);
-    }
-
-    interface ICCAStrategy {
-        function launchAuctionSimple(uint256 amount, uint128 requiredRaise) external returns (address auction);
-    }
 
     // ================================
     // EVENTS

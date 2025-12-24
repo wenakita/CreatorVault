@@ -5,26 +5,11 @@ import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
-/**
- * @title SimpleLPDeployer
- * @notice Helper to deploy initial LP for wsAKITA/WETH on Uniswap V4 during activation
- * @dev Bundles with activation for 1-click LP deployment via account abstraction
- * 
- * Flow:
- * 1. User calls deployLP with wsAKITA + ETH
- * 2. Contract creates V4 pool if needed
- * 3. Adds full-range liquidity
- * 4. Returns LP NFT to user
- * 5. User owns and controls the liquidity
- */
-contract SimpleLPDeployer is ReentrancyGuard {
-    using SafeERC20 for IERC20;
+// ================================
+// INTERFACES
+// ================================
 
-    // ================================
-    // INTERFACES
-    // ================================
-
-    interface IPoolManager {
+interface IPoolManager {
         function initialize(
             address token0,
             address token1,
@@ -56,6 +41,21 @@ contract SimpleLPDeployer is ReentrancyGuard {
             uint256 amount1
         );
     }
+
+/**
+ * @title SimpleLPDeployer
+ * @notice Helper to deploy initial LP for wsAKITA/WETH on Uniswap V4 during activation
+ * @dev Bundles with activation for 1-click LP deployment via account abstraction
+ * 
+ * Flow:
+ * 1. User calls deployLP with wsAKITA + ETH
+ * 2. Contract creates V4 pool if needed
+ * 3. Adds full-range liquidity
+ * 4. Returns LP NFT to user
+ * 5. User owns and controls the liquidity
+ */
+contract SimpleLPDeployer is ReentrancyGuard {
+    using SafeERC20 for IERC20;
 
     // ================================
     // STATE
