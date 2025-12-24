@@ -122,158 +122,93 @@ export function Home() {
           </FadeIn>
         </section>
 
-        {/* VALUE PROPS - Large, visual cards */}
+        {/* TWO PATHS - Creators & Holders */}
         <section>
           <FadeIn delay={0.1}>
-            <div className="text-center mb-12">
+            <div className="text-center mb-16">
               <h2 className="text-3xl sm:text-4xl font-bold text-white mb-4">
-                Stop Holding. Start Earning.
+                Two Ways to Earn
               </h2>
             </div>
           </FadeIn>
 
-          <div className="grid lg:grid-cols-3 gap-6">
-            {/* Problem */}
+          <div className="grid lg:grid-cols-2 gap-8 max-w-5xl mx-auto">
+            {/* FOR CREATORS */}
             <StaggerItem>
-              <div className="relative p-8 rounded-3xl bg-gradient-to-br from-red-500/5 via-transparent to-transparent border border-red-500/20 backdrop-blur-xl">
-                <div className="absolute inset-0 rounded-3xl bg-gradient-to-br from-red-500/5 to-transparent opacity-0 hover:opacity-100 transition-opacity" />
-                <div className="relative">
-                  <div className="w-12 h-12 rounded-2xl bg-red-500/10 flex items-center justify-center mb-4">
-                    <Coins className="w-6 h-6 text-red-400" />
+              <div className="relative p-8 sm:p-10 rounded-3xl bg-gradient-to-br from-purple-500/10 via-transparent to-transparent border border-purple-500/30 backdrop-blur-xl h-full">
+                <div className="absolute inset-0 rounded-3xl bg-gradient-to-br from-purple-500/10 to-transparent opacity-0 hover:opacity-100 transition-opacity" />
+                
+                <div className="relative space-y-6">
+                  {/* Badge */}
+                  <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-purple-500/10 border border-purple-500/20">
+                    <Rocket className="w-4 h-4 text-purple-400" />
+                    <span className="text-purple-400 font-medium text-sm">For Creators</span>
                   </div>
-                  <h3 className="text-xl font-bold text-white mb-3">Idle Tokens</h3>
-                  <p className="text-slate-400 leading-relaxed">
-                    Tokens sit in your wallet. No yield. No rewards.
-                  </p>
+
+                  <div>
+                    <h3 className="text-2xl font-bold text-white mb-3">
+                      Launch a Vault
+                    </h3>
+                    <p className="text-slate-400 text-lg">
+                      Create a vault for your token. Your community deposits and earns together.
+                    </p>
+                  </div>
+
+                  <Link to="/launch">
+                    <motion.button 
+                      className="w-full group px-6 py-4 rounded-xl bg-gradient-to-r from-purple-500 to-pink-500 text-white font-bold text-lg shadow-xl shadow-purple-500/20"
+                      whileHover={{ scale: 1.02 }}
+                      whileTap={{ scale: 0.98 }}
+                      transition={{ duration: DURATION.fast, ease: BASE_EASE }}
+                    >
+                      <span className="flex items-center justify-center gap-2">
+                        Launch Your Vault
+                        <ChevronRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+                      </span>
+                    </motion.button>
+                  </Link>
                 </div>
               </div>
             </StaggerItem>
 
-            {/* Arrow */}
-            <div className="hidden lg:flex items-center justify-center">
-              <ArrowRight className="w-12 h-12 text-brand-500" />
-            </div>
-
-            {/* Solution */}
+            {/* FOR HOLDERS */}
             <StaggerItem>
-              <div className="relative p-8 rounded-3xl bg-gradient-to-br from-brand-500/10 via-transparent to-transparent border border-brand-500/30 backdrop-blur-xl">
+              <div className="relative p-8 sm:p-10 rounded-3xl bg-gradient-to-br from-brand-500/10 via-transparent to-transparent border border-brand-500/30 backdrop-blur-xl h-full">
                 <div className="absolute inset-0 rounded-3xl bg-gradient-to-br from-brand-500/10 to-transparent opacity-0 hover:opacity-100 transition-opacity" />
-                <div className="relative">
-                  <div className="w-12 h-12 rounded-2xl bg-brand-500/20 flex items-center justify-center mb-4">
-                    <TrendingUp className="w-6 h-6 text-brand-500" />
+                
+                <div className="relative space-y-6">
+                  {/* Badge */}
+                  <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-brand-500/10 border border-brand-500/20">
+                    <Coins className="w-4 h-4 text-brand-400" />
+                    <span className="text-brand-400 font-medium text-sm">For Holders</span>
                   </div>
-                  <h3 className="text-xl font-bold text-white mb-3">Earning Assets</h3>
-                  <p className="text-slate-400 leading-relaxed">
-                    Deposit. Earn fees. Grow your share.
-                  </p>
+
+                  <div>
+                    <h3 className="text-2xl font-bold text-white mb-3">
+                      Deposit & Earn
+                    </h3>
+                    <p className="text-slate-400 text-lg">
+                      Deposit creator coins into vaults. Earn from trading fees and deflationary burns.
+                    </p>
+                  </div>
+
+                  <Link to="/dashboard">
+                    <motion.button 
+                      className="w-full group px-6 py-4 rounded-xl bg-gradient-to-r from-brand-500 to-cyan-500 text-white font-bold text-lg shadow-xl shadow-brand-500/20"
+                      whileHover={{ scale: 1.02 }}
+                      whileTap={{ scale: 0.98 }}
+                      transition={{ duration: DURATION.fast, ease: BASE_EASE }}
+                    >
+                      <span className="flex items-center justify-center gap-2">
+                        Browse Vaults
+                        <ChevronRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+                      </span>
+                    </motion.button>
+                  </Link>
                 </div>
               </div>
             </StaggerItem>
           </div>
-        </section>
-
-        {/* FOR CREATORS - How to launch a vault */}
-        <section className="relative">
-          <FadeIn delay={0.1}>
-            <div className="text-center mb-12">
-              <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-brand-500/10 border border-brand-500/20 backdrop-blur-xl mb-4">
-                <Sparkles className="w-4 h-4 text-brand-400" />
-                <span className="text-brand-400 font-medium text-sm">For Creators</span>
-              </div>
-              <h2 className="text-3xl sm:text-4xl font-bold text-white mb-4">
-                Launch Your CreatorVault
-              </h2>
-              <p className="text-slate-400 text-lg max-w-2xl mx-auto">
-                Give your community a way to earn with you
-              </p>
-            </div>
-          </FadeIn>
-
-          <div className="grid md:grid-cols-3 gap-8 max-w-4xl mx-auto">
-            {[
-              { 
-                num: '01', 
-                icon: Rocket, 
-                title: 'Create Vault', 
-                desc: 'Launch a vault for your creator coin.',
-                color: 'from-purple-500/20 to-pink-500/20',
-                iconBg: 'bg-purple-500/10',
-                iconColor: 'text-purple-400'
-              },
-              { 
-                num: '02', 
-                icon: Users, 
-                title: 'Community Joins', 
-                desc: 'Your holders deposit tokens.',
-                color: 'from-blue-500/20 to-cyan-500/20',
-                iconBg: 'bg-blue-500/10',
-                iconColor: 'text-blue-400'
-              },
-              { 
-                num: '03', 
-                icon: TrendingUp, 
-                title: 'Everyone Earns', 
-                desc: 'All vault holders share trading fees.',
-                color: 'from-green-500/20 to-emerald-500/20',
-                iconBg: 'bg-green-500/10',
-                iconColor: 'text-green-400'
-              },
-            ].map(({ num, icon: Icon, title, desc, color, iconBg, iconColor }) => (
-              <StaggerItem key={num}>
-                <div className="relative h-full">
-                  {/* Connecting line (hidden on mobile) */}
-                  {num !== '03' && (
-                    <div className="hidden md:block absolute top-12 left-full w-8 h-0.5 bg-gradient-to-r from-white/20 to-transparent" />
-                  )}
-                  
-                  <div className={`relative p-8 rounded-3xl bg-white/[0.02] border border-white/10 backdrop-blur-xl h-full`}>
-                    {/* Gradient overlay on hover */}
-                    <div className={`absolute inset-0 rounded-3xl bg-gradient-to-br ${color} opacity-0 hover:opacity-100 transition-opacity duration-300`} />
-                    
-                    <div className="relative">
-                      {/* Number badge */}
-                      <div className="flex items-center gap-4 mb-6">
-                        <div className="text-4xl font-black text-white/10">
-                          {num}
-                        </div>
-                        <div className={`w-12 h-12 rounded-2xl ${iconBg} flex items-center justify-center`}>
-                          <Icon className={`w-6 h-6 ${iconColor}`} />
-                        </div>
-                      </div>
-
-                      {/* Content */}
-                      <h3 className="text-xl font-bold text-white mb-3">
-                        {title}
-                      </h3>
-                      <p className="text-slate-400 leading-relaxed">
-                        {desc}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              </StaggerItem>
-            ))}
-          </div>
-
-          {/* Creator CTA */}
-          <FadeIn delay={0.3}>
-            <div className="text-center mt-12">
-              <Link to="/launch">
-                <motion.button 
-                  className="group px-8 py-4 rounded-2xl bg-gradient-to-r from-brand-500 to-purple-500 text-white font-bold text-lg shadow-2xl shadow-brand-500/20 overflow-hidden"
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                  transition={{ duration: DURATION.fast, ease: BASE_EASE }}
-                >
-                  <span className="relative flex items-center gap-2">
-                    <Rocket className="w-5 h-5" />
-                    Launch Your Vault
-                    <ChevronRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
-                  </span>
-                </motion.button>
-              </Link>
-            </div>
-          </FadeIn>
         </section>
 
         {/* DEFLATIONARY MECHANISM - Key differentiator */}
@@ -473,233 +408,12 @@ export function Home() {
           </FadeIn>
         </section>
 
-        {/* HOW IT WORKS - Clean, numbered flow */}
-        <section>
-          <FadeIn delay={0.1}>
-            <div className="text-center mb-12">
-              <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-green-500/10 border border-green-500/20 backdrop-blur-xl mb-4">
-                <Coins className="w-4 h-4 text-green-400" />
-                <span className="text-green-400 font-medium text-sm">For Holders</span>
-              </div>
-              <h2 className="text-3xl sm:text-4xl font-bold text-white mb-4">
-                How It Works
-              </h2>
-              <p className="text-slate-400 text-lg max-w-2xl mx-auto">
-                Deposit into existing vaults and start earning
-              </p>
-            </div>
-          </FadeIn>
-
-          <div className="grid md:grid-cols-3 gap-8 max-w-4xl mx-auto">
-            {[
-              { 
-                num: '01', 
-                icon: Coins, 
-                title: 'Deposit Tokens', 
-                desc: 'Add creator coins to the vault.',
-                color: 'from-blue-500/20 to-cyan-500/20',
-                iconBg: 'bg-blue-500/10',
-                iconColor: 'text-blue-400'
-              },
-              { 
-                num: '02', 
-                icon: TrendingUp, 
-                title: 'Earn From Trades', 
-                desc: 'Get a share of trading fees.',
-                color: 'from-purple-500/20 to-pink-500/20',
-                iconBg: 'bg-purple-500/10',
-                iconColor: 'text-purple-400'
-              },
-              { 
-                num: '03', 
-                icon: Flame, 
-                title: 'Burns Increase Share', 
-                desc: 'Own more as supply decreases.',
-                color: 'from-orange-500/20 to-red-500/20',
-                iconBg: 'bg-orange-500/10',
-                iconColor: 'text-orange-400'
-              },
-            ].map(({ num, icon: Icon, title, desc, color, iconBg, iconColor }) => (
-              <StaggerItem key={num}>
-                <motion.div 
-                  className="relative h-full"
-                  whileHover={{ y: -8 }}
-                  transition={{ duration: 0.3, ease: BASE_EASE }}
-                >
-                  <div className={`absolute inset-0 rounded-3xl bg-gradient-to-br ${color} blur-xl opacity-0 group-hover:opacity-100 transition-opacity`} />
-                  <div className="relative p-8 rounded-3xl bg-white/[0.02] border border-white/10 backdrop-blur-xl h-full">
-                    {/* Number badge */}
-                    <div className="text-6xl font-black text-white/5 absolute top-4 right-4">
-                      {num}
-                    </div>
-                    
-                    <div className={`w-14 h-14 rounded-2xl ${iconBg} flex items-center justify-center mb-6`}>
-                      <Icon className={`w-7 h-7 ${iconColor}`} />
-                    </div>
-                    
-                    <h3 className="text-xl font-bold text-white mb-3">{title}</h3>
-                    <p className="text-slate-400 leading-relaxed">{desc}</p>
-                  </div>
-                </motion.div>
-              </StaggerItem>
-            ))}
-          </div>
-        </section>
-
-        {/* BENEFITS - What you get */}
-        <section>
-          <FadeIn delay={0.1}>
-            <div className="text-center mb-12">
-              <h2 className="text-3xl sm:text-4xl font-bold text-white mb-4">
-                Why Use CreatorVault?
-              </h2>
-            </div>
-          </FadeIn>
-
-          <Stagger className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
-            {[
-              {
-                icon: TrendingUp,
-                title: 'Earn Passively',
-                desc: 'Trading fees flow to holders.',
-                gradient: 'from-green-500/10 to-emerald-500/10',
-                iconColor: 'text-green-400',
-              },
-              {
-                icon: Flame,
-                title: 'Deflationary',
-                desc: 'Burns increase your share.',
-                gradient: 'from-orange-500/10 to-red-500/10',
-                iconColor: 'text-orange-400',
-              },
-              {
-                icon: Users,
-                title: 'Fair to All',
-                desc: 'Everyone earns together.',
-                gradient: 'from-blue-500/10 to-cyan-500/10',
-                iconColor: 'text-blue-400',
-              },
-              {
-                icon: Zap,
-                title: 'Flexible',
-                desc: 'Withdraw anytime.',
-                gradient: 'from-yellow-500/10 to-orange-500/10',
-                iconColor: 'text-yellow-400',
-              },
-            ].map(({ icon: Icon, title, desc, gradient, iconColor }) => (
-              <StaggerItem key={title}>
-                <motion.div 
-                  className={`relative p-6 rounded-2xl bg-gradient-to-br ${gradient} border border-white/5 backdrop-blur-xl h-full group`}
-                  whileHover={{ scale: 1.05 }}
-                  transition={{ duration: DURATION.fast, ease: BASE_EASE }}
-                >
-                  <div className="absolute inset-0 rounded-2xl bg-white/[0.02] opacity-0 group-hover:opacity-100 transition-opacity" />
-                  <div className="relative">
-                    <Icon className={`w-8 h-8 ${iconColor} mb-4`} />
-                    <h3 className="text-lg font-bold text-white mb-2">{title}</h3>
-                    <p className="text-slate-400 text-sm">{desc}</p>
-                  </div>
-                </motion.div>
-              </StaggerItem>
-            ))}
-          </Stagger>
-        </section>
-
-        {/* CROSS-CHAIN - Sleek banner */}
+        {/* FINAL CTA - Simple footer */}
         <FadeIn delay={0.1}>
-          <section className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-[#0052FF]/10 via-purple-500/10 to-[#0052FF]/10 border border-white/10 p-8">
-            <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHZpZXdCb3g9IjAgMCA2MCA2MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZyBmaWxsPSJub25lIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiPjxnIGZpbGw9IiNmZmYiIGZpbGwtb3BhY2l0eT0iMC4wMiI+PHBhdGggZD0iTTM2IDM0djItMnptMC0ydjJoLTJ2LTJoMnptLTItMnYyaC0ydi0yaDJ6bS0yLTJ2MmgtMnYtMmgyem0tMi0ydjJoLTJ2LTJoMnptLTItMnYyaC0ydi0yaDJ6bS0yLTJ2MmgtMnYtMmgyem0tMi0ydjJoLTJ2LTJoMnoiLz48L2c+PC9nPjwvc3ZnPg==')] opacity-50" />
-            
-            <div className="relative flex flex-col sm:flex-row items-center justify-between gap-6">
-              <div className="flex items-center gap-6">
-                <div className="flex items-center gap-4">
-                  <div className="p-3 rounded-2xl bg-white/5 border border-white/10 backdrop-blur-xl">
-                    <img src="/base-logo.svg" alt="Base" className="w-8 h-8" />
-                  </div>
-                  <span className="text-3xl text-slate-600">+</span>
-                  <div className="p-3 rounded-2xl bg-white/5 border border-white/10 backdrop-blur-xl">
-                    <img 
-                      src="https://raw.githubusercontent.com/solana-labs/token-list/main/assets/mainnet/So11111111111111111111111111111111111111112/logo.png" 
-                      alt="Solana" 
-                      className="w-8 h-8 rounded-full"
-                    />
-                  </div>
-                </div>
-                <div>
-                  <h3 className="text-xl font-bold text-white mb-1">Cross-Chain</h3>
-                  <p className="text-slate-400">Base + Solana</p>
-                </div>
-              </div>
-              
-              <a
-                href="https://docs.base.org/guides/base-solana-bridge"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex-shrink-0"
-              >
-                <motion.button
-                  className="px-6 py-3 rounded-xl bg-white/10 hover:bg-white/20 border border-white/20 text-white font-semibold backdrop-blur-xl transition-colors flex items-center gap-2"
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                  transition={{ duration: DURATION.fast, ease: BASE_EASE }}
-                >
-                  Learn More
-                  <ChevronRight className="w-4 h-4" />
-                </motion.button>
-              </a>
-            </div>
-          </section>
-        </FadeIn>
-
-        {/* FINAL CTA - Big, bold */}
-        <FadeIn delay={0.1}>
-          <section className="relative py-20">
-            <div className="absolute inset-0 bg-gradient-to-b from-brand-500/5 to-transparent rounded-3xl blur-3xl" />
-            
-            <div className="relative text-center space-y-8">
-              <div>
-                <h2 className="text-4xl sm:text-5xl font-bold text-white mb-4">
-                  Ready to Earn?
-                </h2>
-                <p className="text-slate-400 text-xl max-w-2xl mx-auto">
-                  Deposit tokens. Earn together.
-                </p>
-              </div>
-
-              <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-                <Link to="/dashboard">
-                  <motion.button 
-                    className="group relative px-12 py-6 rounded-2xl bg-brand-500 text-white font-bold text-xl shadow-2xl shadow-brand-500/40 overflow-hidden"
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
-                    transition={{ duration: DURATION.fast, ease: BASE_EASE }}
-                  >
-                    <div className="absolute inset-0 -translate-x-full group-hover:translate-x-full transition-transform duration-1000 bg-gradient-to-r from-transparent via-white/30 to-transparent" />
-                    
-                    <span className="relative flex items-center gap-3">
-                      <Coins className="w-6 h-6" />
-                      Browse Vaults
-                      <ArrowRight className="w-6 h-6 group-hover:translate-x-2 transition-transform" />
-                    </span>
-                  </motion.button>
-                </Link>
-
-                <Link to="/launch">
-                  <motion.button 
-                    className="px-12 py-6 rounded-2xl bg-white/[0.04] hover:bg-white/[0.08] border border-white/10 text-white font-semibold text-xl backdrop-blur-xl transition-colors"
-                    whileHover={{ scale: 1.02 }}
-                    whileTap={{ scale: 0.98 }}
-                    transition={{ duration: DURATION.fast, ease: BASE_EASE }}
-                  >
-                    Or Create a Vault
-                  </motion.button>
-                </Link>
-              </div>
-
-              <p className="text-slate-500 text-sm">
-                Deposit anytime • Withdraw anytime
-              </p>
-            </div>
+          <section className="text-center py-12">
+            <p className="text-slate-400 text-lg">
+              Built on <img src="/base-wordmark.svg" alt="Base" className="inline-block h-5 align-middle ml-1" />
+            </p>
           </section>
         </FadeIn>
 
