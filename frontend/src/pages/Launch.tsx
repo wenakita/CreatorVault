@@ -482,7 +482,7 @@ export function Launch() {
               <CheckCircle2 className="w-10 h-10 text-green-500" />
             </motion.div>
             <h2 className="font-display text-2xl font-bold">
-              ✅ Click 1 Complete!
+              Deployment Complete
             </h2>
             <p className="text-surface-400">
               Your vault is deployed and the CCA auction is live! 

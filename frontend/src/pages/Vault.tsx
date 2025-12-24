@@ -13,6 +13,9 @@ import {
   Trophy,
   Zap,
   Clock,
+  DollarSign,
+  Shield,
+  Target,
 } from 'lucide-react'
 import { AKITA } from '../config/contracts'
 import { ConnectButton } from '../components/ConnectButton'
@@ -528,34 +531,35 @@ export function Vault() {
           </div>
         </div>
 
-        {/* The Best Part */}
+        {/* Key Advantages */}
         <div className="grid sm:grid-cols-3 gap-4">
-          <div className="p-4 rounded-xl bg-white/[0.02] border border-white/5 text-center">
-            <div className="text-3xl mb-2">💰</div>
-            <p className="text-white font-semibold mb-1 text-sm">Pay Less</p>
-            <p className="text-xs text-slate-400">Everyone pays the same low price</p>
+          <div className="p-4 rounded-xl bg-white/[0.02] border border-white/5">
+            <DollarSign className="w-6 h-6 text-green-400 mb-3" />
+            <p className="text-white font-semibold mb-1 text-sm">Fair Pricing</p>
+            <p className="text-xs text-slate-400">All participants pay the same clearing price</p>
           </div>
-          <div className="p-4 rounded-xl bg-white/[0.02] border border-white/5 text-center">
-            <div className="text-3xl mb-2">🔒</div>
-            <p className="text-white font-semibold mb-1 text-sm">Risk Free</p>
-            <p className="text-xs text-slate-400">Don't win? Full refund</p>
+          <div className="p-4 rounded-xl bg-white/[0.02] border border-white/5">
+            <Shield className="w-6 h-6 text-blue-400 mb-3" />
+            <p className="text-white font-semibold mb-1 text-sm">Protected Bids</p>
+            <p className="text-xs text-slate-400">Unsuccessful bids automatically refunded</p>
           </div>
-          <div className="p-4 rounded-xl bg-white/[0.02] border border-white/5 text-center">
-            <div className="text-3xl mb-2">⚡</div>
-            <p className="text-white font-semibold mb-1 text-sm">First Access</p>
-            <p className="text-xs text-slate-400">Get tokens before market</p>
+          <div className="p-4 rounded-xl bg-white/[0.02] border border-white/5">
+            <Zap className="w-6 h-6 text-brand-400 mb-3" />
+            <p className="text-white font-semibold mb-1 text-sm">Early Access</p>
+            <p className="text-xs text-slate-400">Priority allocation before public markets</p>
           </div>
         </div>
 
         {/* CTA to Bid */}
         <a href={`/auction/bid/${AKITA.vault}`}>
           <motion.button
-            className="w-full px-8 py-5 rounded-2xl bg-gradient-to-r from-brand-500 to-purple-500 text-white text-xl font-bold shadow-2xl shadow-brand-500/30 hover:shadow-brand-500/50 transition-shadow"
-            whileHover={{ scale: 1.02 }}
-            whileTap={{ scale: 0.98 }}
+            className="w-full px-8 py-5 rounded-xl bg-brand-500 text-white font-semibold hover:bg-brand-600 transition-colors border border-brand-400/20 shadow-lg shadow-brand-500/20"
+            whileHover={{ scale: 1.01 }}
+            whileTap={{ scale: 0.99 }}
           >
             <span className="flex items-center justify-center gap-3">
-              🎯 Join Auction Now
+              <Target className="w-5 h-5" />
+              Join Auction
             </span>
           </motion.button>
         </a>
