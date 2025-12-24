@@ -50,51 +50,58 @@ function VaultCard({ vault }: { vault: typeof vaults[0] }) {
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="card p-6 hover:border-zinc-700 transition-all group"
+        className="neu-card p-6 hover:translate-y-[-2px] transition-all duration-300 group"
       >
         {/* Token */}
-        <div className="flex items-center gap-3 mb-4">
-          <TokenImage
-            tokenAddress={vault.token as `0x${string}`}
-            symbol={vault.symbol}
-            size="md"
-          />
+        <div className="flex items-center gap-4 mb-6">
+          <div className="neu-card-inset p-3 rounded-xl">
+            <TokenImage
+              tokenAddress={vault.token as `0x${string}`}
+              symbol={vault.symbol}
+              size="md"
+            />
+          </div>
           <div>
-            <h3 className="font-semibold text-lg">{vault.name}</h3>
+            <h3 className="font-semibold text-xl">{vault.name}</h3>
             <p className="text-sm text-zinc-500">{vault.symbol}</p>
           </div>
         </div>
 
         {/* Status */}
-        <div className="mb-4">
+        <div className="mb-6">
           {isActive && (
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#0052FF]/10 border border-[#0052FF]/20">
-              <div className="w-1.5 h-1.5 rounded-full bg-[#0052FF] animate-pulse" />
-              <span className="text-sm text-[#0052FF]">CCA Active</span>
+            <div className="neu-badge inline-flex items-center gap-2">
+              <div className="w-2 h-2 rounded-full bg-[#0052FF] animate-pulse" />
+              <span className="text-[#0052FF]">CCA Active</span>
             </div>
           )}
           {isGraduated && (
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-purple-500/10 border border-purple-500/20">
-              <span className="text-sm text-purple-400">CCA Ended</span>
+            <div className="neu-badge inline-flex items-center gap-2">
+              <span className="text-purple-400">CCA Ended</span>
             </div>
           )}
           {!isActive && !isGraduated && (
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-zinc-800 border border-zinc-700">
-              <span className="text-sm text-zinc-400">Not Launched</span>
+            <div className="neu-badge inline-flex items-center gap-2">
+              <span className="text-zinc-500">Not Launched</span>
             </div>
           )}
         </div>
 
         {/* Stats */}
         {isActive && (
-          <div className="text-sm text-zinc-400">
-            Raised: <span className="text-white font-medium">{formatUnits(currencyRaised, 18)} ETH</span>
+          <div className="neu-card-inset p-4 rounded-xl mb-6">
+            <div className="text-sm text-zinc-400 mb-1">Raised</div>
+            <div className="text-xl font-semibold text-white">
+              {formatUnits(currencyRaised, 18)} ETH
+            </div>
           </div>
         )}
 
         {/* Arrow */}
-        <div className="flex justify-end mt-4">
-          <ArrowUpRight className="w-5 h-5 text-zinc-600 group-hover:text-[#0052FF] transition-colors" />
+        <div className="flex justify-end">
+          <div className="neu-dot w-10 h-10 rounded-full flex items-center justify-center">
+            <ArrowUpRight className="w-5 h-5 text-zinc-400 group-hover:text-[#0052FF] transition-colors" />
+          </div>
         </div>
       </motion.div>
     </Link>
@@ -103,17 +110,19 @@ function VaultCard({ vault }: { vault: typeof vaults[0] }) {
 
 export function Dashboard() {
   return (
-    <div className="max-w-6xl mx-auto space-y-12 py-12">
+    <div className="max-w-6xl mx-auto space-y-12 py-12 px-6">
       {/* Header */}
       <div>
-        <h1 className="text-4xl font-semibold mb-3">Vaults</h1>
-        <p className="text-zinc-400 text-lg">
-          Deposit creator tokens. Earn from trading fees.
-        </p>
+        <div className="neu-card p-8 mb-8">
+          <h1 className="text-5xl font-bold mb-4">Vaults</h1>
+          <p className="text-zinc-400 text-lg">
+            Deposit creator tokens. Earn from trading fees.
+          </p>
+        </div>
       </div>
 
       {/* Vaults Grid */}
-      <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+      <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
         {vaults.map((vault) => (
           <VaultCard key={vault.id} vault={vault} />
         ))}

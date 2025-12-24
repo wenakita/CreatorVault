@@ -12,44 +12,38 @@ const navItems = [
 
 export function Layout() {
   const location = useLocation()
-  const { chain, isConnected } = useAccount()
-  const isCorrectNetwork = !isConnected || chain?.id === base.id
+  const { isConnected } = useAccount()
 
   return (
-    <div className="min-h-screen flex flex-col bg-black">
-      {/* Wrong Network Banner */}
-      {!isConnected && (
-        <div className="bg-[#0052FF]/10 border-b border-[#0052FF]/20 px-4 py-2.5 text-center">
-          <p className="text-[#0052FF] text-sm">
-            Connect wallet to get started
-          </p>
-        </div>
-      )}
-      
+    <div className="min-h-screen flex flex-col bg-[#1a1a1a]">
       {/* Header */}
-      <header className="border-b border-zinc-900">
-        <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
+      <header className="neu-card mx-6 mt-6 mb-4">
+        <div className="max-w-7xl mx-auto px-6 py-5 flex items-center justify-between">
           <Link to="/" className="flex items-center gap-3 group">
-            <VaultLogo size="sm" />
-            <div className="hidden sm:flex items-baseline gap-1.5">
-              <span className="font-semibold text-white text-lg">Creator</span>
-              <span className="font-semibold text-[#0052FF] text-lg">Vault</span>
+            <div className="neu-card-inset p-2 rounded-xl">
+              <VaultLogo size="sm" />
+            </div>
+            <div className="hidden sm:flex items-baseline gap-2">
+              <span className="font-bold text-white text-xl">Creator</span>
+              <span className="font-bold text-[#0052FF] text-xl">Vault</span>
             </div>
           </Link>
 
           {/* Nav - Desktop */}
-          <nav className="hidden md:flex items-center gap-8">
+          <nav className="hidden md:flex items-center gap-4">
             {navItems.map(({ path, label }) => {
               const isActive = location.pathname === path
               return (
                 <Link
                   key={path}
                   to={path}
-                  className={`text-sm font-medium transition-colors ${
-                    isActive
-                      ? 'text-white'
-                      : 'text-zinc-500 hover:text-white'
-                  }`}
+                  className={`
+                    px-5 py-2.5 rounded-xl font-medium transition-all duration-200
+                    ${isActive 
+                      ? 'neu-card-inset text-[#0052FF]' 
+                      : 'neu-card text-zinc-400 hover:text-white'
+                    }
+                  `}
                 >
                   {label}
                 </Link>
@@ -67,24 +61,27 @@ export function Layout() {
       </main>
 
       {/* Mobile bottom nav */}
-      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-black border-t border-zinc-900">
-        <div className="flex items-center justify-around py-3">
+      <nav className="md:hidden fixed bottom-6 left-6 right-6 z-50">
+        <div className="neu-card p-3 flex items-center justify-around">
           {navItems.map(({ path, icon: Icon, label }) => {
             const isActive = location.pathname === path
             return (
               <Link
                 key={path}
                 to={path}
-                className="flex flex-col items-center gap-1"
+                className={`
+                  flex flex-col items-center gap-1 px-6 py-2 rounded-xl transition-all duration-200
+                  ${isActive ? 'neu-card-inset' : ''}
+                `}
               >
                 <Icon
                   className={`w-5 h-5 ${
-                    isActive ? 'text-[#0052FF]' : 'text-zinc-600'
+                    isActive ? 'text-[#0052FF]' : 'text-zinc-500'
                   }`}
                 />
                 <span
-                  className={`text-xs ${
-                    isActive ? 'text-[#0052FF]' : 'text-zinc-600'
+                  className={`text-xs font-medium ${
+                    isActive ? 'text-[#0052FF]' : 'text-zinc-500'
                   }`}
                 >
                   {label}

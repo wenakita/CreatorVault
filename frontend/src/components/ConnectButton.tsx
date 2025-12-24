@@ -41,34 +41,30 @@ export function ConnectButton() {
     // Show switch network button if on wrong network
     if (isWrongNetwork) {
       return (
-        <motion.button
+        <button
           onClick={() => switchChain?.({ chainId: base.id })}
-          className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-blue-500/10 border border-blue-500/30 hover:bg-blue-500/20 transition-colors"
-          whileTap={{ scale: 0.98 }}
-          animate={{ scale: [1, 1.02, 1] }}
-          transition={{ repeat: Infinity, duration: 2 }}
+          className="btn-neu-primary flex items-center gap-2"
         >
-          <AlertCircle className="w-5 h-5 text-blue-400" />
-          <span className="font-semibold text-blue-400">Switch to Base</span>
-        </motion.button>
+          <AlertCircle className="w-4 h-4" />
+          <span>Switch to Base</span>
+        </button>
       )
     }
     
     return (
       <div className="relative">
-        <motion.button
+        <button
           onClick={() => setShowMenu(!showMenu)}
-          className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-surface-900 border border-surface-700 hover:border-surface-600 transition-colors"
-          whileTap={{ scale: 0.98 }}
+          className="btn-neu flex items-center gap-3"
         >
-          <div className="w-6 h-6 rounded-full bg-blue-500" />
+          <div className="neu-dot w-8 h-8 rounded-full bg-[#0052FF]" />
           <span className="font-mono text-sm">{formatAddress(address)}</span>
           <ChevronDown
-            className={`w-4 h-4 text-surface-400 transition-transform ${
+            className={`w-4 h-4 text-zinc-500 transition-transform ${
               showMenu ? 'rotate-180' : ''
             }`}
           />
-        </motion.button>
+        </button>
 
         <AnimatePresence>
           {showMenu && (
@@ -84,11 +80,11 @@ export function ConnectButton() {
                 initial={{ opacity: 0, y: -10, scale: 0.95 }}
                 animate={{ opacity: 1, y: 0, scale: 1 }}
                 exit={{ opacity: 0, y: -10, scale: 0.95 }}
-                className="absolute right-0 top-full mt-2 w-56 glass-card p-2 z-50"
+                className="absolute right-0 top-full mt-3 w-56 neu-card p-2 z-50"
               >
                 <button
                   onClick={copyAddress}
-                  className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-surface-800/50 text-surface-300 hover:text-white transition-colors"
+                  className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-zinc-400 hover:text-white transition-colors hover:neu-card-inset"
                 >
                   {copied ? (
                     <Check className="w-4 h-4 text-green-500" />
@@ -103,18 +99,18 @@ export function ConnectButton() {
                   href={`https://basescan.org/address/${address}`}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-surface-800/50 text-surface-300 hover:text-white transition-colors"
+                  className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-zinc-400 hover:text-white transition-colors hover:neu-card-inset"
                 >
                   <ExternalLink className="w-4 h-4" />
                   <span className="text-sm font-medium">View on Basescan</span>
                 </a>
-                <div className="my-1 border-t border-surface-800" />
+                <div className="my-1 h-px bg-zinc-800" />
                 <button
                   onClick={() => {
                     disconnect()
                     setShowMenu(false)
                   }}
-                  className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-red-500/10 text-red-400 hover:text-red-300 transition-colors"
+                  className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-red-400 hover:text-red-300 transition-colors"
                 >
                   <LogOut className="w-4 h-4" />
                   <span className="text-sm font-medium">Disconnect</span>
@@ -128,14 +124,13 @@ export function ConnectButton() {
   }
 
   return (
-    <motion.button
+    <button
       onClick={() => connect({ connector: connectors[0] })}
       disabled={isPending}
-      className="btn-primary flex items-center gap-2"
-      whileTap={{ scale: 0.98 }}
+      className="btn-neu-primary flex items-center gap-2 disabled:opacity-50"
     >
       <Wallet className="w-4 h-4" />
-      <span>{isPending ? 'Connecting...' : 'Connect'}</span>
-    </motion.button>
+      <span>{isPending ? 'Connecting...' : 'Connect Wallet'}</span>
+    </button>
   )
 }
