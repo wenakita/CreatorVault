@@ -63,9 +63,9 @@ export function Home() {
 
             <FadeIn delay={1}>
               <p className="text-slate-400 text-xl sm:text-2xl max-w-3xl mx-auto leading-relaxed">
-                Deposit. Earn fees. Win jackpots.
+                Deposit tokens. Earn from trades.
                 <br />
-                <span className="text-white font-medium">Everyone wins together.</span>
+                <span className="text-white font-medium">Everyone earns together.</span>
               </p>
             </FadeIn>
           </div>
@@ -164,7 +164,7 @@ export function Home() {
                   </div>
                   <h3 className="text-xl font-bold text-white mb-3">Earning Assets</h3>
                   <p className="text-slate-400 leading-relaxed">
-                    Deposit. Earn fees. Win jackpots. Together.
+                    Deposit. Earn fees. Grow your share.
                   </p>
                 </div>
               </div>
@@ -383,21 +383,21 @@ export function Home() {
               },
               { 
                 num: '02', 
-                icon: Users, 
+                icon: TrendingUp, 
                 title: 'Earn Fees', 
-                desc: '6.9% of every trade flows to holders and jackpot.',
+                desc: '6.9% of every trade flows back to the vault.',
                 color: 'from-purple-500/20 to-pink-500/20',
                 iconBg: 'bg-purple-500/10',
                 iconColor: 'text-purple-400'
               },
               { 
                 num: '03', 
-                icon: Trophy, 
-                title: 'Win Jackpot', 
-                desc: 'Every buy = lottery entry. 69% to winners. VRF verified.',
-                color: 'from-yellow-500/20 to-orange-500/20',
-                iconBg: 'bg-yellow-500/10',
-                iconColor: 'text-yellow-400'
+                icon: Flame, 
+                title: 'Burns Increase Value', 
+                desc: '21% of fees burn tokens. Less supply = bigger share.',
+                color: 'from-orange-500/20 to-red-500/20',
+                iconBg: 'bg-orange-500/10',
+                iconColor: 'text-orange-400'
               },
             ].map(({ num, icon: Icon, title, desc, color, iconBg, iconColor }) => (
               <StaggerItem key={num}>
@@ -426,24 +426,24 @@ export function Home() {
           </div>
         </section>
 
-        {/* JACKPOT - Prominent, glowing */}
+        {/* FEE DISTRIBUTION - Simple, clear */}
         <section>
           <FadeIn delay={0.1}>
             <div className="relative max-w-2xl mx-auto">
               {/* Glow effect */}
-              <div className="absolute inset-0 bg-gradient-to-r from-yellow-500/20 via-orange-500/20 to-red-500/20 blur-3xl opacity-20 rounded-3xl" />
+              <div className="absolute inset-0 bg-gradient-to-r from-brand-500/10 via-purple-500/10 to-brand-500/10 blur-3xl rounded-3xl" />
               
-              <div className="relative bg-gradient-to-b from-slate-900/95 to-slate-950/95 backdrop-blur-xl rounded-3xl border border-yellow-500/20 p-8 shadow-2xl">
+              <div className="relative bg-gradient-to-b from-slate-900/95 to-slate-950/95 backdrop-blur-xl rounded-3xl border border-brand-500/20 p-8 shadow-2xl">
                 {/* Header */}
                 <div className="text-center mb-8">
-                  <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-yellow-500/10 border border-yellow-500/20 mb-4">
-                    <Trophy className="w-4 h-4 text-yellow-500" />
-                    <span className="text-yellow-400 text-sm font-semibold uppercase tracking-wider">Live Prize Pool</span>
+                  <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-brand-500/10 border border-brand-500/20 mb-4">
+                    <Zap className="w-4 h-4 text-brand-500" />
+                    <span className="text-brand-400 text-sm font-semibold uppercase tracking-wider">Fee Distribution</span>
                   </div>
-                  <h2 className="text-4xl font-bold text-white mb-2">
-                    <span className="text-gradient">0.1 ETH</span>
+                  <h2 className="text-3xl font-bold text-white mb-2">
+                    6.9% Trading Fee
                   </h2>
-                  <p className="text-slate-400">≈ $350 USD</p>
+                  <p className="text-slate-400">On every buy and sell</p>
                 </div>
 
                 {/* Distribution */}
@@ -452,13 +452,13 @@ export function Home() {
                   
                   <div className="grid grid-cols-3 gap-4 pt-4">
                     {[
-                      { icon: Trophy, label: 'Winner', pct: '69%', color: 'yellow' },
-                      { icon: Flame, label: 'Burned', pct: '21.4%', color: 'red' },
-                      { icon: Building2, label: 'Treasury', pct: '9.6%', color: 'blue' },
+                      { icon: Trophy, label: 'Jackpot', pct: '69%', color: 'brand' },
+                      { icon: Flame, label: 'Burned', pct: '21%', color: 'orange' },
+                      { icon: Building2, label: 'Treasury', pct: '10%', color: 'slate' },
                     ].map(({ icon: Icon, label, pct, color }) => (
                       <div key={label} className="text-center p-4 rounded-2xl bg-white/[0.02]">
-                        <Icon className={`w-5 h-5 text-${color}-400 mx-auto mb-2`} />
-                        <div className={`text-2xl font-bold text-${color}-400 mb-1`}>{pct}</div>
+                        <Icon className={`w-5 h-5 ${color === 'brand' ? 'text-brand-500' : color === 'orange' ? 'text-orange-400' : 'text-slate-400'} mx-auto mb-2`} />
+                        <div className={`text-2xl font-bold ${color === 'brand' ? 'text-brand-500' : color === 'orange' ? 'text-orange-400' : 'text-slate-400'} mb-1`}>{pct}</div>
                         <div className="text-xs text-slate-500 uppercase tracking-wider">{label}</div>
                       </div>
                     ))}
@@ -466,18 +466,18 @@ export function Home() {
                 </div>
 
                 {/* Details */}
-                <div className="mt-6 pt-6 border-t border-white/[0.06] space-y-3">
-                  <div className="flex items-center gap-3 text-sm text-slate-400">
+                <div className="mt-6 pt-6 border-t border-white/[0.06] space-y-2">
+                  <div className="flex items-center gap-3 text-sm text-slate-300">
                     <CheckCircle2 className="w-4 h-4 text-green-400 flex-shrink-0" />
-                    <span>Every buy automatically enters the lottery</span>
+                    <span>Jackpot builds from 69% of fees</span>
                   </div>
-                  <div className="flex items-center gap-3 text-sm text-slate-400">
+                  <div className="flex items-center gap-3 text-sm text-slate-300">
                     <CheckCircle2 className="w-4 h-4 text-green-400 flex-shrink-0" />
-                    <span>Chainlink VRF ensures provably fair randomness</span>
+                    <span>21% permanently burns tokens</span>
                   </div>
-                  <div className="flex items-center gap-3 text-sm text-slate-400">
+                  <div className="flex items-center gap-3 text-sm text-slate-300">
                     <CheckCircle2 className="w-4 h-4 text-green-400 flex-shrink-0" />
-                    <span>6.9% of every trade funds the prize pool</span>
+                    <span>10% sustains the protocol</span>
                   </div>
                 </div>
               </div>
@@ -521,7 +521,7 @@ export function Home() {
               {
                 icon: Gift,
                 title: 'Real Yield',
-                desc: 'Trading fees + lottery wins.',
+                desc: 'Trading fees + deflationary burns.',
                 gradient: 'from-purple-500/10 to-pink-500/10',
                 iconColor: 'text-purple-400',
               },
@@ -601,7 +601,7 @@ export function Home() {
                   Ready to Earn?
                 </h2>
                 <p className="text-slate-400 text-xl max-w-2xl mx-auto">
-                  Deposit tokens. Earn fees. Win jackpots.
+                  Deposit tokens. Earn together.
                 </p>
               </div>
 
