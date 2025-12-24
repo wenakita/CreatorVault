@@ -267,17 +267,17 @@ export function Dashboard() {
                       </p>
                     </div>
 
-                    <div className="grid grid-cols-2 lg:grid-cols-4 gap-px bg-zinc-900">
+                    <div className="grid grid-cols-2 gap-px bg-zinc-900">
                       <motion.div
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ duration: 0.4, delay: 0.1 }}
                         className="bg-black p-8 space-y-4"
                       >
-                        <span className="label">Uniswap V3 WETH</span>
-                        <div className="value mono text-5xl glow-cyan">25%</div>
+                        <span className="label">AKITA/USDC Charm LP</span>
+                        <div className="value mono text-6xl glow-cyan">75%</div>
                         <p className="text-zinc-700 text-xs font-light mt-4">
-                          LP Fees + Charm Rebalancing
+                          Stable pair liquidity with auto-rebalancing
                         </p>
                       </motion.div>
 
@@ -287,36 +287,10 @@ export function Dashboard() {
                         transition={{ duration: 0.4, delay: 0.2 }}
                         className="bg-black p-8 space-y-4"
                       >
-                        <span className="label">Stable Pair USDC</span>
-                        <div className="value mono text-5xl glow-cyan">25%</div>
-                        <p className="text-zinc-700 text-xs font-light mt-4">
-                          Low Volatility LP Position
-                        </p>
-                      </motion.div>
-
-                      <motion.div
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ duration: 0.4, delay: 0.3 }}
-                        className="bg-black p-8 space-y-4"
-                      >
-                        <span className="label">Ajna Lending</span>
-                        <div className="value mono text-5xl glow-purple">25%</div>
-                        <p className="text-zinc-700 text-xs font-light mt-4">
-                          Permissionless Lending Yield
-                        </p>
-                      </motion.div>
-
-                      <motion.div
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ duration: 0.4, delay: 0.4 }}
-                        className="bg-black p-8 space-y-4"
-                      >
                         <span className="label">Idle Reserve</span>
-                        <div className="value mono text-5xl">25%</div>
+                        <div className="value mono text-6xl">25%</div>
                         <p className="text-zinc-700 text-xs font-light mt-4">
-                          Available for Withdrawals
+                          Available for instant withdrawals
                         </p>
                       </motion.div>
                     </div>
@@ -324,24 +298,24 @@ export function Dashboard() {
                     <div className="card p-10">
                       <div className="grid lg:grid-cols-3 gap-8">
                         <div className="space-y-4">
-                          <span className="label">Total Deployed</span>
+                          <span className="label">Deployed to LP</span>
                           <div className="value mono text-3xl glow-cyan">75%</div>
                           <p className="text-zinc-600 text-sm font-light">
-                            Actively earning yield across LP and lending
+                            Earning LP fees on Uniswap V3 via Charm Finance
                           </p>
                         </div>
                         <div className="space-y-4">
                           <span className="label">Idle Reserve</span>
                           <div className="value mono text-3xl">25%</div>
                           <p className="text-zinc-600 text-sm font-light">
-                            Available for instant withdrawals
+                            Ready for withdrawals anytime
                           </p>
                         </div>
                         <div className="space-y-4">
-                          <span className="label">Rebalancing</span>
-                          <div className="value mono text-3xl text-purple-400">Auto</div>
+                          <span className="label">Auto-Rebalancing</span>
+                          <div className="value mono text-3xl text-purple-400">Active</div>
                           <p className="text-zinc-600 text-sm font-light">
-                            Charm strategies optimize LP positions
+                            Charm keepers optimize positions automatically
                           </p>
                         </div>
                       </div>
