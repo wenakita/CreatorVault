@@ -54,16 +54,19 @@ export function DeployStrategies({ vaultAddress, tokenAddress, onSuccess }: Depl
       throw new Error('Pool key not available');
     }
 
+    // poolKey is a tuple: [currency0, currency1, fee, tickSpacing, hooks]
+    const [currency0, currency1, fee, tickSpacing, hooks] = poolKey;
+
     // Calculate PoolId
     const poolId = keccak256(
       encodePacked(
         ['address', 'address', 'uint24', 'int24', 'address'],
         [
-          poolKey.currency0 as `0x${string}`,
-          poolKey.currency1 as `0x${string}`,
-          poolKey.fee,
-          poolKey.tickSpacing,
-          poolKey.hooks as `0x${string}`
+          currency0 as `0x${string}`,
+          currency1 as `0x${string}`,
+          fee,
+          tickSpacing,
+          hooks as `0x${string}`
         ]
       )
     );
@@ -98,7 +101,7 @@ export function DeployStrategies({ vaultAddress, tokenAddress, onSuccess }: Depl
     }
 
     // Invert tick if creator token is currency1
-    if (poolKey.currency1.toLowerCase() === tokenAddress.toLowerCase()) {
+    if (currency1.toLowerCase() === tokenAddress.toLowerCase()) {
       tick = -tick;
     }
 

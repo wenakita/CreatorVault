@@ -124,3 +124,5 @@ reference.sol
 bsc-production-ready.json
 eagle-vanity-data.json
 vanity-result-found.json
+.vercel
+.env*.local
