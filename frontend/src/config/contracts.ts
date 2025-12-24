@@ -25,6 +25,19 @@ export const CONTRACTS = {
   ajnaErc721Factory: '0xeefEC5d1Cc4bde97279d01D88eFf9e0fEe981769' as const,
   ajnaPoolInfoUtils: '0x97fa9b0909C238D170C1ab3B5c728A3a45BBEcBa' as const,
   ajnaPositionManager: '0x59710a4149A27585f1841b5783ac704a08274e64' as const,
+
+  // External - Charm Finance (TODO: Add Base deployment addresses)
+  charmAlphaVault: undefined as `0x${string}` | undefined,
+
+  // External - Uniswap
+  uniswapV3Factory: '0x33128a8fC17869897dcE68Ed026d694621f6FDfD' as const,
+
+  // External - Standard Tokens
+  zora: '0x4200000000000000000000000000000000000777' as const,
+  usdc: '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913' as const,
+
+  // Helpers
+  strategyDeploymentBatcher: undefined as `0x${string}` | undefined, // Deploy with: forge create StrategyDeploymentBatcher
 } as const
 
 // Example: AKITA Vault (first creator)
