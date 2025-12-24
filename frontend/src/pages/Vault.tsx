@@ -7,6 +7,7 @@ import {
   TrendingUp,
   ArrowDownToLine,
   ArrowUpFromLine,
+  ArrowRight,
   Loader2,
   ExternalLink,
   Users,
@@ -139,13 +140,23 @@ export function Vault() {
         className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4"
       >
         <div className="flex items-center gap-4">
-          <TokenImage
-            tokenAddress={tokenAddress as `0x${string}`}
-            symbol="AKITA"
-            size="lg"
-            className="w-16 h-16"
-            fallbackColor="from-orange-500 to-red-600"
-          />
+          {/* Token transformation visual */}
+          <div className="flex items-center gap-2">
+            <TokenImage
+              tokenAddress={tokenAddress as `0x${string}`}
+              symbol="AKITA"
+              size="lg"
+              fallbackColor="from-orange-500 to-red-600"
+            />
+            <ArrowRight className="w-4 h-4 text-surface-500" />
+            <TokenImage
+              tokenAddress={tokenAddress as `0x${string}`}
+              symbol="wsAKITA"
+              size="lg"
+              fallbackColor="from-orange-500 to-red-600"
+              isWrapped={true}
+            />
+          </div>
           <div>
             <h1 className="font-display text-2xl font-bold">AKITA Vault</h1>
             <p className="text-surface-400">AKITA → wsAKITA • Base</p>

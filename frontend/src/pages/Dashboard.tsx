@@ -7,6 +7,7 @@ import {
   Users,
   Coins,
   ArrowUpRight,
+  ArrowRight,
   Sparkles,
   Gift,
   Clock,
@@ -178,12 +179,23 @@ export function Dashboard() {
             <Link to={`/vault/${vault.vault}`}>
               <div className="glass-card p-4 hover:border-brand-500/30 transition-all group">
                 <div className="flex items-center gap-4">
-                  <TokenImage
-                    tokenAddress={vault.token as `0x${string}`}
-                    symbol={vault.symbol}
-                    size="md"
-                    fallbackColor={vault.color}
-                  />
+                  {/* Token transformation visual */}
+                  <div className="flex items-center gap-1.5">
+                    <TokenImage
+                      tokenAddress={vault.token as `0x${string}`}
+                      symbol={vault.symbol}
+                      size="md"
+                      fallbackColor={vault.color}
+                    />
+                    <ArrowRight className="w-3 h-3 text-surface-600 flex-shrink-0" />
+                    <TokenImage
+                      tokenAddress={vault.token as `0x${string}`}
+                      symbol={vault.wrappedSymbol}
+                      size="md"
+                      fallbackColor={vault.color}
+                      isWrapped={true}
+                    />
+                  </div>
                   
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
