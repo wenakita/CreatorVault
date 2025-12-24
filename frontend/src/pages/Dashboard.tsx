@@ -267,7 +267,7 @@ export function Dashboard() {
                       </p>
                     </div>
 
-                    <div className="grid grid-cols-2 gap-px bg-zinc-900">
+                    <div className="grid grid-cols-3 gap-px bg-zinc-900">
                       <motion.div
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
@@ -275,7 +275,7 @@ export function Dashboard() {
                         className="bg-black p-8 space-y-4"
                       >
                         <span className="label">AKITA/USDC Charm LP</span>
-                        <div className="value mono text-6xl glow-cyan">75%</div>
+                        <div className="value mono text-6xl glow-cyan">69%</div>
                         <p className="text-zinc-700 text-xs font-light mt-4">
                           Stable pair liquidity with auto-rebalancing
                         </p>
@@ -287,8 +287,21 @@ export function Dashboard() {
                         transition={{ duration: 0.4, delay: 0.2 }}
                         className="bg-black p-8 space-y-4"
                       >
+                        <span className="label">Ajna Lending</span>
+                        <div className="value mono text-6xl glow-purple">21.39%</div>
+                        <p className="text-zinc-700 text-xs font-light mt-4">
+                          Permissionless lending yield
+                        </p>
+                      </motion.div>
+
+                      <motion.div
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.4, delay: 0.3 }}
+                        className="bg-black p-8 space-y-4"
+                      >
                         <span className="label">Idle Reserve</span>
-                        <div className="value mono text-6xl">25%</div>
+                        <div className="value mono text-6xl">9.61%</div>
                         <p className="text-zinc-700 text-xs font-light mt-4">
                           Available for instant withdrawals
                         </p>
@@ -298,26 +311,32 @@ export function Dashboard() {
                     <div className="card p-10">
                       <div className="grid lg:grid-cols-3 gap-8">
                         <div className="space-y-4">
-                          <span className="label">Deployed to LP</span>
-                          <div className="value mono text-3xl glow-cyan">75%</div>
+                          <span className="label">Total Deployed</span>
+                          <div className="value mono text-3xl glow-cyan">90.39%</div>
                           <p className="text-zinc-600 text-sm font-light">
-                            Earning LP fees on Uniswap V3 via Charm Finance
+                            Earning yield across LP and lending strategies
                           </p>
                         </div>
                         <div className="space-y-4">
                           <span className="label">Idle Reserve</span>
-                          <div className="value mono text-3xl">25%</div>
+                          <div className="value mono text-3xl">9.61%</div>
                           <p className="text-zinc-600 text-sm font-light">
                             Ready for withdrawals anytime
                           </p>
                         </div>
                         <div className="space-y-4">
-                          <span className="label">Auto-Rebalancing</span>
+                          <span className="label">Auto-Optimization</span>
                           <div className="value mono text-3xl text-purple-400">Active</div>
                           <p className="text-zinc-600 text-sm font-light">
-                            Charm keepers optimize positions automatically
+                            Automated rebalancing and yield optimization
                           </p>
                         </div>
+                      </div>
+
+                      <div className="mt-8 pt-8 border-t border-zinc-900/50">
+                        <p className="text-zinc-600 text-sm font-light text-center">
+                          <span className="text-purple-400">💡 Allocation mirrors fee distribution:</span> 69% jackpot · 21.39% burns · 9.61% treasury
+                        </p>
                       </div>
                     </div>
                   </div>

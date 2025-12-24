@@ -236,15 +236,19 @@ export function ActivateAkita() {
             </div>
             
             <div className="pt-3 border-t border-white/5">
-              <p className="text-xs text-slate-500 mb-2">Underlying AKITA Allocation (Vault Strategy):</p>
-              <div className="grid grid-cols-2 gap-2 text-xs">
+              <p className="text-xs text-slate-500 mb-2">Underlying AKITA Allocation (Vault Strategies):</p>
+              <div className="grid grid-cols-3 gap-2 text-xs">
                 <div className="flex justify-between">
-                  <span className="text-slate-400">AKITA/USDC V3</span>
-                  <span className="text-white">37.5M (75%)</span>
+                  <span className="text-slate-400">AKITA/USDC</span>
+                  <span className="text-white">69%</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-slate-400">Idle in Vault</span>
-                  <span className="text-white">12.5M (25%)</span>
+                  <span className="text-slate-400">Ajna Lending</span>
+                  <span className="text-white">21.39%</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-slate-400">Idle Reserve</span>
+                  <span className="text-white">9.61%</span>
                 </div>
               </div>
             </div>
@@ -332,13 +336,16 @@ export function ActivateAkita() {
               2
             </div>
             <div className="flex-1">
-              <p className="text-white font-medium">Deploy Underlying AKITA to Strategy</p>
-              <div className="grid grid-cols-2 gap-2 mt-1 text-xs">
+              <p className="text-white font-medium">Deploy Underlying AKITA to Strategies</p>
+              <div className="grid grid-cols-3 gap-2 mt-1 text-xs">
                 <div className="p-2 rounded bg-white/[0.02] border border-white/5">
-                  <p className="text-slate-400">37.5M → AKITA/USDC V3 (Charm)</p>
+                  <p className="text-slate-400">34.5M → AKITA/USDC (69%)</p>
                 </div>
                 <div className="p-2 rounded bg-white/[0.02] border border-white/5">
-                  <p className="text-slate-400">12.5M → Keep idle</p>
+                  <p className="text-slate-400">10.7M → Ajna (21.39%)</p>
+                </div>
+                <div className="p-2 rounded bg-white/[0.02] border border-white/5">
+                  <p className="text-slate-400">4.8M → Idle (9.61%)</p>
                 </div>
               </div>
             </div>
@@ -408,9 +415,12 @@ export function ActivateAkita() {
             
             <div className="space-y-2">
               <div className="p-3 rounded-lg bg-green-500/10 border border-green-500/20 text-xs space-y-2">
-                <p className="text-green-300 font-medium">✓ Underlying AKITA Strategy (Vault):</p>
+                <p className="text-green-300 font-medium">✓ Underlying AKITA Strategies (Vault):</p>
                 <p className="text-green-400/80">
-                  75% AKITA/USDC V3 Charm LP · 25% Idle Reserve
+                  69% AKITA/USDC Charm LP · 21.39% Ajna Lending · 9.61% Idle Reserve
+                </p>
+                <p className="text-green-400/80 italic">
+                  Mirrors fee distribution for consistent branding
                 </p>
               </div>
               
