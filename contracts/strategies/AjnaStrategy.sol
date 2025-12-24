@@ -99,6 +99,17 @@ contract AjnaStrategy is IStrategy, Ownable, ReentrancyGuard {
     // CONSTRUCTOR
     // ================================
 
+    /**
+     * @param _vault The vault that owns this strategy
+     * @param _creatorCoin The creator token to lend
+     * @param _ajnaFactory The Ajna ERC20 pool factory
+     * @param _quoteToken The quote token for the pool (e.g., WETH, USDC)
+     * @param _owner The owner of this strategy
+     * 
+     * @dev Bucket index defaults to 3696 (middle bucket, ~1:1 price ratio).
+     *      After deployment, call setBucketIndex() to adjust based on market price
+     *      or use moveToBucket() to rebalance existing positions.
+     */
     constructor(
         address _vault,
         address _creatorCoin,

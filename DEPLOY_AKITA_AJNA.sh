@@ -20,10 +20,14 @@ AKITA_TOKEN="0x5b674196812451b7cec024fe9d22d2c0b172fa75"
 AKITA_VAULT="0xA015954E2606d08967Aee3787456bB3A86a46A42"
 WETH="0x4200000000000000000000000000000000000006"
 USDC="0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913"
+ZORA="0x4200000000000000000000000000000000000777"
 
 # Ajna Addresses on Base (official)
 AJNA_ERC20_FACTORY="0x214f62B5836D83f3D6c4f71F174209097B1A779C"
 AJNA_POOL_INFO_UTILS="0x97fa9b0909C238D170C1ab3B5c728A3a45BBEcBa"
+
+# Uniswap V3 Factory for price lookup
+UNISWAP_V3_FACTORY="0x33128a8fC17869897dcE68Ed026d694621f6FDfD"
 
 # Check if private key is set
 if [ -z "$PRIVATE_KEY" ]; then
@@ -35,6 +39,69 @@ fi
 # Get deployer address
 DEPLOYER=$(cast wallet address $PRIVATE_KEY)
 echo -e "${GREEN}Deployer:${NC} $DEPLOYER"
+echo ""
+
+# ============================================
+# STEP 0: Get current AKITA price from AKITA/ZORA pool
+# ============================================
+echo -e "${BLUE}Step 0: Fetching current AKITA price from AKITA/ZORA pool...${NC}"
+
+# Try to find AKITA/ZORA pool
+AKITA_ZORA_POOL=$(cast call $UNISWAP_V3_FACTORY \
+    "getPool(address,address,uint24)" \
+    $AKITA_TOKEN \
+    $ZORA \
+    3000 2>/dev/null || echo "")
+
+if [ -z "$AKITA_ZORA_POOL" ] || [ "$AKITA_ZORA_POOL" == "0x0000000000000000000000000000000000000000" ]; then
+    # Try other fee tiers
+    AKITA_ZORA_POOL=$(cast call $UNISWAP_V3_FACTORY \
+        "getPool(address,address,uint24)" \
+        $AKITA_TOKEN \
+        $ZORA \
+        10000 2>/dev/null || echo "0x0000000000000000000000000000000000000000")
+fi
+
+SUGGESTED_BUCKET=3696  # Default middle bucket
+
+if [ ! -z "$AKITA_ZORA_POOL" ] && [ "$AKITA_ZORA_POOL" != "0x0000000000000000000000000000000000000000" ]; then
+    echo -e "${GREEN}✅ Found AKITA/ZORA pool:${NC} $AKITA_ZORA_POOL"
+    
+    # Get slot0 (sqrtPriceX96, tick, etc.)
+    SLOT0=$(cast call $AKITA_ZORA_POOL "slot0()(uint160,int24,uint16,uint16,uint16,uint8,bool)" 2>/dev/null || echo "")
+    
+    if [ ! -z "$SLOT0" ]; then
+        # Extract tick (second value)
+        TICK=$(echo $SLOT0 | cut -d',' -f2)
+        echo -e "${GREEN}   Current tick:${NC} $TICK"
+        
+        # Ajna buckets: bucket = 3696 + (tick / 100)
+        # This is a rough approximation - Ajna uses different math but this gets us close
+        TICK_OFFSET=$((TICK / 100))
+        SUGGESTED_BUCKET=$((3696 + TICK_OFFSET))
+        
+        # Clamp to valid range (0-7387)
+        if [ $SUGGESTED_BUCKET -lt 0 ]; then
+            SUGGESTED_BUCKET=0
+        elif [ $SUGGESTED_BUCKET -gt 7387 ]; then
+            SUGGESTED_BUCKET=7387
+        fi
+        
+        echo -e "${GREEN}   Suggested Ajna bucket:${NC} $SUGGESTED_BUCKET"
+        echo -e "${GREEN}   (Based on current market price)${NC}"
+    fi
+else
+    echo -e "${YELLOW}⚠️  Could not find AKITA/ZORA pool, using default bucket 3696${NC}"
+fi
+
+echo ""
+read -p "Use suggested bucket $SUGGESTED_BUCKET? (Y/n): " -n 1 -r
+echo ""
+if [[ $REPLY =~ ^[Nn]$ ]]; then
+    read -p "Enter custom bucket index (0-7387): " SUGGESTED_BUCKET
+fi
+
+echo -e "${GREEN}Using bucket index:${NC} $SUGGESTED_BUCKET"
 echo ""
 
 # ============================================
@@ -134,6 +201,16 @@ cast send $STRATEGY_ADDRESS \
     --rpc-url base \
     --private-key $PRIVATE_KEY
 
+# Set bucket index (if not default 3696)
+if [ $SUGGESTED_BUCKET -ne 3696 ]; then
+    echo "Setting bucket index to $SUGGESTED_BUCKET..."
+    cast send $STRATEGY_ADDRESS \
+        "setBucketIndex(uint256)" \
+        $SUGGESTED_BUCKET \
+        --rpc-url base \
+        --private-key $PRIVATE_KEY
+fi
+
 # Initialize approvals
 echo "Initializing approvals..."
 cast send $STRATEGY_ADDRESS \
@@ -169,7 +246,12 @@ echo ""
 echo -e "${GREEN}Ajna Pool:${NC}      $POOL_ADDRESS"
 echo -e "${GREEN}Strategy:${NC}       $STRATEGY_ADDRESS"
 echo -e "${GREEN}Vault:${NC}          $AKITA_VAULT"
-echo -e "${GREEN}Bucket Index:${NC}   3696 (middle bucket)"
+echo -e "${GREEN}Bucket Index:${NC}   $SUGGESTED_BUCKET"
+if [ ! -z "$AKITA_ZORA_POOL" ] && [ "$AKITA_ZORA_POOL" != "0x0000000000000000000000000000000000000000" ]; then
+    echo -e "${GREEN}Price Source:${NC}   AKITA/ZORA pool ($AKITA_ZORA_POOL)"
+else
+    echo -e "${GREEN}Price Source:${NC}   Default (middle bucket)"
+fi
 echo ""
 echo -e "${BLUE}Next Steps:${NC}"
 echo "1. Update frontend/src/config/contracts.ts:"
