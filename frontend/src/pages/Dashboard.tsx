@@ -1,11 +1,10 @@
 import { Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { useReadContract } from 'wagmi'
-import { formatUnits, formatEther } from 'viem'
+import { formatUnits } from 'viem'
 import {
   ArrowUpRight,
   Sparkles,
-  Clock,
   CheckCircle2,
   AlertCircle,
   Plus,
@@ -14,9 +13,7 @@ import {
 } from 'lucide-react'
 import { AKITA } from '../config/contracts'
 import { TokenImage } from '../components/TokenImage'
-import { BasinCard } from '../components/BasinCard'
 import { ManifoldBackground } from '../components/ManifoldBackground'
-import { TechnicalMetric, MetricGrid } from '../components/TechnicalMetric'
 
 // CCA Strategy ABI for reading auction status
 const CCA_STRATEGY_ABI = [

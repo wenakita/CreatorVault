@@ -12,9 +12,6 @@ const navItems = [
   { path: '/dashboard', icon: LayoutDashboard, label: 'Vaults' },
 ]
 
-// Base brand motion: cubic-bezier(0.4, 0, 0.2, 1), 120-240ms
-const baseTransition = { duration: 0.2, ease: [0.4, 0, 0.2, 1] }
-
 export function Layout() {
   const location = useLocation()
   const { chain, isConnected } = useAccount()
