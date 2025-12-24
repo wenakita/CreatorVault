@@ -63,9 +63,9 @@ export function Home() {
 
             <FadeIn delay={1}>
               <p className="text-slate-400 text-xl sm:text-2xl max-w-3xl mx-auto leading-relaxed">
-                Deposit your existing creator coins. Earn from every trade. Win jackpots.
+                Deposit. Earn fees. Win jackpots.
                 <br />
-                <span className="text-white font-medium">Everyone earns together.</span>
+                <span className="text-white font-medium">Everyone wins together.</span>
               </p>
             </FadeIn>
           </div>
@@ -129,9 +129,6 @@ export function Home() {
               <h2 className="text-3xl sm:text-4xl font-bold text-white mb-4">
                 Stop Holding. Start Earning.
               </h2>
-              <p className="text-slate-400 text-lg max-w-2xl mx-auto">
-                Got creator coins sitting in your wallet? Put them to work.
-              </p>
             </div>
           </FadeIn>
 
@@ -146,7 +143,7 @@ export function Home() {
                   </div>
                   <h3 className="text-xl font-bold text-white mb-3">Idle Tokens</h3>
                   <p className="text-slate-400 leading-relaxed">
-                    You hold creator coins, but they just sit there. No yield. No rewards. Just hoping for price action.
+                    Tokens sit in your wallet. No yield. No rewards.
                   </p>
                 </div>
               </div>
@@ -165,9 +162,9 @@ export function Home() {
                   <div className="w-12 h-12 rounded-2xl bg-brand-500/20 flex items-center justify-center mb-4">
                     <TrendingUp className="w-6 h-6 text-brand-500" />
                   </div>
-                  <h3 className="text-xl font-bold text-white mb-3">Productive Assets</h3>
+                  <h3 className="text-xl font-bold text-white mb-3">Earning Assets</h3>
                   <p className="text-slate-400 leading-relaxed">
-                    Deposit into vaults. Earn fees from trading. Enter lotteries. Win with your community.
+                    Deposit. Earn fees. Win jackpots. Together.
                   </p>
                 </div>
               </div>
@@ -310,44 +307,27 @@ export function Home() {
                         <span className="text-orange-400 text-sm font-semibold uppercase tracking-wider">Deflationary</span>
                       </div>
                       <h2 className="text-3xl sm:text-4xl font-bold text-white mb-4">
-                        Tokens Burned.
+                        Tokens Burn.
                         <br />
-                        <span className="text-gradient">Your Share Grows.</span>
+                        <span className="text-gradient">You Earn More.</span>
                       </h2>
                       <p className="text-slate-400 text-lg leading-relaxed">
-                        21.4% of every trade permanently burns vault tokens. As supply decreases, your share of the underlying assets automatically increases.
+                        21% of trades burn tokens forever. Less supply = bigger share of the vault.
                       </p>
                     </div>
 
-                    <div className="space-y-3">
-                      <div className="flex items-start gap-3">
-                        <div className="w-6 h-6 rounded-full bg-green-500/20 flex items-center justify-center flex-shrink-0 mt-0.5">
-                          <CheckCircle2 className="w-4 h-4 text-green-400" />
-                        </div>
-                        <div>
-                          <div className="text-white font-semibold mb-1">Proportional Gains</div>
-                          <div className="text-slate-400 text-sm">Hold 1% of supply? You always own 1% of the vault—even as total supply shrinks</div>
-                        </div>
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-3 text-slate-300">
+                        <CheckCircle2 className="w-5 h-5 text-green-400 flex-shrink-0" />
+                        <span>Your % stays constant as supply shrinks</span>
                       </div>
-                      
-                      <div className="flex items-start gap-3">
-                        <div className="w-6 h-6 rounded-full bg-green-500/20 flex items-center justify-center flex-shrink-0 mt-0.5">
-                          <CheckCircle2 className="w-4 h-4 text-green-400" />
-                        </div>
-                        <div>
-                          <div className="text-white font-semibold mb-1">No Action Required</div>
-                          <div className="text-slate-400 text-sm">Passive appreciation. Burns happen automatically with every trade</div>
-                        </div>
+                      <div className="flex items-center gap-3 text-slate-300">
+                        <CheckCircle2 className="w-5 h-5 text-green-400 flex-shrink-0" />
+                        <span>Automatic with every trade</span>
                       </div>
-                      
-                      <div className="flex items-start gap-3">
-                        <div className="w-6 h-6 rounded-full bg-green-500/20 flex items-center justify-center flex-shrink-0 mt-0.5">
-                          <CheckCircle2 className="w-4 h-4 text-green-400" />
-                        </div>
-                        <div>
-                          <div className="text-white font-semibold mb-1">Compound Effect</div>
-                          <div className="text-slate-400 text-sm">More trades = more burns = greater value per token over time</div>
-                        </div>
+                      <div className="flex items-center gap-3 text-slate-300">
+                        <CheckCircle2 className="w-5 h-5 text-green-400 flex-shrink-0" />
+                        <span>Compounds over time</span>
                       </div>
                     </div>
 
@@ -385,11 +365,8 @@ export function Home() {
           <FadeIn delay={0.1}>
             <div className="text-center mb-12">
               <h2 className="text-3xl sm:text-4xl font-bold text-white mb-4">
-                Three Steps to Earnings
+                How It Works
               </h2>
-              <p className="text-slate-400 text-lg">
-                Simple, transparent, and fully onchain
-              </p>
             </div>
           </FadeIn>
 
@@ -398,8 +375,8 @@ export function Home() {
               { 
                 num: '01', 
                 icon: Coins, 
-                title: 'Deposit Your Tokens', 
-                desc: 'Anyone can deposit—creators and holders alike. Get wsTokens that represent your share of the vault.',
+                title: 'Deposit', 
+                desc: 'Lock tokens. Get wsTokens representing your vault share.',
                 color: 'from-blue-500/20 to-cyan-500/20',
                 iconBg: 'bg-blue-500/10',
                 iconColor: 'text-blue-400'
@@ -407,8 +384,8 @@ export function Home() {
               { 
                 num: '02', 
                 icon: Users, 
-                title: 'Earn Together', 
-                desc: '6.9% fee on all trades flows to the community. As the vault grows, everyone benefits proportionally.',
+                title: 'Earn Fees', 
+                desc: '6.9% of every trade flows to holders and jackpot.',
                 color: 'from-purple-500/20 to-pink-500/20',
                 iconBg: 'bg-purple-500/10',
                 iconColor: 'text-purple-400'
@@ -416,8 +393,8 @@ export function Home() {
               { 
                 num: '03', 
                 icon: Trophy, 
-                title: 'Win the Jackpot', 
-                desc: 'Every buy is a lottery entry. Winners split 69% of the prize pool. Fair and transparent.',
+                title: 'Win Jackpot', 
+                desc: 'Every buy = lottery entry. 69% to winners. VRF verified.',
                 color: 'from-yellow-500/20 to-orange-500/20',
                 iconBg: 'bg-yellow-500/10',
                 iconColor: 'text-yellow-400'
@@ -513,11 +490,8 @@ export function Home() {
           <FadeIn delay={0.1}>
             <div className="text-center mb-12">
               <h2 className="text-3xl sm:text-4xl font-bold text-white mb-4">
-                Built Different
+                Why CreatorVault
               </h2>
-              <p className="text-slate-400 text-lg">
-                Not your average creator coin platform
-              </p>
             </div>
           </FadeIn>
 
@@ -526,28 +500,28 @@ export function Home() {
               {
                 icon: Zap,
                 title: 'Fair Launch',
-                desc: 'Continuous clearing auction. No snipers.',
+                desc: 'No snipers. Equal opportunity.',
                 gradient: 'from-yellow-500/10 to-orange-500/10',
                 iconColor: 'text-yellow-400',
               },
               {
                 icon: Shield,
-                title: 'Battle-Tested',
-                desc: 'Audited contracts. Proven security.',
+                title: 'Secure',
+                desc: 'Audited contracts. Battle-tested.',
                 gradient: 'from-green-500/10 to-emerald-500/10',
                 iconColor: 'text-green-400',
               },
               {
                 icon: Users,
-                title: 'Anyone Can Join',
-                desc: 'Creators and holders deposit together. Everyone earns from the same pool.',
+                title: 'Open to All',
+                desc: 'Anyone deposits. Everyone earns.',
                 gradient: 'from-blue-500/10 to-cyan-500/10',
                 iconColor: 'text-blue-400',
               },
               {
                 icon: Gift,
                 title: 'Real Yield',
-                desc: 'Actual earnings from trading fees and lottery wins.',
+                desc: 'Trading fees + lottery wins.',
                 gradient: 'from-purple-500/10 to-pink-500/10',
                 iconColor: 'text-purple-400',
               },
@@ -591,8 +565,8 @@ export function Home() {
                   </div>
                 </div>
                 <div>
-                  <h3 className="text-xl font-bold text-white mb-1">Cross-Chain Ready</h3>
-                  <p className="text-slate-400">Bridge and participate from Base or Solana</p>
+                  <h3 className="text-xl font-bold text-white mb-1">Cross-Chain</h3>
+                  <p className="text-slate-400">Base + Solana</p>
                 </div>
               </div>
               
@@ -624,12 +598,10 @@ export function Home() {
             <div className="relative text-center space-y-8">
               <div>
                 <h2 className="text-4xl sm:text-5xl font-bold text-white mb-4">
-                  Have Creator Coins?
+                  Ready to Earn?
                 </h2>
                 <p className="text-slate-400 text-xl max-w-2xl mx-auto">
-                  Stop letting them sit idle. Deposit into vaults and start earning.
-                  <br />
-                  <span className="text-white font-semibold">Join your community. Win together.</span>
+                  Deposit tokens. Earn fees. Win jackpots.
                 </p>
               </div>
 
@@ -664,7 +636,7 @@ export function Home() {
               </div>
 
               <p className="text-slate-500 text-sm">
-                Deposit anytime • Withdraw anytime • Earn automatically
+                Deposit anytime • Withdraw anytime
               </p>
             </div>
           </section>
