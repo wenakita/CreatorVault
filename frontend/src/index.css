@@ -53,13 +53,13 @@
     @apply bg-surface-900/80 backdrop-blur-xl border border-surface-800 rounded-2xl;
   }
 
-  /* Gradient button - Base blue */
+  /* Primary button - Tension Cyan */
   .btn-primary {
-    @apply relative overflow-hidden px-6 py-3 rounded-xl font-semibold text-white
-           bg-brand-500
-           hover:bg-brand-600
+    @apply relative overflow-hidden px-6 py-3 rounded-xl font-semibold text-black
+           bg-tension-cyan
+           hover:bg-tension-cyan/90
            transition-all duration-200 ease-out
-           shadow-lg shadow-brand-500/20 hover:shadow-brand-500/30
+           shadow-lg shadow-tension-cyan/20 hover:shadow-tension-cyan/30
            active:scale-[0.98];
   }
 
@@ -90,7 +90,7 @@
     @apply w-full px-4 py-3 rounded-xl
            bg-surface-800 border border-surface-700
            text-white placeholder:text-surface-500
-           focus:outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500/50
+           focus:outline-none focus:border-tension-cyan focus:ring-1 focus:ring-tension-cyan/50
            transition-all duration-200;
   }
 
@@ -114,14 +114,14 @@
 
   .glow::after {
     content: '';
-    @apply absolute -inset-1 bg-brand-500/20 blur-xl rounded-full -z-10;
+    @apply absolute -inset-1 bg-tension-cyan/20 blur-xl rounded-full -z-10;
   }
 }
 
 @layer utilities {
-  /* Text gradient - Base blue */
+  /* Text gradient - Tension Cyan */
   .text-gradient {
-    @apply bg-gradient-to-r from-brand-400 via-brand-500 to-brand-600 bg-clip-text text-transparent;
+    @apply bg-gradient-to-r from-tension-cyan via-magma-mint to-tension-cyan bg-clip-text text-transparent;
   }
 
   /* Hide scrollbar but allow scrolling */
@@ -192,7 +192,7 @@
 
   /* Base Number Step (01, 02, 03 style) */
   .step-number {
-    @apply font-mono text-xs text-brand-500 tracking-widest;
+    @apply font-mono text-xs text-tension-cyan tracking-widest;
   }
 
   .step-number::before {
@@ -210,9 +210,9 @@
 }
 
 .glass-card:hover {
-  border-color: rgba(0, 82, 255, 0.3);
+  border-color: rgba(0, 242, 255, 0.3);
   transform: translateY(-2px);
-  box-shadow: 0 8px 32px rgba(0, 82, 255, 0.08);
+  box-shadow: 0 8px 32px rgba(0, 242, 255, 0.08);
 }
 
 /* Button with Base snappy feel */
@@ -242,7 +242,7 @@
 
 .feature-card::before {
   content: '';
-  @apply absolute inset-0 bg-gradient-to-br from-brand-500/5 to-transparent opacity-0;
+  @apply absolute inset-0 bg-gradient-to-br from-tension-cyan/5 to-transparent opacity-0;
   transition: opacity var(--base-duration-normal) var(--base-ease);
 }
 
@@ -256,7 +256,7 @@
 }
 
 .command-display code {
-  @apply text-brand-400;
+  @apply text-tension-cyan;
 }
 
 /* Numbered section (Base Account 01, 02, 03 style) */
@@ -265,292 +265,7 @@
 }
 
 .numbered-section::before {
-  @apply absolute left-0 top-0 font-mono text-4xl font-bold text-brand-500/20;
-  content: attr(data-step);
-}
-
-/* Logo marquee (Base Account style) */
-@keyframes marquee {
-  0% { transform: translateX(0); }
-  100% { transform: translateX(-50%); }
-}
-
-.logo-marquee {
-  animation: marquee 30s linear infinite;
-}
-
-/* Noise overlay texture */
-.noise-overlay {
-  @apply fixed inset-0 pointer-events-none z-50 opacity-[0.015];
-  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
-}
-
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
-
-/* ==========================================
-   BASE BRAND MOTION SYSTEM
-   From: https://www.base.org/brand/motion
-   ========================================== */
-
-/* Base's signature easing curve */
-:root {
-  --base-ease: cubic-bezier(0.4, 0, 0.2, 1);
-  --base-duration-fast: 120ms;
-  --base-duration-normal: 200ms;
-  --base-duration-slow: 320ms;
-  --base-duration-headline: 600ms;
-}
-
-@layer base {
-  html {
-    font-family: 'Inter', system-ui, sans-serif;
-    -webkit-font-smoothing: antialiased;
-    -moz-osx-font-smoothing: grayscale;
-  }
-
-  body {
-    @apply bg-surface-950 text-surface-100 min-h-screen;
-  }
-
-  /* Custom scrollbar */
-  ::-webkit-scrollbar {
-    width: 8px;
-  }
-
-  ::-webkit-scrollbar-track {
-    @apply bg-surface-950;
-  }
-
-  ::-webkit-scrollbar-thumb {
-    @apply bg-surface-700 rounded-full;
-  }
-
-  ::-webkit-scrollbar-thumb:hover {
-    @apply bg-surface-600;
-  }
-}
-
-@layer components {
-  /* Glass morphism card */
-  .glass-card {
-    @apply bg-surface-900/80 backdrop-blur-xl border border-surface-800 rounded-2xl;
-  }
-
-  /* Gradient button - Base blue */
-  .btn-primary {
-    @apply relative overflow-hidden px-6 py-3 rounded-xl font-semibold text-white
-           bg-brand-500
-           hover:bg-brand-600
-           transition-all duration-200 ease-out
-           shadow-lg shadow-brand-500/20 hover:shadow-brand-500/30
-           active:scale-[0.98];
-  }
-
-  .btn-primary::before {
-    content: '';
-    @apply absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent
-           -translate-x-full animate-shimmer;
-    background-size: 200% 100%;
-  }
-
-  /* Secondary button */
-  .btn-secondary {
-    @apply px-6 py-3 rounded-xl font-semibold
-           bg-surface-800 text-surface-200 border border-surface-700
-           hover:bg-surface-700 hover:border-surface-600 hover:text-white
-           transition-all duration-200 active:scale-[0.98];
-  }
-
-  /* Ghost button */
-  .btn-ghost {
-    @apply px-4 py-2 rounded-lg font-medium text-surface-400
-           hover:bg-surface-800 hover:text-white
-           transition-all duration-200;
-  }
-
-  /* Input styling */
-  .input-field {
-    @apply w-full px-4 py-3 rounded-xl
-           bg-surface-800 border border-surface-700
-           text-white placeholder:text-surface-500
-           focus:outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500/50
-           transition-all duration-200;
-  }
-
-  /* Stat card */
-  .stat-card {
-    @apply glass-card p-4 space-y-1;
-  }
-
-  .stat-label {
-    @apply text-xs font-medium text-surface-400 uppercase tracking-wider;
-  }
-
-  .stat-value {
-    @apply text-2xl font-bold text-white;
-  }
-
-  /* Glow effect */
-  .glow {
-    @apply relative;
-  }
-
-  .glow::after {
-    content: '';
-    @apply absolute -inset-1 bg-brand-500/20 blur-xl rounded-full -z-10;
-  }
-}
-
-@layer utilities {
-  /* Text gradient - Base blue */
-  .text-gradient {
-    @apply bg-gradient-to-r from-brand-400 via-brand-500 to-brand-600 bg-clip-text text-transparent;
-  }
-
-  /* Hide scrollbar but allow scrolling */
-  .scrollbar-hide {
-    -ms-overflow-style: none;
-    scrollbar-width: none;
-  }
-
-  .scrollbar-hide::-webkit-scrollbar {
-    display: none;
-  }
-
-  /* ==========================================
-     BASE BRAND MOTION ANIMATIONS
-     Inspired by: https://www.base.org/brand/motion
-     ========================================== */
-
-  /* Base Motion - Snappy transitions (120-240ms) */
-  .base-transition {
-    transition-timing-function: var(--base-ease);
-    transition-duration: var(--base-duration-normal);
-  }
-
-  .base-transition-fast {
-    transition-timing-function: var(--base-ease);
-    transition-duration: var(--base-duration-fast);
-  }
-
-  /* Tech Scramble Text Effect */
-  .tech-scramble {
-    animation: techScramble var(--base-duration-headline) var(--base-ease) forwards;
-  }
-
-  @keyframes techScramble {
-    0% { opacity: 0; transform: translateY(8px); filter: blur(4px); }
-    50% { opacity: 0.8; filter: blur(1px); }
-    100% { opacity: 1; transform: translateY(0); filter: blur(0); }
-  }
-
-  /* Square Wipe Reveal (Base signature) */
-  .square-wipe-in {
-    animation: squareWipeIn 400ms var(--base-ease) forwards;
-    clip-path: inset(0 100% 0 0);
-  }
-
-  @keyframes squareWipeIn {
-    0% { clip-path: inset(0 100% 0 0); }
-    100% { clip-path: inset(0 0 0 0); }
-  }
-
-  /* Slide up with slight bounce (playful restraint) */
-  .slide-up-bounce {
-    animation: slideUpBounce 320ms var(--base-ease) forwards;
-  }
-
-  @keyframes slideUpBounce {
-    0% { opacity: 0; transform: translateY(16px); }
-    70% { transform: translateY(-2px); }
-    100% { opacity: 1; transform: translateY(0); }
-  }
-
-  /* Stagger children animation delay */
-  .stagger-1 { animation-delay: 50ms; }
-  .stagger-2 { animation-delay: 100ms; }
-  .stagger-3 { animation-delay: 150ms; }
-  .stagger-4 { animation-delay: 200ms; }
-  .stagger-5 { animation-delay: 250ms; }
-
-  /* Base Number Step (01, 02, 03 style) */
-  .step-number {
-    @apply font-mono text-xs text-brand-500 tracking-widest;
-  }
-
-  .step-number::before {
-    content: '0';
-  }
-}
-
-/* ==========================================
-   BASE-STYLE COMPONENT OVERRIDES
-   ========================================== */
-
-/* Card hover with Base motion */
-.glass-card {
-  transition: all var(--base-duration-normal) var(--base-ease);
-}
-
-.glass-card:hover {
-  border-color: rgba(0, 82, 255, 0.3);
-  transform: translateY(-2px);
-  box-shadow: 0 8px 32px rgba(0, 82, 255, 0.08);
-}
-
-/* Button with Base snappy feel */
-.btn-primary, .btn-secondary, .btn-ghost {
-  transition: all var(--base-duration-fast) var(--base-ease);
-}
-
-.btn-primary:active, .btn-secondary:active, .btn-ghost:active {
-  transform: scale(0.97);
-  transition-duration: 50ms;
-}
-
-/* Input focus with Base motion */
-.input-field {
-  transition: all var(--base-duration-normal) var(--base-ease);
-}
-
-/* Feature card grid (OnchainKit style) */
-.feature-grid {
-  @apply grid gap-4;
-}
-
-.feature-card {
-  @apply glass-card p-6 relative overflow-hidden;
-  transition: all var(--base-duration-normal) var(--base-ease);
-}
-
-.feature-card::before {
-  content: '';
-  @apply absolute inset-0 bg-gradient-to-br from-brand-500/5 to-transparent opacity-0;
-  transition: opacity var(--base-duration-normal) var(--base-ease);
-}
-
-.feature-card:hover::before {
-  opacity: 1;
-}
-
-/* Command display (OnchainKit "npx create-onchain" style) */
-.command-display {
-  @apply flex items-center gap-3 px-4 py-3 rounded-xl bg-surface-900 border border-surface-800 font-mono text-sm;
-}
-
-.command-display code {
-  @apply text-brand-400;
-}
-
-/* Numbered section (Base Account 01, 02, 03 style) */
-.numbered-section {
-  @apply relative pl-16;
-}
-
-.numbered-section::before {
-  @apply absolute left-0 top-0 font-mono text-4xl font-bold text-brand-500/20;
+  @apply absolute left-0 top-0 font-mono text-4xl font-bold text-tension-cyan/20;
   content: attr(data-step);
 }
 

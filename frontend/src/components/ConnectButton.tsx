@@ -43,13 +43,13 @@ export function ConnectButton() {
       return (
         <motion.button
           onClick={() => switchChain?.({ chainId: base.id })}
-          className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-orange-500/10 border border-orange-500/30 hover:bg-orange-500/20 transition-colors"
+          className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-copper-bright/10 border border-copper-bright/30 hover:bg-copper-bright/20 transition-colors"
           whileTap={{ scale: 0.98 }}
           animate={{ scale: [1, 1.02, 1] }}
           transition={{ repeat: Infinity, duration: 2 }}
         >
-          <AlertCircle className="w-5 h-5 text-orange-400" />
-          <span className="font-semibold text-orange-400">Switch to Base</span>
+          <AlertCircle className="w-5 h-5 text-copper-bright" />
+          <span className="font-semibold text-copper-bright">Switch to Base</span>
         </motion.button>
       )
     }
@@ -61,7 +61,7 @@ export function ConnectButton() {
           className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-surface-900 border border-surface-700 hover:border-surface-600 transition-colors"
           whileTap={{ scale: 0.98 }}
         >
-          <div className="w-6 h-6 rounded-full bg-brand-500" />
+          <div className="w-6 h-6 rounded-full bg-tension-cyan" />
           <span className="font-mono text-sm">{formatAddress(address)}</span>
           <ChevronDown
             className={`w-4 h-4 text-surface-400 transition-transform ${

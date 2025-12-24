@@ -326,7 +326,7 @@ export function Vault() {
                 onClick={() => setActiveTab(tab)}
                 className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors ${
                   activeTab === tab
-                    ? 'bg-brand-500 text-white'
+                    ? 'bg-tension-cyan text-black'
                     : 'text-surface-400 hover:text-white'
                 }`}
               >
@@ -349,12 +349,12 @@ export function Vault() {
               <>
                 <span className="text-white font-medium">AKITA</span>
                 <span>→</span>
-                <span className="text-brand-500 font-medium">wsAKITA</span>
+                <span className="text-tension-cyan font-medium">wsAKITA</span>
                 <span className="text-surface-500 ml-2">(~1:1)</span>
               </>
             ) : (
               <>
-                <span className="text-brand-500 font-medium">wsAKITA</span>
+                <span className="text-tension-cyan font-medium">wsAKITA</span>
                 <span>→</span>
                 <span className="text-white font-medium">AKITA</span>
               </>
@@ -375,7 +375,7 @@ export function Vault() {
                         : formatUnits(wsAkitaBalance || 0n, 18)
                     )
                   }
-                  className="text-brand-500 hover:text-brand-400"
+                  className="text-tension-cyan hover:text-tension-cyan/80"
                 >
                   {activeTab === 'Deposit'
                     ? formatAmount(tokenBalance)
@@ -400,7 +400,7 @@ export function Vault() {
                       : formatUnits(wsAkitaBalance || 0n, 18)
                   )
                 }
-                className="absolute right-3 top-1/2 -translate-y-1/2 px-3 py-1 rounded-lg bg-brand-500/10 text-brand-500 text-sm font-medium hover:bg-brand-500/20 transition-colors"
+                className="absolute right-3 top-1/2 -translate-y-1/2 px-3 py-1 rounded-lg bg-tension-cyan/10 text-tension-cyan text-sm font-medium hover:bg-tension-cyan/20 transition-colors"
               >
                 MAX
               </button>
@@ -470,7 +470,7 @@ export function Vault() {
             <motion.div
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
-              className="p-3 rounded-lg bg-brand-500/10 border border-brand-500/20 text-brand-500 text-sm text-center"
+              className="p-3 rounded-lg bg-magma-mint/10 border border-magma-mint/20 text-magma-mint text-sm text-center"
             >
               ✓ Transaction successful!
             </motion.div>
@@ -485,7 +485,7 @@ export function Vault() {
           className="sm:col-span-2 glass-card p-6 space-y-4"
         >
           <h3 className="font-semibold flex items-center gap-2">
-            <Users className="w-4 h-4 text-brand-500" />
+            <Users className="w-4 h-4 text-tension-cyan" />
             Your Position
           </h3>
 
@@ -496,7 +496,7 @@ export function Vault() {
             </div>
             <div className="flex justify-between">
               <span className="text-surface-400">wsAKITA Balance</span>
-              <span className="font-mono text-brand-500">{formatAmount(wsAkitaBalance)}</span>
+              <span className="font-mono text-tension-cyan">{formatAmount(wsAkitaBalance)}</span>
             </div>
           </div>
 
@@ -512,7 +512,7 @@ export function Vault() {
             </div>
             <div className="h-2 rounded-full bg-surface-800 overflow-hidden">
               <motion.div
-                className="h-full bg-brand-500"
+                className="h-full bg-tension-cyan"
                 initial={{ width: 0 }}
                 animate={{
                   width: `${
@@ -555,7 +555,7 @@ export function Vault() {
           </div>
           <div className="w-px h-12 bg-white/10" />
           <div className="text-center">
-            <p className="text-3xl font-bold text-brand-400">
+            <p className="text-3xl font-bold text-tension-cyan">
               {tokenTarget ? (Number(formatUnits(tokenTarget, 18)) / 1000000).toFixed(1) : '0'}M
             </p>
             <p className="text-sm text-slate-400">AKITA available</p>
@@ -568,7 +568,7 @@ export function Vault() {
           
           <div className="space-y-3">
             <div className="flex items-start gap-3">
-              <div className="w-8 h-8 rounded-full bg-brand-500/20 flex items-center justify-center flex-shrink-0 text-sm font-bold text-brand-400">
+              <div className="w-8 h-8 rounded-full bg-tension-cyan/20 flex items-center justify-center flex-shrink-0 text-sm font-bold text-tension-cyan">
                 1
               </div>
               <div>
@@ -578,7 +578,7 @@ export function Vault() {
             </div>
 
             <div className="flex items-start gap-3">
-              <div className="w-8 h-8 rounded-full bg-brand-500/20 flex items-center justify-center flex-shrink-0 text-sm font-bold text-brand-400">
+              <div className="w-8 h-8 rounded-full bg-tension-cyan/20 flex items-center justify-center flex-shrink-0 text-sm font-bold text-tension-cyan">
                 2
               </div>
               <div>
@@ -612,7 +612,7 @@ export function Vault() {
             <p className="text-xs text-slate-400">Unsuccessful bids automatically refunded</p>
           </div>
           <div className="p-4 rounded-xl bg-white/[0.02] border border-white/5">
-            <Zap className="w-6 h-6 text-brand-400 mb-3" />
+            <Zap className="w-6 h-6 text-tension-cyan mb-3" />
             <p className="text-white font-semibold mb-1 text-sm">Early Access</p>
             <p className="text-xs text-slate-400">Priority allocation before public markets</p>
           </div>
@@ -621,7 +621,7 @@ export function Vault() {
         {/* CTA to Bid */}
         <a href={`/auction/bid/${AKITA.vault}`}>
           <motion.button
-            className="w-full px-8 py-5 rounded-xl bg-brand-500 text-white font-semibold hover:bg-brand-600 transition-colors border border-brand-400/20 shadow-lg shadow-brand-500/20"
+            className="w-full px-8 py-5 rounded-xl bg-tension-cyan text-black font-semibold hover:bg-tension-cyan/90 transition-colors border border-tension-cyan/30 shadow-lg shadow-tension-cyan/20"
             whileHover={{ scale: 1.01 }}
             whileTap={{ scale: 0.99 }}
           >
