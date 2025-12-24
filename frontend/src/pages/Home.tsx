@@ -241,6 +241,149 @@ export function Home() {
           </div>
         </section>
 
+        {/* DEFLATIONARY MECHANISM - Key differentiator */}
+        <section>
+          <FadeIn delay={0.1}>
+            <div className="relative max-w-4xl mx-auto">
+              {/* Glow effect */}
+              <div className="absolute inset-0 bg-gradient-to-r from-orange-500/10 via-red-500/10 to-orange-500/10 blur-3xl rounded-3xl" />
+              
+              <div className="relative bg-gradient-to-br from-orange-500/5 via-transparent to-red-500/5 border-2 border-orange-500/20 rounded-3xl p-8 sm:p-12 backdrop-blur-xl overflow-hidden">
+                {/* Background pattern */}
+                <div className="absolute inset-0 opacity-5">
+                  <div className="absolute inset-0" style={{
+                    backgroundImage: `radial-gradient(circle at 2px 2px, white 1px, transparent 0)`,
+                    backgroundSize: '32px 32px'
+                  }} />
+                </div>
+
+                <div className="relative grid md:grid-cols-2 gap-8 items-center">
+                  {/* Left: Visual */}
+                  <div className="flex items-center justify-center">
+                    <div className="relative">
+                      {/* Animated flame icon */}
+                      <motion.div
+                        className="w-32 h-32 rounded-full bg-gradient-to-br from-orange-500/20 to-red-500/20 flex items-center justify-center"
+                        animate={{ 
+                          scale: [1, 1.1, 1],
+                          opacity: [0.5, 0.8, 0.5]
+                        }}
+                        transition={{ 
+                          duration: 3, 
+                          repeat: Infinity,
+                          ease: "easeInOut"
+                        }}
+                      >
+                        <Flame className="w-16 h-16 text-orange-400" />
+                      </motion.div>
+                      
+                      {/* Orbiting tokens */}
+                      {[0, 120, 240].map((rotation, i) => (
+                        <motion.div
+                          key={rotation}
+                          className="absolute top-1/2 left-1/2 w-12 h-12"
+                          style={{ originX: 0.5, originY: 0.5 }}
+                          animate={{ 
+                            rotate: 360,
+                          }}
+                          transition={{ 
+                            duration: 8,
+                            repeat: Infinity,
+                            ease: "linear",
+                            delay: i * 0.3
+                          }}
+                        >
+                          <div 
+                            className="absolute w-8 h-8 rounded-full bg-gradient-to-br from-orange-400 to-red-500 flex items-center justify-center text-white text-xs font-bold shadow-lg"
+                            style={{ 
+                              transform: `rotate(${rotation}deg) translateX(80px)`
+                            }}
+                          >
+                            ws
+                          </div>
+                        </motion.div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Right: Content */}
+                  <div className="space-y-6">
+                    <div>
+                      <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-orange-500/10 border border-orange-500/20 mb-4">
+                        <TrendingUp className="w-4 h-4 text-orange-400" />
+                        <span className="text-orange-400 text-sm font-semibold uppercase tracking-wider">Deflationary</span>
+                      </div>
+                      <h2 className="text-3xl sm:text-4xl font-bold text-white mb-4">
+                        Tokens Burned.
+                        <br />
+                        <span className="text-gradient">Your Share Grows.</span>
+                      </h2>
+                      <p className="text-slate-400 text-lg leading-relaxed">
+                        21.4% of every trade permanently burns vault tokens. As supply decreases, your share of the underlying assets automatically increases.
+                      </p>
+                    </div>
+
+                    <div className="space-y-3">
+                      <div className="flex items-start gap-3">
+                        <div className="w-6 h-6 rounded-full bg-green-500/20 flex items-center justify-center flex-shrink-0 mt-0.5">
+                          <CheckCircle2 className="w-4 h-4 text-green-400" />
+                        </div>
+                        <div>
+                          <div className="text-white font-semibold mb-1">Proportional Gains</div>
+                          <div className="text-slate-400 text-sm">Hold 1% of supply? You always own 1% of the vault—even as total supply shrinks</div>
+                        </div>
+                      </div>
+                      
+                      <div className="flex items-start gap-3">
+                        <div className="w-6 h-6 rounded-full bg-green-500/20 flex items-center justify-center flex-shrink-0 mt-0.5">
+                          <CheckCircle2 className="w-4 h-4 text-green-400" />
+                        </div>
+                        <div>
+                          <div className="text-white font-semibold mb-1">No Action Required</div>
+                          <div className="text-slate-400 text-sm">Passive appreciation. Burns happen automatically with every trade</div>
+                        </div>
+                      </div>
+                      
+                      <div className="flex items-start gap-3">
+                        <div className="w-6 h-6 rounded-full bg-green-500/20 flex items-center justify-center flex-shrink-0 mt-0.5">
+                          <CheckCircle2 className="w-4 h-4 text-green-400" />
+                        </div>
+                        <div>
+                          <div className="text-white font-semibold mb-1">Compound Effect</div>
+                          <div className="text-slate-400 text-sm">More trades = more burns = greater value per token over time</div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Example calculation */}
+                    <div className="p-4 rounded-2xl bg-white/[0.02] border border-white/10">
+                      <div className="text-sm text-slate-500 mb-2">Example:</div>
+                      <div className="space-y-1 text-sm">
+                        <div className="flex justify-between">
+                          <span className="text-slate-400">You hold</span>
+                          <span className="text-white font-mono">100 wsTokens</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-slate-400">Total supply</span>
+                          <span className="text-white font-mono">10,000 wsTokens</span>
+                        </div>
+                        <div className="flex justify-between border-t border-white/5 pt-1 mt-1">
+                          <span className="text-slate-400">Your share</span>
+                          <span className="text-green-400 font-bold">1.0%</span>
+                        </div>
+                        <div className="flex justify-between text-xs text-slate-500 pt-2">
+                          <span>After 50% burn</span>
+                          <span className="text-green-400 font-semibold">Still 1.0% (of larger pie)</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </FadeIn>
+        </section>
+
         {/* JACKPOT - Prominent, glowing */}
         <section>
           <FadeIn delay={0.1}>
