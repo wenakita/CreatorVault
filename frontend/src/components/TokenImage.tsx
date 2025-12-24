@@ -36,7 +36,6 @@ export function TokenImage({
   const [imgError, setImgError] = useState(false)
 
   const sizeClass = sizeClasses[size]
-  const badgeSize = badgeSizes[size]
 
   // Show fallback if no image or loading or error
   const tokenElement = (!imageUrl || imgError || isLoading) ? (
@@ -59,22 +58,30 @@ export function TokenImage({
     return <div className={className}>{tokenElement}</div>
   }
 
-  // Wrapped version with subtle frame and badge
+  // Wrapped version with vault overlay covering bottom half
   return (
     <div className={`relative ${className}`}>
-      {/* Subtle gradient border */}
-      <div className="absolute inset-0 rounded-xl bg-gradient-to-br from-[#0052FF]/30 via-blue-400/20 to-[#0052FF]/30 p-[2px]">
-        <div className="w-full h-full rounded-xl bg-slate-950" />
-      </div>
-      
-      {/* Token image */}
+      {/* Original token image (slightly faded at bottom) */}
       <div className="relative">
         {tokenElement}
+        {/* Gradient overlay to fade into vault */}
+        <div className="absolute inset-0 rounded-xl bg-gradient-to-t from-slate-900/60 via-transparent to-transparent pointer-events-none" />
       </div>
       
-      {/* "ws" Badge - bottom right corner */}
-      <div className={`absolute -bottom-0.5 -right-0.5 ${badgeSize} rounded-full bg-gradient-to-br from-[#0052FF] to-blue-600 flex items-center justify-center font-bold text-white border-2 border-slate-950 shadow-lg`}>
-        <span className="tracking-tighter">ws</span>
+      {/* Vault icon overlay - bottom half */}
+      <div className="absolute inset-x-0 bottom-0 h-1/2 flex items-end justify-center pb-1">
+        <svg 
+          className="w-[45%] h-[45%] text-[#0052FF] drop-shadow-lg" 
+          viewBox="0 0 24 24" 
+          fill="currentColor"
+          xmlns="http://www.w3.org/2000/svg"
+        >
+          {/* Vault/Safe icon */}
+          <rect x="3" y="6" width="18" height="14" rx="2" fill="currentColor" opacity="0.9"/>
+          <circle cx="12" cy="13" r="3" fill="white" opacity="0.3"/>
+          <circle cx="12" cy="13" r="2" fill="white" opacity="0.5"/>
+          <circle cx="12" cy="13" r="0.8" fill="currentColor"/>
+        </svg>
       </div>
     </div>
   )
