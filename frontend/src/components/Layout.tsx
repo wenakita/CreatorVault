@@ -13,15 +13,21 @@ export function Layout() {
 
   return (
     <div className="min-h-screen flex flex-col bg-black">
+      {/* Subtle gradient background */}
+      <div className="fixed inset-0 -z-10 overflow-hidden pointer-events-none">
+        <div className="absolute top-0 left-1/4 w-[500px] h-[500px] bg-blue-500/5 rounded-full blur-[120px]" />
+        <div className="absolute bottom-0 right-1/4 w-[400px] h-[400px] bg-purple-500/5 rounded-full blur-[100px]" />
+      </div>
+
       {/* Header */}
-      <header className="border-b border-zinc-900">
+      <header className="sticky top-0 z-50 border-b border-zinc-900/50 bg-black/80 backdrop-blur-xl">
         <div className="max-w-7xl mx-auto px-6">
           <div className="flex items-center justify-between h-16">
-            <Link to="/" className="flex items-center gap-3">
-              <div className="w-8 h-8">
+            <Link to="/" className="flex items-center gap-3 group">
+              <div className="w-8 h-8 transition-transform group-hover:scale-110">
                 <VaultLogo size="sm" />
               </div>
-              <span className="font-bold text-lg">CreatorVault</span>
+              <span className="font-bold text-lg tracking-tight">CreatorVault</span>
             </Link>
 
             {/* Nav */}

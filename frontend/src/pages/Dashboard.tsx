@@ -50,52 +50,55 @@ function VaultCard({ vault }: { vault: typeof vaults[0] }) {
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="card p-6 hover:border-zinc-800 transition-all group"
+        whileHover={{ y: -4 }}
+        className="card p-7 group"
       >
         <div className="flex items-center gap-4 mb-6">
-          <TokenImage
-            tokenAddress={vault.token as `0x${string}`}
-            symbol={vault.symbol}
-            size="md"
-          />
+          <div className="transition-transform group-hover:scale-110">
+            <TokenImage
+              tokenAddress={vault.token as `0x${string}`}
+              symbol={vault.symbol}
+              size="md"
+            />
+          </div>
           <div>
-            <h3 className="font-semibold text-lg">{vault.name}</h3>
+            <h3 className="font-semibold text-xl tracking-tight">{vault.name}</h3>
             <p className="text-sm text-zinc-500">{vault.symbol}</p>
           </div>
         </div>
 
         {/* Status */}
         {isActive && (
-          <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg px-3 py-2 mb-4 flex items-center gap-2">
+          <div className="bg-blue-500/10 border border-blue-500/20 rounded-xl px-4 py-2.5 mb-5 flex items-center gap-2">
             <div className="w-2 h-2 rounded-full bg-blue-500 animate-pulse" />
-            <span className="text-sm text-blue-400">CCA Active</span>
+            <span className="text-sm font-medium text-blue-400">CCA Active</span>
           </div>
         )}
         {isGraduated && (
-          <div className="bg-zinc-900 border border-zinc-800 rounded-lg px-3 py-2 mb-4">
-            <span className="text-sm text-zinc-400">Vault Active</span>
+          <div className="glass rounded-xl px-4 py-2.5 mb-5">
+            <span className="text-sm font-medium text-zinc-400">Vault Active</span>
           </div>
         )}
         {!isActive && !isGraduated && (
-          <div className="bg-zinc-900 border border-zinc-800 rounded-lg px-3 py-2 mb-4">
-            <span className="text-sm text-zinc-500">Not Launched</span>
+          <div className="glass rounded-xl px-4 py-2.5 mb-5">
+            <span className="text-sm font-medium text-zinc-500">Not Launched</span>
           </div>
         )}
 
         {/* Stats */}
         {isActive && (
-          <div className="bg-zinc-950 border border-zinc-900 rounded-lg p-4 mb-4">
+          <div className="stat-card mb-5">
             <div className="text-sm text-zinc-500 mb-1">Total Raised</div>
-            <div className="text-lg font-semibold">
+            <div className="text-xl font-semibold">
               {formatUnits(currencyRaised, 18)} ETH
             </div>
           </div>
         )}
 
         {/* Arrow */}
-        <div className="flex items-center gap-2 text-sm text-zinc-400 group-hover:text-blue-500 transition-colors">
+        <div className="flex items-center gap-2 text-sm font-medium text-zinc-400 group-hover:text-blue-500 transition-colors">
           <span>View Vault</span>
-          <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+          <ArrowRight className="w-4 h-4 group-hover:translate-x-2 transition-transform" />
         </div>
       </motion.div>
     </Link>
@@ -104,49 +107,49 @@ function VaultCard({ vault }: { vault: typeof vaults[0] }) {
 
 export function Dashboard() {
   return (
-    <div className="max-w-7xl mx-auto px-6 py-12 space-y-12">
+    <div className="max-w-7xl mx-auto px-6 py-12 space-y-16">
       {/* Header */}
-      <div>
-        <h1 className="text-4xl font-bold mb-3">Creator Vaults</h1>
-        <p className="text-zinc-400">
+      <div className="space-y-4">
+        <h1 className="text-5xl lg:text-6xl font-bold tracking-tight">Creator Vaults</h1>
+        <p className="text-zinc-400 text-lg lg:text-xl max-w-3xl leading-relaxed">
           Deposit creator coins, earn yield, and participate in community growth
         </p>
       </div>
 
       {/* How It Works */}
-      <div className="card p-8">
-        <h2 className="text-xl font-semibold mb-6">How Vault Strategies Work</h2>
-        <p className="text-zinc-400 mb-8 text-sm">
+      <div className="card p-10 lg:p-12">
+        <h2 className="text-2xl lg:text-3xl font-semibold mb-4 tracking-tight">How Vault Strategies Work</h2>
+        <p className="text-zinc-400 mb-10 text-base lg:text-lg leading-relaxed">
           When creators deposit tokens, funds are automatically allocated across multiple yield-generating strategies:
         </p>
         
-        <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <div className="bg-zinc-950 border border-zinc-900 rounded-lg p-5">
-            <div className="text-sm text-zinc-500 mb-2">WETH LP</div>
-            <div className="text-2xl font-bold text-blue-500">25%</div>
-            <div className="text-xs text-zinc-600 mt-2">Uniswap V3 liquidity</div>
+        <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-5">
+          <div className="stat-card group">
+            <div className="text-sm text-zinc-500 mb-3">WETH LP</div>
+            <div className="text-3xl font-bold text-blue-500 mb-2 group-hover:scale-110 transition-transform">25%</div>
+            <div className="text-sm text-zinc-600">Uniswap V3 liquidity</div>
           </div>
-          <div className="bg-zinc-950 border border-zinc-900 rounded-lg p-5">
-            <div className="text-sm text-zinc-500 mb-2">USDC LP</div>
-            <div className="text-2xl font-bold text-blue-500">25%</div>
-            <div className="text-xs text-zinc-600 mt-2">Stable pair liquidity</div>
+          <div className="stat-card group">
+            <div className="text-sm text-zinc-500 mb-3">USDC LP</div>
+            <div className="text-3xl font-bold text-blue-500 mb-2 group-hover:scale-110 transition-transform">25%</div>
+            <div className="text-sm text-zinc-600">Stable pair liquidity</div>
           </div>
-          <div className="bg-zinc-950 border border-zinc-900 rounded-lg p-5">
-            <div className="text-sm text-zinc-500 mb-2">Ajna</div>
-            <div className="text-2xl font-bold text-blue-500">25%</div>
-            <div className="text-xs text-zinc-600 mt-2">Lending protocol</div>
+          <div className="stat-card group">
+            <div className="text-sm text-zinc-500 mb-3">Ajna</div>
+            <div className="text-3xl font-bold text-blue-500 mb-2 group-hover:scale-110 transition-transform">25%</div>
+            <div className="text-sm text-zinc-600">Lending protocol</div>
           </div>
-          <div className="bg-zinc-950 border border-zinc-900 rounded-lg p-5">
-            <div className="text-sm text-zinc-500 mb-2">Idle</div>
-            <div className="text-2xl font-bold">25%</div>
-            <div className="text-xs text-zinc-600 mt-2">Available reserve</div>
+          <div className="stat-card group">
+            <div className="text-sm text-zinc-500 mb-3">Idle</div>
+            <div className="text-3xl font-bold mb-2 group-hover:scale-110 transition-transform">25%</div>
+            <div className="text-sm text-zinc-600">Available reserve</div>
           </div>
         </div>
       </div>
 
       {/* Vaults */}
       <div>
-        <h2 className="text-2xl font-semibold mb-6">Available Vaults</h2>
+        <h2 className="text-3xl font-semibold mb-8 tracking-tight">Available Vaults</h2>
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
           {vaults.map((vault) => (
             <VaultCard key={vault.id} vault={vault} />

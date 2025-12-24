@@ -5,36 +5,85 @@
 @layer base {
   body {
     @apply bg-black text-white antialiased;
+    letter-spacing: -0.01em;
+  }
+  
+  h1, h2, h3, h4, h5, h6 {
+    @apply tracking-tight;
   }
 }
 
 @layer components {
-  /* Clean Flat Cards */
+  /* Premium Cards with subtle effects */
   .card {
-    @apply bg-zinc-950/50 border border-zinc-900 rounded-lg backdrop-blur-sm;
+    @apply bg-zinc-950/50 border border-zinc-900/50 rounded-2xl backdrop-blur-xl;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
   }
   
-  /* Buttons */
+  .card:hover {
+    @apply border-zinc-800/50;
+    box-shadow: 0 12px 48px rgba(0, 0, 0, 0.5);
+  }
+  
+  /* Buttons with subtle glow */
   .btn-primary {
-    @apply bg-blue-500 hover:bg-blue-600 text-white font-medium px-6 py-3 rounded-lg transition-all;
+    @apply bg-blue-500 hover:bg-blue-600 text-white font-medium px-6 py-3 rounded-xl transition-all duration-200;
+    box-shadow: 0 4px 24px rgba(59, 130, 246, 0.25);
+  }
+  
+  .btn-primary:hover {
+    box-shadow: 0 6px 32px rgba(59, 130, 246, 0.4);
+    transform: translateY(-1px);
+  }
+  
+  .btn-primary:active {
+    transform: translateY(0);
   }
   
   .btn-secondary {
-    @apply bg-zinc-900 hover:bg-zinc-800 text-white font-medium px-6 py-3 rounded-lg border border-zinc-800 transition-all;
+    @apply bg-zinc-900/50 hover:bg-zinc-800/50 text-white font-medium px-6 py-3 rounded-xl border border-zinc-800/50 transition-all duration-200 backdrop-blur-xl;
   }
   
-  /* Inputs */
+  .btn-secondary:hover {
+    @apply border-zinc-700/50;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+    transform: translateY(-1px);
+  }
+  
+  /* Refined Inputs */
   .input-field {
-    @apply bg-zinc-950 border border-zinc-800 text-white px-4 py-3 rounded-lg focus:outline-none focus:border-blue-500 transition-all;
+    @apply bg-zinc-950/80 border border-zinc-800/50 text-white px-4 py-3 rounded-xl focus:outline-none focus:border-blue-500/50 transition-all backdrop-blur-xl;
+    box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.3);
   }
   
-  /* Stats */
+  .input-field:focus {
+    box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.3), 0 0 0 3px rgba(59, 130, 246, 0.1);
+  }
+  
+  /* Elegant Stats Cards */
   .stat-card {
-    @apply bg-zinc-950/50 border border-zinc-900 rounded-lg p-5 backdrop-blur-sm;
+    @apply bg-zinc-950/50 border border-zinc-900/50 rounded-xl p-5 backdrop-blur-xl transition-all duration-200;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
   }
   
-  /* Badge */
+  .stat-card:hover {
+    @apply border-zinc-800/50;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+    transform: translateY(-2px);
+  }
+  
+  /* Subtle Badge */
   .badge {
-    @apply bg-zinc-900 text-zinc-400 px-3 py-1.5 rounded-lg text-xs font-medium border border-zinc-800;
+    @apply bg-zinc-900/50 text-zinc-400 px-3 py-1.5 rounded-lg text-xs font-medium border border-zinc-800/50 backdrop-blur-xl;
+  }
+  
+  /* Text Gradient */
+  .text-gradient {
+    @apply bg-gradient-to-r from-white via-white to-zinc-400 bg-clip-text text-transparent;
+  }
+  
+  /* Glass effect for special elements */
+  .glass {
+    @apply bg-white/[0.02] backdrop-blur-2xl border border-white/[0.05];
   }
 }

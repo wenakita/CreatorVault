@@ -148,31 +148,33 @@ export function Vault() {
   const needsApproval = activeTab === 'Deposit' && (!tokenAllowance || tokenAllowance < parseUnits(amount || '0', 18))
 
   return (
-    <div className="max-w-5xl mx-auto px-6 py-12 space-y-8">
+    <div className="max-w-5xl mx-auto px-6 py-12 space-y-10">
       {/* Header */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4"
+        className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6"
       >
-        <div className="flex items-center gap-4">
-          <TokenImage
-            tokenAddress={tokenAddress as `0x${string}`}
-            symbol="wsAKITA"
-            size="lg"
-            fallbackColor="from-orange-500 to-red-600"
-            isWrapped={true}
-          />
+        <div className="flex items-center gap-5">
+          <div className="transition-transform hover:scale-110">
+            <TokenImage
+              tokenAddress={tokenAddress as `0x${string}`}
+              symbol="wsAKITA"
+              size="lg"
+              fallbackColor="from-orange-500 to-red-600"
+              isWrapped={true}
+            />
+          </div>
           <div>
-            <h1 className="text-3xl font-bold">AKITA Vault</h1>
-            <p className="text-zinc-500 text-sm">AKITA → wsAKITA</p>
+            <h1 className="text-4xl lg:text-5xl font-bold tracking-tight">AKITA Vault</h1>
+            <p className="text-zinc-500 text-base mt-1">AKITA → wsAKITA</p>
           </div>
         </div>
         <a
           href={`https://basescan.org/address/${wrapperAddress}`}
           target="_blank"
           rel="noopener noreferrer"
-          className="btn-secondary flex items-center gap-2 text-sm"
+          className="btn-secondary flex items-center gap-2"
         >
           <ExternalLink className="w-4 h-4" />
           Basescan
@@ -184,18 +186,27 @@ export function Vault() {
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
-          className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-6"
+          className="relative bg-blue-500/10 border border-blue-500/20 rounded-2xl p-7 overflow-hidden"
         >
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <Clock className="w-5 h-5 text-blue-400" />
+          <div className="absolute inset-0 bg-gradient-to-br from-blue-500/10 to-transparent pointer-events-none" />
+          <div className="relative flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 rounded-xl bg-blue-500/20 border border-blue-500/30 flex items-center justify-center">
+                <Clock className="w-6 h-6 text-blue-400" />
+              </div>
               <div>
-                <h3 className="font-semibold text-blue-400">CCA Auction Active</h3>
+                <h3 className="font-semibold text-lg text-blue-400">CCA Auction Active</h3>
                 <p className="text-sm text-zinc-400">Get wsAKITA before anyone else</p>
               </div>
             </div>
-            <Link to={`/auction/${wrapperAddress}`} className="btn-primary">
-              Join Auction
+            <Link to={`/auction/${wrapperAddress}`}>
+              <motion.button
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                className="btn-primary"
+              >
+                Join Auction
+              </motion.button>
             </Link>
           </div>
         </motion.div>
@@ -206,37 +217,37 @@ export function Vault() {
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ delay: 0.1 }}
-        className="grid grid-cols-2 sm:grid-cols-4 gap-4"
+        className="grid grid-cols-2 sm:grid-cols-4 gap-5"
       >
-        <div className="stat-card">
-          <div className="flex items-center gap-2 mb-2">
+        <div className="stat-card group">
+          <div className="flex items-center gap-2 mb-3">
             <Coins className="w-4 h-4 text-zinc-500" />
-            <span className="text-xs text-zinc-500">Total Supply</span>
+            <span className="text-sm text-zinc-500">Total Supply</span>
           </div>
-          <div className="text-xl font-semibold">
+          <div className="text-2xl font-semibold group-hover:scale-105 transition-transform">
             {totalWsAkita ? formatAmount(totalWsAkita) : '...'}
           </div>
         </div>
-        <div className="stat-card">
-          <div className="flex items-center gap-2 mb-2">
+        <div className="stat-card group">
+          <div className="flex items-center gap-2 mb-3">
             <TrendingUp className="w-4 h-4 text-blue-500" />
-            <span className="text-xs text-zinc-500">APY</span>
+            <span className="text-sm text-zinc-500">APY</span>
           </div>
-          <div className="text-xl font-semibold text-blue-500">42.0%</div>
+          <div className="text-2xl font-semibold text-blue-500 group-hover:scale-105 transition-transform">42.0%</div>
         </div>
-        <div className="stat-card">
-          <div className="flex items-center gap-2 mb-2">
+        <div className="stat-card group">
+          <div className="flex items-center gap-2 mb-3">
             <Trophy className="w-4 h-4 text-zinc-500" />
-            <span className="text-xs text-zinc-500">Jackpot</span>
+            <span className="text-sm text-zinc-500">Jackpot</span>
           </div>
-          <div className="text-xl font-semibold">0.1 ETH</div>
+          <div className="text-2xl font-semibold group-hover:scale-105 transition-transform">0.1 ETH</div>
         </div>
-        <div className="stat-card">
-          <div className="flex items-center gap-2 mb-2">
+        <div className="stat-card group">
+          <div className="flex items-center gap-2 mb-3">
             <Zap className="w-4 h-4 text-zinc-500" />
-            <span className="text-xs text-zinc-500">Trade Fee</span>
+            <span className="text-sm text-zinc-500">Trade Fee</span>
           </div>
-          <div className="text-xl font-semibold">6.9%</div>
+          <div className="text-2xl font-semibold group-hover:scale-105 transition-transform">6.9%</div>
         </div>
       </motion.div>
 
@@ -247,18 +258,18 @@ export function Vault() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.2 }}
-          className="sm:col-span-2 card p-6 space-y-6"
+          className="sm:col-span-2 card p-8 space-y-6"
         >
           {/* Tabs */}
-          <div className="flex gap-2 p-1 bg-zinc-950 rounded-lg border border-zinc-900">
+          <div className="flex gap-2 p-1.5 glass rounded-xl">
             {tabs.map((tab) => (
               <button
                 key={tab}
                 onClick={() => setActiveTab(tab)}
-                className={`flex-1 py-2.5 px-4 rounded-lg text-sm font-medium transition-all ${
+                className={`flex-1 py-3 px-5 rounded-xl text-sm font-medium transition-all ${
                   activeTab === tab
-                    ? 'bg-blue-500 text-white'
-                    : 'text-zinc-400 hover:text-white'
+                    ? 'bg-blue-500 text-white shadow-lg shadow-blue-500/25'
+                    : 'text-zinc-400 hover:text-white hover:bg-white/5'
                 }`}
               >
                 {tab === 'Deposit' ? (
@@ -275,18 +286,18 @@ export function Vault() {
           </div>
 
           {/* Flow */}
-          <div className="flex items-center justify-center gap-2 text-sm bg-zinc-950 rounded-lg py-3 border border-zinc-900">
+          <div className="flex items-center justify-center gap-3 text-base glass rounded-xl py-4">
             {activeTab === 'Deposit' ? (
               <>
-                <span className="font-medium">AKITA</span>
+                <span className="font-semibold">AKITA</span>
                 <span className="text-zinc-600">→</span>
-                <span className="font-medium text-blue-500">wsAKITA</span>
+                <span className="font-semibold text-blue-500">wsAKITA</span>
               </>
             ) : (
               <>
-                <span className="font-medium text-blue-500">wsAKITA</span>
+                <span className="font-semibold text-blue-500">wsAKITA</span>
                 <span className="text-zinc-600">→</span>
-                <span className="font-medium">AKITA</span>
+                <span className="font-semibold">AKITA</span>
               </>
             )}
           </div>
@@ -366,21 +377,21 @@ export function Vault() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.3 }}
-          className="card p-6 space-y-6"
+          className="card p-7 space-y-6"
         >
-          <h3 className="font-semibold">Your Position</h3>
+          <h3 className="font-semibold text-lg tracking-tight">Your Position</h3>
           
-          <div className="space-y-4">
-            <div>
-              <div className="text-sm text-zinc-500 mb-1">wsAKITA Balance</div>
-              <div className="text-2xl font-bold">
+          <div className="space-y-5">
+            <div className="stat-card">
+              <div className="text-sm text-zinc-500 mb-2">wsAKITA Balance</div>
+              <div className="text-3xl font-bold tracking-tight">
                 {formatAmount(wsAkitaBalance || 0n)}
               </div>
             </div>
             
-            <div className="border-t border-zinc-900 pt-4">
-              <div className="text-sm text-zinc-500 mb-1">AKITA Balance</div>
-              <div className="text-lg font-semibold">
+            <div className="stat-card">
+              <div className="text-sm text-zinc-500 mb-2">AKITA Balance</div>
+              <div className="text-xl font-semibold tracking-tight">
                 {formatAmount(tokenBalance || 0n)}
               </div>
             </div>
