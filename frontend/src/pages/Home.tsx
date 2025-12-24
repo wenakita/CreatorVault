@@ -307,7 +307,7 @@ export function Home() {
                         <span className="text-orange-400 text-sm font-semibold uppercase tracking-wider">Deflationary</span>
                       </div>
                       <h2 className="text-3xl sm:text-4xl font-bold text-white mb-4">
-                        Tokens Burn.
+                        Vault Tokens Burn.
                         <br />
                         <span className="text-gradient">You Own More.</span>
                       </h2>
