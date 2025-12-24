@@ -43,7 +43,7 @@ export function Layout() {
             />
             <div className="hidden sm:flex items-baseline gap-1">
               <span className="font-semibold text-white tracking-tight text-lg">Creator</span>
-              <span className="font-semibold text-tension-cyan tracking-tight text-lg">Vault</span>
+              <span className="font-semibold text-purple-500 tracking-tight text-lg">Vault</span>
             </div>
           </Link>
 
