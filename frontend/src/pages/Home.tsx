@@ -172,75 +172,6 @@ export function Home() {
           </div>
         </section>
 
-        {/* HOW IT WORKS - Clean, numbered flow */}
-        <section>
-          <FadeIn delay={0.1}>
-            <div className="text-center mb-12">
-              <h2 className="text-3xl sm:text-4xl font-bold text-white mb-4">
-                Three Steps to Earnings
-              </h2>
-              <p className="text-slate-400 text-lg">
-                Simple, transparent, and fully onchain
-              </p>
-            </div>
-          </FadeIn>
-
-          <div className="grid md:grid-cols-3 gap-8 max-w-4xl mx-auto">
-            {[
-              { 
-                num: '01', 
-                icon: Coins, 
-                title: 'Deposit Creator Coins', 
-                desc: 'Lock your creator coins in the vault. Get wsTokens that represent your share.',
-                color: 'from-blue-500/20 to-cyan-500/20',
-                iconBg: 'bg-blue-500/10',
-                iconColor: 'text-blue-400'
-              },
-              { 
-                num: '02', 
-                icon: TrendingUp, 
-                title: 'Earn From Every Trade', 
-                desc: '6.9% fee on all trades. 69% goes to the jackpot pool. You earn as the vault grows.',
-                color: 'from-purple-500/20 to-pink-500/20',
-                iconBg: 'bg-purple-500/10',
-                iconColor: 'text-purple-400'
-              },
-              { 
-                num: '03', 
-                icon: Trophy, 
-                title: 'Win the Jackpot', 
-                desc: 'Every buy is a lottery entry. Chainlink VRF picks winners. Random and fair.',
-                color: 'from-yellow-500/20 to-orange-500/20',
-                iconBg: 'bg-yellow-500/10',
-                iconColor: 'text-yellow-400'
-              },
-            ].map(({ num, icon: Icon, title, desc, color, iconBg, iconColor }, i) => (
-              <StaggerItem key={num}>
-                <motion.div 
-                  className="relative h-full"
-                  whileHover={{ y: -8 }}
-                  transition={{ duration: 0.3, ease: BASE_EASE }}
-                >
-                  <div className={`absolute inset-0 rounded-3xl bg-gradient-to-br ${color} blur-xl opacity-0 group-hover:opacity-100 transition-opacity`} />
-                  <div className="relative p-8 rounded-3xl bg-white/[0.02] border border-white/10 backdrop-blur-xl h-full">
-                    {/* Number badge */}
-                    <div className="text-6xl font-black text-white/5 absolute top-4 right-4">
-                      {num}
-                    </div>
-                    
-                    <div className={`w-14 h-14 rounded-2xl ${iconBg} flex items-center justify-center mb-6`}>
-                      <Icon className={`w-7 h-7 ${iconColor}`} />
-                    </div>
-                    
-                    <h3 className="text-xl font-bold text-white mb-3">{title}</h3>
-                    <p className="text-slate-400 leading-relaxed">{desc}</p>
-                  </div>
-                </motion.div>
-              </StaggerItem>
-            ))}
-          </div>
-        </section>
-
         {/* DEFLATIONARY MECHANISM - Key differentiator */}
         <section>
           <FadeIn delay={0.1}>
@@ -382,6 +313,75 @@ export function Home() {
               </div>
             </div>
           </FadeIn>
+        </section>
+
+        {/* HOW IT WORKS - Clean, numbered flow */}
+        <section>
+          <FadeIn delay={0.1}>
+            <div className="text-center mb-12">
+              <h2 className="text-3xl sm:text-4xl font-bold text-white mb-4">
+                Three Steps to Earnings
+              </h2>
+              <p className="text-slate-400 text-lg">
+                Simple, transparent, and fully onchain
+              </p>
+            </div>
+          </FadeIn>
+
+          <div className="grid md:grid-cols-3 gap-8 max-w-4xl mx-auto">
+            {[
+              { 
+                num: '01', 
+                icon: Coins, 
+                title: 'Deposit Creator Coins', 
+                desc: 'Lock your creator coins in the vault. Get wsTokens that represent your share.',
+                color: 'from-blue-500/20 to-cyan-500/20',
+                iconBg: 'bg-blue-500/10',
+                iconColor: 'text-blue-400'
+              },
+              { 
+                num: '02', 
+                icon: TrendingUp, 
+                title: 'Earn From Every Trade', 
+                desc: '6.9% fee on all trades. 69% goes to the jackpot pool. You earn as the vault grows.',
+                color: 'from-purple-500/20 to-pink-500/20',
+                iconBg: 'bg-purple-500/10',
+                iconColor: 'text-purple-400'
+              },
+              { 
+                num: '03', 
+                icon: Trophy, 
+                title: 'Win the Jackpot', 
+                desc: 'Every buy is a lottery entry. Chainlink VRF picks winners. Random and fair.',
+                color: 'from-yellow-500/20 to-orange-500/20',
+                iconBg: 'bg-yellow-500/10',
+                iconColor: 'text-yellow-400'
+              },
+            ].map(({ num, icon: Icon, title, desc, color, iconBg, iconColor }, i) => (
+              <StaggerItem key={num}>
+                <motion.div 
+                  className="relative h-full"
+                  whileHover={{ y: -8 }}
+                  transition={{ duration: 0.3, ease: BASE_EASE }}
+                >
+                  <div className={`absolute inset-0 rounded-3xl bg-gradient-to-br ${color} blur-xl opacity-0 group-hover:opacity-100 transition-opacity`} />
+                  <div className="relative p-8 rounded-3xl bg-white/[0.02] border border-white/10 backdrop-blur-xl h-full">
+                    {/* Number badge */}
+                    <div className="text-6xl font-black text-white/5 absolute top-4 right-4">
+                      {num}
+                    </div>
+                    
+                    <div className={`w-14 h-14 rounded-2xl ${iconBg} flex items-center justify-center mb-6`}>
+                      <Icon className={`w-7 h-7 ${iconColor}`} />
+                    </div>
+                    
+                    <h3 className="text-xl font-bold text-white mb-3">{title}</h3>
+                    <p className="text-slate-400 leading-relaxed">{desc}</p>
+                  </div>
+                </motion.div>
+              </StaggerItem>
+            ))}
+          </div>
         </section>
 
         {/* JACKPOT - Prominent, glowing */}
