@@ -19,23 +19,3 @@
     }
   ]
 }
-
-  "short_name": "Vault",
-  "description": "Deposit creator coins into vaults. Earn from trading fees. Everyone earns together.",
-  "start_url": "/",
-  "display": "standalone",
-  "background_color": "#020617",
-  "theme_color": "#3B82F6",
-  "icons": [
-    {
-      "src": "/logo.svg",
-      "sizes": "any",
-      "type": "image/svg+xml"
-    },
-    {
-      "src": "/favicon.svg",
-      "sizes": "32x32",
-      "type": "image/svg+xml"
-    }
-  ]
-}
