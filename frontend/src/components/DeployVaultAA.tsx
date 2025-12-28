@@ -207,39 +207,49 @@ export function DeployVaultAA({
 
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [callBundleId, setCallBundleId] = useState<string | null>(null)
+  const [callBundleType, setCallBundleType] = useState<'tx' | 'bundle' | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [errorDetails, setErrorDetails] = useState<string | null>(null)
   const [addresses, setAddresses] = useState<DeploymentAddresses | null>(null)
   const [step, setStep] = useState(0)
+  const [success, setSuccess] = useState(false)
+  const [showDetails, setShowDetails] = useState(false)
 
   const steps = useMemo(() => {
-    const baseSteps = [
-      'Preparing CREATE2 addresses',
-      'Deploying Vault',
-      'Deploying Wrapper',
-      'Deploying ShareOFT',
-      'Deploying GaugeController',
-      'Deploying CCA Strategy',
-      ...(includeOracle ? ['Deploying Oracle'] : []),
-      'Wiring contracts',
-      'Finalizing',
-    ]
-    return baseSteps
-  }, [includeOracle])
+    return ['Preparing', 'Confirm in wallet', 'Deploying', 'Verifying', 'Complete']
+  }, [])
 
   async function deploy() {
     setError(null)
+    setErrorDetails(null)
+    setCallBundleId(null)
+    setCallBundleType(null)
+    setAddresses(null)
+    setSuccess(false)
+    setShowDetails(false)
+    setStep(0)
 
     if (!address) {
-      setError('Connect your wallet first.')
+      setError('Connect your wallet to deploy.')
+      return
+    }
+    if (!publicClient) {
+      setError('Network client not ready. Please try again.')
       return
     }
     if (!window.ethereum) {
-      setError('No EIP-1193 wallet found. Please use Coinbase Wallet / Smart Wallet.')
+      setError('No wallet detected. Please use Coinbase Wallet / Smart Wallet.')
       return
     }
     if (!isAddress(creatorToken)) {
-      setError('Invalid creator token address.')
+      setError('Invalid creator coin address.')
       return
+    }
+
+    const fail = (message: string, details?: string): never => {
+      const err: any = new Error(message)
+      if (details) err.details = details
+      throw err
     }
 
     const signer = address as Address
@@ -259,6 +269,8 @@ export function DeployVaultAA({
 
     const isDelegatedSmartWallet = owner.toLowerCase() !== signer.toLowerCase()
 
+    setIsSubmitting(true)
+
     // Preflight:
     // - If executing as a Coinbase Smart Wallet contract (owner != signer), require signer to be an owner,
     //   then we can call executeBatch (EOA pays the outer tx gas; smart wallet is msg.sender for inner calls).
@@ -267,12 +279,10 @@ export function DeployVaultAA({
       try {
         const code = await publicClient.getBytecode({ address: owner })
         if (!code || code === '0x') {
-          setError('The “Deploy as” address is not a deployed smart wallet contract on Base.')
-          return
+          fail('The selected owner wallet is not deployed on Base.')
         }
       } catch {
-        setError('Failed to verify the “Deploy as” smart wallet address on Base.')
-        return
+        fail('Failed to verify the selected owner wallet on Base.')
       }
 
       try {
@@ -283,12 +293,10 @@ export function DeployVaultAA({
           args: [signer],
         })
         if (!ok) {
-          setError('Connected wallet is not an owner of the selected smart wallet address.')
-          return
+          fail('Connected wallet is not an owner of the selected smart wallet.')
         }
       } catch {
-        setError('Selected “Deploy as” address is not a supported Coinbase Smart Wallet.')
-        return
+        fail('Selected owner wallet is not a supported Coinbase Smart Wallet.')
       }
     }
 
@@ -301,12 +309,13 @@ export function DeployVaultAA({
       const codes = await Promise.all(requiredAddrs.map((a) => publicClient.getBytecode({ address: a })))
       const missing = requiredAddrs.filter((_, i) => !codes[i] || codes[i] === '0x')
       if (missing.length) {
-        setError(`Misconfigured deployment dependencies (no bytecode): ${missing.join(', ')}`)
-        return
+        fail(
+          'Deployment is temporarily unavailable. Please try again later.',
+          `Missing bytecode for: ${missing.join(', ')}`,
+        )
       }
     } catch {
-      setError('Failed to verify deployment dependencies. Please try again.')
-      return
+      fail('Failed to verify deployment dependencies. Please try again.')
     }
 
     // Naming
@@ -399,8 +408,7 @@ export function DeployVaultAA({
       ...(oracleAddress ? [publicClient.getBytecode({ address: oracleAddress })] : []),
     ])
     if (existingBytecodes.some((x) => x && x !== '0x')) {
-      setError('One or more CREATE2 addresses already have code. Try a different wallet/token combo.')
-      return
+      fail('A vault already exists for this coin + owner wallet.')
     }
 
     // ShareOFT bootstrap (cross-chain deterministic):
@@ -410,17 +418,18 @@ export function DeployVaultAA({
     const bootstrapCode = await publicClient.getBytecode({ address: oftBootstrapRegistry })
     const bootstrapExists = !!bootstrapCode && bootstrapCode !== '0x'
 
-    let lzEndpoint: Address
+    // Resolve LayerZero endpoint for this chain (required for ShareOFT bootstrap).
+    // Initialize to a dummy address so TS can prove assignment; any failure throws via `fail()`.
+    let resolvedLzEndpoint = '0x0000000000000000000000000000000000000000' as Address
     try {
-      lzEndpoint = (await publicClient.readContract({
+      resolvedLzEndpoint = (await publicClient.readContract({
         address: registry,
         abi: REGISTRY_LZ_VIEW_ABI,
         functionName: 'getLayerZeroEndpoint',
         args: [base.id],
       })) as Address
     } catch {
-      setError('Failed to resolve LayerZero endpoint from registry.')
-      return
+      fail('Failed to resolve LayerZero endpoint from registry.')
     }
 
     // Build call batch
@@ -431,7 +440,6 @@ export function DeployVaultAA({
       to: create2Deployer,
       data: encodeFunctionData({ abi: CREATE2_DEPLOYER_ABI, functionName: 'deploy', args: [salts.vaultSalt, vaultInitCode] }),
     })
-    setStep(1)
     calls.push({
       to: create2Deployer,
       data: encodeFunctionData({ abi: CREATE2_DEPLOYER_ABI, functionName: 'deploy', args: [salts.wrapperSalt, wrapperInitCode] }),
@@ -446,7 +454,7 @@ export function DeployVaultAA({
     }
     calls.push({
       to: oftBootstrapRegistry,
-      data: encodeFunctionData({ abi: OFT_BOOTSTRAP_ABI, functionName: 'setLayerZeroEndpoint', args: [base.id, lzEndpoint] }),
+      data: encodeFunctionData({ abi: OFT_BOOTSTRAP_ABI, functionName: 'setLayerZeroEndpoint', args: [base.id, resolvedLzEndpoint] }),
     })
     calls.push({
       to: create2Factory,
@@ -468,7 +476,6 @@ export function DeployVaultAA({
     }
 
     // Wiring / configuration
-    setStep(includeOracle ? 7 : 6)
     calls.push({ to: wrapperAddress, data: encodeFunctionData({ abi: WRAPPER_ADMIN_ABI, functionName: 'setShareOFT', args: [shareOftAddress] }) })
     calls.push({ to: shareOftAddress, data: encodeFunctionData({ abi: SHAREOFT_ADMIN_ABI, functionName: 'setRegistry', args: [registry] }) })
     calls.push({ to: shareOftAddress, data: encodeFunctionData({ abi: SHAREOFT_ADMIN_ABI, functionName: 'setVault', args: [vaultAddress] }) })
@@ -503,10 +510,9 @@ export function DeployVaultAA({
       })
     }
 
-    setIsSubmitting(true)
-    setStep(0)
-
     try {
+      // Step 1: wallet confirmation
+      setStep(1)
       if (isDelegatedSmartWallet) {
         const walletClient = createWalletClient({
           chain: base as any,
@@ -523,7 +529,9 @@ export function DeployVaultAA({
           args: [batchedCalls],
         })
 
+        setCallBundleType('tx')
         setCallBundleId(String(txHash))
+        setStep(2)
         await publicClient.waitForTransactionReceipt({ hash: txHash as any, timeout: 120_000 })
       } else {
         let result: any
@@ -537,15 +545,17 @@ export function DeployVaultAA({
         } catch (e: any) {
           const msg = String(e?.shortMessage || e?.message || '')
           if (/wallet_sendCalls|sendCalls|5792|capabilit/i.test(msg)) {
-            setError(
-              'Your wallet does not support AA batching (EIP-5792). To deploy, either connect Coinbase Smart Wallet, or set “Vault owner wallet” to your smart wallet address and deploy using an owner EOA.',
+            fail(
+              'This wallet can’t batch deploy. Use Coinbase Smart Wallet (recommended), or deploy from an owner EOA.',
+              msg,
             )
-            return
           }
           throw e
         }
 
+        setCallBundleType('bundle')
         setCallBundleId(result.id)
+        setStep(2)
 
         // Wait for wallet_getCallsStatus if supported
         const walletClient = createWalletClient({
@@ -562,6 +572,7 @@ export function DeployVaultAA({
       }
 
       // Bytecode presence polling (works for both sendCalls and executeBatch).
+      setStep(2)
       const start = Date.now()
       const timeoutMs = 120_000
       while (true) {
@@ -579,6 +590,7 @@ export function DeployVaultAA({
       }
 
       // Post-deploy verification (read-only): confirm wiring + launcher approval.
+      setStep(3)
       try {
         const wrapperShare = await publicClient.readContract({
           address: wrapperAddress,
@@ -631,33 +643,40 @@ export function DeployVaultAA({
         })
         if (!launcherOk) throw new Error('CCA did not approve VaultActivationBatcher as launcher.')
       } catch (e: any) {
-        setError(e?.message || 'Post-deploy verification failed. Please check Basescan addresses.')
-        return
+        fail(
+          'Deployment completed, but verification failed. Please check the addresses.',
+          String(e?.message || 'Unknown verification error'),
+        )
       }
 
+      setStep(4)
+      setSuccess(true)
       onSuccess?.(predicted)
     } catch (e: any) {
-      setError(e?.shortMessage || e?.message || 'Deployment failed.')
+      setError(String(e?.shortMessage || e?.message || 'Deployment failed.'))
+      const details = (e as any)?.details
+      if (typeof details === 'string' && details.trim().length > 0) setErrorDetails(details)
     } finally {
       setIsSubmitting(false)
-      setStep(steps.length - 1)
     }
   }
 
   const disabled = isSubmitting || !address
 
+  const short = (addr: string) => `${addr.slice(0, 6)}…${addr.slice(-4)}`
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <motion.button
         onClick={deploy}
         disabled={disabled}
         whileHover={{ scale: disabled ? 1 : 1.01 }}
         whileTap={{ scale: disabled ? 1 : 0.99 }}
-        className="w-full relative overflow-hidden bg-gradient-to-r from-purple-600 via-pink-500 to-cyan-500 px-8 py-6 rounded-lg font-light tracking-widest uppercase text-lg disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300"
+        className="btn-accent w-full rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
       >
-        <div className="relative flex items-center justify-center gap-3">
-          <Rocket className="w-6 h-6" />
-          <span>{isSubmitting ? 'Deploying...' : 'Deploy vault infrastructure'}</span>
+        <div className="relative flex items-center justify-center gap-2">
+          <Rocket className="w-4 h-4" />
+          <span className="text-sm">{isSubmitting ? 'Deploying…' : 'Deploy vault'}</span>
         </div>
       </motion.button>
 
@@ -667,8 +686,9 @@ export function DeployVaultAA({
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: 'auto' }}
             exit={{ opacity: 0, height: 0 }}
-            className="space-y-3 overflow-hidden"
+            className="space-y-3 overflow-hidden bg-black/30 border border-zinc-900/50 rounded-lg p-4"
           >
+            <div className="label">Status</div>
             {steps.map((label, i) => (
               <div key={label} className="flex items-center gap-3 text-sm">
                 {i < step ? (
@@ -685,62 +705,138 @@ export function DeployVaultAA({
         )}
       </AnimatePresence>
 
+      {success && !isSubmitting && (
+        <div className="p-4 bg-emerald-500/10 border border-emerald-500/20 rounded-lg text-emerald-200 text-sm">
+          Vault deployed successfully.
+        </div>
+      )}
+
       {error && (
-        <div className="p-4 bg-red-500/10 border border-red-500/20 rounded text-red-300 text-sm">
-          {error}
+        <div className="p-4 bg-red-500/10 border border-red-500/20 rounded-lg text-red-200 text-sm space-y-2">
+          <div>{error}</div>
+          {errorDetails ? (
+            <button
+              type="button"
+              onClick={() => setShowDetails(true)}
+              className="text-[10px] text-red-200/80 hover:text-red-100 underline underline-offset-2"
+            >
+              View details
+            </button>
+          ) : null}
         </div>
       )}
 
-      {callBundleId && (
-        <div className="p-4 bg-zinc-900/60 border border-zinc-800 rounded">
-          <div className="text-xs text-zinc-400 uppercase tracking-wider mb-2">Call bundle id</div>
-          <div className="font-mono text-xs text-zinc-200 break-all">{callBundleId}</div>
-        </div>
-      )}
+      {(callBundleId || addresses || errorDetails) && (
+        <div className="bg-black/30 border border-zinc-900/50 rounded-lg">
+          <button
+            type="button"
+            onClick={() => setShowDetails((v) => !v)}
+            className="w-full px-4 py-3 flex items-center justify-between text-left"
+          >
+            <div className="label">Details</div>
+            <div className="text-[10px] text-zinc-600">{showDetails ? 'Hide' : 'Show'}</div>
+          </button>
 
-      {addresses && (
-        <div className="p-4 bg-zinc-900/60 border border-zinc-800 rounded space-y-3">
-          <div className="text-xs text-zinc-400 uppercase tracking-wider">Predicted addresses (CREATE2)</div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 font-mono text-xs">
-            <div>
-              <div className="text-zinc-500">Vault</div>
-              <a className="text-cyan-300 hover:underline break-all" href={`https://basescan.org/address/${addresses.vault}`} target="_blank" rel="noreferrer">
-                {addresses.vault}
-              </a>
-            </div>
-            <div>
-              <div className="text-zinc-500">Wrapper</div>
-              <a className="text-cyan-300 hover:underline break-all" href={`https://basescan.org/address/${addresses.wrapper}`} target="_blank" rel="noreferrer">
-                {addresses.wrapper}
-              </a>
-            </div>
-            <div>
-              <div className="text-zinc-500">ShareOFT</div>
-              <a className="text-cyan-300 hover:underline break-all" href={`https://basescan.org/address/${addresses.shareOFT}`} target="_blank" rel="noreferrer">
-                {addresses.shareOFT}
-              </a>
-            </div>
-            <div>
-              <div className="text-zinc-500">GaugeController</div>
-              <a className="text-cyan-300 hover:underline break-all" href={`https://basescan.org/address/${addresses.gaugeController}`} target="_blank" rel="noreferrer">
-                {addresses.gaugeController}
-              </a>
-            </div>
-            <div>
-              <div className="text-zinc-500">CCA Strategy</div>
-              <a className="text-cyan-300 hover:underline break-all" href={`https://basescan.org/address/${addresses.ccaStrategy}`} target="_blank" rel="noreferrer">
-                {addresses.ccaStrategy}
-              </a>
-            </div>
-            {addresses.oracle && (
-              <div>
-                <div className="text-zinc-500">Oracle</div>
-                <a className="text-cyan-300 hover:underline break-all" href={`https://basescan.org/address/${addresses.oracle}`} target="_blank" rel="noreferrer">
-                  {addresses.oracle}
-                </a>
-              </div>
+          <AnimatePresence>
+            {showDetails && (
+              <motion.div
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: 'auto' }}
+                exit={{ opacity: 0, height: 0 }}
+                className="px-4 pb-4 space-y-4 overflow-hidden"
+              >
+                {callBundleId && (
+                  <div className="space-y-1">
+                    <div className="label">
+                      {callBundleType === 'tx' ? 'Transaction' : 'Deployment ID'}
+                    </div>
+                    <div className="font-mono text-xs text-zinc-200 break-all">{callBundleId}</div>
+                    {callBundleType === 'tx' ? (
+                      <a
+                        className="text-xs text-zinc-400 hover:text-zinc-200 underline underline-offset-2"
+                        href={`https://basescan.org/tx/${callBundleId}`}
+                        target="_blank"
+                        rel="noreferrer"
+                      >
+                        View on Basescan
+                      </a>
+                    ) : null}
+                  </div>
+                )}
+
+                {errorDetails ? (
+                  <div className="space-y-1">
+                    <div className="label">Error details</div>
+                    <div className="font-mono text-xs text-zinc-400 break-words">{errorDetails}</div>
+                  </div>
+                ) : null}
+
+                {addresses ? (
+                  <div className="space-y-2">
+                    <div className="label">Addresses</div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                      <a
+                        className="flex items-center justify-between gap-3 bg-black/20 border border-zinc-900/60 rounded-lg px-3 py-2 hover:border-zinc-800/80 transition-colors"
+                        href={`https://basescan.org/address/${addresses.vault}`}
+                        target="_blank"
+                        rel="noreferrer"
+                      >
+                        <span className="text-zinc-500">Vault</span>
+                        <span className="font-mono text-zinc-200">{short(addresses.vault)}</span>
+                      </a>
+                      <a
+                        className="flex items-center justify-between gap-3 bg-black/20 border border-zinc-900/60 rounded-lg px-3 py-2 hover:border-zinc-800/80 transition-colors"
+                        href={`https://basescan.org/address/${addresses.wrapper}`}
+                        target="_blank"
+                        rel="noreferrer"
+                      >
+                        <span className="text-zinc-500">Wrapper</span>
+                        <span className="font-mono text-zinc-200">{short(addresses.wrapper)}</span>
+                      </a>
+                      <a
+                        className="flex items-center justify-between gap-3 bg-black/20 border border-zinc-900/60 rounded-lg px-3 py-2 hover:border-zinc-800/80 transition-colors"
+                        href={`https://basescan.org/address/${addresses.shareOFT}`}
+                        target="_blank"
+                        rel="noreferrer"
+                      >
+                        <span className="text-zinc-500">Share token</span>
+                        <span className="font-mono text-zinc-200">{short(addresses.shareOFT)}</span>
+                      </a>
+                      <a
+                        className="flex items-center justify-between gap-3 bg-black/20 border border-zinc-900/60 rounded-lg px-3 py-2 hover:border-zinc-800/80 transition-colors"
+                        href={`https://basescan.org/address/${addresses.gaugeController}`}
+                        target="_blank"
+                        rel="noreferrer"
+                      >
+                        <span className="text-zinc-500">Controller</span>
+                        <span className="font-mono text-zinc-200">{short(addresses.gaugeController)}</span>
+                      </a>
+                      <a
+                        className="flex items-center justify-between gap-3 bg-black/20 border border-zinc-900/60 rounded-lg px-3 py-2 hover:border-zinc-800/80 transition-colors"
+                        href={`https://basescan.org/address/${addresses.ccaStrategy}`}
+                        target="_blank"
+                        rel="noreferrer"
+                      >
+                        <span className="text-zinc-500">Strategy</span>
+                        <span className="font-mono text-zinc-200">{short(addresses.ccaStrategy)}</span>
+                      </a>
+                      {addresses.oracle ? (
+                        <a
+                          className="flex items-center justify-between gap-3 bg-black/20 border border-zinc-900/60 rounded-lg px-3 py-2 hover:border-zinc-800/80 transition-colors"
+                          href={`https://basescan.org/address/${addresses.oracle}`}
+                          target="_blank"
+                          rel="noreferrer"
+                        >
+                          <span className="text-zinc-500">Oracle</span>
+                          <span className="font-mono text-zinc-200">{short(addresses.oracle)}</span>
+                        </a>
+                      ) : null}
+                    </div>
+                  </div>
+                ) : null}
+              </motion.div>
             )}
-          </div>
+          </AnimatePresence>
         </div>
       )}
     </div>
