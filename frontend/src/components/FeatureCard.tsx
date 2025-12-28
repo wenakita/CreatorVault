@@ -173,3 +173,11 @@ export function HighlightCard({
     </div>
   )
 }
+
+
+/**
+ * FeatureCard - Clean feature display inspired by OnchainKit
+ * From: https://www.base.org/build/onchainkit
+ * 
+ * "Full-stack", "AI-friendly", "Serverless", etc. feature cards
+ */

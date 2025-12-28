@@ -149,3 +149,11 @@ export function StepIndicator({ steps, currentStep, className = '' }: StepIndica
     </div>
   )
 }
+
+
+/**
+ * BaseStep - Numbered step component inspired by Base Account
+ * From: https://www.base.org/build/base-account
+ * 
+ * "01, 02, 03" style numbered sections with clean cards
+ */

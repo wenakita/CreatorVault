@@ -80,4 +80,3 @@ export function BasinCard({
     </motion.div>
   )
 }
-

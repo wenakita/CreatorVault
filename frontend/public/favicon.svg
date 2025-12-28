@@ -52,3 +52,56 @@
     </radialGradient>
   </defs>
 </svg>
+
+  <circle cx="16" cy="11" r="9" fill="url(#akitaGradient)"/>
+  
+  <!-- Token shine -->
+  <circle cx="16" cy="11" r="9" fill="url(#shine)" opacity="0.3"/>
+  
+  <!-- Simple dog face -->
+  <g opacity="0.3">
+    <circle cx="14" cy="11" r="1" fill="#422006"/>
+    <circle cx="18" cy="11" r="1" fill="#422006"/>
+  </g>
+  
+  <!-- Base Vault bottom portion -->
+  <g opacity="0.9">
+    <!-- Vault body -->
+    <rect x="4" y="15" width="24" height="14" rx="2" fill="#0000FF"/>
+    
+    <!-- Vault door -->
+    <rect x="5" y="16" width="22" height="12" rx="1.5" fill="url(#vaultGradient)"/>
+    
+    <!-- Circular lock dial -->
+    <circle cx="16" cy="22" r="3.5" fill="#1e40af"/>
+    <circle cx="16" cy="22" r="2.5" fill="url(#lockGradient)"/>
+    <circle cx="16" cy="22" r="1" fill="#0a1c4f"/>
+  </g>
+  
+  <!-- Blue glow -->
+  <circle cx="16" cy="16" r="14.5" stroke="#0000FF" stroke-width="1" fill="none" opacity="0.4"/>
+  
+  <!-- Gradients -->
+  <defs>
+    <linearGradient id="akitaGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#fb923c;stop-opacity:1" />
+      <stop offset="50%" style="stop-color:#f97316;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#dc2626;stop-opacity:1" />
+    </linearGradient>
+    
+    <radialGradient id="shine">
+      <stop offset="0%" style="stop-color:white;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:white;stop-opacity:0" />
+    </radialGradient>
+    
+    <linearGradient id="vaultGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#0052FF;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#0000FF;stop-opacity:1" />
+    </linearGradient>
+    
+    <radialGradient id="lockGradient">
+      <stop offset="0%" style="stop-color:#3b82f6;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#1e40af;stop-opacity:1" />
+    </radialGradient>
+  </defs>
+</svg>

@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import { useRef, useEffect, useMemo, useState, useCallback } from 'react'
 import * as d3 from 'd3'
 import { Trophy, Flame, Building2, RotateCcw, ChevronRight } from 'lucide-react'

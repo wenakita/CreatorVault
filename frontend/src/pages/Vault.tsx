@@ -140,7 +140,7 @@ export function Vault() {
   const needsApproval = activeTab === 'Deposit' && (!tokenAllowance || tokenAllowance < parseUnits(amount || '0', 18))
 
   return (
-    <div className="relative">
+    <div className="relative pb-24 md:pb-0">
       {/* Particle atmosphere */}
       <div className="particles">
         <div className="absolute top-1/3 right-1/4 w-px h-px bg-amber-500 rounded-full" style={{ animation: 'particle-float 10s ease-in-out infinite' }} />
@@ -148,14 +148,14 @@ export function Vault() {
 
       {/* Header */}
       <section className="cinematic-section">
-        <div className="max-w-5xl mx-auto px-6">
+        <div className="max-w-5xl mx-auto px-4 sm:px-6">
           <motion.div
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8 }}
-            className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-8"
+            className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6 sm:gap-8"
           >
-            <div className="flex items-center gap-6">
+            <div className="flex items-center gap-4 sm:gap-6">
               <TokenImage
                 tokenAddress={tokenAddress as `0x${string}`}
                 symbol="wsAKITA"
@@ -165,7 +165,7 @@ export function Vault() {
               />
               <div>
                 <span className="label mb-2 block">Creator Vault</span>
-                <h1 className="headline text-6xl">AKITA</h1>
+                <h1 className="headline text-4xl sm:text-6xl">AKITA</h1>
                 <p className="text-zinc-600 text-sm mono mt-2">AKITA → wsAKITA</p>
               </div>
             </div>
@@ -185,8 +185,8 @@ export function Vault() {
       {/* Auction Banner */}
       {isAuctionActive && (
         <section className="border-y border-cyan-500/20 bg-cyan-500/5">
-          <div className="max-w-5xl mx-auto px-6 py-8">
-            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6">
+          <div className="max-w-5xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 sm:gap-6">
               <div className="flex items-center gap-4">
                 <Clock className="w-5 h-5 text-cyan-400" />
                 <div>
@@ -196,7 +196,7 @@ export function Vault() {
                   <p className="text-zinc-500 text-sm font-light">Get wsAKITA before anyone else</p>
                 </div>
               </div>
-              <Link to={`/auction/${wrapperAddress}`} className="btn-accent">
+              <Link to={`/auction/bid/${wrapperAddress}`} className="btn-accent w-full sm:w-auto text-center">
                 Join Auction <ArrowDownToLine className="w-4 h-4 inline ml-2" />
               </Link>
             </div>
@@ -206,25 +206,25 @@ export function Vault() {
 
       {/* Stats */}
       <section className="cinematic-section bg-zinc-950/20">
-        <div className="max-w-5xl mx-auto px-6">
+        <div className="max-w-5xl mx-auto px-4 sm:px-6">
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-px bg-zinc-900">
-            <div className="bg-black p-8 space-y-4">
+            <div className="bg-black p-5 sm:p-8 space-y-3 sm:space-y-4">
               <span className="label">Total Supply</span>
-              <div className="value mono text-3xl">
+              <div className="value mono text-2xl sm:text-3xl">
                 {totalWsAkita ? formatAmount(totalWsAkita) : '...'}
               </div>
             </div>
-            <div className="bg-black p-8 space-y-4">
+            <div className="bg-black p-5 sm:p-8 space-y-3 sm:space-y-4">
               <span className="label">APY</span>
-              <div className="value mono text-3xl glow-cyan">42.0%</div>
+              <div className="value mono text-2xl sm:text-3xl glow-cyan">42.0%</div>
             </div>
-            <div className="bg-black p-8 space-y-4">
+            <div className="bg-black p-5 sm:p-8 space-y-3 sm:space-y-4">
               <span className="label">Global Jackpot</span>
-              <div className="value mono text-3xl glow-purple">0.1 ETH</div>
+              <div className="value mono text-2xl sm:text-3xl glow-purple">0.1 ETH</div>
             </div>
-            <div className="bg-black p-8 space-y-4">
+            <div className="bg-black p-5 sm:p-8 space-y-3 sm:space-y-4">
               <span className="label">Trade Fee</span>
-              <div className="value mono text-3xl">6.9%</div>
+              <div className="value mono text-2xl sm:text-3xl">6.9%</div>
             </div>
           </div>
         </div>
@@ -232,27 +232,27 @@ export function Vault() {
 
       {/* Deposit/Withdraw */}
       <section className="cinematic-section">
-        <div className="max-w-6xl mx-auto px-6">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6">
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ duration: 0.8 }}
-            className="mb-16"
+            className="mb-10 sm:mb-16"
           >
             <span className="label">Vault Operations</span>
-            <h2 className="headline text-5xl mt-6">Manage Position</h2>
+            <h2 className="headline text-3xl sm:text-5xl mt-4 sm:mt-6">Manage Position</h2>
           </motion.div>
 
           <div className="grid lg:grid-cols-5 gap-8">
             {/* Main Form */}
-            <div className="lg:col-span-3 space-y-12">
+            <div className="lg:col-span-3 space-y-10 sm:space-y-12">
               {/* Mode Selector */}
               <div className="flex gap-2">
                 {tabs.map((tab) => (
                   <button
                     key={tab}
                     onClick={() => setActiveTab(tab)}
-                    className={`flex-1 py-4 transition-all duration-300 ${
+                    className={`flex-1 py-3 sm:py-4 transition-all duration-300 ${
                       activeTab === tab
                         ? 'card bg-zinc-950/50'
                         : 'bg-transparent border border-transparent text-zinc-600 hover:text-zinc-400'
@@ -270,55 +270,9 @@ export function Vault() {
                 ))}
               </div>
 
-              {/* Flow Indicator */}
-              <div className="card p-8">
-                <span className="label block mb-6">Transaction Flow</span>
-                <div className="flex items-center justify-between">
-                  {activeTab === 'Deposit' ? (
-                    <>
-                      <div className="text-center">
-                        <div className="value mono text-3xl mb-2">AKITA</div>
-                        <span className="label">Input Token</span>
-                      </div>
-                      <div className="flex-1 flex items-center justify-center">
-                        <div className="h-px w-full bg-gradient-to-r from-zinc-800 via-cyan-500 to-zinc-800" />
-                        <ArrowDownToLine className="w-5 h-5 text-cyan-400 mx-4" />
-                        <div className="h-px w-full bg-gradient-to-r from-zinc-800 via-cyan-500 to-zinc-800" />
-                      </div>
-                      <div className="text-center">
-                        <div className="value mono text-3xl mb-2 glow-cyan">wsAKITA</div>
-                        <span className="label text-cyan-400">Vault Token</span>
-                      </div>
-                    </>
-                  ) : (
-                    <>
-                      <div className="text-center">
-                        <div className="value mono text-3xl mb-2 glow-cyan">wsAKITA</div>
-                        <span className="label text-cyan-400">Vault Token</span>
-                      </div>
-                      <div className="flex-1 flex items-center justify-center">
-                        <div className="h-px w-full bg-gradient-to-r from-zinc-800 via-purple-500 to-zinc-800" />
-                        <ArrowUpFromLine className="w-5 h-5 text-purple-400 mx-4" />
-                        <div className="h-px w-full bg-gradient-to-r from-zinc-800 via-purple-500 to-zinc-800" />
-                      </div>
-                      <div className="text-center">
-                        <div className="value mono text-3xl mb-2">AKITA</div>
-                        <span className="label">Output Token</span>
-                      </div>
-                    </>
-                  )}
-                </div>
-                <div className="mt-6 pt-6 border-t border-zinc-900">
-                  <div className="flex justify-between items-center">
-                    <span className="label">Exchange Rate</span>
-                    <div className="value mono">~1:1</div>
-                  </div>
-                </div>
-              </div>
-
               {/* Amount Input */}
               <div className="space-y-6">
-                <div className="flex justify-between items-end">
+                <div className="flex flex-col sm:flex-row sm:justify-between sm:items-end gap-3">
                   <div>
                     <span className="label block mb-2">Amount</span>
                     <p className="text-zinc-600 text-xs font-light">Enter the amount to {activeTab.toLowerCase()}</p>
@@ -331,7 +285,7 @@ export function Vault() {
                           : formatUnits(wsAkitaBalance || 0n, 18)
                       )
                     }
-                    className="label text-zinc-600 hover:text-cyan-400 transition-colors"
+                    className="label text-zinc-600 hover:text-cyan-400 transition-colors text-left sm:text-right"
                   >
                     Max: {activeTab === 'Deposit'
                       ? formatAmount(tokenBalance || 0n)
@@ -339,13 +293,15 @@ export function Vault() {
                   </button>
                 </div>
                 
-                <div className="card p-8">
+                <div className="card p-5 sm:p-8">
                   <input
                     type="text"
+                    inputMode="decimal"
+                    autoComplete="off"
                     value={amount}
                     onChange={(e) => setAmount(e.target.value)}
                     placeholder="0.0"
-                    className="input-field w-full text-5xl font-light text-center"
+                    className="input-field w-full text-4xl sm:text-5xl font-light text-center"
                   />
                   <div className="mt-4 text-center">
                     <span className="label">{activeTab === 'Deposit' ? 'AKITA' : 'wsAKITA'}</span>
@@ -353,9 +309,9 @@ export function Vault() {
                 </div>
 
                 {amount && (
-                  <div className="flex justify-between items-center py-4 border-y border-zinc-900/50">
+                  <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2 py-4 border-y border-zinc-900/50">
                     <span className="label">You Will Receive</span>
-                    <div className="value mono text-xl glow-cyan">
+                    <div className="value mono text-lg sm:text-xl glow-cyan sm:text-right whitespace-nowrap">
                       {amount} {activeTab === 'Deposit' ? 'wsAKITA' : 'AKITA'}
                     </div>
                   </div>
@@ -372,7 +328,7 @@ export function Vault() {
                 <button
                   onClick={handleApprove}
                   disabled={isApproving || !amount}
-                  className="btn-accent w-full py-5 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="btn-accent w-full py-4 sm:py-5 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {isApproving ? (
                     <>
@@ -394,7 +350,7 @@ export function Vault() {
                     (activeTab === 'Withdraw' && isWithdrawing) ||
                     !amount
                   }
-                  className="btn-accent w-full py-5 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="btn-accent w-full py-4 sm:py-5 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {((activeTab === 'Deposit' && isDepositing) ||
                     (activeTab === 'Withdraw' && isWithdrawing)) ? (
@@ -417,10 +373,10 @@ export function Vault() {
               <div>
                 <span className="label mb-6 block">Your Holdings</span>
                 
-                <div className="card p-8 space-y-8">
+                <div className="card p-5 sm:p-8 space-y-8">
                   <div>
                     <span className="label block mb-4">Vault Token</span>
-                    <div className="value mono text-4xl glow-cyan mb-2">
+                    <div className="value mono text-3xl sm:text-4xl glow-cyan mb-2">
                       {formatAmount(wsAkitaBalance || 0n)}
                     </div>
                     <span className="label text-cyan-400">wsAKITA</span>
@@ -434,25 +390,6 @@ export function Vault() {
                       {formatAmount(tokenBalance || 0n)}
                     </div>
                     <span className="label">AKITA</span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Info Card */}
-              <div className="card p-8 space-y-4">
-                <span className="label">Exchange Info</span>
-                <div className="space-y-4 pt-4">
-                  <div className="flex justify-between">
-                    <span className="text-xs text-zinc-600 font-light">Rate</span>
-                    <span className="text-xs text-zinc-400 mono">1:1</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-xs text-zinc-600 font-light">Gas Fee</span>
-                    <span className="text-xs text-zinc-400 mono">Network</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-xs text-zinc-600 font-light">Processing</span>
-                    <span className="text-xs text-zinc-400 mono">Instant</span>
                   </div>
                 </div>
               </div>

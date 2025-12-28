@@ -492,4 +492,3 @@ export function CompleteAuction() {
     </div>
   )
 }
-

@@ -68,7 +68,7 @@ export function Home() {
         </div>
       </section>
 
-      {/* Features - Data Terminal Style */}
+      {/* FAQ Teaser */}
       <section className="cinematic-section">
         <div className="max-w-5xl mx-auto px-6">
           <motion.div
@@ -76,73 +76,19 @@ export function Home() {
             whileInView={{ opacity: 1 }}
             viewport={{ once: true }}
             transition={{ duration: 0.8 }}
-            className="mb-20"
+            className="space-y-6"
           >
-            <span className="label">Features</span>
-            <h2 className="headline text-5xl mt-6">How It Works</h2>
+            <span className="label">FAQ</span>
+            <h2 className="headline text-5xl mt-2">Want the details?</h2>
+            <p className="text-zinc-600 text-sm font-light max-w-xl">
+              Read the step-by-step “How it works” walkthrough.
+            </p>
+            <div>
+              <Link to="/faq/how-it-works" className="btn-primary inline-block">
+                How it works <ArrowRight className="w-4 h-4 inline ml-2" />
+              </Link>
+            </div>
           </motion.div>
-
-          <div className="space-y-0">
-            <motion.div
-              initial={{ opacity: 0, x: -20 }}
-              whileInView={{ opacity: 1, x: 0 }}
-              viewport={{ once: true }}
-              transition={{ duration: 0.6 }}
-              className="data-row group"
-            >
-              <div className="space-y-2">
-                <span className="label">Step 01</span>
-                <h3 className="text-2xl text-white font-light">Deposit Creator Coins</h3>
-                <p className="text-zinc-600 text-sm font-light">
-                  Find a vault and deposit to receive vault tokens
-                </p>
-              </div>
-              <div className="text-right">
-                <div className="value mono text-cyan-400">~1:1</div>
-                <span className="label">Exchange Rate</span>
-              </div>
-            </motion.div>
-
-            <motion.div
-              initial={{ opacity: 0, x: -20 }}
-              whileInView={{ opacity: 1, x: 0 }}
-              viewport={{ once: true }}
-              transition={{ duration: 0.6, delay: 0.2 }}
-              className="data-row group"
-            >
-              <div className="space-y-2">
-                <span className="label">Step 02</span>
-                <h3 className="text-2xl text-white font-light">Earn From Trades</h3>
-                <p className="text-zinc-600 text-sm font-light">
-                  Fees from swaps distributed automatically
-                </p>
-              </div>
-              <div className="text-right">
-                <div className="value mono text-purple-400">6.9%</div>
-                <span className="label">Trade Fee</span>
-              </div>
-            </motion.div>
-
-            <motion.div
-              initial={{ opacity: 0, x: -20 }}
-              whileInView={{ opacity: 1, x: 0 }}
-              viewport={{ once: true }}
-              transition={{ duration: 0.6, delay: 0.4 }}
-              className="data-row group"
-            >
-              <div className="space-y-2">
-                <span className="label">Step 03</span>
-                <h3 className="text-2xl text-white font-light">Grow Together</h3>
-                <p className="text-zinc-600 text-sm font-light">
-                  Value increases as ecosystem expands
-                </p>
-              </div>
-              <div className="text-right">
-                <div className="value mono text-amber-400">25%</div>
-                <span className="label">Per Strategy</span>
-              </div>
-            </motion.div>
-          </div>
         </div>
       </section>
 

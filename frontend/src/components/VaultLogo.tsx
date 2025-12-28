@@ -19,4 +19,3 @@ export function VaultLogo({ size = 'md', className = '' }: VaultLogoProps) {
     </div>
   )
 }
-

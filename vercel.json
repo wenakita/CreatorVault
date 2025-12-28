@@ -5,6 +5,26 @@
   "framework": "vite",
   "outputDirectory": "dist",
   "rootDirectory": "frontend",
+  "redirects": [
+    {
+      "source": "/(.*)",
+      "has": [{ "type": "host", "value": "creatorvaults.fun" }],
+      "destination": "https://creatorvault.fun/$1",
+      "permanent": true
+    },
+    {
+      "source": "/(.*)",
+      "has": [{ "type": "host", "value": "www.creatorvaults.fun" }],
+      "destination": "https://creatorvault.fun/$1",
+      "permanent": true
+    },
+    {
+      "source": "/(.*)",
+      "has": [{ "type": "host", "value": "www.creatorvault.fun" }],
+      "destination": "https://creatorvault.fun/$1",
+      "permanent": true
+    }
+  ],
   "rewrites": [
     {
       "source": "/(.*)",

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
-import { motion, AnimatePresence } from 'framer-motion'
+import { motion } from 'framer-motion'
 import { useAccount, useReadContract, useWriteContract, useWaitForTransactionReceipt, useBlockNumber } from 'wagmi'
 import { parseEther, formatEther, formatUnits } from 'viem'
 import {
@@ -9,9 +9,7 @@ import {
   AlertCircle,
   Loader2,
   CheckCircle2,
-  TrendingUp,
   Activity,
-  BarChart3,
 } from 'lucide-react'
 import { AKITA } from '../config/contracts'
 import { ConnectButton } from '../components/ConnectButton'
@@ -101,12 +99,6 @@ export function AuctionBid() {
     functionName: 'tokenTarget',
   })
 
-  const { data: auctionTokenAddress } = useReadContract({
-    address: ccaStrategy as `0x${string}`,
-    abi: CCA_STRATEGY_ABI,
-    functionName: 'auctionToken',
-  })
-
   const { writeContract: writeBid, data: bidHash } = useWriteContract()
   const { isLoading: isBidding, isSuccess: bidSuccess } = useWaitForTransactionReceipt({ hash: bidHash })
 
@@ -153,10 +145,6 @@ export function AuctionBid() {
   const hours = Math.floor((timeLeft % 86400) / 3600)
   const minutes = Math.floor((timeLeft % 3600) / 60)
   const seconds = timeLeft % 60
-
-  const progress = tokenTarget && currencyRaised
-    ? Number((currencyRaised * 100n) / parseEther('1')) // Assuming 1 ETH target for visualization
-    : 0
 
   const handleBid = () => {
     if (!ethAmount || !clearingPrice) return
@@ -397,50 +385,15 @@ export function AuctionBid() {
                 </div>
               </div>
 
-              {/* How It Works */}
-              <div className="card p-8 space-y-6">
-                <div className="flex items-center gap-3 mb-4">
-                  <BarChart3 className="w-6 h-6 text-purple-400" />
-                  <span className="headline text-2xl">How CCA Works</span>
-                </div>
-                
-                <div className="space-y-4">
-                  <div className="flex gap-4">
-                    <div className="w-8 h-8 rounded-full bg-purple-500/10 border border-purple-500/30 flex items-center justify-center flex-shrink-0">
-                      <span className="value text-sm text-purple-400">1</span>
-                    </div>
-                    <div>
-                      <p className="text-white font-medium mb-1">Continuous Clearing</p>
-                      <p className="text-zinc-600 text-sm font-light">
-                        Bids are split across auction blocks. Each block clears at the market-discovered price.
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="flex gap-4">
-                    <div className="w-8 h-8 rounded-full bg-purple-500/10 border border-purple-500/30 flex items-center justify-center flex-shrink-0">
-                      <span className="value text-sm text-purple-400">2</span>
-                    </div>
-                    <div>
-                      <p className="text-white font-medium mb-1">Price Discovery</p>
-                      <p className="text-zinc-600 text-sm font-light">
-                        Fair market price emerges from all participants, not set by insiders.
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="flex gap-4">
-                    <div className="w-8 h-8 rounded-full bg-purple-500/10 border border-purple-500/30 flex items-center justify-center flex-shrink-0">
-                      <span className="value text-sm text-purple-400">3</span>
-                    </div>
-                    <div>
-                      <p className="text-white font-medium mb-1">Instant Liquidity</p>
-                      <p className="text-zinc-600 text-sm font-light">
-                        At auction end, a Uniswap V4 pool is created at the discovered price.
-                      </p>
-                    </div>
-                  </div>
-                </div>
+              {/* Help (moved explanation to FAQ) */}
+              <div className="card p-8 space-y-4">
+                <span className="label">Need context?</span>
+                <p className="text-zinc-600 text-sm font-light">
+                  The “How it works” explanation lives in FAQ now.
+                </p>
+                <Link to="/faq/how-it-works" className="text-cyan-400 text-sm hover:underline">
+                  Read “How it works” →
+                </Link>
               </div>
             </div>
 

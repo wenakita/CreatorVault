@@ -107,3 +107,13 @@ export function ScrambleHeadline({
     />
   )
 }
+
+
+/**
+ * TechScramble - Base's signature text reveal animation
+ * From: https://www.base.org/brand/motion
+ * 
+ * "Our 'tech scramble' animation reveals text by cascading vertical glyph swaps
+ * that resolve into the final message. Use it for product headlines, social teasers,
+ * or keynotes—never body copy."
+ */

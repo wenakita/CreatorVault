@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import { useRef, useEffect, useMemo, useState } from 'react'
 import { createPortal } from 'react-dom'
 import * as d3 from 'd3'

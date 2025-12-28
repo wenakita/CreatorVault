@@ -4,22 +4,11 @@
  * RENDERING STRATEGY:
  * - Regular tokens: Fetch from IPFS/URL, display directly
  * - wsTokens: On-the-fly CSS transformation (no database storage)
- * 
- * CACHING:
- * - Browser automatically caches image assets (HTTP cache)
- * - React.memo prevents unnecessary component re-renders
- * - useMemo prevents expensive re-computations
- * - loading="lazy" for offscreen images
- * 
- * WHY CSS-BASED (not pre-generated):
- * ✅ Works for any new token instantly
- * ✅ Zero storage costs
- * ✅ Always synced with original token logo
- * ✅ Simple to maintain
- * ✅ Onchain-friendly (client-side rendering)
+ * - Gracefully handles case where web3 isn't loaded yet
  */
 
-import { useState, useMemo, memo } from 'react'
+import { useState, memo } from 'react'
+import { useWeb3 } from '@/web3/Web3Context'
 import { useTokenMetadata } from '../hooks/useTokenMetadata'
 
 interface TokenImageProps {
@@ -28,7 +17,7 @@ interface TokenImageProps {
   size?: 'sm' | 'md' | 'lg' | 'xl'
   className?: string
   fallbackColor?: string
-  isWrapped?: boolean // Indicates if this is a wsToken
+  isWrapped?: boolean
 }
 
 const sizeClasses = {
@@ -38,64 +27,77 @@ const sizeClasses = {
   xl: 'w-16 h-16 text-2xl',
 }
 
-/**
- * TokenImage component with performance optimizations:
- * - React.memo prevents unnecessary re-renders
- * - useMemo for expensive computations
- * - Browser caches images automatically
- * - CSS-based wsToken rendering (no pre-generation needed)
- */
-export const TokenImage = memo(function TokenImage({
+// Simple fallback component (no wagmi hooks)
+function TokenFallback({
+  symbol,
+  sizeClass,
+  fallbackColor,
+}: {
+  symbol: string
+  sizeClass: string
+  fallbackColor: string
+}) {
+  return (
+    <div
+      className={`${sizeClass} rounded-xl bg-gradient-to-br ${fallbackColor} flex items-center justify-center font-display font-bold text-white`}
+    >
+      {symbol[0]?.toUpperCase() || '?'}
+    </div>
+  )
+}
+
+// Inner component that uses wagmi hooks (only rendered when web3 is ready)
+function TokenImageInner({
   tokenAddress,
   symbol,
-  size = 'md',
-  className = '',
-  fallbackColor = 'from-orange-500 to-red-600',
-  isWrapped = false,
-}: TokenImageProps) {
+  sizeClass,
+  fallbackColor,
+  isWrapped,
+  className,
+}: {
+  tokenAddress: `0x${string}`
+  symbol: string
+  sizeClass: string
+  fallbackColor: string
+  isWrapped: boolean
+  className: string
+}) {
   const { imageUrl, isLoading } = useTokenMetadata(tokenAddress)
   const [imgError, setImgError] = useState(false)
 
-  const sizeClass = sizeClasses[size]
+  const showFallback = !imageUrl || imgError || isLoading
 
-  // Memoize token element to prevent re-rendering
-  const tokenElement = useMemo(() => {
-    // Show fallback if no image or loading or error
-    if (!imageUrl || imgError || isLoading) {
+  // Simple token (not wrapped)
+  if (!isWrapped) {
+    if (showFallback) {
       return (
-        <div
-          className={`${sizeClass} rounded-xl bg-gradient-to-br ${fallbackColor} flex items-center justify-center font-display font-bold text-white`}
-        >
-          {symbol[0]?.toUpperCase() || '?'}
+        <div className={className}>
+          <TokenFallback symbol={symbol} sizeClass={sizeClass} fallbackColor={fallbackColor} />
         </div>
       )
     }
-    
     return (
-      <img
-        src={imageUrl}
-        alt={symbol}
-        className={`${sizeClass} rounded-xl object-cover`}
-        onError={() => setImgError(true)}
-        loading="lazy" // Browser-level lazy loading
-      />
+      <div className={className}>
+        <img
+          src={imageUrl}
+          alt={symbol}
+          className={`${sizeClass} rounded-xl object-cover`}
+          onError={() => setImgError(true)}
+          loading="lazy"
+        />
+      </div>
     )
-  }, [imageUrl, imgError, isLoading, sizeClass, fallbackColor, symbol])
-
-  // If not wrapped, return the token element directly
-  if (!isWrapped) {
-    return <div className={className}>{tokenElement}</div>
   }
 
-  // Wrapped version: Token deposited into prominent Base blue vault
+  // Wrapped version with vault overlay
   return (
     <div className={`relative ${className}`}>
       <div className={`${sizeClass} rounded-xl overflow-hidden relative shadow-xl ring-2`} style={{ 
         '--tw-ring-color': 'rgba(0, 0, 255, 0.3)' 
       } as React.CSSProperties}>
-        {/* Full token image (background) */}
+        {/* Token image background */}
         <div className="absolute inset-0">
-          {(!imageUrl || imgError || isLoading) ? (
+          {showFallback ? (
             <div className={`w-full h-full bg-gradient-to-br ${fallbackColor} flex items-center justify-center font-display font-bold text-white`}>
               {symbol[0]?.toUpperCase() || '?'}
             </div>
@@ -110,86 +112,93 @@ export const TokenImage = memo(function TokenImage({
           )}
         </div>
         
-        {/* Bottom 40%: Prominent 3D Base vault - token is DEPOSITED INTO Base */}
+        {/* Vault overlay */}
         <div className="absolute inset-x-0 bottom-0 h-[40%] opacity-90">
-          {/* Main vault body with official Base blue gradient */}
           <div className="absolute inset-0" style={{
             background: 'linear-gradient(to bottom right, #0052FF, #0000FF, #0000CC)'
           }} />
-          
-          {/* Deep inset shadow for vault recess */}
           <div className="absolute inset-0 shadow-[inset_0_4px_12px_rgba(0,0,0,0.5),inset_0_-2px_8px_rgba(0,0,0,0.3)]" />
-          
-          {/* Top highlight edge */}
           <div className="absolute top-0 inset-x-0 h-[2px] bg-gradient-to-r from-transparent via-white/20 to-transparent" />
-          
-          {/* Brushed metal texture */}
-          <div className="absolute inset-0 opacity-[0.15]" style={{
-            backgroundImage: 'repeating-linear-gradient(90deg, transparent, transparent 2px, rgba(255,255,255,0.1) 2px, rgba(255,255,255,0.1) 4px)'
-          }} />
-          
-          {/* Vault door frame */}
           <div className="absolute inset-[8%] rounded-sm border border-white/10 shadow-lg" />
           
-          {/* Panel separator lines */}
-          <div className="absolute inset-0">
-            {/* Vertical line */}
-            <div className="absolute top-[20%] bottom-[20%] left-1/2 w-[1px] bg-gradient-to-b from-transparent via-black/40 to-transparent" />
-            <div className="absolute top-[20%] bottom-[20%] left-1/2 w-[1px] ml-[1px] bg-gradient-to-b from-transparent via-white/20 to-transparent" />
-            
-            {/* Horizontal line */}
-            <div className="absolute left-[20%] right-[20%] top-1/2 h-[1px] bg-gradient-to-r from-transparent via-black/40 to-transparent" />
-            <div className="absolute left-[20%] right-[20%] top-1/2 h-[1px] mt-[1px] bg-gradient-to-r from-transparent via-white/20 to-transparent" />
-          </div>
-          
-          {/* Circular vault lock dial */}
+          {/* Vault dial */}
           <div className="absolute inset-0 flex items-center justify-center">
             <div className="relative w-[40%] aspect-square">
-              {/* Outer bezel ring with shine */}
               <div className="absolute inset-0 rounded-full bg-gradient-to-br from-white/40 via-white/20 to-transparent shadow-2xl" />
-              <div className="absolute inset-[4%] rounded-full bg-gradient-to-tl from-black/30 to-transparent" />
-              
-              {/* Middle ring - recessed */}
               <div className="absolute inset-[12%] rounded-full shadow-[inset_0_2px_8px_rgba(0,0,0,0.5)]" style={{
                 background: 'linear-gradient(to bottom right, #0000CC, #0000FF, #0052FF)'
               }} />
-              
-              {/* Dial markings */}
-              <div className="absolute inset-[20%] rounded-full">
-                {[...Array(8)].map((_, i) => (
-                  <div
-                    key={i}
-                    className="absolute top-[2%] left-1/2 w-[2px] h-[15%] bg-white/30 origin-bottom"
-                    style={{ transform: `translateX(-50%) rotate(${i * 45}deg)` }}
-                  />
-                ))}
-              </div>
-              
-              {/* Center button */}
               <div className="absolute inset-[35%] rounded-full bg-gradient-to-br from-white/90 via-white/70 to-white/50 shadow-xl" />
-              <div className="absolute inset-[38%] rounded-full bg-gradient-to-tl from-black/20 to-transparent" />
             </div>
-          </div>
-          
-          {/* Subtle noise texture for realism */}
-          <div className="absolute inset-0 opacity-[0.03] mix-blend-overlay">
-            <svg width="100%" height="100%" xmlns="http://www.w3.org/2000/svg">
-              <filter id={`noise-${symbol}`}>
-                <feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="4" stitchTiles="stitch"/>
-              </filter>
-              <rect width="100%" height="100%" filter={`url(#noise-${symbol})`}/>
-            </svg>
           </div>
         </div>
         
-        {/* Seamless blend transition - token submerged into vault */}
         <div className="absolute inset-x-0 top-[58%] h-[4%] bg-gradient-to-b from-black/0 via-black/20 to-black/30 pointer-events-none" />
-        
-        {/* Blue glow emanating from vault to emphasize Base blue */}
-        <div className="absolute inset-x-0 bottom-0 h-[40%] pointer-events-none blur-sm" style={{
-          background: 'linear-gradient(to top, rgba(0, 0, 255, 0.2), transparent)'
-        }} />
       </div>
     </div>
+  )
+}
+
+/**
+ * TokenImage - Main export
+ * Shows fallback when web3 isn't ready, full image when it is
+ */
+export const TokenImage = memo(function TokenImage({
+  tokenAddress,
+  symbol,
+  size = 'md',
+  className = '',
+  fallbackColor = 'from-orange-500 to-red-600',
+  isWrapped = false,
+}: TokenImageProps) {
+  const { status } = useWeb3()
+  const sizeClass = sizeClasses[size]
+  
+  // If web3 isn't ready, show simple fallback
+  if (status !== 'ready') {
+    if (!isWrapped) {
+      return (
+        <div className={className}>
+          <TokenFallback symbol={symbol} sizeClass={sizeClass} fallbackColor={fallbackColor} />
+        </div>
+      )
+    }
+    // Wrapped fallback
+    return (
+      <div className={`relative ${className}`}>
+        <div className={`${sizeClass} rounded-xl overflow-hidden relative shadow-xl ring-2`} style={{ 
+          '--tw-ring-color': 'rgba(0, 0, 255, 0.3)' 
+        } as React.CSSProperties}>
+          <div className="absolute inset-0">
+            <div className={`w-full h-full bg-gradient-to-br ${fallbackColor} flex items-center justify-center font-display font-bold text-white`}>
+              {symbol[0]?.toUpperCase() || '?'}
+            </div>
+          </div>
+          <div className="absolute inset-x-0 bottom-0 h-[40%] opacity-90">
+            <div className="absolute inset-0" style={{
+              background: 'linear-gradient(to bottom right, #0052FF, #0000FF, #0000CC)'
+            }} />
+            <div className="absolute inset-0 flex items-center justify-center">
+              <div className="relative w-[40%] aspect-square">
+                <div className="absolute inset-0 rounded-full bg-gradient-to-br from-white/40 via-white/20 to-transparent shadow-2xl" />
+                <div className="absolute inset-[35%] rounded-full bg-gradient-to-br from-white/90 via-white/70 to-white/50 shadow-xl" />
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    )
+  }
+  
+  // Web3 is ready - use full component with metadata
+  return (
+    <TokenImageInner
+      tokenAddress={tokenAddress}
+      symbol={symbol}
+      sizeClass={sizeClass}
+      fallbackColor={fallbackColor}
+      isWrapped={isWrapped}
+      className={className}
+    />
   )
 })

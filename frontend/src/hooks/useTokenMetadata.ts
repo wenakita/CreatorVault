@@ -133,3 +133,6 @@ export function useTokenImage(tokenAddress: `0x${string}` | undefined) {
   const { imageUrl, isLoading, error } = useTokenMetadata(tokenAddress)
   return { imageUrl, isLoading, error }
 }
+
+
+// ABI for tokenURI function (common to CreatorCoin contracts)

@@ -87,8 +87,8 @@ export function DeployStrategies({ vaultAddress, tokenAddress, onSuccess }: Depl
     }).then(r => r.json());
 
     if (!slot0.result || slot0.result === '0x') {
-      console.warn('No V4 pool found, using default bucket 3696');
-      return 3696;
+      console.warn('No V4 pool found, using default bucket 4156');
+      return 4156;
     }
 
     // Parse tick (second value in slot0)
@@ -105,11 +105,13 @@ export function DeployStrategies({ vaultAddress, tokenAddress, onSuccess }: Depl
       tick = -tick;
     }
 
-    // Calculate Ajna bucket: bucket = 3696 + (tick / 100)
-    const bucket = 3696 + Math.floor(tick / 100);
+    // Calculate Ajna bucket (approx):
+    // - 50 Uniswap ticks ≈ 0.5% (≈ Ajna 1.005 step)
+    // - Ajna index ≈ 4156 - (tick / 50)
+    const bucket = 4156 - Math.floor(tick / 50);
 
-    // Clamp to valid range (0-7387)
-    return Math.max(0, Math.min(7387, bucket));
+    // Clamp to valid Ajna range (1..7388). Note: index 0 is invalid on Ajna pools.
+    return Math.max(1, Math.min(7388, bucket));
   };
 
   const deployAllStrategies = async () => {
@@ -318,4 +320,3 @@ const StrategyDeploymentBatcherABI = [
     ]
   }
 ] as const;
-

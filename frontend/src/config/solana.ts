@@ -115,3 +115,7 @@ export interface BridgeTransaction {
   token: string
   direction: 'solana-to-base' | 'base-to-solana'
 }
+
+// ================================
+// BRIDGE ADDRESSES
+// ================================

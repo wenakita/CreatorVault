@@ -527,4 +527,3 @@ export function Launch() {
     </div>
   )
 }
-

@@ -112,3 +112,19 @@ MIT - AKITA, LLC
 ## License
 
 MIT - AKITA, LLC
+
+|----------|----------|-------------|
+| `VITE_CDP_API_KEY` | Yes | Coinbase Developer Platform API key |
+| `VITE_BASE_RPC` | No | Custom Base RPC (default: public) |
+
+## License
+
+MIT - AKITA, LLC
+
+|----------|----------|-------------|
+| `VITE_CDP_API_KEY` | Yes | Coinbase Developer Platform API key |
+| `VITE_BASE_RPC` | No | Custom Base RPC (default: public) |
+
+## License
+
+MIT - AKITA, LLC

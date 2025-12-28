@@ -1,11 +1,14 @@
+import { Suspense } from 'react'
 import { Outlet, Link, useLocation } from 'react-router-dom'
-import { Home, LayoutDashboard } from 'lucide-react'
+import { Home, LayoutDashboard, HelpCircle } from 'lucide-react'
 import { ConnectButton } from './ConnectButton'
 import { VaultLogo } from './VaultLogo'
 
 const navItems = [
   { path: '/', icon: Home, label: 'Home' },
   { path: '/dashboard', icon: LayoutDashboard, label: 'Vaults' },
+  { path: '/deploy', icon: LayoutDashboard, label: 'Deploy' },
+  { path: '/faq', icon: HelpCircle, label: 'FAQ' },
 ]
 
 export function Layout() {
@@ -53,7 +56,17 @@ export function Layout() {
 
       {/* Main */}
       <main className="flex-1">
-        <Outlet />
+        <Suspense
+          fallback={
+            <div className="max-w-7xl mx-auto px-6 py-12">
+              <div className="text-xs font-mono uppercase tracking-[0.2em] text-zinc-600">
+                Loading…
+              </div>
+            </div>
+          }
+        >
+          <Outlet />
+        </Suspense>
       </main>
 
       {/* Mobile Nav - Minimal */}

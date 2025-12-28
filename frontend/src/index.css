@@ -34,7 +34,7 @@
   
   /* Cinematic Sections with Letterbox Feel */
   .cinematic-section {
-    @apply relative py-32 overflow-hidden;
+    @apply relative py-16 sm:py-24 lg:py-32 overflow-hidden;
   }
   
   .cinematic-section::before,

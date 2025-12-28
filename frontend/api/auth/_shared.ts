@@ -1,0 +1,293 @@
+import type { VercelRequest, VercelResponse } from '@vercel/node'
+import { createPublicClient, hashMessage, http, isAddress, verifyMessage } from 'viem'
+import { base } from 'viem/chains'
+import { createHmac, randomBytes, timingSafeEqual } from 'node:crypto'
+
+declare const process: { env: Record<string, string | undefined> }
+
+export type ApiEnvelope<T> = { success: boolean; data?: T; error?: string }
+
+export const COOKIE_NONCE = 'cv_auth_nonce'
+export const COOKIE_SESSION = 'cv_auth_session'
+
+const NONCE_TTL_SECONDS = 60 * 15 // 15m
+const SESSION_TTL_SECONDS = 60 * 60 * 24 * 7 // 7d
+
+const EIP1271_MAGICVALUE = '0x1626ba7e' as const
+
+const eip1271Abi = [
+  {
+    type: 'function',
+    name: 'isValidSignature',
+    stateMutability: 'view',
+    inputs: [
+      { name: 'hash', type: 'bytes32' },
+      { name: 'signature', type: 'bytes' },
+    ],
+    outputs: [{ name: 'magicValue', type: 'bytes4' }],
+  },
+] as const
+
+function getBaseRpcUrl(): string {
+  const rpc = process.env.BASE_RPC_URL
+  if (rpc && rpc.length > 0) return rpc
+  return 'https://mainnet.base.org'
+}
+
+async function verifyEip1271(params: { contract: `0x${string}`; message: string; signature: `0x${string}` }): Promise<boolean> {
+  const client = createPublicClient({
+    chain: base,
+    transport: http(getBaseRpcUrl(), { timeout: 12_000 }),
+  })
+
+  // If there is no code, we can't verify EIP-1271 (counterfactual wallets would need EIP-6492).
+  const code = await client.getBytecode({ address: params.contract })
+  if (!code || code === '0x') return false
+
+  const digest = hashMessage(params.message)
+  const magic = await client.readContract({
+    address: params.contract,
+    abi: eip1271Abi,
+    functionName: 'isValidSignature',
+    args: [digest, params.signature],
+  })
+  return String(magic).toLowerCase() === EIP1271_MAGICVALUE
+}
+
+export function setNoStore(res: VercelResponse) {
+  res.setHeader('Cache-Control', 'no-store')
+}
+
+export function setCors(res: VercelResponse) {
+  // Same-origin in our app; keep permissive for local dev simplicity.
+  res.setHeader('Access-Control-Allow-Origin', '*')
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type')
+}
+
+export function handleOptions(req: VercelRequest, res: VercelResponse): boolean {
+  if (req.method === 'OPTIONS') {
+    res.status(200).end()
+    return true
+  }
+  return false
+}
+
+export function parseCookies(req: VercelRequest): Record<string, string> {
+  const header = req.headers?.cookie
+  if (!header || typeof header !== 'string') return {}
+  const out: Record<string, string> = {}
+  for (const part of header.split(';')) {
+    const idx = part.indexOf('=')
+    if (idx <= 0) continue
+    const k = part.slice(0, idx).trim()
+    const v = part.slice(idx + 1).trim()
+    if (!k) continue
+    out[k] = decodeURIComponent(v)
+  }
+  return out
+}
+
+function isProbablyHttps(req: VercelRequest): boolean {
+  const xfProto = req.headers?.['x-forwarded-proto']
+  if (typeof xfProto === 'string' && xfProto.toLowerCase() === 'https') return true
+  const host = typeof req.headers?.host === 'string' ? req.headers.host : ''
+  // local dev / vite
+  if (host.includes('localhost') || host.includes('127.0.0.1')) return false
+  // assume https for deployed origins
+  return host.length > 0
+}
+
+export function setCookie(
+  req: VercelRequest,
+  res: VercelResponse,
+  name: string,
+  value: string,
+  opts: { maxAgeSeconds?: number; httpOnly?: boolean } = {},
+) {
+  const parts: string[] = [`${name}=${encodeURIComponent(value)}`, 'Path=/', 'SameSite=Lax']
+  if (opts.httpOnly ?? true) parts.push('HttpOnly')
+  if (typeof opts.maxAgeSeconds === 'number') parts.push(`Max-Age=${Math.max(0, Math.floor(opts.maxAgeSeconds))}`)
+  if (isProbablyHttps(req)) parts.push('Secure')
+  res.setHeader('Set-Cookie', parts.join('; '))
+}
+
+export function clearCookie(req: VercelRequest, res: VercelResponse, name: string) {
+  setCookie(req, res, name, '', { maxAgeSeconds: 0, httpOnly: true })
+}
+
+export async function readJsonBody<T>(req: VercelRequest): Promise<T | null> {
+  // Vercel may populate req.body; our local dev middleware doesn't.
+  const b: unknown = (req as any).body
+  if (b && typeof b === 'object') return b as T
+
+  const chunks: Buffer[] = []
+  for await (const chunk of req as any) {
+    chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk))
+  }
+  if (chunks.length === 0) return null
+  try {
+    return JSON.parse(Buffer.concat(chunks).toString('utf8')) as T
+  } catch {
+    return null
+  }
+}
+
+export function makeNonce(): string {
+  return randomBytes(16).toString('hex')
+}
+
+function base64UrlEncode(input: string | Buffer): string {
+  const b = typeof input === 'string' ? Buffer.from(input, 'utf8') : input
+  return b.toString('base64').replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/g, '')
+}
+
+function base64UrlDecodeToString(input: string): string | null {
+  try {
+    const b64 = input.replace(/-/g, '+').replace(/_/g, '/')
+    const padded = b64 + '==='.slice((b64.length + 3) % 4)
+    return Buffer.from(padded, 'base64').toString('utf8')
+  } catch {
+    return null
+  }
+}
+
+function hmacSha256(secret: string, payload: string): Buffer {
+  return createHmac('sha256', secret).update(payload).digest()
+}
+
+function getSessionSecret(): string {
+  const env = process.env.AUTH_SESSION_SECRET
+  if (typeof env === 'string' && env.trim().length >= 16) return env.trim()
+
+  const g: any = globalThis as any
+  if (!g.__creatorvault_auth_secret) g.__creatorvault_auth_secret = randomBytes(32).toString('hex')
+  return String(g.__creatorvault_auth_secret)
+}
+
+export function makeSessionToken(params: { address: string; now?: number }): string {
+  const now = typeof params.now === 'number' ? params.now : Date.now()
+  const payload = {
+    a: params.address.toLowerCase(),
+    iat: now,
+    exp: now + SESSION_TTL_SECONDS * 1000,
+  }
+  const payloadB64 = base64UrlEncode(JSON.stringify(payload))
+  const sigB64 = base64UrlEncode(hmacSha256(getSessionSecret(), payloadB64))
+  return `${payloadB64}.${sigB64}`
+}
+
+export function readSessionToken(token: string | null | undefined): { address: string } | null {
+  if (!token) return null
+  const parts = token.split('.')
+  if (parts.length !== 2) return null
+  const [payloadB64, sigB64] = parts
+  if (!payloadB64 || !sigB64) return null
+
+  const expected = base64UrlEncode(hmacSha256(getSessionSecret(), payloadB64))
+  try {
+    const a = Buffer.from(sigB64, 'utf8')
+    const b = Buffer.from(expected, 'utf8')
+    // timingSafeEqual requires equal length
+    if (a.length !== b.length) return null
+    if (!timingSafeEqual(a, b)) return null
+  } catch {
+    return null
+  }
+
+  const payloadRaw = base64UrlDecodeToString(payloadB64)
+  if (!payloadRaw) return null
+  let parsed: any
+  try {
+    parsed = JSON.parse(payloadRaw)
+  } catch {
+    return null
+  }
+
+  const address = typeof parsed?.a === 'string' ? parsed.a : ''
+  const exp = typeof parsed?.exp === 'number' ? parsed.exp : 0
+  if (!address || !isAddress(address)) return null
+  if (!exp || exp < Date.now()) return null
+  return { address: address.toLowerCase() }
+}
+
+export type ParsedSiwe = {
+  domain: string
+  address: string
+  uri: string
+  chainId: number
+  nonce: string
+  issuedAt: string
+}
+
+export function parseSiweMessage(message: string): ParsedSiwe | null {
+  if (typeof message !== 'string' || message.trim().length === 0) return null
+  const lines = message.split('\n')
+  const first = lines[0]?.trim() ?? ''
+  const marker = ' wants you to sign in with your Ethereum account:'
+  const idx = first.indexOf(marker)
+  if (idx <= 0) return null
+
+  const domain = first.slice(0, idx).trim()
+  const address = (lines[1]?.trim() ?? '').trim()
+  if (!domain || !isAddress(address)) return null
+
+  const findField = (prefix: string): string | null => {
+    const line = lines.find((l) => l.trim().toLowerCase().startsWith(prefix.toLowerCase()))
+    if (!line) return null
+    const raw = line.slice(prefix.length).trim()
+    return raw.length > 0 ? raw : null
+  }
+
+  const uri = findField('URI:')
+  const chainIdRaw = findField('Chain ID:')
+  const nonce = findField('Nonce:')
+  const issuedAt = findField('Issued At:')
+
+  const chainId = chainIdRaw ? Number(chainIdRaw) : NaN
+  if (!uri || !Number.isFinite(chainId) || !nonce || !issuedAt) return null
+
+  return { domain, address, uri, chainId: Math.floor(chainId), nonce, issuedAt }
+}
+
+export function hostMatchesDomain(host: string, domain: string): boolean {
+  const h = String(host || '').toLowerCase()
+  const d = String(domain || '').toLowerCase()
+  if (!h || !d) return false
+  const hn = h.split(':')[0]
+  const dn = d.split(':')[0]
+  return hn === dn
+}
+
+export async function verifySiweSignature(params: { message: string; signature: string }): Promise<{ address: string } | null> {
+  const parsed = parseSiweMessage(params.message)
+  if (!parsed) return null
+  const addr = parsed.address.toLowerCase()
+  const sig = params.signature
+  if (!sig.startsWith('0x')) return null
+  try {
+    const ok = await verifyMessage({
+      address: addr as `0x${string}`,
+      message: params.message,
+      signature: sig as `0x${string}`,
+    })
+    if (ok) return { address: addr }
+  } catch {
+    // fall through to EIP-1271 attempt
+  }
+
+  // If this is a smart wallet, the signature is usually EIP-1271 (contract validation).
+  // Try verifying onchain on Base.
+  try {
+    const ok1271 = await verifyEip1271({
+      contract: addr as `0x${string}`,
+      message: params.message,
+      signature: sig as `0x${string}`,
+    })
+    return ok1271 ? { address: addr } : null
+  } catch {
+    return null
+  }
+}
+
+

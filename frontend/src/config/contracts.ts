@@ -10,6 +10,18 @@ export const CONTRACTS = {
   lotteryManager: '0xe2C39D39FF92c0cF7A0e9eD16FcE1d6F14bB38fD' as const,
   vrfConsumer: '0xE7Bdc1dA09E6fD92B1a1cb82F427ed8d53B4f3Cb' as const,
   payoutRouterFactory: '0x9C53cEaA15AdDB436c89A1F929fF12ED2BD26ea9' as const,
+  // Universal CREATE2 factory (EIP-2470-style; deployed on many chains)
+  create2Factory: '0x4e59b44847b379578588920cA78FbF26c0B4956C' as const,
+  // Phase 2 (AA): CREATE2 deployer for permissionless, one-signature deployments
+  create2Deployer: '0xaBf645362104F34D9C3FE48440bE7c99aaDE58E7' as const,
+
+  // Phase 1/2 (AA): Vault activation batcher (approve + deposit + wrap + launch auction)
+  vaultActivationBatcher: '0x6d796554698f5Ddd74Ff20d745304096aEf93CB6' as const,
+
+  // Protocol treasury / multisig (receives protocol fee slice from GaugeController)
+  protocolTreasury: '0x7d429eCbdcE5ff516D6e0a93299cbBa97203f2d3' as const,
+
+  // Legacy activator (older 2-click flow). Kept for backwards compatibility.
   vaultActivator: '0x1bf02C90B226C028720D25dE535b345e5FfB9743' as const,
   lpDeployer: '0x0000000000000000000000000000000000000000' as const, // TODO: Deploy SimpleLPDeployer
 

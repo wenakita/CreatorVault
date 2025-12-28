@@ -94,4 +94,3 @@ export function ManifoldBackground({
     </motion.svg>
   )
 }
-
