@@ -132,7 +132,7 @@ type DeploymentAddresses = {
   shareOFT: Address
   gaugeController: Address
   ccaStrategy: Address
-  oracle?: Address
+  oracle: Address
 }
 
 interface DeployVaultAAProps {
@@ -148,8 +148,6 @@ interface DeployVaultAAProps {
    * while signing the outer transaction with the connected wallet if it is an owner.
    */
   executeAs?: Address
-  /** Whether to deploy and wire the oracle (larger calldata, more gas) */
-  includeOracle?: boolean
   onSuccess?: (addresses: DeploymentAddresses) => void
 }
 
@@ -198,7 +196,6 @@ export function DeployVaultAA({
   name,
   creatorTreasury,
   executeAs,
-  includeOracle = true,
   onSuccess,
 }: DeployVaultAAProps) {
   const { address } = useAccount()
@@ -305,7 +302,7 @@ export function DeployVaultAA({
       // (If these are wrong, constructors like CreatorShareOFT/Oracle will revert mid-batch.)
       try {
         const requiredAddrs: Address[] = [create2Factory, create2Deployer, registry, vaultActivationBatcher]
-        if (includeOracle) requiredAddrs.push(poolManager, taxHook, chainlinkEthUsd)
+        requiredAddrs.push(poolManager, taxHook, chainlinkEthUsd)
 
         const codes = await Promise.all(requiredAddrs.map((a) => publicClient.getBytecode({ address: a })))
         const missing = requiredAddrs.filter((_, i) => !codes[i] || codes[i] === '0x')
@@ -374,16 +371,12 @@ export function DeployVaultAA({
     )
     const ccaAddress = predictCreate2Address(create2Deployer, salts.ccaSalt, ccaInitCode)
 
-    const oracleInitCode = includeOracle
-      ? makeInitCode(
-          DEPLOY_BYTECODE.CreatorOracle as Hex,
-          'address,address,string,address',
-          [registry, chainlinkEthUsd, symbol, owner],
-        )
-      : undefined
-    const oracleAddress = includeOracle && oracleInitCode
-      ? predictCreate2Address(create2Deployer, salts.oracleSalt, oracleInitCode)
-      : undefined
+    const oracleInitCode = makeInitCode(
+      DEPLOY_BYTECODE.CreatorOracle as Hex,
+      'address,address,string,address',
+      [registry, chainlinkEthUsd, symbol, owner],
+    )
+    const oracleAddress = predictCreate2Address(create2Deployer, salts.oracleSalt, oracleInitCode)
 
     const predicted: DeploymentAddresses = {
       vault: vaultAddress,
@@ -391,7 +384,7 @@ export function DeployVaultAA({
       shareOFT: shareOftAddress,
       gaugeController: gaugeAddress,
       ccaStrategy: ccaAddress,
-      ...(oracleAddress ? { oracle: oracleAddress } : {}),
+      oracle: oracleAddress,
     }
     setAddresses(predicted)
 
@@ -405,7 +398,7 @@ export function DeployVaultAA({
       publicClient.getBytecode({ address: shareOftAddress }),
       publicClient.getBytecode({ address: gaugeAddress }),
       publicClient.getBytecode({ address: ccaAddress }),
-      ...(oracleAddress ? [publicClient.getBytecode({ address: oracleAddress })] : []),
+      publicClient.getBytecode({ address: oracleAddress }),
     ])
     if (existingBytecodes.some((x) => x && x !== '0x')) {
       fail('A vault already exists for this coin + owner wallet.')
@@ -468,12 +461,10 @@ export function DeployVaultAA({
       to: create2Deployer,
       data: encodeFunctionData({ abi: CREATE2_DEPLOYER_ABI, functionName: 'deploy', args: [salts.ccaSalt, ccaInitCode] }),
     })
-    if (includeOracle && oracleInitCode) {
-      calls.push({
-        to: create2Deployer,
-        data: encodeFunctionData({ abi: CREATE2_DEPLOYER_ABI, functionName: 'deploy', args: [salts.oracleSalt, oracleInitCode] }),
-      })
-    }
+    calls.push({
+      to: create2Deployer,
+      data: encodeFunctionData({ abi: CREATE2_DEPLOYER_ABI, functionName: 'deploy', args: [salts.oracleSalt, oracleInitCode] }),
+    })
 
     // Wiring / configuration
     calls.push({ to: wrapperAddress, data: encodeFunctionData({ abi: WRAPPER_ADMIN_ABI, functionName: 'setShareOFT', args: [shareOftAddress] }) })
@@ -488,9 +479,7 @@ export function DeployVaultAA({
     if (lotteryManager !== '0x0000000000000000000000000000000000000000') {
       calls.push({ to: gaugeAddress, data: encodeFunctionData({ abi: GAUGE_ADMIN_ABI, functionName: 'setLotteryManager', args: [lotteryManager] }) })
     }
-    if (includeOracle && oracleAddress) {
-      calls.push({ to: gaugeAddress, data: encodeFunctionData({ abi: GAUGE_ADMIN_ABI, functionName: 'setOracle', args: [oracleAddress] }) })
-    }
+    calls.push({ to: gaugeAddress, data: encodeFunctionData({ abi: GAUGE_ADMIN_ABI, functionName: 'setOracle', args: [oracleAddress] }) })
 
     calls.push({ to: vaultAddress, data: encodeFunctionData({ abi: VAULT_ADMIN_ABI, functionName: 'setGaugeController', args: [gaugeAddress] }) })
     calls.push({ to: vaultAddress, data: encodeFunctionData({ abi: VAULT_ADMIN_ABI, functionName: 'setWhitelist', args: [wrapperAddress, true] }) })
@@ -499,16 +488,14 @@ export function DeployVaultAA({
     calls.push({ to: ccaAddress, data: encodeFunctionData({ abi: CCA_ADMIN_ABI, functionName: 'setApprovedLauncher', args: [vaultActivationBatcher, true] }) })
 
     // CCA: oracle config for V4 graduation path
-    if (includeOracle && oracleAddress) {
-      calls.push({
-        to: ccaAddress,
-        data: encodeFunctionData({
-          abi: CCA_ADMIN_ABI,
-          functionName: 'setOracleConfig',
-          args: [oracleAddress, poolManager, taxHook, gaugeAddress],
-        }),
-      })
-    }
+    calls.push({
+      to: ccaAddress,
+      data: encodeFunctionData({
+        abi: CCA_ADMIN_ABI,
+        functionName: 'setOracleConfig',
+        args: [oracleAddress, poolManager, taxHook, gaugeAddress],
+      }),
+    })
 
       // Step 1: wallet confirmation
       setStep(1)
@@ -581,7 +568,7 @@ export function DeployVaultAA({
           publicClient.getBytecode({ address: shareOftAddress }),
           publicClient.getBytecode({ address: gaugeAddress }),
           publicClient.getBytecode({ address: ccaAddress }),
-          ...(oracleAddress ? [publicClient.getBytecode({ address: oracleAddress })] : []),
+          publicClient.getBytecode({ address: oracleAddress }),
         ])
         if (codes.every((c) => c && c !== '0x')) break
         if (Date.now() - start > timeoutMs) throw new Error('Timed out waiting for deployed bytecode.')

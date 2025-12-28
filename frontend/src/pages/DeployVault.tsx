@@ -14,7 +14,6 @@ import { fetchCoinMarketRewardsByCoinFromApi } from '@/lib/onchain/coinMarketRew
 export function DeployVault() {
   const { address, isConnected } = useAccount()
   const [creatorToken, setCreatorToken] = useState('')
-  const [includeOracle, setIncludeOracle] = useState(true)
   const [deployAs, setDeployAs] = useState('')
   const [showAdvanced, setShowAdvanced] = useState(false)
 
@@ -108,15 +107,27 @@ export function DeployVault() {
   // Auto-derive ShareOFT symbol and name (preserve original case)
   const baseSymbol = tokenSymbol ?? zoraCoin?.symbol
 
-  const derivedShareSymbol = useMemo(() => {
+  const underlyingSymbol = useMemo(() => {
     if (!baseSymbol) return ''
-    return `ws${String(baseSymbol)}`
+    const s = String(baseSymbol)
+    // Defensive: if a coin ever reports a "ws" prefixed symbol, normalize to the underlying.
+    return s.toLowerCase().startsWith('ws') ? s.slice(2) : s
   }, [baseSymbol])
 
+  const derivedVaultSymbol = useMemo(() => {
+    if (!underlyingSymbol) return ''
+    return `s${underlyingSymbol}`
+  }, [underlyingSymbol])
+
+  const derivedShareSymbol = useMemo(() => {
+    if (!underlyingSymbol) return ''
+    return `ws${underlyingSymbol}`
+  }, [underlyingSymbol])
+
   const derivedShareName = useMemo(() => {
-    if (!baseSymbol) return ''
-    return `Wrapped ${String(baseSymbol)} Share`
-  }, [baseSymbol])
+    if (!underlyingSymbol) return ''
+    return `Wrapped ${underlyingSymbol} Share`
+  }, [underlyingSymbol])
 
   const short = (addr: string) => `${addr.slice(0, 6)}…${addr.slice(-4)}`
 
@@ -626,31 +637,37 @@ export function DeployVault() {
 
                     {/* Vault configuration */}
                     <div className="pt-4 border-t border-zinc-900/50 space-y-3">
-                      <div className="label">Vault configuration</div>
-                      <div className="grid grid-cols-2 gap-2 text-xs">
-                        <div className="text-zinc-500">Vault</div>
-                        <div className="text-zinc-200 font-mono">s{String(baseSymbol)}</div>
-                        <div className="text-zinc-500">Share token</div>
-                        <div className="text-zinc-200 font-mono">{derivedShareSymbol}</div>
-                        <div className="text-zinc-500">Includes</div>
-                        <div className="text-zinc-600">Wrapper + Gauge + CCA</div>
+                      <div className="label">Contracts deployed</div>
+                      <div className="text-xs text-zinc-600">
+                        Deployed together in one confirmation.
                       </div>
 
-                      <label className="flex items-center justify-between pt-3 border-t border-zinc-900/50 cursor-pointer">
-                        <div className="text-xs text-zinc-500">
-                          Include oracle <span className="text-zinc-700">(recommended)</span>
+                      <div className="space-y-0 border border-zinc-900/50 rounded-lg overflow-hidden bg-black/20">
+                        <div className="data-row px-4">
+                          <div className="text-xs text-zinc-500">Vault token</div>
+                          <div className="text-xs text-zinc-200 font-mono">{derivedVaultSymbol || '—'}</div>
                         </div>
-                        <div className="relative">
-                          <input
-                            type="checkbox"
-                            checked={includeOracle}
-                            onChange={(e) => setIncludeOracle(e.target.checked)}
-                            className="sr-only peer"
-                          />
-                          <div className="w-9 h-5 bg-zinc-800 rounded-full peer-checked:bg-cyan-600/60 transition-colors" />
-                          <div className="absolute left-0.5 top-0.5 w-4 h-4 bg-zinc-400 rounded-full peer-checked:translate-x-4 peer-checked:bg-white transition-all" />
+                        <div className="data-row px-4">
+                          <div className="text-xs text-zinc-500">Share token</div>
+                          <div className="text-xs text-zinc-200 font-mono">{derivedShareSymbol || '—'}</div>
                         </div>
-                      </label>
+                        <div className="data-row px-4">
+                          <div className="text-xs text-zinc-500">Wrapper</div>
+                          <div className="text-xs text-zinc-600">Deployed</div>
+                        </div>
+                        <div className="data-row px-4">
+                          <div className="text-xs text-zinc-500">Gauge controller</div>
+                          <div className="text-xs text-zinc-600">Deployed</div>
+                        </div>
+                        <div className="data-row px-4">
+                          <div className="text-xs text-zinc-500">Launch strategy</div>
+                          <div className="text-xs text-zinc-600">Deployed</div>
+                        </div>
+                        <div className="data-row px-4 border-b-0">
+                          <div className="text-xs text-zinc-500">Oracle</div>
+                          <div className="text-xs text-zinc-600">Deployed</div>
+                        </div>
+                      </div>
                     </div>
                   </div>
                 ) : (
@@ -686,7 +703,6 @@ export function DeployVault() {
                   // even if you choose to deploy the vault *owned by* a different smart wallet.
                   creatorTreasury={((payoutRecipient ?? (address as Address)) as Address) as `0x${string}`}
                   executeAs={deployAsAddress ?? undefined}
-                  includeOracle={includeOracle}
                 />
               ) : tokenIsValid && (symbolLoading || zoraLoading) ? (
                 <button
