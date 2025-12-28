@@ -16,6 +16,7 @@ export function DeployVault() {
   const [creatorToken, setCreatorToken] = useState('')
   const [includeOracle, setIncludeOracle] = useState(true)
   const [deployAs, setDeployAs] = useState('')
+  const [showAdvanced, setShowAdvanced] = useState(false)
 
   const [searchParams] = useSearchParams()
   const prefillToken = useMemo(() => searchParams.get('token') ?? '', [searchParams])
@@ -27,7 +28,8 @@ export function DeployVault() {
   }, [prefillToken, creatorToken.length])
 
   // Detect "your" creator coin + smart wallet from your Zora profile and prefill inputs once.
-  const { data: myProfile } = useZoraProfile(address)
+  const myProfileQuery = useZoraProfile(address)
+  const myProfile = myProfileQuery.data
 
   const detectedCreatorCoin = useMemo(() => {
     const v = myProfile?.creatorCoin?.address ? String(myProfile.creatorCoin.address) : ''
@@ -276,24 +278,73 @@ export function DeployVault() {
       {/* Single Input */}
       <div className="space-y-3">
         <div className="flex items-center justify-between gap-3">
-          <label className="label text-zinc-500">Creator Token Address</label>
-          {isConnected && detectedCreatorCoin ? (
+          <label className="label text-zinc-500">Creator Coin</label>
+          {isConnected ? (
             <button
               type="button"
-              onClick={() => setCreatorToken(detectedCreatorCoin)}
+              onClick={() => setShowAdvanced((v) => !v)}
               className="text-[10px] text-zinc-700 hover:text-zinc-500 transition-colors"
-              title="Use your detected Creator Coin address"
             >
-              Use my coin
+              {showAdvanced ? 'Hide advanced' : 'Advanced'}
             </button>
           ) : null}
         </div>
-        <input
-          value={creatorToken}
-          onChange={(e) => setCreatorToken(e.target.value)}
-          placeholder="0x..."
-          className="w-full bg-black border border-zinc-800 rounded-lg px-4 py-4 text-base text-zinc-200 placeholder:text-zinc-700 outline-none focus:border-cyan-500/50 transition-colors font-mono"
-        />
+
+        {/* Default (simple) mode: show detected coin as read-only */}
+        {isConnected && !showAdvanced ? (
+          detectedCreatorCoin ? (
+            <>
+              <input
+                value={detectedCreatorCoin}
+                disabled
+                className="w-full bg-black border border-zinc-800 rounded-lg px-4 py-4 text-base text-zinc-500 placeholder:text-zinc-700 outline-none font-mono opacity-70 cursor-not-allowed"
+              />
+              <div className="text-xs text-zinc-600">Detected from your profile.</div>
+            </>
+          ) : myProfileQuery.isLoading || myProfileQuery.isFetching ? (
+            <>
+              <input
+                value=""
+                disabled
+                placeholder="Detecting your creator coin…"
+                className="w-full bg-black border border-zinc-800 rounded-lg px-4 py-4 text-base text-zinc-500 placeholder:text-zinc-700 outline-none font-mono opacity-70 cursor-not-allowed"
+              />
+              <div className="text-xs text-zinc-600">Connect a wallet with a Creator Coin.</div>
+            </>
+          ) : (
+            <>
+              <input
+                value=""
+                disabled
+                placeholder="No creator coin detected for this wallet"
+                className="w-full bg-black border border-zinc-800 rounded-lg px-4 py-4 text-base text-zinc-500 placeholder:text-zinc-700 outline-none font-mono opacity-70 cursor-not-allowed"
+              />
+              <div className="text-xs text-zinc-600">Open Advanced if you need to paste a coin address.</div>
+            </>
+          )
+        ) : (
+          // Advanced mode (or not connected): allow manual paste / overrides.
+          <>
+            <div className="text-xs text-zinc-600">
+              Paste a Creator Coin address if you want to deploy a different coin.
+            </div>
+            <input
+              value={creatorToken}
+              onChange={(e) => setCreatorToken(e.target.value)}
+              placeholder="0x..."
+              className="w-full bg-black border border-zinc-800 rounded-lg px-4 py-4 text-base text-zinc-200 placeholder:text-zinc-700 outline-none focus:border-cyan-500/50 transition-colors font-mono"
+            />
+            {isConnected && detectedCreatorCoin ? (
+              <button
+                type="button"
+                onClick={() => setCreatorToken(detectedCreatorCoin)}
+                className="text-[10px] text-zinc-700 hover:text-zinc-500 transition-colors"
+              >
+                Use my coin
+              </button>
+            ) : null}
+          </>
+        )}
       </div>
 
       {/* Token Preview */}
@@ -389,35 +440,47 @@ export function DeployVault() {
                 <div className="pt-3 border-t border-zinc-800/60 space-y-2">
                   <div className="flex items-center justify-between gap-3">
                     <div className="text-[10px] uppercase tracking-[0.18em] text-zinc-600">Vault owner wallet (optional)</div>
-                    <div className="flex items-center gap-3">
-                      {detectedSmartWallet ? (
-                        <button
-                          type="button"
-                          onClick={() => setDeployAs(String(detectedSmartWallet))}
-                          className="text-[10px] text-zinc-700 hover:text-zinc-500 transition-colors"
-                          title="Use your detected smart wallet address"
-                        >
-                          Use smart wallet
-                        </button>
-                      ) : null}
-                      {payoutRecipient ? (
-                        <button
-                          type="button"
-                          onClick={() => setDeployAs(String(payoutRecipient))}
-                          className="text-[10px] text-zinc-700 hover:text-zinc-500 transition-colors"
-                          title="Use the coin’s current payout recipient address"
-                        >
-                          Use payout recipient
-                        </button>
-                      ) : null}
-                    </div>
+                    {showAdvanced ? (
+                      <div className="flex items-center gap-3">
+                        {detectedSmartWallet ? (
+                          <button
+                            type="button"
+                            onClick={() => setDeployAs(String(detectedSmartWallet))}
+                            className="text-[10px] text-zinc-700 hover:text-zinc-500 transition-colors"
+                            title="Use your detected smart wallet address"
+                          >
+                            Use smart wallet
+                          </button>
+                        ) : null}
+                        {payoutRecipient ? (
+                          <button
+                            type="button"
+                            onClick={() => setDeployAs(String(payoutRecipient))}
+                            className="text-[10px] text-zinc-700 hover:text-zinc-500 transition-colors"
+                            title="Use the coin’s current payout recipient address"
+                          >
+                            Use payout recipient
+                          </button>
+                        ) : null}
+                      </div>
+                    ) : detectedSmartWallet ? (
+                      <div className="text-[10px] text-zinc-700">Using smart wallet</div>
+                    ) : null}
                   </div>
-                  <input
-                    value={deployAs}
-                    onChange={(e) => setDeployAs(e.target.value)}
-                    placeholder="0x… (leave blank to use connected wallet)"
-                    className="w-full bg-black border border-zinc-800 rounded-lg px-4 py-3 text-sm text-zinc-200 placeholder:text-zinc-700 outline-none focus:border-cyan-500/50 transition-colors font-mono"
-                  />
+                  {!showAdvanced && detectedSmartWallet ? (
+                    <input
+                      value={String(detectedSmartWallet)}
+                      disabled
+                      className="w-full bg-black border border-zinc-800 rounded-lg px-4 py-3 text-sm text-zinc-500 placeholder:text-zinc-700 outline-none font-mono opacity-70 cursor-not-allowed"
+                    />
+                  ) : (
+                    <input
+                      value={deployAs}
+                      onChange={(e) => setDeployAs(e.target.value)}
+                      placeholder="0x… (leave blank to use connected wallet)"
+                      className="w-full bg-black border border-zinc-800 rounded-lg px-4 py-3 text-sm text-zinc-200 placeholder:text-zinc-700 outline-none focus:border-cyan-500/50 transition-colors font-mono"
+                    />
+                  )}
                   {!deployAsIsValid ? (
                     <div className="text-xs text-red-400/80">Invalid wallet address.</div>
                   ) : (
