@@ -318,7 +318,7 @@ export function DeployVaultAA({
 
     // Naming
     const underlyingSymbol = symbol.startsWith('ws') ? symbol.slice(2) : symbol
-    const vaultName = `CreatorVault: ${underlyingSymbol}`
+    const vaultName = `${underlyingSymbol} Vault Share`
     const vaultSymbol = `s${underlyingSymbol}`
 
     // Salts
