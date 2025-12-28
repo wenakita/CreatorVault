@@ -1,6 +1,4 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
-import { getProfileCoins } from '@zoralabs/coins-sdk'
-
 import { DEFAULT_CHAIN_ID, getNumberQuery, getStringQuery, handleOptions, requireServerKey, setCache, setCors } from './_shared'
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
@@ -11,7 +9,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(405).json({ success: false, error: 'Method not allowed' })
   }
 
-  if (!requireServerKey()) {
+  const key = requireServerKey()
+  if (!key) {
     return res.status(501).json({ success: false, error: 'ZORA_SERVER_API_KEY is not configured' })
   }
 
@@ -27,7 +26,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const chainIds = [DEFAULT_CHAIN_ID]
 
   try {
-    const response = await getProfileCoins({
+    const sdk: any = await import('@zoralabs/coins-sdk')
+    sdk.setApiKey(key)
+    const response = await sdk.getProfileCoins({
       identifier,
       count,
       after,

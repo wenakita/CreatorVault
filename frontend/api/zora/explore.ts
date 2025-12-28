@@ -1,13 +1,4 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
-import {
-  getCoinsLastTraded,
-  getCoinsLastTradedUnique,
-  getCoinsMostValuable,
-  getCoinsNew,
-  getCoinsTopGainers,
-  getCoinsTopVolume24h,
-} from '@zoralabs/coins-sdk'
-
 import { getNumberQuery, getStringQuery, handleOptions, requireServerKey, setCache, setCors } from './_shared'
 
 type ExploreList =
@@ -39,7 +30,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(405).json({ success: false, error: 'Method not allowed' })
   }
 
-  if (!requireServerKey()) {
+  const key = requireServerKey()
+  if (!key) {
     return res.status(501).json({ success: false, error: 'ZORA_SERVER_API_KEY is not configured' })
   }
 
@@ -48,19 +40,22 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const after = getStringQuery(req, 'after') ?? undefined
 
   try {
+    const sdk: any = await import('@zoralabs/coins-sdk')
+    sdk.setApiKey(key)
+
     const options = { count, after }
     const response =
       list === 'TOP_GAINERS'
-        ? await getCoinsTopGainers(options)
+        ? await sdk.getCoinsTopGainers(options)
         : list === 'TOP_VOLUME_24H'
-          ? await getCoinsTopVolume24h(options)
+          ? await sdk.getCoinsTopVolume24h(options)
           : list === 'MOST_VALUABLE'
-            ? await getCoinsMostValuable(options)
+            ? await sdk.getCoinsMostValuable(options)
             : list === 'NEW'
-              ? await getCoinsNew(options)
+              ? await sdk.getCoinsNew(options)
               : list === 'LAST_TRADED'
-                ? await getCoinsLastTraded(options)
-                : await getCoinsLastTradedUnique(options)
+                ? await sdk.getCoinsLastTraded(options)
+                : await sdk.getCoinsLastTradedUnique(options)
 
     setCache(res, 300)
     return res.status(200).json({

@@ -1,6 +1,4 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
-import { createPublicClient, http, parseAbiItem } from 'viem'
-import { base } from 'viem/chains'
 
 declare const process: { env: Record<string, string | undefined> }
 
@@ -10,6 +8,7 @@ const WITHDRAW_TOPIC0 = '0x9b1bfa7fa9ee420a16e124f794c35ac9f90472acc99140eb2f644
 // Base mainnet first block where ProtocolRewards bytecode exists (binary-searched via BASE_RPC_URL).
 // Using this avoids scanning pre-deploy ranges.
 const BASE_PROTOCOL_REWARDS_DEPLOY_BLOCK = 2336418n
+const WITHDRAW_EVENT = 'event Withdraw(address indexed from, address indexed to, uint256 amount)'
 
 function setCors(res: VercelResponse) {
   res.setHeader('Access-Control-Allow-Origin', '*')
@@ -103,6 +102,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   try {
+    const { createPublicClient, http, parseAbiItem } = await import('viem')
+    const { base } = await import('viem/chains')
+
     const rpcUrl = getLogsRpcUrl()
     if (!rpcUrl) {
       return res.status(501).json({
@@ -116,7 +118,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       transport: http(rpcUrl, { timeout: 20_000 }),
     })
 
-    const withdrawEvent = parseAbiItem('event Withdraw(address indexed from, address indexed to, uint256 amount)')
+    const withdrawEvent = parseAbiItem(WITHDRAW_EVENT)
 
     const latest = await client.getBlockNumber()
     const fromBlock = BASE_PROTOCOL_REWARDS_DEPLOY_BLOCK

@@ -1,6 +1,4 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
-import { createPublicClient, hashMessage, http, isAddress, verifyMessage } from 'viem'
-import { base } from 'viem/chains'
 import { createHmac, randomBytes, timingSafeEqual } from 'node:crypto'
 
 declare const process: { env: Record<string, string | undefined> }
@@ -14,6 +12,10 @@ const NONCE_TTL_SECONDS = 60 * 15 // 15m
 const SESSION_TTL_SECONDS = 60 * 60 * 24 * 7 // 7d
 
 const EIP1271_MAGICVALUE = '0x1626ba7e' as const
+
+function isAddressLike(value: string): boolean {
+  return /^0x[a-fA-F0-9]{40}$/.test(value)
+}
 
 const eip1271Abi = [
   {
@@ -35,6 +37,9 @@ function getBaseRpcUrl(): string {
 }
 
 async function verifyEip1271(params: { contract: `0x${string}`; message: string; signature: `0x${string}` }): Promise<boolean> {
+  const { createPublicClient, hashMessage, http } = await import('viem')
+  const { base } = await import('viem/chains')
+
   const client = createPublicClient({
     chain: base,
     transport: http(getBaseRpcUrl(), { timeout: 12_000 }),
@@ -206,7 +211,7 @@ export function readSessionToken(token: string | null | undefined): { address: s
 
   const address = typeof parsed?.a === 'string' ? parsed.a : ''
   const exp = typeof parsed?.exp === 'number' ? parsed.exp : 0
-  if (!address || !isAddress(address)) return null
+  if (!address || !isAddressLike(address)) return null
   if (!exp || exp < Date.now()) return null
   return { address: address.toLowerCase() }
 }
@@ -230,7 +235,7 @@ export function parseSiweMessage(message: string): ParsedSiwe | null {
 
   const domain = first.slice(0, idx).trim()
   const address = (lines[1]?.trim() ?? '').trim()
-  if (!domain || !isAddress(address)) return null
+  if (!domain || !isAddressLike(address)) return null
 
   const findField = (prefix: string): string | null => {
     const line = lines.find((l) => l.trim().toLowerCase().startsWith(prefix.toLowerCase()))
@@ -266,6 +271,7 @@ export async function verifySiweSignature(params: { message: string; signature: 
   const sig = params.signature
   if (!sig.startsWith('0x')) return null
   try {
+    const { verifyMessage } = await import('viem')
     const ok = await verifyMessage({
       address: addr as `0x${string}`,
       message: params.message,

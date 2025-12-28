@@ -1,5 +1,4 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
-import { getProfile } from '@zoralabs/coins-sdk'
 
 import { getStringQuery, handleOptions, requireServerKey, setCache, setCors } from './_shared'
 
@@ -11,7 +10,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(405).json({ success: false, error: 'Method not allowed' })
   }
 
-  if (!requireServerKey()) {
+  const key = requireServerKey()
+  if (!key) {
     return res.status(501).json({ success: false, error: 'ZORA_SERVER_API_KEY is not configured' })
   }
 
@@ -21,7 +21,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   try {
-    const response = await getProfile({ identifier })
+    const sdk: any = await import('@zoralabs/coins-sdk')
+    sdk.setApiKey(key)
+    const response = await sdk.getProfile({ identifier })
 
     setCache(res, 300)
     // Docs note profile types are WIP in the SDK; pass-through for now.

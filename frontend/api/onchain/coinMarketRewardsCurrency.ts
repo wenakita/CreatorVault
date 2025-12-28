@@ -1,6 +1,4 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
-import { createPublicClient, http, parseAbiItem } from 'viem'
-import { base } from 'viem/chains'
 
 declare const process: { env: Record<string, string | undefined> }
 
@@ -9,7 +7,7 @@ const DEFAULT_HOOK = '0xc8d077444625eb300a427a6dfb2b1dbf9b159040'
 // First Base block where the hook has bytecode (binary-searched via BASE_RPC_URL).
 const DEFAULT_HOOK_DEPLOY_BLOCK = 36237338n
 
-const erc20TransferEvent = parseAbiItem('event Transfer(address indexed from,address indexed to,uint256 value)')
+const ERC20_TRANSFER_EVENT = 'event Transfer(address indexed from,address indexed to,uint256 value)'
 
 function setCors(res: VercelResponse) {
   res.setHeader('Access-Control-Allow-Origin', '*')
@@ -105,6 +103,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   try {
+    const { createPublicClient, http, parseAbiItem } = await import('viem')
+    const { base } = await import('viem/chains')
+    const erc20TransferEvent = parseAbiItem(ERC20_TRANSFER_EVENT)
+
     const client = createPublicClient({
       chain: base,
       transport: http(rpcUrl, { timeout: 20_000 }),

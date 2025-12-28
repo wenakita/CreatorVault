@@ -1,6 +1,4 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
-import { createPublicClient, http, parseAbiItem } from 'viem'
-import { base } from 'viem/chains'
 
 declare const process: { env: Record<string, string | undefined> }
 
@@ -11,9 +9,8 @@ const DEFAULT_BLOCK_TIME_SECONDS = 2n
 const DEFAULT_MARGIN_BLOCKS = 20_000n
 
 // Coin contract event (emitted on the coin itself)
-const coinTradeRewardsEvent = parseAbiItem(
-  'event CoinTradeRewards(address indexed payoutRecipient,address indexed platformReferrer,address indexed tradeReferrer,address protocolRewardRecipient,uint256 creatorReward,uint256 platformReferrerReward,uint256 traderReferrerReward,uint256 protocolReward,address currency)',
-)
+const COIN_TRADE_REWARDS_EVENT =
+  'event CoinTradeRewards(address indexed payoutRecipient,address indexed platformReferrer,address indexed tradeReferrer,address protocolRewardRecipient,uint256 creatorReward,uint256 platformReferrerReward,uint256 traderReferrerReward,uint256 protocolReward,address currency)'
 
 function setCors(res: VercelResponse) {
   res.setHeader('Access-Control-Allow-Origin', '*')
@@ -125,6 +122,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   try {
+    const { createPublicClient, http, parseAbiItem } = await import('viem')
+    const { base } = await import('viem/chains')
+    const coinTradeRewardsEvent = parseAbiItem(COIN_TRADE_REWARDS_EVENT)
+
     const client = createPublicClient({
       chain: base,
       transport: http(rpcUrl, { timeout: 25_000 }),

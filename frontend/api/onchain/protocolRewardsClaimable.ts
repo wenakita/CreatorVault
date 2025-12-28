@@ -1,6 +1,4 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
-import { createPublicClient, http } from 'viem'
-import { base } from 'viem/chains'
 
 declare const process: { env: Record<string, string | undefined> }
 
@@ -94,6 +92,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   try {
+    const { createPublicClient, http } = await import('viem')
+    const { base } = await import('viem/chains')
+
     const client = createPublicClient({
       chain: base,
       transport: http(rpcUrl, { timeout: 20_000 }),

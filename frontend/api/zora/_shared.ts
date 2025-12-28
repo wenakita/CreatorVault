@@ -1,5 +1,4 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
-import { setApiKey } from '@zoralabs/coins-sdk'
 
 declare const process: { env: Record<string, string | undefined> }
 
@@ -26,7 +25,6 @@ export function setCache(res: VercelResponse, seconds: number = 300) {
 export function requireServerKey(): string | null {
   const key = process.env.ZORA_SERVER_API_KEY
   if (!key) return null
-  setApiKey(key)
   return key
 }
 

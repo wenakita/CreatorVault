@@ -20,7 +20,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(405).json({ success: false, error: 'Method not allowed' })
   }
 
-  if (!requireServerKey()) {
+  const key = requireServerKey()
+  if (!key) {
     return res.status(501).json({ success: false, error: 'ZORA_SERVER_API_KEY is not configured' })
   }
 
@@ -34,6 +35,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   try {
     // Dynamic import to avoid TS export-resolution issues in some editor/lint configs.
     const sdk: any = await import('@zoralabs/coins-sdk')
+    sdk.setApiKey(key)
     const response = await sdk.getCoin({
       address: address as Address,
       chain,

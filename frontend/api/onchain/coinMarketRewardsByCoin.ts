@@ -1,6 +1,4 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
-import { createPublicClient, decodeEventLog, http, parseAbiItem } from 'viem'
-import { base } from 'viem/chains'
 
 declare const process: { env: Record<string, string | undefined> }
 
@@ -11,12 +9,11 @@ const DEFAULT_HOOK_DEPLOY_BLOCK = 36237338n
 
 const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000'
 
-const erc20TransferEvent = parseAbiItem('event Transfer(address indexed from,address indexed to,uint256 value)')
+const ERC20_TRANSFER_EVENT = 'event Transfer(address indexed from,address indexed to,uint256 value)'
 
 // This is emitted by the hook (topicsLen = 1, i.e. no indexed args).
-const coinMarketRewardsV4Event = parseAbiItem(
-  'event CoinMarketRewardsV4(address coin,address currency,address payoutRecipient,address platformReferrer,address tradeReferrer,address protocolRewardRecipient,address dopplerRecipient,(uint256 creatorPayoutAmountCurrency,uint256 creatorPayoutAmountCoin,uint256 platformReferrerAmountCurrency,uint256 platformReferrerAmountCoin,uint256 tradeReferrerAmountCurrency,uint256 tradeReferrerAmountCoin,uint256 protocolAmountCurrency,uint256 protocolAmountCoin,uint256 dopplerAmountCurrency,uint256 dopplerAmountCoin) marketRewards)',
-)
+const COIN_MARKET_REWARDS_V4_EVENT =
+  'event CoinMarketRewardsV4(address coin,address currency,address payoutRecipient,address platformReferrer,address tradeReferrer,address protocolRewardRecipient,address dopplerRecipient,(uint256 creatorPayoutAmountCurrency,uint256 creatorPayoutAmountCoin,uint256 platformReferrerAmountCurrency,uint256 platformReferrerAmountCoin,uint256 tradeReferrerAmountCurrency,uint256 tradeReferrerAmountCoin,uint256 protocolAmountCurrency,uint256 protocolAmountCoin,uint256 dopplerAmountCurrency,uint256 dopplerAmountCoin) marketRewards)'
 
 const COIN_MARKET_REWARDS_V4_TOPIC0 =
   '0x35b5031218696db1dfd903223a47f38e66a1998e14a942a5d60fddaa49a685fc'
@@ -153,12 +150,21 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     })
   }
 
+  const recipientLc = recipient.toLowerCase()
+  const currencyLc = currency.toLowerCase()
+  const hookLc = hook.toLowerCase()
+
   const rpcUrl = getLogsRpcUrl()
   if (!rpcUrl) {
     return res.status(501).json({ success: false, error: 'BASE_RPC_URL is not configured (server-side).' })
   }
 
   try {
+    const { createPublicClient, decodeEventLog, http, parseAbiItem } = await import('viem')
+    const { base } = await import('viem/chains')
+    const erc20TransferEvent = parseAbiItem(ERC20_TRANSFER_EVENT)
+    const coinMarketRewardsV4Event = parseAbiItem(COIN_MARKET_REWARDS_V4_EVENT)
+
     const client = createPublicClient({
       chain: base,
       transport: http(rpcUrl, { timeout: 25_000 }),
@@ -273,8 +279,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           const logCurrency = String(args.currency).toLowerCase()
           const logRecipient = String(args.payoutRecipient).toLowerCase()
 
-          if (logCurrency !== currency.toLowerCase()) continue
-          if (logRecipient !== recipient.toLowerCase()) continue
+          if (logCurrency !== currencyLc) continue
+          if (logRecipient !== recipientLc) continue
 
           const coin = String(args.coin).toLowerCase()
           if (coinFilter && isAddressLike(coinFilter) && coin !== coinFilter.toLowerCase()) continue
@@ -300,9 +306,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(200).json({
       success: true,
       data: {
-        currency: currency.toLowerCase(),
-        recipient: recipient.toLowerCase(),
-        hook: hook.toLowerCase(),
+        currency: currencyLc,
+        recipient: recipientLc,
+        hook: hookLc,
         fromBlock: fromBlock.toString(),
         toBlock: latest.toString(),
         coinFilter: coinFilter ? coinFilter.toLowerCase() : null,
