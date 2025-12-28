@@ -69,7 +69,7 @@ function getConcurrency(): number {
   return 6
 }
 
-function parsePairs(raw: string): Array<{ coin: string; currency: string }> {
+function parsePairs(raw: string): Array<{ coin: string; currency: string; createdAt?: string }> {
   // pairs=0xcoin:0xcurrency[:createdAtSeconds],...
   return raw
     .split(',')

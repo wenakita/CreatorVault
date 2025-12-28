@@ -1,6 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 
-import { type ApiEnvelope, COOKIE_SESSION, handleOptions, parseCookies, readSessionToken, setCors, setNoStore } from './_shared'
+import { type ApiEnvelope, COOKIE_SESSION, handleOptions, parseCookies, readSessionToken, setCors, setNoStore } from './_shared.js'
 
 type MeResponse = { address: string } | null
 

@@ -1,5 +1,5 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
-import { getNumberQuery, getStringQuery, handleOptions, requireServerKey, setCache, setCors } from './_shared'
+import { getNumberQuery, getStringQuery, handleOptions, requireServerKey, setCache, setCors } from './_shared.js'
 
 type ExploreList =
   | 'TOP_GAINERS'
