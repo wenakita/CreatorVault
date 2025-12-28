@@ -270,53 +270,54 @@ export function DeployVaultAA({
     const isDelegatedSmartWallet = owner.toLowerCase() !== signer.toLowerCase()
 
     setIsSubmitting(true)
-
-    // Preflight:
-    // - If executing as a Coinbase Smart Wallet contract (owner != signer), require signer to be an owner,
-    //   then we can call executeBatch (EOA pays the outer tx gas; smart wallet is msg.sender for inner calls).
-    if (isDelegatedSmartWallet) {
-      // Preflight: "deploy as" must be a deployed contract, and signer must be an owner.
-      try {
-        const code = await publicClient.getBytecode({ address: owner })
-        if (!code || code === '0x') {
-          fail('The selected owner wallet is not deployed on Base.')
-        }
-      } catch {
-        fail('Failed to verify the selected owner wallet on Base.')
-      }
-
-      try {
-        const ok = await publicClient.readContract({
-          address: owner,
-          abi: COINBASE_SMART_WALLET_ABI,
-          functionName: 'isOwnerAddress',
-          args: [signer],
-        })
-        if (!ok) {
-          fail('Connected wallet is not an owner of the selected smart wallet.')
-        }
-      } catch {
-        fail('Selected owner wallet is not a supported Coinbase Smart Wallet.')
-      }
-    }
-
-    // Dependency preflight: fail early if critical protocol addresses are misconfigured.
-    // (If these are wrong, constructors like CreatorShareOFT/Oracle will revert mid-batch.)
     try {
-      const requiredAddrs: Address[] = [create2Factory, create2Deployer, registry, vaultActivationBatcher]
-      if (includeOracle) requiredAddrs.push(poolManager, taxHook, chainlinkEthUsd)
 
-      const codes = await Promise.all(requiredAddrs.map((a) => publicClient.getBytecode({ address: a })))
-      const missing = requiredAddrs.filter((_, i) => !codes[i] || codes[i] === '0x')
-      if (missing.length) {
-        fail(
-          'Deployment is temporarily unavailable. Please try again later.',
-          `Missing bytecode for: ${missing.join(', ')}`,
-        )
+      // Preflight:
+      // - If executing as a Coinbase Smart Wallet contract (owner != signer), require signer to be an owner,
+      //   then we can call executeBatch (EOA pays the outer tx gas; smart wallet is msg.sender for inner calls).
+      if (isDelegatedSmartWallet) {
+        // Preflight: "deploy as" must be a deployed contract, and signer must be an owner.
+        try {
+          const code = await publicClient.getBytecode({ address: owner })
+          if (!code || code === '0x') {
+            fail('The selected owner wallet is not deployed on Base.')
+          }
+        } catch {
+          fail('Failed to verify the selected owner wallet on Base.')
+        }
+
+        try {
+          const ok = await publicClient.readContract({
+            address: owner,
+            abi: COINBASE_SMART_WALLET_ABI,
+            functionName: 'isOwnerAddress',
+            args: [signer],
+          })
+          if (!ok) {
+            fail('Connected wallet is not an owner of the selected smart wallet.')
+          }
+        } catch {
+          fail('Selected owner wallet is not a supported Coinbase Smart Wallet.')
+        }
       }
-    } catch {
-      fail('Failed to verify deployment dependencies. Please try again.')
-    }
+
+      // Dependency preflight: fail early if critical protocol addresses are misconfigured.
+      // (If these are wrong, constructors like CreatorShareOFT/Oracle will revert mid-batch.)
+      try {
+        const requiredAddrs: Address[] = [create2Factory, create2Deployer, registry, vaultActivationBatcher]
+        if (includeOracle) requiredAddrs.push(poolManager, taxHook, chainlinkEthUsd)
+
+        const codes = await Promise.all(requiredAddrs.map((a) => publicClient.getBytecode({ address: a })))
+        const missing = requiredAddrs.filter((_, i) => !codes[i] || codes[i] === '0x')
+        if (missing.length) {
+          fail(
+            'Deployment is temporarily unavailable. Please try again later.',
+            `Missing bytecode for: ${missing.join(', ')}`,
+          )
+        }
+      } catch {
+        fail('Failed to verify deployment dependencies. Please try again.')
+      }
 
     // Naming
     const underlyingSymbol = symbol.startsWith('ws') ? symbol.slice(2) : symbol
@@ -396,8 +397,7 @@ export function DeployVaultAA({
 
     // Pre-flight: ensure addresses are free
     if (!publicClient) {
-      setError('Public client not ready.')
-      return
+      fail('Network client not ready. Please try again.')
     }
     const existingBytecodes = await Promise.all([
       publicClient.getBytecode({ address: vaultAddress }),
@@ -510,7 +510,6 @@ export function DeployVaultAA({
       })
     }
 
-    try {
       // Step 1: wallet confirmation
       setStep(1)
       if (isDelegatedSmartWallet) {
