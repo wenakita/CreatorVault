@@ -114,25 +114,30 @@ export function DeployVault() {
     return s.toLowerCase().startsWith('ws') ? s.slice(2) : s
   }, [baseSymbol])
 
-  const derivedVaultSymbol = useMemo(() => {
+  const underlyingSymbolUpper = useMemo(() => {
     if (!underlyingSymbol) return ''
-    return `s${underlyingSymbol}`
+    return underlyingSymbol.toUpperCase()
   }, [underlyingSymbol])
+
+  const derivedVaultSymbol = useMemo(() => {
+    if (!underlyingSymbolUpper) return ''
+    return `s${underlyingSymbolUpper}`
+  }, [underlyingSymbolUpper])
 
   const derivedVaultName = useMemo(() => {
-    if (!underlyingSymbol) return ''
-    return `${underlyingSymbol} Vault Share`
-  }, [underlyingSymbol])
+    if (!underlyingSymbolUpper) return ''
+    return `${underlyingSymbolUpper} Vault Share`
+  }, [underlyingSymbolUpper])
 
   const derivedShareSymbol = useMemo(() => {
-    if (!underlyingSymbol) return ''
-    return `ws${underlyingSymbol}`
-  }, [underlyingSymbol])
+    if (!underlyingSymbolUpper) return ''
+    return `ws${underlyingSymbolUpper}`
+  }, [underlyingSymbolUpper])
 
   const derivedShareName = useMemo(() => {
-    if (!underlyingSymbol) return ''
-    return `Wrapped ${underlyingSymbol} Vault Share`
-  }, [underlyingSymbol])
+    if (!underlyingSymbolUpper) return ''
+    return `Wrapped ${underlyingSymbolUpper} Vault Share`
+  }, [underlyingSymbolUpper])
 
   const short = (addr: string) => `${addr.slice(0, 6)}…${addr.slice(-4)}`
 
