@@ -21,22 +21,31 @@ interface TokenMetadata {
   attributes?: Array<{ trait_type: string; value: string | number }>
 }
 
+const DEFAULT_IPFS_GATEWAY = 'https://ipfs.decentralized-content.com/ipfs/'
+const IPFS_GATEWAY = (import.meta.env.VITE_IPFS_GATEWAY || DEFAULT_IPFS_GATEWAY).replace(/\/+$/, '') + '/'
+
+function toIpfsPath(raw: string): string {
+  const s = String(raw || '').trim()
+  if (!s) return ''
+  // ipfs://<cid> or ipfs://ipfs/<cid>
+  if (s.startsWith('ipfs://')) {
+    const noProto = s.slice('ipfs://'.length)
+    return noProto.replace(/^ipfs\//, '').replace(/^\/+/, '')
+  }
+  // direct cid
+  if (s.startsWith('Qm') || s.startsWith('bafy')) return s
+  // already an http(s) or data/ar uri
+  return ''
+}
+
 // Convert IPFS URI to HTTP gateway URL
 function ipfsToHttp(uri: string): string {
   if (!uri) return ''
   
-  // Handle ipfs:// protocol
-  if (uri.startsWith('ipfs://')) {
-    const hash = uri.replace('ipfs://', '')
-    return `https://ipfs.io/ipfs/${hash}`
-  }
-  
-  // Handle direct CID
-  if (uri.startsWith('Qm') || uri.startsWith('bafy')) {
-    return `https://ipfs.io/ipfs/${uri}`
-  }
-  
-  // Already an HTTP URL
+  const ipfsPath = toIpfsPath(uri)
+  if (ipfsPath) return `${IPFS_GATEWAY}${ipfsPath}`
+
+  // Already an HTTP URL (or other scheme)
   return uri
 }
 
