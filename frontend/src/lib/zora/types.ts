@@ -80,6 +80,11 @@ export type ZoraConnection<T> = {
 
 export type ZoraExploreList = ZoraConnection<ZoraCoin> & { count?: number }
 
+export type ZoraLinkedWallet = {
+  walletType?: string
+  walletAddress?: string
+}
+
 export type ZoraProfile = {
   id?: string
   handle?: string
@@ -94,6 +99,7 @@ export type ZoraProfile = {
     blurhash?: string
   }
   publicWallet?: { walletAddress?: string }
+  linkedWallets?: ZoraConnection<ZoraLinkedWallet>
   creatorCoin?: {
     address?: string
     marketCap?: string

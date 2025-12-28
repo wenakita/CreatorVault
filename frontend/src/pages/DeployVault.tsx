@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { motion } from 'framer-motion'
 import { useAccount, useReadContract } from 'wagmi'
 import type { Address } from 'viem'
@@ -25,6 +25,50 @@ export function DeployVault() {
     if (creatorToken.length > 0) return
     setCreatorToken(prefillToken)
   }, [prefillToken, creatorToken.length])
+
+  // Detect "your" creator coin + smart wallet from your Zora profile and prefill inputs once.
+  const { data: myProfile } = useZoraProfile(address)
+
+  const detectedCreatorCoin = useMemo(() => {
+    const v = myProfile?.creatorCoin?.address ? String(myProfile.creatorCoin.address) : ''
+    return isAddress(v) ? (v as Address) : null
+  }, [myProfile?.creatorCoin?.address])
+
+  const detectedSmartWallet = useMemo(() => {
+    const edges = myProfile?.linkedWallets?.edges ?? []
+    for (const e of edges) {
+      const n: any = (e as any)?.node
+      const t = typeof n?.walletType === 'string' ? n.walletType : ''
+      const a = typeof n?.walletAddress === 'string' ? n.walletAddress : ''
+      if (String(t).toUpperCase() !== 'SMART_WALLET') continue
+      if (isAddress(a)) return a as Address
+    }
+    return null
+  }, [myProfile?.linkedWallets?.edges])
+
+  const autofillRef = useRef<{ tokenFor?: string; deployAsFor?: string }>({})
+  const addressLc = (address ?? '').toLowerCase()
+
+  useEffect(() => {
+    if (!isConnected || !addressLc) return
+    if (prefillToken) return
+    if (creatorToken.trim().length > 0) return
+    if (!detectedCreatorCoin) return
+    if (autofillRef.current.tokenFor === addressLc) return
+
+    setCreatorToken(detectedCreatorCoin)
+    autofillRef.current.tokenFor = addressLc
+  }, [isConnected, addressLc, prefillToken, creatorToken, detectedCreatorCoin])
+
+  useEffect(() => {
+    if (!isConnected || !addressLc) return
+    if (deployAs.trim().length > 0) return
+    if (!detectedSmartWallet) return
+    if (autofillRef.current.deployAsFor === addressLc) return
+
+    setDeployAs(detectedSmartWallet)
+    autofillRef.current.deployAsFor = addressLc
+  }, [isConnected, addressLc, deployAs, detectedSmartWallet])
 
   const tokenIsValid = isAddress(creatorToken)
   const deployAsTrim = deployAs.trim()
@@ -231,7 +275,19 @@ export function DeployVault() {
 
       {/* Single Input */}
       <div className="space-y-3">
-        <label className="label text-zinc-500">Creator Token Address</label>
+        <div className="flex items-center justify-between gap-3">
+          <label className="label text-zinc-500">Creator Token Address</label>
+          {isConnected && detectedCreatorCoin ? (
+            <button
+              type="button"
+              onClick={() => setCreatorToken(detectedCreatorCoin)}
+              className="text-[10px] text-zinc-700 hover:text-zinc-500 transition-colors"
+              title="Use your detected Creator Coin address"
+            >
+              Use my coin
+            </button>
+          ) : null}
+        </div>
         <input
           value={creatorToken}
           onChange={(e) => setCreatorToken(e.target.value)}
@@ -333,16 +389,28 @@ export function DeployVault() {
                 <div className="pt-3 border-t border-zinc-800/60 space-y-2">
                   <div className="flex items-center justify-between gap-3">
                     <div className="text-[10px] uppercase tracking-[0.18em] text-zinc-600">Vault owner wallet (optional)</div>
-                    {payoutRecipient ? (
-                      <button
-                        type="button"
-                        onClick={() => setDeployAs(String(payoutRecipient))}
-                        className="text-[10px] text-zinc-700 hover:text-zinc-500 transition-colors"
-                        title="Use the coin’s current payout recipient address"
-                      >
-                        Use payout recipient
-                      </button>
-                    ) : null}
+                    <div className="flex items-center gap-3">
+                      {detectedSmartWallet ? (
+                        <button
+                          type="button"
+                          onClick={() => setDeployAs(String(detectedSmartWallet))}
+                          className="text-[10px] text-zinc-700 hover:text-zinc-500 transition-colors"
+                          title="Use your detected smart wallet address"
+                        >
+                          Use smart wallet
+                        </button>
+                      ) : null}
+                      {payoutRecipient ? (
+                        <button
+                          type="button"
+                          onClick={() => setDeployAs(String(payoutRecipient))}
+                          className="text-[10px] text-zinc-700 hover:text-zinc-500 transition-colors"
+                          title="Use the coin’s current payout recipient address"
+                        >
+                          Use payout recipient
+                        </button>
+                      ) : null}
+                    </div>
                   </div>
                   <input
                     value={deployAs}
