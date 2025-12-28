@@ -24,7 +24,7 @@ import {
   keccak256,
   parseAbiParameters,
 } from 'viem'
-import { getCapabilities, waitForCallsStatus } from 'viem/actions'
+import { waitForCallsStatus } from 'viem/actions'
 import { motion, AnimatePresence } from 'framer-motion'
 import { CheckCircle, Loader, Rocket } from 'lucide-react'
 import { CONTRACTS } from '@/config/contracts'
@@ -259,28 +259,10 @@ export function DeployVaultAA({
 
     const isDelegatedSmartWallet = owner.toLowerCase() !== signer.toLowerCase()
 
-    // Capability check:
-    // - If executing as the connected account, require EIP-5792 (wallet_sendCalls).
+    // Preflight:
     // - If executing as a Coinbase Smart Wallet contract (owner != signer), require signer to be an owner,
     //   then we can call executeBatch (EOA pays the outer tx gas; smart wallet is msg.sender for inner calls).
-    if (!isDelegatedSmartWallet) {
-      // This avoids "it signed but nothing happened" class of UX bugs.
-      try {
-        const walletClient = createWalletClient({
-          chain: base as any,
-          transport: custom(window.ethereum),
-        })
-        const caps: any = await getCapabilities(walletClient, { chainId: base.id, account: owner })
-        const atomicStatus: string | undefined = caps?.atomic?.status
-        if (atomicStatus === 'unsupported') {
-          setError('Your wallet does not support atomic AA batching (EIP-5792). Please use Coinbase Smart Wallet.')
-          return
-        }
-      } catch {
-        setError('Your wallet does not support AA batching (EIP-5792). Please use Coinbase Smart Wallet.')
-        return
-      }
-    } else {
+    if (isDelegatedSmartWallet) {
       // Preflight: "deploy as" must be a deployed contract, and signer must be an owner.
       try {
         const code = await publicClient.getBytecode({ address: owner })
@@ -544,12 +526,24 @@ export function DeployVaultAA({
         setCallBundleId(String(txHash))
         await publicClient.waitForTransactionReceipt({ hash: txHash as any, timeout: 120_000 })
       } else {
-        const result = await sendCallsAsync({
-          calls,
-          account: owner,
-          chainId: base.id,
-          forceAtomic: true,
-        })
+        let result: any
+        try {
+          result = await sendCallsAsync({
+            calls,
+            account: owner,
+            chainId: base.id,
+            forceAtomic: true,
+          })
+        } catch (e: any) {
+          const msg = String(e?.shortMessage || e?.message || '')
+          if (/wallet_sendCalls|sendCalls|5792|capabilit/i.test(msg)) {
+            setError(
+              'Your wallet does not support AA batching (EIP-5792). To deploy, either connect Coinbase Smart Wallet, or set “Vault owner wallet” to your smart wallet address and deploy using an owner EOA.',
+            )
+            return
+          }
+          throw e
+        }
 
         setCallBundleId(result.id)
 
