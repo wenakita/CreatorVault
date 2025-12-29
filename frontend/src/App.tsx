@@ -58,6 +58,11 @@ const FaqHowItWorks = lazy(async () => {
   return { default: m.FaqHowItWorks }
 })
 
+const Status = lazy(async () => {
+  const m = await import('./pages/Status')
+  return { default: m.Status }
+})
+
 function App() {
   return (
     <>
@@ -74,6 +79,7 @@ function App() {
           <Route path="/creator/:identifier/earnings" element={<CreatorEarnings />} />
           <Route path="/faq" element={<Faq />} />
           <Route path="/faq/how-it-works" element={<FaqHowItWorks />} />
+          <Route path="/status" element={<Status />} />
           <Route path="/activate-akita" element={<ActivateAkita />} />
           <Route path="/auction/bid/:address" element={<AuctionBid />} />
           <Route path="/complete-auction" element={<CompleteAuction />} />

@@ -776,10 +776,11 @@ export function DeployVaultAA({
         const found = (() => {
           for (const l of candidateLogs) {
             try {
+              if (!l.topics?.length) continue
               const decoded = decodeEventLog({
                 abi: STRATEGY_BATCHER_EVENTS_ABI,
                 data: l.data,
-                topics: l.topics,
+                topics: l.topics as unknown as [Hex, ...Hex[]],
               })
               if (decoded.eventName !== 'StrategiesDeployed') continue
               const args: any = decoded.args as any

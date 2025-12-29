@@ -1,6 +1,6 @@
 import { Suspense } from 'react'
 import { Outlet, Link, useLocation } from 'react-router-dom'
-import { Home, LayoutDashboard, HelpCircle } from 'lucide-react'
+import { Home, LayoutDashboard, HelpCircle, ShieldCheck } from 'lucide-react'
 import { ConnectButton } from './ConnectButton'
 import { VaultLogo } from './VaultLogo'
 
@@ -8,6 +8,7 @@ const navItems = [
   { path: '/', icon: Home, label: 'Home' },
   { path: '/dashboard', icon: LayoutDashboard, label: 'Vaults' },
   { path: '/deploy', icon: LayoutDashboard, label: 'Deploy' },
+  { path: '/status', icon: ShieldCheck, label: 'Status' },
   { path: '/faq', icon: HelpCircle, label: 'FAQ' },
 ]
 
