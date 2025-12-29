@@ -20,6 +20,7 @@ import {
   encodeAbiParameters,
   encodeFunctionData,
   encodePacked,
+  formatUnits,
   getCreate2Address,
   isAddress,
   keccak256,
@@ -31,6 +32,10 @@ import { CheckCircle, Loader, Rocket } from 'lucide-react'
 import { CONTRACTS } from '@/config/contracts'
 import { DEPLOY_BYTECODE } from '@/deploy/bytecode.generated'
 import { DEPLOY_BYTECODE_FULLSTACK } from '@/deploy/bytecode.fullstack'
+
+const MIN_FIRST_DEPOSIT = 50_000_000n * 10n ** 18n
+const DEFAULT_AUCTION_PERCENT = 50 // 50%
+const DEFAULT_REQUIRED_RAISE_WEI = 100_000_000_000_000_000n // 0.1 ETH
 
 const CREATE2_DEPLOYER_ABI = [
   {
@@ -145,6 +150,29 @@ const REGISTRY_LZ_VIEW_ABI = [
 
 const OFT_BOOTSTRAP_ABI = [
   { type: 'function', name: 'setLayerZeroEndpoint', stateMutability: 'nonpayable', inputs: [{ name: 'chainId', type: 'uint16' }, { name: 'endpoint', type: 'address' }], outputs: [] },
+] as const
+
+const ERC20_APPROVE_ABI = [
+  { type: 'function', name: 'approve', stateMutability: 'nonpayable', inputs: [{ name: 'spender', type: 'address' }, { name: 'amount', type: 'uint256' }], outputs: [{ type: 'bool' }] },
+  { type: 'function', name: 'balanceOf', stateMutability: 'view', inputs: [{ name: 'account', type: 'address' }], outputs: [{ type: 'uint256' }] },
+] as const
+
+const VAULT_ACTIVATION_BATCHER_ABI = [
+  {
+    type: 'function',
+    name: 'batchActivate',
+    stateMutability: 'nonpayable',
+    inputs: [
+      { name: 'creatorToken', type: 'address' },
+      { name: 'vault', type: 'address' },
+      { name: 'wrapper', type: 'address' },
+      { name: 'ccaStrategy', type: 'address' },
+      { name: 'depositAmount', type: 'uint256' },
+      { name: 'auctionPercent', type: 'uint8' },
+      { name: 'requiredRaise', type: 'uint128' },
+    ],
+    outputs: [{ name: 'auction', type: 'address' }],
+  },
 ] as const
 
 const COINBASE_SMART_WALLET_ABI = [
@@ -394,10 +422,32 @@ export function DeployVaultAA({
         fail('Failed to verify deployment dependencies. Please try again.')
       }
 
-    // Naming
-    const underlyingSymbol = symbol.startsWith('ws') ? symbol.slice(2) : symbol
-    const vaultName = `${underlyingSymbol} Vault Share`
-    const vaultSymbol = `s${underlyingSymbol}`
+      // Naming (used for user-facing errors and on-chain metadata)
+      const underlyingSymbol = symbol.startsWith('ws') ? symbol.slice(2) : symbol
+      const vaultName = `${underlyingSymbol} Vault Share`
+      const vaultSymbol = `s${underlyingSymbol}`
+
+      // Require creator to have the minimum deposit up-front (we will deposit+launch at the end of this flow).
+      // This prevents "deploy without launch" states that confuse users and creates a consistent minimum liquidity baseline.
+      try {
+        const bal = (await publicClient.readContract({
+          address: creatorToken,
+          abi: ERC20_APPROVE_ABI,
+          functionName: 'balanceOf',
+          args: [owner],
+        })) as unknown as bigint
+        if (typeof bal !== 'bigint') fail('Failed to check your token balance.')
+        if (bal < MIN_FIRST_DEPOSIT) {
+          const human = Number(formatUnits(bal, 18)).toLocaleString(undefined, { maximumFractionDigits: 2 })
+          fail(
+            `You need at least 50,000,000 ${underlyingSymbol.toUpperCase()} to deploy & launch.`,
+            `Owner wallet ${owner} balance: ${human} ${underlyingSymbol.toUpperCase()}`,
+          )
+        }
+      } catch (e: any) {
+        // If the token doesn't behave like an ERC20, bubble up a useful error.
+        fail('Failed to verify your token balance.', String(e?.shortMessage || e?.message || 'balanceOf failed'))
+      }
 
     // Salts
     const salts = deriveSalts({ creatorToken, owner, chainId: base.id, version })
@@ -643,6 +693,33 @@ export function DeployVaultAA({
     // VaultStrategyBootstrapper sets pendingManagement to `owner` — accept it here so the bootstrapper cannot manage post-deploy.
     calls.push({ to: vaultAddress, data: encodeFunctionData({ abi: VAULT_MANAGEMENT_ABI, functionName: 'acceptManagement' }) })
 
+    // Launch CCA (required): deposit minimum liquidity, wrap to wsTokens, and start the auction.
+    // We use the shared VaultActivationBatcher so we don't need to predict the exact ERC-4626 share amount.
+    calls.push({
+      to: creatorToken,
+      data: encodeFunctionData({
+        abi: ERC20_APPROVE_ABI,
+        functionName: 'approve',
+        args: [vaultActivationBatcher, MIN_FIRST_DEPOSIT],
+      }),
+    })
+    calls.push({
+      to: vaultActivationBatcher,
+      data: encodeFunctionData({
+        abi: VAULT_ACTIVATION_BATCHER_ABI,
+        functionName: 'batchActivate',
+        args: [
+          creatorToken,
+          vaultAddress,
+          wrapperAddress,
+          ccaAddress,
+          MIN_FIRST_DEPOSIT,
+          DEFAULT_AUCTION_PERCENT,
+          DEFAULT_REQUIRED_RAISE_WEI,
+        ],
+      }),
+    })
+
     // Best-effort: collect logs so we can show the exact strategy addresses after deployment.
     const candidateLogs: Array<{ address: Address; topics: Hex[]; data: Hex }> = []
 
@@ -855,7 +932,7 @@ export function DeployVaultAA({
       >
         <div className="relative flex items-center justify-center gap-2">
           <Rocket className="w-4 h-4" />
-          <span className="text-sm">{isSubmitting ? 'Deploying…' : 'Deploy vault'}</span>
+          <span className="text-sm">{isSubmitting ? 'Deploying & launching…' : 'Deploy + Launch'}</span>
         </div>
       </motion.button>
 
@@ -886,7 +963,7 @@ export function DeployVaultAA({
 
       {success && !isSubmitting && (
         <div className="p-4 bg-emerald-500/10 border border-emerald-500/20 rounded-lg text-emerald-200 text-sm">
-          Vault and yield strategies deployed successfully.
+          Vault deployed and fair launch started successfully.
         </div>
       )}
 
