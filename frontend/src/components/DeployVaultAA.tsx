@@ -192,12 +192,20 @@ type YieldDeploymentAddresses = {
   ajnaStrategy: Address
 }
 
+type DeploymentVersion = 'v1' | 'v2'
+
 interface DeployVaultAAProps {
   creatorToken: Address
   /** ShareOFT symbol, e.g. "wsAKITA" */
   symbol: string
   /** ShareOFT name, e.g. "Wrapped AKITA Share" */
   name: string
+  /**
+   * Optional: deploy a "fresh" stack for the same coin + owner by changing the CREATE2 salts.
+   * - v1: default (original deterministic addresses)
+   * - v2: one-time upgrade path (new deterministic addresses)
+   */
+  deploymentVersion?: DeploymentVersion
   /** Creator treasury for GaugeController (defaults to connected address) */
   creatorTreasury?: Address
   /**
@@ -213,9 +221,14 @@ function makeInitCode(bytecode: Hex, types: string, values: readonly unknown[]):
   return concatHex([bytecode, encoded])
 }
 
-function deriveSalts(params: { creatorToken: Address; owner: Address; chainId: number }) {
-  const { creatorToken, owner, chainId } = params
-  const baseSalt = keccak256(encodePacked(['address', 'address', 'uint256'], [creatorToken, owner, BigInt(chainId)]))
+function deriveSalts(params: { creatorToken: Address; owner: Address; chainId: number; version: DeploymentVersion }) {
+  const { creatorToken, owner, chainId, version } = params
+  const baseSalt = keccak256(
+    encodePacked(
+      ['address', 'address', 'uint256', 'string'],
+      [creatorToken, owner, BigInt(chainId), `CreatorVault:deploy:${version}`],
+    ),
+  )
   const saltFor = (label: string) => keccak256(encodePacked(['bytes32', 'string'], [baseSalt, label]))
   return {
     baseSalt,
@@ -229,9 +242,9 @@ function deriveSalts(params: { creatorToken: Address; owner: Address; chainId: n
 }
 
 // Chain-agnostic salts for cross-chain IDENTICAL ShareOFT deployments.
-function deriveShareOftUniversalSalt(params: { owner: Address; shareSymbol: string }) {
+function deriveShareOftUniversalSalt(params: { owner: Address; shareSymbol: string; version: DeploymentVersion }) {
   const base = keccak256(encodePacked(['address', 'string'], [params.owner, params.shareSymbol.toLowerCase()]))
-  return keccak256(encodePacked(['bytes32', 'string'], [base, 'CreatorShareOFT:v1']))
+  return keccak256(encodePacked(['bytes32', 'string'], [base, `CreatorShareOFT:${params.version}`]))
 }
 
 function deriveOftBootstrapSalt() {
@@ -252,6 +265,7 @@ export function DeployVaultAA({
   creatorToken,
   symbol,
   name,
+  deploymentVersion: deploymentVersionProp,
   creatorTreasury,
   executeAs,
   onSuccess,
@@ -260,6 +274,7 @@ export function DeployVaultAA({
   const publicClient = usePublicClient({ chainId: base.id })
   const { sendCallsAsync } = useSendCalls()
 
+  const [deploymentVersion, setDeploymentVersion] = useState<DeploymentVersion>(deploymentVersionProp ?? 'v1')
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [callBundleId, setCallBundleId] = useState<string | null>(null)
   const [callBundleType, setCallBundleType] = useState<'tx' | 'bundle' | null>(null)
@@ -275,7 +290,7 @@ export function DeployVaultAA({
     return ['Preparing', 'Confirm in wallet', 'Deploying', 'Verifying', 'Complete']
   }, [])
 
-  async function deploy() {
+  async function deploy(versionOverride?: DeploymentVersion) {
     setError(null)
     setErrorDetails(null)
     setCallBundleId(null)
@@ -285,6 +300,9 @@ export function DeployVaultAA({
     setSuccess(false)
     setShowDetails(false)
     setStep(0)
+
+    const version = versionOverride ?? deploymentVersion
+    if (versionOverride && versionOverride !== deploymentVersion) setDeploymentVersion(versionOverride)
 
     if (!address) {
       setError('Connect your wallet to deploy.')
@@ -382,7 +400,7 @@ export function DeployVaultAA({
     const vaultSymbol = `s${underlyingSymbol}`
 
     // Salts
-    const salts = deriveSalts({ creatorToken, owner, chainId: base.id })
+    const salts = deriveSalts({ creatorToken, owner, chainId: base.id, version })
 
     // Full-stack bootstrapper (deployed via CREATE2; temporarily owns the vault to wire strategies + handoff)
     const bootstrapperInitCode = makeInitCode(
@@ -401,7 +419,7 @@ export function DeployVaultAA({
     const oftBootstrapInitCode = DEPLOY_BYTECODE.OFTBootstrapRegistry as Hex
     const oftBootstrapRegistry = predictCreate2Address(create2Factory, oftBootstrapSalt, oftBootstrapInitCode)
 
-    const shareOftSalt = deriveShareOftUniversalSalt({ owner, shareSymbol: symbol })
+    const shareOftSalt = deriveShareOftUniversalSalt({ owner, shareSymbol: symbol, version })
 
     // Init codes (constructor args appended)
     const vaultInitCode = makeInitCode(
@@ -472,7 +490,10 @@ export function DeployVaultAA({
       publicClient.getBytecode({ address: oracleAddress }),
     ])
     if (existingBytecodes.some((x) => x && x !== '0x')) {
-      fail('A vault already exists for this coin + owner wallet.')
+      fail(
+        'A vault already exists for this coin + owner wallet.',
+        'If you need to deploy a fresh stack (one-time upgrade), use Deploy v2 to create new deterministic addresses.',
+      )
     }
 
     // ShareOFT bootstrap (cross-chain deterministic):
@@ -819,13 +840,14 @@ export function DeployVaultAA({
   }
 
   const disabled = isSubmitting || !address
+  const canOfferV2 = !!error && /already exists/i.test(error) && deploymentVersion === 'v1'
 
   const short = (addr: string) => `${addr.slice(0, 6)}…${addr.slice(-4)}`
 
   return (
     <div className="space-y-4">
       <motion.button
-        onClick={deploy}
+        onClick={() => deploy()}
         disabled={disabled}
         whileHover={{ scale: disabled ? 1 : 1.01 }}
         whileTap={{ scale: disabled ? 1 : 0.99 }}
@@ -871,6 +893,16 @@ export function DeployVaultAA({
       {error && (
         <div className="p-4 bg-red-500/10 border border-red-500/20 rounded-lg text-red-200 text-sm space-y-2">
           <div>{error}</div>
+          {canOfferV2 ? (
+            <button
+              type="button"
+              onClick={() => void deploy('v2')}
+              className="text-xs text-red-200/90 hover:text-red-100 underline underline-offset-2"
+              title="Deploys a one-time v2 stack using new CREATE2 salts (new addresses)"
+            >
+              Deploy v2 instead
+            </button>
+          ) : null}
           {errorDetails ? (
             <button
               type="button"
