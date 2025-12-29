@@ -408,11 +408,14 @@ export function Status() {
       })
     }
 
-    if (vaultAddress && wrapper && wrapperWhitelisted === false) {
+    if (vaultAddress && wrapper && wrapperWhitelisted !== true) {
+      const isTry = wrapperWhitelisted == null
       actions.push({
         id: 'fix-vault-whitelist',
-        title: 'Whitelist wrapper on vault',
-        description: 'Enables deposits/withdrawals through the wrapper when the vault whitelist is enforced.',
+        title: isTry ? 'Try whitelisting wrapper on vault' : 'Whitelist wrapper on vault',
+        description: isTry
+          ? 'Some vault versions don’t expose a readable whitelist. This will attempt to whitelist the wrapper (if supported).'
+          : 'Enables deposits/withdrawals through the wrapper when the vault whitelist is enforced.',
         requiredOwner: vaultOwner,
         canRun: !!isConnected && isBase && canFixVault,
         onRun: async () => {

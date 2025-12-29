@@ -482,7 +482,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         !addrOk(wrapperAddress)
           ? 'No wrapper detected; whitelist check not applicable.'
           : wrapperWhitelisted == null
-            ? 'Whitelist status is not readable for this vault version.'
+            ? 'Whitelist status is not readable for this vault version. If deposits fail, whitelist the wrapper as the vault owner.'
           : wrapperWhitelisted
             ? 'whitelist=true'
             : 'whitelist=false',
