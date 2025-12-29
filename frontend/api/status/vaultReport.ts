@@ -142,6 +142,86 @@ const STRATEGY_VIEW_ABI = [
   { type: 'function', name: 'asset', stateMutability: 'view', inputs: [], outputs: [{ type: 'address' }] },
 ] as const
 
+const AJNA_STRATEGY_BUCKET_ABI = [
+  { type: 'function', name: 'bucketIndex', stateMutability: 'view', inputs: [], outputs: [{ type: 'uint256' }] },
+] as const
+
+const ORACLE_V3_VIEW_ABI = [
+  { type: 'function', name: 'v3PoolConfigured', stateMutability: 'view', inputs: [], outputs: [{ type: 'bool' }] },
+  { type: 'function', name: 'v3Pool', stateMutability: 'view', inputs: [], outputs: [{ type: 'address' }] },
+  { type: 'function', name: 'v3CreatorToken', stateMutability: 'view', inputs: [], outputs: [{ type: 'address' }] },
+  { type: 'function', name: 'v3UsdToken', stateMutability: 'view', inputs: [], outputs: [{ type: 'address' }] },
+] as const
+
+const UNISWAP_V3_FACTORY_ABI = [
+  {
+    type: 'function',
+    name: 'getPool',
+    stateMutability: 'view',
+    inputs: [
+      { name: 'tokenA', type: 'address' },
+      { name: 'tokenB', type: 'address' },
+      { name: 'fee', type: 'uint24' },
+    ],
+    outputs: [{ type: 'address' }],
+  },
+] as const
+
+const UNISWAP_V3_POOL_ABI = [
+  { type: 'function', name: 'token0', stateMutability: 'view', inputs: [], outputs: [{ type: 'address' }] },
+  { type: 'function', name: 'token1', stateMutability: 'view', inputs: [], outputs: [{ type: 'address' }] },
+  {
+    type: 'function',
+    name: 'slot0',
+    stateMutability: 'view',
+    inputs: [],
+    outputs: [
+      { name: 'sqrtPriceX96', type: 'uint160' },
+      { name: 'tick', type: 'int24' },
+      { name: 'observationIndex', type: 'uint16' },
+      { name: 'observationCardinality', type: 'uint16' },
+      { name: 'observationCardinalityNext', type: 'uint16' },
+      { name: 'feeProtocol', type: 'uint8' },
+      { name: 'unlocked', type: 'bool' },
+    ],
+  },
+  {
+    type: 'function',
+    name: 'observe',
+    stateMutability: 'view',
+    inputs: [{ name: 'secondsAgos', type: 'uint32[]' }],
+    outputs: [
+      { name: 'tickCumulatives', type: 'int56[]' },
+      { name: 'secondsPerLiquidityCumulativeX128s', type: 'uint160[]' },
+    ],
+  },
+] as const
+
+// Base mainnet constants (avoid path aliases in serverless handlers used by Vite config bundling)
+const BASE_USDC = '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913'
+const BASE_UNISWAP_V3_FACTORY = '0x33128a8fC17869897dcE68Ed026d694621f6FDfD'
+
+function floorDiv(a: number, b: number): number {
+  const q = Math.trunc(a / b)
+  const r = a % b
+  if (a < 0 && r !== 0) return q - 1
+  return q
+}
+
+function tickToAjnaBucket(tick: number): number {
+  const q = floorDiv(tick, 50)
+  let idx = 4156 - q
+  if (idx < 1) idx = 1
+  if (idx > 7388) idx = 7388
+  return idx
+}
+
+function approxToken1PerToken0(tick: number, decimals0: number, decimals1: number): number {
+  const priceRaw = Math.pow(1.0001, tick)
+  const decAdj = Math.pow(10, decimals0 - decimals1)
+  return priceRaw * decAdj
+}
+
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   setCors(res)
   if (handleOptions(req, res)) return
@@ -338,6 +418,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       })
     }
 
+    let ajnaStrategyAddress: `0x${string}` | null = null
+    let ajnaStrategyOwner: `0x${string}` | null = null
+    let ajnaBucketIndex: bigint | null = null
+    let ajnaCollateralToken: `0x${string}` | null = null
+
     const stratCalls: any[] = []
     for (const s of strategies) {
       stratCalls.push({ address: s, abi: STRATEGY_VIEW_ABI, functionName: 'isActive' })
@@ -346,6 +431,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       stratCalls.push({ address: s, abi: AJNA_STRATEGY_VIEW_ABI, functionName: 'ajnaPool' })
       stratCalls.push({ address: s, abi: AJNA_STRATEGY_VIEW_ABI, functionName: 'collateralToken' })
       stratCalls.push({ address: s, abi: AJNA_STRATEGY_VIEW_ABI, functionName: 'ajnaFactory' })
+      stratCalls.push({ address: s, abi: AJNA_STRATEGY_BUCKET_ABI, functionName: 'bucketIndex' })
+      stratCalls.push({ address: s, abi: OWNABLE_VIEW_ABI, functionName: 'owner' })
     }
 
     const stratRes = stratCalls.length ? await safeMulticall(client, stratCalls) : []
@@ -357,7 +444,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         details: 'Rate limited while reading strategy details. Try again.',
       })
     } else {
-      const stride = 6
+      const stride = 8
       for (let i = 0; i < strategies.length; i++) {
         const s = strategies[i]
         const w = weights[i] ?? 0n
@@ -369,6 +456,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         const ajnaPool = pickResult<`0x${string}`>(stratRes[base + 3])
         const collateral = pickResult<`0x${string}`>(stratRes[base + 4])
         const ajnaFactory = pickResult<`0x${string}`>(stratRes[base + 5])
+        const bucketIndex = pickResult<bigint>(stratRes[base + 6])
+        const stratOwner = pickResult<`0x${string}`>(stratRes[base + 7])
 
         const flavor = addrOk(charmVault)
           ? 'Charm LP (CreatorCharmStrategyV2)'
@@ -386,6 +475,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         if (ajnaPool) extras.push(`ajnaPool=${ajnaPool}`)
         if (collateral) extras.push(`collateral=${collateral}`)
         if (ajnaFactory) extras.push(`factory=${ajnaFactory}`)
+        if (bucketIndex != null) extras.push(`bucket=${bucketIndex.toString()}`)
+        if (stratOwner) extras.push(`owner=${stratOwner}`)
 
         strategyChecks.push({
           id: `strategy-${i}`,
@@ -394,7 +485,209 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           details: extras.join(' · '),
           href: basescanAddressHref(s),
         })
+
+        // Capture Ajna strategy context for pricing + fix actions.
+        if (!ajnaStrategyAddress && addrOk(ajnaPool)) {
+          ajnaStrategyAddress = s
+          ajnaStrategyOwner = stratOwner
+          ajnaBucketIndex = bucketIndex ?? null
+          ajnaCollateralToken = collateral ?? null
+        }
       }
+    }
+
+    // Pricing checks (Uniswap V3 CREATOR/USDC) + Ajna bucket suggestion
+    const pricingChecks: Check[] = []
+    const usdc = BASE_USDC as `0x${string}`
+    const v3Factory = BASE_UNISWAP_V3_FACTORY as `0x${string}`
+    const v3FeeTier = 3000
+
+    let v3PoolAddress: `0x${string}` | null = null
+    let v3SpotTick: number | null = null
+    let v3TwapTick: number | null = null
+    let v3SpotUsdPerCreator: number | null = null
+    let v3TwapUsdPerCreator: number | null = null
+    let suggestedAjnaBucket: number | null = null
+    let oracleOwner: `0x${string}` | null = null
+    let oracleV3PoolConfigured: boolean | null = null
+    let oracleV3Pool: `0x${string}` | null = null
+
+    try {
+      const poolRes = await safeMulticall(client, [
+        { address: v3Factory, abi: UNISWAP_V3_FACTORY_ABI, functionName: 'getPool', args: [creatorToken, usdc, v3FeeTier] },
+      ])
+      if (any429(poolRes)) {
+        pricingChecks.push({ id: 'v3-rate', label: 'Uniswap V3 pricing', status: 'warn', details: 'Rate limited while reading V3 pool. Try again.' })
+      } else {
+        v3PoolAddress = pickResult<`0x${string}`>(poolRes[0])
+      }
+    } catch {
+      // ignore
+    }
+
+    if (!addrOk(v3PoolAddress)) {
+      pricingChecks.push({
+        id: 'v3-pool',
+        label: 'Uniswap V3 CREATOR/USDC pool (0.3%)',
+        status: 'warn',
+        details: 'No pool found yet. It may not have been created, or it’s using a different fee tier.',
+      })
+    } else {
+      pricingChecks.push({
+        id: 'v3-pool',
+        label: 'Uniswap V3 CREATOR/USDC pool (0.3%)',
+        status: 'pass',
+        details: v3PoolAddress,
+        href: basescanAddressHref(v3PoolAddress),
+      })
+
+      const poolMeta = await safeMulticall(client, [
+        { address: v3PoolAddress, abi: UNISWAP_V3_POOL_ABI, functionName: 'token0' },
+        { address: v3PoolAddress, abi: UNISWAP_V3_POOL_ABI, functionName: 'token1' },
+        { address: v3PoolAddress, abi: UNISWAP_V3_POOL_ABI, functionName: 'slot0' },
+        { address: creatorToken, abi: erc20Abi, functionName: 'decimals' },
+        { address: usdc, abi: erc20Abi, functionName: 'decimals' },
+        { address: v3PoolAddress, abi: UNISWAP_V3_POOL_ABI, functionName: 'observe', args: [[1800, 0]] },
+        { address: v3PoolAddress, abi: UNISWAP_V3_POOL_ABI, functionName: 'observe', args: [[300, 0]] },
+      ])
+      if (any429(poolMeta)) {
+        pricingChecks.push({ id: 'v3-meta-rate', label: 'Uniswap V3 price tick', status: 'warn', details: 'Rate limited while reading V3 price. Try again.' })
+      } else {
+        const token0 = pickResult<`0x${string}`>(poolMeta[0])
+        const token1 = pickResult<`0x${string}`>(poolMeta[1])
+        const slot0 = pickResult<any>(poolMeta[2])
+        const creatorDec = pickResult<number>(poolMeta[3]) ?? 18
+        const usdcDec = pickResult<number>(poolMeta[4]) ?? 6
+
+        if (slot0 && typeof slot0[1] === 'number') v3SpotTick = slot0[1]
+        if (slot0 && typeof slot0[1] === 'bigint') v3SpotTick = Number(slot0[1])
+
+        const calcMeanTick = (tickCumulatives: readonly (bigint | number)[], duration: number): number | null => {
+          if (!Array.isArray(tickCumulatives) || tickCumulatives.length < 2) return null
+          const a0 = tickCumulatives[0]
+          const a1 = tickCumulatives[1]
+          const t0 = typeof a0 === 'bigint' ? a0 : BigInt(a0)
+          const t1 = typeof a1 === 'bigint' ? a1 : BigInt(a1)
+          const delta = t1 - t0
+          const dur = BigInt(duration)
+          if (dur <= 0n) return null
+          let mean = delta / dur
+          if (delta < 0n && delta % dur !== 0n) mean -= 1n
+          return Number(mean)
+        }
+
+        const tryObserve = (res: any, duration: number): number | null => {
+          const obs = pickResult<any>(res)
+          const ticks = obs?.[0] as readonly (bigint | number)[] | undefined
+          return ticks ? calcMeanTick(ticks, duration) : null
+        }
+
+        // Prefer a 30m TWAP; fall back to 5m if the pool is too new.
+        v3TwapTick = tryObserve(poolMeta[5], 1800) ?? tryObserve(poolMeta[6], 300)
+
+        const isCreatorToken0 = token0?.toLowerCase?.() === creatorToken.toLowerCase()
+        const isCreatorToken1 = token1?.toLowerCase?.() === creatorToken.toLowerCase()
+        const tickForPrice = v3TwapTick ?? v3SpotTick
+
+        if (typeof tickForPrice === 'number' && (isCreatorToken0 || isCreatorToken1)) {
+          // priceToken1PerToken0Human depends on decimals order; use creator/usdc decimals.
+          const priceToken1PerToken0Human = approxToken1PerToken0(tickForPrice, isCreatorToken0 ? creatorDec : usdcDec, isCreatorToken0 ? usdcDec : creatorDec)
+          const usdPerCreator = isCreatorToken0 ? priceToken1PerToken0Human : priceToken1PerToken0Human > 0 ? 1 / priceToken1PerToken0Human : 0
+          const usdSpot = typeof v3SpotTick === 'number'
+            ? (() => {
+                const p = approxToken1PerToken0(v3SpotTick, isCreatorToken0 ? creatorDec : usdcDec, isCreatorToken0 ? usdcDec : creatorDec)
+                return isCreatorToken0 ? p : p > 0 ? 1 / p : 0
+              })()
+            : null
+          const usdTwap = typeof v3TwapTick === 'number'
+            ? (() => {
+                const p = approxToken1PerToken0(v3TwapTick, isCreatorToken0 ? creatorDec : usdcDec, isCreatorToken0 ? usdcDec : creatorDec)
+                return isCreatorToken0 ? p : p > 0 ? 1 / p : 0
+              })()
+            : null
+
+          v3SpotUsdPerCreator = usdSpot
+          v3TwapUsdPerCreator = usdTwap
+
+          const fmt = (n: number) =>
+            n <= 0 ? '—' : n >= 1 ? `$${n.toFixed(4)}` : `$${n.toPrecision(3)}`
+
+          pricingChecks.push({
+            id: 'v3-price',
+            label: 'CREATOR price (Uniswap V3)',
+            status: 'info',
+            details: `spot≈${usdSpot != null ? fmt(usdSpot) : '—'} · twap≈${usdTwap != null ? fmt(usdTwap) : '—'}`,
+          })
+
+          // Ajna wants tick for CREATOR per USDC (quote per collateral).
+          const orientedTick = isCreatorToken1 ? tickForPrice : -tickForPrice
+          suggestedAjnaBucket = tickToAjnaBucket(orientedTick)
+          pricingChecks.push({
+            id: 'ajna-bucket-suggested',
+            label: 'Suggested Ajna bucket (from V3 tick)',
+            status: 'info',
+            details: `bucket=${suggestedAjnaBucket} (tick=${orientedTick})`,
+          })
+        } else {
+          pricingChecks.push({
+            id: 'v3-price',
+            label: 'CREATOR price (Uniswap V3)',
+            status: 'warn',
+            details: 'Could not derive price tick (pool may be too new or unreadable).',
+          })
+        }
+      }
+    }
+
+    // Oracle V3 configuration (optional, but needed for onchain TWAP helpers)
+    if (addrOk(oracleAddress)) {
+      const oracleRes = await safeMulticall(client, [
+        { address: oracleAddress, abi: OWNABLE_VIEW_ABI, functionName: 'owner' },
+        { address: oracleAddress, abi: ORACLE_V3_VIEW_ABI, functionName: 'v3PoolConfigured' },
+        { address: oracleAddress, abi: ORACLE_V3_VIEW_ABI, functionName: 'v3Pool' },
+        { address: oracleAddress, abi: ORACLE_V3_VIEW_ABI, functionName: 'v3CreatorToken' },
+        { address: oracleAddress, abi: ORACLE_V3_VIEW_ABI, functionName: 'v3UsdToken' },
+      ])
+      if (!any429(oracleRes)) {
+        oracleOwner = pickResult<`0x${string}`>(oracleRes[0])
+        oracleV3PoolConfigured = pickResult<boolean>(oracleRes[1])
+        oracleV3Pool = pickResult<`0x${string}`>(oracleRes[2])
+        const oracleCreator = pickResult<`0x${string}`>(oracleRes[3])
+        const oracleUsd = pickResult<`0x${string}`>(oracleRes[4])
+
+        const ok =
+          oracleV3PoolConfigured === true &&
+          addrOk(v3PoolAddress) &&
+          typeof oracleV3Pool === 'string' &&
+          oracleV3Pool.toLowerCase() === v3PoolAddress.toLowerCase() &&
+          typeof oracleCreator === 'string' &&
+          oracleCreator.toLowerCase() === creatorToken.toLowerCase() &&
+          typeof oracleUsd === 'string' &&
+          oracleUsd.toLowerCase() === usdc.toLowerCase()
+
+        pricingChecks.push({
+          id: 'oracle-v3',
+          label: 'Oracle configured for V3 CREATOR/USDC TWAP',
+          status: ok ? 'pass' : oracleV3PoolConfigured === false ? 'warn' : ok === false ? 'warn' : 'info',
+          details: ok
+            ? 'oracle.v3PoolConfigured=true'
+            : oracleV3PoolConfigured === false
+              ? 'Not configured yet. Recommended: set oracle.setV3Pool(pool, creator, usdc, 1800).'
+              : `oracle.v3Pool=${String(oracleV3Pool ?? '—')}`,
+        })
+      }
+    }
+
+    // Compare Ajna bucket to suggested (best-effort)
+    if (suggestedAjnaBucket != null && ajnaBucketIndex != null && addrOk(ajnaStrategyAddress)) {
+      const ok = ajnaBucketIndex === BigInt(suggestedAjnaBucket)
+      pricingChecks.push({
+        id: 'ajna-bucket-match',
+        label: 'Ajna bucket matches suggestion',
+        status: ok ? 'pass' : 'warn',
+        details: `current=${ajnaBucketIndex.toString()} · suggested=${suggestedAjnaBucket}${ajnaCollateralToken ? ` · collateral=${ajnaCollateralToken}` : ''}`,
+        href: basescanAddressHref(ajnaStrategyAddress),
+      })
     }
 
     // Core and wiring sections
@@ -491,6 +784,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const sections: CheckSection[] = [
       { id: 'core', title: 'Vault overview', description: 'Identity + core contract addresses.', checks: coreChecks },
       { id: 'wiring', title: 'Wiring checks', description: 'Read-only checks to confirm contracts are connected correctly.', checks: wiringChecks },
+      { id: 'pricing', title: 'Market pricing (V3) + Ajna bucket', description: 'Reads the CREATOR/USDC Uniswap V3 pool and suggests an Ajna bucket.', checks: pricingChecks },
       { id: 'strategies', title: 'Yield strategy checks', description: 'Verifies the vault’s configured strategies and basic health signals.', checks: strategyChecks },
     ]
 
@@ -524,6 +818,18 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           wrapperOwner,
           wrapperWhitelisted,
           oracleAddress,
+          oracleOwner,
+          oracleV3PoolConfigured,
+          oracleV3Pool,
+          v3PoolAddress,
+          v3SpotTick: v3SpotTick == null ? null : String(v3SpotTick),
+          v3TwapTick: v3TwapTick == null ? null : String(v3TwapTick),
+          v3SpotUsdPerCreator: v3SpotUsdPerCreator == null ? null : String(v3SpotUsdPerCreator),
+          v3TwapUsdPerCreator: v3TwapUsdPerCreator == null ? null : String(v3TwapUsdPerCreator),
+          ajnaStrategyAddress,
+          ajnaStrategyOwner,
+          ajnaBucketIndex: ajnaBucketIndex == null ? null : ajnaBucketIndex.toString(),
+          ajnaSuggestedBucketIndex: suggestedAjnaBucket == null ? null : String(suggestedAjnaBucket),
           creatorTreasury,
           protocolTreasury,
           shareName,

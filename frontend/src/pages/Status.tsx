@@ -5,7 +5,7 @@ import { useQuery } from '@tanstack/react-query'
 import { useAccount, useWaitForTransactionReceipt, useWriteContract } from 'wagmi'
 import { base } from 'wagmi/chains'
 import { CheckCircle, XCircle, AlertTriangle, Loader2, ExternalLink, ShieldCheck, Wrench } from 'lucide-react'
-import { AKITA } from '@/config/contracts'
+import { AKITA, CONTRACTS } from '@/config/contracts'
 
 type CheckStatus = 'pass' | 'fail' | 'warn' | 'info'
 
@@ -41,6 +41,7 @@ type VaultFixContext = {
   vault?: string
   vaultOwner?: string
   owner?: string
+  creatorToken?: string
   shareOFTAddress?: string
   shareOftOwner?: string | null
   shareVault?: string | null
@@ -50,6 +51,15 @@ type VaultFixContext = {
   wrapperOwner?: string | null
   wrapperWhitelisted?: boolean | null
   gaugeAddress?: string
+  oracleAddress?: string | null
+  oracleOwner?: string | null
+  oracleV3PoolConfigured?: boolean | null
+  oracleV3Pool?: string | null
+  v3PoolAddress?: string | null
+  ajnaStrategyAddress?: string | null
+  ajnaStrategyOwner?: string | null
+  ajnaBucketIndex?: string | null
+  ajnaSuggestedBucketIndex?: string | null
 }
 
 function isAddressLike(value: string): boolean {
@@ -194,6 +204,31 @@ const VAULT_ADMIN_ABI = [
   },
 ] as const
 
+const ORACLE_ADMIN_ABI = [
+  {
+    type: 'function',
+    name: 'setV3Pool',
+    stateMutability: 'nonpayable',
+    inputs: [
+      { name: '_pool', type: 'address' },
+      { name: '_creatorToken', type: 'address' },
+      { name: '_usdToken', type: 'address' },
+      { name: '_twapDuration', type: 'uint32' },
+    ],
+    outputs: [],
+  },
+] as const
+
+const AJNA_ADMIN_ABI = [
+  {
+    type: 'function',
+    name: 'setBucketIndex',
+    stateMutability: 'nonpayable',
+    inputs: [{ name: '_index', type: 'uint256' }],
+    outputs: [],
+  },
+] as const
+
 export function Status() {
   const [searchParams, setSearchParams] = useSearchParams()
   const { address, isConnected, chain } = useAccount()
@@ -294,6 +329,7 @@ export function Status() {
   const vaultAddress = typeof ctx.vault === 'string' && isAddressLike(ctx.vault) ? ctx.vault : vaultParamAddress
   const vaultOwnerRaw = typeof ctx.vaultOwner === 'string' ? ctx.vaultOwner : typeof ctx.owner === 'string' ? ctx.owner : null
   const vaultOwner = vaultOwnerRaw && isAddressLike(vaultOwnerRaw) ? vaultOwnerRaw : null
+  const creatorToken = typeof ctx.creatorToken === 'string' && isAddressLike(ctx.creatorToken) ? ctx.creatorToken : null
   const shareOFT = typeof ctx.shareOFTAddress === 'string' && isAddressLike(ctx.shareOFTAddress) ? ctx.shareOFTAddress : null
   const shareOwner = typeof ctx.shareOftOwner === 'string' && isAddressLike(ctx.shareOftOwner) ? ctx.shareOftOwner : null
   const shareVault = typeof ctx.shareVault === 'string' && isAddressLike(ctx.shareVault) ? ctx.shareVault : ctx.shareVault === null ? null : null
@@ -302,9 +338,24 @@ export function Status() {
   const wrapper = typeof ctx.wrapperAddress === 'string' && isAddressLike(ctx.wrapperAddress) ? ctx.wrapperAddress : null
   const wrapperWhitelisted = typeof ctx.wrapperWhitelisted === 'boolean' ? ctx.wrapperWhitelisted : null
   const gauge = typeof ctx.gaugeAddress === 'string' && isAddressLike(ctx.gaugeAddress) ? ctx.gaugeAddress : null
+  const oracle = typeof ctx.oracleAddress === 'string' && isAddressLike(ctx.oracleAddress) ? ctx.oracleAddress : null
+  const oracleOwner = typeof ctx.oracleOwner === 'string' && isAddressLike(ctx.oracleOwner) ? ctx.oracleOwner : null
+  const oracleV3PoolConfigured = typeof ctx.oracleV3PoolConfigured === 'boolean' ? ctx.oracleV3PoolConfigured : null
+  const oracleV3Pool = typeof ctx.oracleV3Pool === 'string' && isAddressLike(ctx.oracleV3Pool) ? ctx.oracleV3Pool : null
+  const v3Pool = typeof ctx.v3PoolAddress === 'string' && isAddressLike(ctx.v3PoolAddress) ? ctx.v3PoolAddress : null
+  const ajnaStrategy = typeof ctx.ajnaStrategyAddress === 'string' && isAddressLike(ctx.ajnaStrategyAddress) ? ctx.ajnaStrategyAddress : null
+  const ajnaOwner = typeof ctx.ajnaStrategyOwner === 'string' && isAddressLike(ctx.ajnaStrategyOwner) ? ctx.ajnaStrategyOwner : null
+  const ajnaBucket =
+    typeof ctx.ajnaBucketIndex === 'string' && /^\d+$/.test(ctx.ajnaBucketIndex) ? BigInt(ctx.ajnaBucketIndex) : null
+  const ajnaSuggestedBucket =
+    typeof ctx.ajnaSuggestedBucketIndex === 'string' && /^\d+$/.test(ctx.ajnaSuggestedBucketIndex)
+      ? BigInt(ctx.ajnaSuggestedBucketIndex)
+      : null
 
   const canFixShare = !!address && !!shareOwner && address.toLowerCase() === shareOwner.toLowerCase()
   const canFixVault = !!address && !!vaultOwner && address.toLowerCase() === vaultOwner.toLowerCase()
+  const canFixOracle = !!address && !!oracleOwner && address.toLowerCase() === oracleOwner.toLowerCase()
+  const canFixAjna = !!address && !!ajnaOwner && address.toLowerCase() === ajnaOwner.toLowerCase()
   const isBase = (chain?.id ?? base.id) === base.id
 
   const fixActions = useMemo(() => {
@@ -433,14 +484,74 @@ export function Status() {
       })
     }
 
+    if (oracle && v3Pool && creatorToken) {
+      const needsOracleV3 =
+        oracleV3PoolConfigured !== true || !oracleV3Pool || oracleV3Pool.toLowerCase() !== v3Pool.toLowerCase()
+      if (needsOracleV3) {
+        actions.push({
+          id: 'fix-oracle-v3',
+          title: 'Configure oracle → Uniswap V3 (CREATOR/USDC)',
+          description: 'Sets oracle.setV3Pool so the oracle can read CREATOR/USDC TWAP and suggest Ajna buckets onchain.',
+          requiredOwner: oracleOwner,
+          canRun: !!isConnected && isBase && canFixOracle,
+          onRun: async () => {
+            setFixError(null)
+            setFixingId('fix-oracle-v3')
+            const hash = await writeContractAsync({
+              address: oracle as `0x${string}`,
+              abi: ORACLE_ADMIN_ABI,
+              functionName: 'setV3Pool',
+              args: [v3Pool as `0x${string}`, creatorToken as `0x${string}`, CONTRACTS.usdc, 1800],
+              chainId: base.id,
+            })
+            setFixHash(hash)
+          },
+        })
+      }
+    }
+
+    if (ajnaStrategy && ajnaSuggestedBucket != null && (ajnaBucket == null || ajnaBucket !== ajnaSuggestedBucket)) {
+      actions.push({
+        id: 'fix-ajna-bucket',
+        title: 'Set Ajna bucket (suggested)',
+        description:
+          'Sets AjnaStrategy.bucketIndex using the CREATOR/USDC V3 tick suggestion. Works best before the strategy has deposited liquidity.',
+        requiredOwner: ajnaOwner,
+        canRun: !!isConnected && isBase && canFixAjna,
+        onRun: async () => {
+          setFixError(null)
+          setFixingId('fix-ajna-bucket')
+          const hash = await writeContractAsync({
+            address: ajnaStrategy as `0x${string}`,
+            abi: AJNA_ADMIN_ABI,
+            functionName: 'setBucketIndex',
+            args: [ajnaSuggestedBucket],
+            chainId: base.id,
+          })
+          setFixHash(hash)
+        },
+      })
+    }
+
     return actions
   }, [
     address,
+    ajnaBucket,
+    ajnaOwner,
+    ajnaStrategy,
+    ajnaSuggestedBucket,
+    canFixAjna,
+    canFixOracle,
     canFixShare,
     canFixVault,
+    creatorToken,
     gauge,
     isBase,
     isConnected,
+    oracle,
+    oracleOwner,
+    oracleV3Pool,
+    oracleV3PoolConfigured,
     shareGauge,
     shareMinterOk,
     shareOFT,
@@ -448,6 +559,7 @@ export function Status() {
     shareVault,
     vaultAddress,
     vaultOwner,
+    v3Pool,
     wrapper,
     wrapperWhitelisted,
     writeContractAsync,
