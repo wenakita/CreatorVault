@@ -101,29 +101,35 @@ const STRATEGY_VIEW_ABI = [
   { type: 'function', name: 'getTotalAssets', stateMutability: 'view', inputs: [], outputs: [{ type: 'uint256' }] },
 ] as const
 
-const STRATEGY_BATCHER_EVENTS_ABI = [
-  {
-    type: 'event',
-    name: 'StrategiesDeployed',
-    inputs: [
-      { name: 'creator', type: 'address', indexed: true },
-      { name: 'underlyingToken', type: 'address', indexed: true },
-      {
-        name: 'result',
-        type: 'tuple',
-        indexed: false,
-        components: [
-          { name: 'charmVault', type: 'address' },
-          { name: 'charmStrategy', type: 'address' },
-          { name: 'creatorCharmStrategy', type: 'address' },
-          { name: 'ajnaStrategy', type: 'address' },
-          { name: 'v3Pool', type: 'address' },
-        ],
-      },
-    ],
-    anonymous: false,
-  },
-] as const
+function errorToMessage(e: unknown): string {
+  return String((e as any)?.shortMessage || (e as any)?.message || e || 'Unknown error')
+}
+
+function isRateLimitError(message: string): boolean {
+  return /429|rate limit|too many requests/i.test(message)
+}
+
+async function safeMulticall(publicClient: any, contracts: any[]) {
+  try {
+    return await publicClient.multicall({ contracts, allowFailure: true })
+  } catch {
+    // Fallback to sequential reads if multicall is unavailable for some reason.
+    const out: any[] = []
+    for (const c of contracts) {
+      try {
+        const result = await publicClient.readContract(c)
+        out.push({ status: 'success', result })
+      } catch (error) {
+        out.push({ status: 'failure', error })
+      }
+    }
+    return out
+  }
+}
+
+function pickResult<T>(r: any): T | null {
+  return r?.status === 'success' ? (r.result as T) : null
+}
 
 function makeInitCode(bytecode: Hex, types: string, values: readonly unknown[]): Hex {
   const encoded = encodeAbiParameters(parseAbiParameters(types), values as any)
@@ -303,588 +309,577 @@ async function runGlobalChecks(publicClient: any): Promise<CheckSection[]> {
 }
 
 async function runVaultChecks(publicClient: any, vaultAddress: Address): Promise<CheckSection[]> {
-  const sections: CheckSection[] = []
+  const ZERO = '0x0000000000000000000000000000000000000000'
+  const addrOk = (a: any): a is Address => typeof a === 'string' && isAddress(a) && a !== ZERO
 
-  const hasVaultCode = await checkBytecode(publicClient, vaultAddress)
-  if (!hasVaultCode) {
-    return [
+  const any429 = (results: any[]) =>
+    results.some((r) => r?.status === 'failure' && isRateLimitError(errorToMessage((r as any)?.error)))
+
+  try {
+    const sections: CheckSection[] = []
+
+    const vaultBasics = await safeMulticall(publicClient, [
+      { address: vaultAddress, abi: OWNABLE_VIEW_ABI, functionName: 'owner' },
+      { address: vaultAddress, abi: VAULT_VIEW_ABI, functionName: 'CREATOR_COIN' },
+      { address: vaultAddress, abi: VAULT_VIEW_ABI, functionName: 'gaugeController' },
+      { address: vaultAddress, abi: erc20Abi, functionName: 'name' },
+      { address: vaultAddress, abi: erc20Abi, functionName: 'symbol' },
+    ])
+    if (any429(vaultBasics)) {
+      return [
+        {
+          id: 'rate-limit',
+          title: 'Vault report',
+          description: 'Rate limited by Base RPC. Please try again in a moment.',
+          checks: [
+            {
+              id: 'rate-limit-429',
+              label: 'RPC rate limit',
+              status: 'warn',
+              details: 'The public Base RPC is throttling requests (HTTP 429).',
+            },
+          ],
+        },
+      ]
+    }
+
+    const owner = pickResult<Address>(vaultBasics[0])
+    const creatorToken = pickResult<Address>(vaultBasics[1])
+    const gaugeAddress = pickResult<Address>(vaultBasics[2])
+    const vaultName = pickResult<string>(vaultBasics[3]) ?? 'Vault'
+    const vaultSymbol = pickResult<string>(vaultBasics[4]) ?? '—'
+
+    if (!addrOk(owner) || !addrOk(creatorToken)) {
+      return [
+        {
+          id: 'vault',
+          title: 'Vault',
+          description: 'Could not read basic vault data.',
+          checks: [
+            {
+              id: 'vault-readable',
+              label: 'Vault readable',
+              status: 'fail',
+              details: vaultAddress,
+              href: basescanAddressHref(vaultAddress),
+            },
+          ],
+        },
+      ]
+    }
+
+    let creatorSymbol = '—'
+    try {
+      creatorSymbol = (await publicClient.readContract({
+        address: creatorToken,
+        abi: erc20Abi,
+        functionName: 'symbol',
+      })) as string
+    } catch {
+      // ignore
+    }
+
+    // Gauge: discover core infra addresses
+    let shareOFTAddress: Address | null = null
+    let wrapperAddress: Address | null = null
+    let oracleAddress: Address | null = null
+    let gaugeVault: Address | null = null
+    let gaugeCreatorCoin: Address | null = null
+    let creatorTreasury: Address | null = null
+    let protocolTreasury: Address | null = null
+
+    if (addrOk(gaugeAddress)) {
+      const gaugeRes = await safeMulticall(publicClient, [
+        { address: gaugeAddress, abi: GAUGE_VIEW_ABI, functionName: 'shareOFT' },
+        { address: gaugeAddress, abi: GAUGE_VIEW_ABI, functionName: 'wrapper' },
+        { address: gaugeAddress, abi: GAUGE_VIEW_ABI, functionName: 'oracle' },
+        { address: gaugeAddress, abi: GAUGE_VIEW_ABI, functionName: 'vault' },
+        { address: gaugeAddress, abi: GAUGE_VIEW_ABI, functionName: 'creatorCoin' },
+        { address: gaugeAddress, abi: GAUGE_VIEW_ABI, functionName: 'creatorTreasury' },
+        { address: gaugeAddress, abi: GAUGE_VIEW_ABI, functionName: 'protocolTreasury' },
+      ])
+      if (any429(gaugeRes)) {
+        return [
+          {
+            id: 'rate-limit',
+            title: 'Vault report',
+            description: 'Rate limited by Base RPC. Please try again in a moment.',
+            checks: [
+              {
+                id: 'rate-limit-429',
+                label: 'RPC rate limit',
+                status: 'warn',
+                details: 'The public Base RPC is throttling requests (HTTP 429).',
+              },
+            ],
+          },
+        ]
+      }
+      shareOFTAddress = pickResult<Address>(gaugeRes[0])
+      wrapperAddress = pickResult<Address>(gaugeRes[1])
+      oracleAddress = pickResult<Address>(gaugeRes[2])
+      gaugeVault = pickResult<Address>(gaugeRes[3])
+      gaugeCreatorCoin = pickResult<Address>(gaugeRes[4])
+      creatorTreasury = pickResult<Address>(gaugeRes[5])
+      protocolTreasury = pickResult<Address>(gaugeRes[6])
+    }
+
+    // ShareOFT details
+    let shareName: string | null = null
+    let shareSymbol: string | null = null
+    let shareVault: Address | null = null
+    let shareGauge: Address | null = null
+    let shareMinterOk: boolean | null = null
+
+    if (addrOk(shareOFTAddress)) {
+      const shareCalls: any[] = [
+        { address: shareOFTAddress, abi: erc20Abi, functionName: 'name' },
+        { address: shareOFTAddress, abi: erc20Abi, functionName: 'symbol' },
+        { address: shareOFTAddress, abi: SHAREOFT_VIEW_ABI, functionName: 'vault' },
+        { address: shareOFTAddress, abi: SHAREOFT_VIEW_ABI, functionName: 'gaugeController' },
+      ]
+      if (addrOk(wrapperAddress)) {
+        shareCalls.push({
+          address: shareOFTAddress,
+          abi: SHAREOFT_VIEW_ABI,
+          functionName: 'isMinter',
+          args: [wrapperAddress],
+        })
+      }
+      const shareRes = await safeMulticall(publicClient, shareCalls)
+      if (any429(shareRes)) {
+        return [
+          {
+            id: 'rate-limit',
+            title: 'Vault report',
+            description: 'Rate limited by Base RPC. Please try again in a moment.',
+            checks: [
+              {
+                id: 'rate-limit-429',
+                label: 'RPC rate limit',
+                status: 'warn',
+                details: 'The public Base RPC is throttling requests (HTTP 429).',
+              },
+            ],
+          },
+        ]
+      }
+      shareName = pickResult<string>(shareRes[0])
+      shareSymbol = pickResult<string>(shareRes[1])
+      shareVault = pickResult<Address>(shareRes[2])
+      shareGauge = pickResult<Address>(shareRes[3])
+      if (shareRes.length >= 5) shareMinterOk = pickResult<boolean>(shareRes[4])
+    }
+
+    // Wrapper details
+    let wrapperVault: Address | null = null
+    let wrapperCoin: Address | null = null
+    let wrapperShare: Address | null = null
+    if (addrOk(wrapperAddress)) {
+      const wrapRes = await safeMulticall(publicClient, [
+        { address: wrapperAddress, abi: WRAPPER_VIEW_ABI, functionName: 'vault' },
+        { address: wrapperAddress, abi: WRAPPER_VIEW_ABI, functionName: 'creatorCoin' },
+        { address: wrapperAddress, abi: WRAPPER_VIEW_ABI, functionName: 'shareOFT' },
+      ])
+      if (any429(wrapRes)) {
+        return [
+          {
+            id: 'rate-limit',
+            title: 'Vault report',
+            description: 'Rate limited by Base RPC. Please try again in a moment.',
+            checks: [
+              {
+                id: 'rate-limit-429',
+                label: 'RPC rate limit',
+                status: 'warn',
+                details: 'The public Base RPC is throttling requests (HTTP 429).',
+              },
+            ],
+          },
+        ]
+      }
+      wrapperVault = pickResult<Address>(wrapRes[0])
+      wrapperCoin = pickResult<Address>(wrapRes[1])
+      wrapperShare = pickResult<Address>(wrapRes[2])
+    }
+
+    // Vault extras: whitelist + strategies
+    let wrapperWhitelisted: boolean | null = null
+    let strategies: readonly Address[] = []
+    let weights: readonly bigint[] = []
+
+    const extraCalls: any[] = []
+    if (addrOk(wrapperAddress)) {
+      extraCalls.push({ address: vaultAddress, abi: VAULT_VIEW_ABI, functionName: 'whitelist', args: [wrapperAddress] })
+    }
+    extraCalls.push({ address: vaultAddress, abi: VAULT_VIEW_ABI, functionName: 'getStrategies' })
+    const extraRes = await safeMulticall(publicClient, extraCalls)
+    if (any429(extraRes)) {
+      return [
+        {
+          id: 'rate-limit',
+          title: 'Vault report',
+          description: 'Rate limited by Base RPC. Please try again in a moment.',
+          checks: [
+            {
+              id: 'rate-limit-429',
+              label: 'RPC rate limit',
+              status: 'warn',
+              details: 'The public Base RPC is throttling requests (HTTP 429).',
+            },
+          ],
+        },
+      ]
+    }
+    const stratTuple = pickResult<any>(extraRes[addrOk(wrapperAddress) ? 1 : 0])
+    if (addrOk(wrapperAddress)) wrapperWhitelisted = pickResult<boolean>(extraRes[0])
+    if (stratTuple) {
+      strategies = (stratTuple[0] ?? []) as readonly Address[]
+      weights = (stratTuple[1] ?? []) as readonly bigint[]
+    }
+
+    const coreChecks: Check[] = [
       {
         id: 'vault',
-        title: 'Vault',
-        description: 'Could not verify this vault address.',
+        label: 'Vault',
+        status: 'pass',
+        details: `${vaultName} (${vaultSymbol})`,
+        href: basescanAddressHref(vaultAddress),
+      },
+      { id: 'owner', label: 'Vault owner', status: 'info', details: owner, href: basescanAddressHref(owner) },
+      {
+        id: 'creatorToken',
+        label: 'Creator coin',
+        status: 'info',
+        details: `${creatorSymbol} · ${creatorToken}`,
+        href: basescanAddressHref(creatorToken),
+      },
+      {
+        id: 'gauge',
+        label: 'Gauge controller',
+        status: addrOk(gaugeAddress) ? 'pass' : 'fail',
+        details: String(gaugeAddress ?? '—'),
+        href: addrOk(gaugeAddress) ? basescanAddressHref(gaugeAddress) : undefined,
+      },
+      {
+        id: 'shareOFT',
+        label: 'Share token (ShareOFT)',
+        status: addrOk(shareOFTAddress) ? 'pass' : 'fail',
+        details: String(shareOFTAddress ?? '—'),
+        href: addrOk(shareOFTAddress) ? basescanAddressHref(shareOFTAddress) : undefined,
+      },
+      {
+        id: 'wrapper',
+        label: 'Wrapper',
+        status: addrOk(wrapperAddress) ? 'pass' : 'fail',
+        details: String(wrapperAddress ?? '—'),
+        href: addrOk(wrapperAddress) ? basescanAddressHref(wrapperAddress) : undefined,
+      },
+      {
+        id: 'oracle',
+        label: 'Oracle',
+        status: addrOk(oracleAddress) ? 'pass' : 'warn',
+        details: String(oracleAddress ?? '—'),
+        href: addrOk(oracleAddress) ? basescanAddressHref(oracleAddress) : undefined,
+      },
+    ]
+    sections.push({
+      id: 'core',
+      title: 'Vault overview',
+      description: 'Identity + core contract addresses.',
+      checks: coreChecks,
+    })
+
+    const wiringChecks: Check[] = []
+    const same = (a?: Address | null, b?: Address | null) =>
+      a && b && isAddress(a) && isAddress(b) ? a.toLowerCase() === b.toLowerCase() : null
+    const pushBool = (id: string, label: string, ok: boolean | null, details: string) => {
+      wiringChecks.push({ id, label, status: ok === null ? 'warn' : ok ? 'pass' : 'fail', details })
+    }
+
+    pushBool('gauge-vault', 'Gauge points to vault', same(gaugeVault, vaultAddress), `gauge.vault = ${String(gaugeVault ?? '—')}`)
+    pushBool('gauge-coin', 'Gauge points to creator coin', same(gaugeCreatorCoin, creatorToken), `gauge.creatorCoin = ${String(gaugeCreatorCoin ?? '—')}`)
+    pushBool('share-vault', 'Share token points to vault', same(shareVault, vaultAddress), `shareOFT.vault = ${String(shareVault ?? '—')}`)
+    pushBool('share-gauge', 'Share token points to gauge', same(shareGauge, gaugeAddress ?? null), `shareOFT.gaugeController = ${String(shareGauge ?? '—')}`)
+    pushBool('wrapper-vault', 'Wrapper points to vault', same(wrapperVault, vaultAddress), `wrapper.vault = ${String(wrapperVault ?? '—')}`)
+    pushBool('wrapper-coin', 'Wrapper points to creator coin', same(wrapperCoin, creatorToken), `wrapper.creatorCoin = ${String(wrapperCoin ?? '—')}`)
+    pushBool('wrapper-share', 'Wrapper points to share token', same(wrapperShare, shareOFTAddress ?? null), `wrapper.shareOFT = ${String(wrapperShare ?? '—')}`)
+
+    wiringChecks.push({
+      id: 'share-minter',
+      label: 'Wrapper is approved minter on share token',
+      status: shareMinterOk == null ? 'warn' : shareMinterOk ? 'pass' : 'fail',
+      details: shareMinterOk == null ? 'Could not read isMinter(wrapper)' : shareMinterOk ? 'isMinter(wrapper)=true' : 'isMinter(wrapper)=false',
+    })
+
+    wiringChecks.push({
+      id: 'vault-whitelist',
+      label: 'Wrapper is whitelisted on vault',
+      status: wrapperWhitelisted == null ? 'warn' : wrapperWhitelisted ? 'pass' : 'fail',
+      details: wrapperWhitelisted == null ? 'Could not read vault.whitelist(wrapper)' : wrapperWhitelisted ? 'whitelist=true' : 'whitelist=false',
+    })
+
+    sections.push({
+      id: 'wiring',
+      title: 'Wiring checks',
+      description: 'Read-only checks to confirm contracts are connected correctly.',
+      checks: wiringChecks,
+    })
+
+    // Deterministic address checks (minimal calls; no eth_getCode spam)
+    const deterministicChecks: Check[] = []
+    try {
+      if (!shareName || !shareSymbol || !addrOk(gaugeAddress) || !addrOk(shareOFTAddress) || !addrOk(wrapperAddress)) {
+        deterministicChecks.push({
+          id: 'deterministic-skip',
+          label: 'Deterministic address verification',
+          status: 'warn',
+          details: 'Missing required data (share name/symbol or core addresses).',
+        })
+      } else if (!addrOk(creatorTreasury) || !addrOk(protocolTreasury)) {
+        deterministicChecks.push({
+          id: 'deterministic-skip-treasury',
+          label: 'Deterministic address verification',
+          status: 'warn',
+          details: 'Missing gauge treasury values.',
+        })
+      } else {
+        const salts = deriveSalts({ creatorToken, owner, chainId: base.id })
+        const create2Factory = CONTRACTS.create2Factory as Address
+        const create2Deployer = CONTRACTS.create2Deployer as Address
+
+        const bootstrapperInitCode = makeInitCode(DEPLOY_BYTECODE_FULLSTACK.VaultStrategyBootstrapper as Hex, 'address', [owner])
+        const bootstrapperAddress = predictCreate2Address(create2Deployer, salts.bootstrapperSalt, bootstrapperInitCode)
+
+        const predictedVaultInitCode = makeInitCode(
+          DEPLOY_BYTECODE.CreatorOVault as Hex,
+          'address,address,string,string',
+          [creatorToken, bootstrapperAddress, vaultName, vaultSymbol],
+        )
+        const predictedVault = predictCreate2Address(create2Deployer, salts.vaultSalt, predictedVaultInitCode)
+
+        const predictedWrapperInitCode = makeInitCode(
+          DEPLOY_BYTECODE.CreatorOVaultWrapper as Hex,
+          'address,address,address',
+          [creatorToken, vaultAddress, owner],
+        )
+        const predictedWrapper = predictCreate2Address(create2Deployer, salts.wrapperSalt, predictedWrapperInitCode)
+
+        const oftBootstrapSalt = deriveOftBootstrapSalt()
+        const oftBootstrapRegistry = predictCreate2Address(create2Factory, oftBootstrapSalt, DEPLOY_BYTECODE.OFTBootstrapRegistry as Hex)
+        const shareOftSalt = deriveShareOftUniversalSalt({ owner, shareSymbol })
+        const predictedShareInitCode = makeInitCode(
+          DEPLOY_BYTECODE.CreatorShareOFT as Hex,
+          'string,string,address,address',
+          [shareName, shareSymbol, oftBootstrapRegistry, owner],
+        )
+        const predictedShare = predictCreate2Address(create2Factory, shareOftSalt, predictedShareInitCode)
+
+        const predictedGaugeInitCode = makeInitCode(
+          DEPLOY_BYTECODE.CreatorGaugeController as Hex,
+          'address,address,address,address',
+          [shareOFTAddress, creatorTreasury, protocolTreasury, owner],
+        )
+        const predictedGauge = predictCreate2Address(create2Deployer, salts.gaugeSalt, predictedGaugeInitCode)
+
+        const predictedOracleInitCode = makeInitCode(
+          DEPLOY_BYTECODE.CreatorOracle as Hex,
+          'address,address,string,address',
+          [CONTRACTS.registry as Address, CONTRACTS.chainlinkEthUsd as Address, shareSymbol, owner],
+        )
+        const predictedOracle = predictCreate2Address(create2Deployer, salts.oracleSalt, predictedOracleInitCode)
+
+        const predictedCcaInitCode = makeInitCode(
+          DEPLOY_BYTECODE.CCALaunchStrategy as Hex,
+          'address,address,address,address,address',
+          [shareOFTAddress, ZERO, vaultAddress, vaultAddress, owner],
+        )
+        const predictedCca = predictCreate2Address(create2Deployer, salts.ccaSalt, predictedCcaInitCode)
+
+        deterministicChecks.push({
+          id: 'pred-vault',
+          label: 'Vault address matches deterministic CREATE2 prediction',
+          status: predictedVault.toLowerCase() === vaultAddress.toLowerCase() ? 'pass' : 'fail',
+          details: `predicted = ${predictedVault}`,
+        })
+        deterministicChecks.push({
+          id: 'pred-wrapper',
+          label: 'Wrapper address matches deterministic CREATE2 prediction',
+          status: predictedWrapper.toLowerCase() === wrapperAddress.toLowerCase() ? 'pass' : 'fail',
+          details: `predicted = ${predictedWrapper}`,
+        })
+        deterministicChecks.push({
+          id: 'pred-share',
+          label: 'Share token address matches deterministic CREATE2 prediction',
+          status: predictedShare.toLowerCase() === shareOFTAddress.toLowerCase() ? 'pass' : 'fail',
+          details: `predicted = ${predictedShare}`,
+        })
+        deterministicChecks.push({
+          id: 'pred-gauge',
+          label: 'Gauge address matches deterministic CREATE2 prediction',
+          status: predictedGauge.toLowerCase() === gaugeAddress.toLowerCase() ? 'pass' : 'fail',
+          details: `predicted = ${predictedGauge}`,
+        })
+        deterministicChecks.push({
+          id: 'pred-oracle',
+          label: 'Oracle address matches deterministic CREATE2 prediction',
+          status: addrOk(oracleAddress) ? (predictedOracle.toLowerCase() === oracleAddress.toLowerCase() ? 'pass' : 'fail') : 'warn',
+          details: `predicted = ${predictedOracle}`,
+        })
+
+        // Best-effort launcher approval check (does not require eth_getCode)
+        try {
+          const launcherOk = (await publicClient.readContract({
+            address: predictedCca,
+            abi: CCA_VIEW_ABI,
+            functionName: 'approvedLaunchers',
+            args: [CONTRACTS.vaultActivationBatcher as Address],
+          })) as boolean
+          deterministicChecks.push({
+            id: 'cca-launcher',
+            label: 'Launch strategy approves VaultActivationBatcher',
+            status: launcherOk ? 'pass' : 'fail',
+            details: `${predictedCca}`,
+            href: basescanAddressHref(predictedCca),
+          })
+        } catch (e: any) {
+          const msg = errorToMessage(e)
+          deterministicChecks.push({
+            id: 'cca-launcher',
+            label: 'Launch strategy approval check',
+            status: isRateLimitError(msg) ? 'warn' : 'info',
+            details: isRateLimitError(msg) ? 'Rate limited while checking. Try again.' : `Not found or not readable at ${predictedCca}`,
+            href: basescanAddressHref(predictedCca),
+          })
+        }
+      }
+    } catch (e: any) {
+      deterministicChecks.push({
+        id: 'deterministic-error',
+        label: 'Deterministic address verification',
+        status: 'warn',
+        details: errorToMessage(e),
+      })
+    }
+
+    sections.push({
+      id: 'deterministic',
+      title: 'Deterministic deployment checks',
+      description: 'Confirms contracts match their expected CREATE2 addresses for this creator coin + owner.',
+      checks: deterministicChecks,
+    })
+
+    // Strategy checks
+    const strategyChecks: Check[] = []
+    if (!strategies.length) {
+      strategyChecks.push({ id: 'no-strategies', label: 'Vault has strategies configured', status: 'warn', details: 'No strategies found.' })
+    } else {
+      strategyChecks.push({ id: 'strategy-count', label: 'Vault has strategies configured', status: 'pass', details: `${strategies.length} strategies` })
+    }
+
+    const calls: any[] = []
+    for (const s of strategies) {
+      calls.push({ address: s, abi: STRATEGY_VIEW_ABI, functionName: 'isActive' })
+      calls.push({ address: s, abi: STRATEGY_VIEW_ABI, functionName: 'asset' })
+      calls.push({ address: s, abi: CREATOR_CHARM_STRATEGY_VIEW_ABI, functionName: 'charmVault' })
+      calls.push({ address: s, abi: AJNA_STRATEGY_VIEW_ABI, functionName: 'ajnaPool' })
+      calls.push({ address: s, abi: AJNA_STRATEGY_VIEW_ABI, functionName: 'collateralToken' })
+      calls.push({ address: s, abi: AJNA_STRATEGY_VIEW_ABI, functionName: 'ajnaFactory' })
+    }
+
+    const stratRes = calls.length ? await safeMulticall(publicClient, calls) : []
+    if (any429(stratRes)) {
+      strategyChecks.push({
+        id: 'strategies-rate',
+        label: 'Strategy checks',
+        status: 'warn',
+        details: 'Rate limited while reading strategy details. Try again.',
+      })
+    } else {
+      const stride = 6
+      for (let i = 0; i < strategies.length; i++) {
+        const s = strategies[i]
+        const w = weights[i] ?? 0n
+        const baseLabel = `${s} · weight ${w.toString()}`
+
+        const base = i * stride
+        const isActive = pickResult<boolean>(stratRes[base + 0])
+        const asset = pickResult<Address>(stratRes[base + 1])
+        const charmVault = pickResult<Address>(stratRes[base + 2])
+        const ajnaPool = pickResult<Address>(stratRes[base + 3])
+        const collateral = pickResult<Address>(stratRes[base + 4])
+        const ajnaFactory = pickResult<Address>(stratRes[base + 5])
+
+        const assetOk = asset && isAddress(asset) ? asset.toLowerCase() === creatorToken.toLowerCase() : null
+        const activeOk = typeof isActive === 'boolean' ? isActive : null
+
+        const flavor =
+          addrOk(charmVault) ? 'Charm LP (CreatorCharmStrategyV2)' : addrOk(ajnaPool) ? 'Ajna lending (AjnaStrategy)' : 'Strategy'
+        const extraParts: string[] = []
+        if (asset) extraParts.push(`asset=${asset}`)
+        if (addrOk(charmVault)) extraParts.push(`charmVault=${charmVault}`)
+        if (addrOk(ajnaPool)) extraParts.push(`ajnaPool=${ajnaPool}`)
+        if (collateral) extraParts.push(`collateral=${collateral}`)
+        if (ajnaFactory) extraParts.push(`factory=${ajnaFactory}`)
+
+        const status: CheckStatus =
+          activeOk === false ? 'warn' : assetOk === false ? 'fail' : activeOk === null || assetOk === null ? 'warn' : 'pass'
+
+        strategyChecks.push({
+          id: `strategy-${i}`,
+          label: flavor,
+          status,
+          details: `${baseLabel}${extraParts.length ? ` · ${extraParts.join(' · ')}` : ''}`,
+          href: basescanAddressHref(s),
+        })
+      }
+    }
+
+    sections.push({
+      id: 'strategies',
+      title: 'Yield strategy checks',
+      description: 'Verifies the vault’s configured strategies and basic health signals.',
+      checks: strategyChecks,
+    })
+
+    return sections
+  } catch (e: any) {
+    const msg = errorToMessage(e)
+    return [
+      {
+        id: 'vault-error',
+        title: 'Vault report',
+        description: 'Could not generate this vault report.',
         checks: [
           {
-            id: 'vault-bytecode',
-            label: 'Vault bytecode present',
-            status: 'fail',
-            details: vaultAddress,
-            href: basescanAddressHref(vaultAddress),
+            id: 'vault-error-details',
+            label: isRateLimitError(msg) ? 'RPC rate limit' : 'Unexpected error',
+            status: 'warn',
+            details: isRateLimitError(msg) ? 'Rate limited by Base RPC. Please try again in a moment.' : msg,
           },
         ],
       },
     ]
   }
-
-  const owner = (await publicClient.readContract({
-    address: vaultAddress,
-    abi: OWNABLE_VIEW_ABI,
-    functionName: 'owner',
-  })) as Address
-
-  const creatorToken = (await publicClient.readContract({
-    address: vaultAddress,
-    abi: VAULT_VIEW_ABI,
-    functionName: 'CREATOR_COIN',
-  })) as Address
-
-  const vaultName = (await publicClient.readContract({
-    address: vaultAddress,
-    abi: erc20Abi,
-    functionName: 'name',
-  })) as string
-
-  const vaultSymbol = (await publicClient.readContract({
-    address: vaultAddress,
-    abi: erc20Abi,
-    functionName: 'symbol',
-  })) as string
-
-  const creatorSymbol = (await publicClient.readContract({
-    address: creatorToken,
-    abi: erc20Abi,
-    functionName: 'symbol',
-  })) as string
-
-  const gaugeAddress = (await publicClient.readContract({
-    address: vaultAddress,
-    abi: VAULT_VIEW_ABI,
-    functionName: 'gaugeController',
-  })) as Address
-
-  const gaugeHasCode = isAddress(gaugeAddress) && (await checkBytecode(publicClient, gaugeAddress as Address))
-
-  const shareOFTAddress = gaugeHasCode
-    ? ((await publicClient.readContract({
-        address: gaugeAddress,
-        abi: GAUGE_VIEW_ABI,
-        functionName: 'shareOFT',
-      })) as Address)
-    : ('0x0000000000000000000000000000000000000000' as Address)
-
-  const wrapperAddress = gaugeHasCode
-    ? ((await publicClient.readContract({
-        address: gaugeAddress,
-        abi: GAUGE_VIEW_ABI,
-        functionName: 'wrapper',
-      })) as Address)
-    : ('0x0000000000000000000000000000000000000000' as Address)
-
-  const oracleAddress = gaugeHasCode
-    ? ((await publicClient.readContract({
-        address: gaugeAddress,
-        abi: GAUGE_VIEW_ABI,
-        functionName: 'oracle',
-      })) as Address)
-    : ('0x0000000000000000000000000000000000000000' as Address)
-
-  const coreChecks: Check[] = [
-    {
-      id: 'vault',
-      label: 'Vault',
-      status: 'pass',
-      details: `${vaultName} (${vaultSymbol})`,
-      href: basescanAddressHref(vaultAddress),
-    },
-    {
-      id: 'owner',
-      label: 'Vault owner',
-      status: 'info',
-      details: owner,
-      href: basescanAddressHref(owner),
-    },
-    {
-      id: 'creatorToken',
-      label: 'Creator coin',
-      status: 'info',
-      details: `${creatorSymbol} · ${creatorToken}`,
-      href: basescanAddressHref(creatorToken),
-    },
-    {
-      id: 'gauge',
-      label: 'Gauge controller',
-      status: gaugeHasCode ? 'pass' : 'fail',
-      details: gaugeAddress,
-      href: basescanAddressHref(gaugeAddress),
-    },
-    {
-      id: 'shareOFT',
-      label: 'Share token (ShareOFT)',
-      status: isAddress(shareOFTAddress) && (await checkBytecode(publicClient, shareOFTAddress)) ? 'pass' : 'fail',
-      details: shareOFTAddress,
-      href: basescanAddressHref(shareOFTAddress),
-    },
-    {
-      id: 'wrapper',
-      label: 'Wrapper',
-      status: isAddress(wrapperAddress) && (await checkBytecode(publicClient, wrapperAddress)) ? 'pass' : 'fail',
-      details: wrapperAddress,
-      href: basescanAddressHref(wrapperAddress),
-    },
-    {
-      id: 'oracle',
-      label: 'Oracle',
-      status: isAddress(oracleAddress) && (await checkBytecode(publicClient, oracleAddress)) ? 'pass' : 'fail',
-      details: oracleAddress,
-      href: basescanAddressHref(oracleAddress),
-    },
-  ]
-
-  sections.push({
-    id: 'core',
-    title: 'Vault overview',
-    description: 'Identity + core contract addresses.',
-    checks: coreChecks,
-  })
-
-  // Wiring checks
-  const wiringChecks: Check[] = []
-
-  // Vault wiring
-  const vaultGauge = (await publicClient.readContract({
-    address: vaultAddress,
-    abi: VAULT_VIEW_ABI,
-    functionName: 'gaugeController',
-  })) as Address
-  wiringChecks.push({
-    id: 'vault-gauge',
-    label: 'Vault points to gauge controller',
-    status: vaultGauge.toLowerCase() === gaugeAddress.toLowerCase() ? 'pass' : 'fail',
-    details: `vault.gaugeController = ${vaultGauge}`,
-  })
-
-  // Gauge wiring
-  if (gaugeHasCode) {
-    const gaugeVault = (await publicClient.readContract({
-      address: gaugeAddress,
-      abi: GAUGE_VIEW_ABI,
-      functionName: 'vault',
-    })) as Address
-    wiringChecks.push({
-      id: 'gauge-vault',
-      label: 'Gauge points to vault',
-      status: gaugeVault.toLowerCase() === vaultAddress.toLowerCase() ? 'pass' : 'fail',
-      details: `gauge.vault = ${gaugeVault}`,
-    })
-
-    const gaugeCreatorCoin = (await publicClient.readContract({
-      address: gaugeAddress,
-      abi: GAUGE_VIEW_ABI,
-      functionName: 'creatorCoin',
-    })) as Address
-    wiringChecks.push({
-      id: 'gauge-creator',
-      label: 'Gauge points to creator coin',
-      status: gaugeCreatorCoin.toLowerCase() === creatorToken.toLowerCase() ? 'pass' : 'fail',
-      details: `gauge.creatorCoin = ${gaugeCreatorCoin}`,
-    })
-
-    wiringChecks.push({
-      id: 'gauge-wrapper',
-      label: 'Gauge points to wrapper',
-      status: isAddress(wrapperAddress) ? 'pass' : 'fail',
-      details: `gauge.wrapper = ${wrapperAddress}`,
-    })
-
-    wiringChecks.push({
-      id: 'gauge-share',
-      label: 'Gauge points to share token',
-      status: isAddress(shareOFTAddress) ? 'pass' : 'fail',
-      details: `gauge.shareOFT = ${shareOFTAddress}`,
-    })
-
-    wiringChecks.push({
-      id: 'gauge-oracle',
-      label: 'Gauge points to oracle',
-      status: isAddress(oracleAddress) ? 'pass' : 'fail',
-      details: `gauge.oracle = ${oracleAddress}`,
-    })
-  }
-
-  // Wrapper ↔ ShareOFT ↔ Vault loop
-  if (isAddress(wrapperAddress) && (await checkBytecode(publicClient, wrapperAddress))) {
-    const wVault = (await publicClient.readContract({
-      address: wrapperAddress,
-      abi: WRAPPER_VIEW_ABI,
-      functionName: 'vault',
-    })) as Address
-    wiringChecks.push({
-      id: 'wrapper-vault',
-      label: 'Wrapper points to vault',
-      status: wVault.toLowerCase() === vaultAddress.toLowerCase() ? 'pass' : 'fail',
-      details: `wrapper.vault = ${wVault}`,
-    })
-
-    const wCoin = (await publicClient.readContract({
-      address: wrapperAddress,
-      abi: WRAPPER_VIEW_ABI,
-      functionName: 'creatorCoin',
-    })) as Address
-    wiringChecks.push({
-      id: 'wrapper-coin',
-      label: 'Wrapper points to creator coin',
-      status: wCoin.toLowerCase() === creatorToken.toLowerCase() ? 'pass' : 'fail',
-      details: `wrapper.creatorCoin = ${wCoin}`,
-    })
-
-    const wShare = (await publicClient.readContract({
-      address: wrapperAddress,
-      abi: WRAPPER_VIEW_ABI,
-      functionName: 'shareOFT',
-    })) as Address
-    wiringChecks.push({
-      id: 'wrapper-share',
-      label: 'Wrapper points to share token',
-      status: wShare.toLowerCase() === shareOFTAddress.toLowerCase() ? 'pass' : 'fail',
-      details: `wrapper.shareOFT = ${wShare}`,
-    })
-
-    const wl = (await publicClient.readContract({
-      address: vaultAddress,
-      abi: VAULT_VIEW_ABI,
-      functionName: 'whitelist',
-      args: [wrapperAddress],
-    })) as boolean
-    wiringChecks.push({
-      id: 'vault-whitelist-wrapper',
-      label: 'Wrapper is whitelisted on vault',
-      status: wl ? 'pass' : 'fail',
-      details: wl ? 'whitelist enabled' : 'not whitelisted',
-    })
-  }
-
-  if (isAddress(shareOFTAddress) && (await checkBytecode(publicClient, shareOFTAddress))) {
-    const sVault = (await publicClient.readContract({
-      address: shareOFTAddress,
-      abi: SHAREOFT_VIEW_ABI,
-      functionName: 'vault',
-    })) as Address
-    wiringChecks.push({
-      id: 'share-vault',
-      label: 'Share token points to vault',
-      status: sVault.toLowerCase() === vaultAddress.toLowerCase() ? 'pass' : 'fail',
-      details: `shareOFT.vault = ${sVault}`,
-    })
-
-    const sGauge = (await publicClient.readContract({
-      address: shareOFTAddress,
-      abi: SHAREOFT_VIEW_ABI,
-      functionName: 'gaugeController',
-    })) as Address
-    wiringChecks.push({
-      id: 'share-gauge',
-      label: 'Share token points to gauge controller',
-      status: sGauge.toLowerCase() === gaugeAddress.toLowerCase() ? 'pass' : 'fail',
-      details: `shareOFT.gaugeController = ${sGauge}`,
-    })
-
-    const isMinter = (await publicClient.readContract({
-      address: shareOFTAddress,
-      abi: SHAREOFT_VIEW_ABI,
-      functionName: 'isMinter',
-      args: [wrapperAddress],
-    })) as boolean
-    wiringChecks.push({
-      id: 'share-minter-wrapper',
-      label: 'Wrapper is approved minter on share token',
-      status: isMinter ? 'pass' : 'fail',
-      details: isMinter ? 'isMinter(wrapper)=true' : 'isMinter(wrapper)=false',
-    })
-  }
-
-  sections.push({
-    id: 'wiring',
-    title: 'Wiring checks',
-    description: 'Read-only checks to confirm contracts are connected correctly.',
-    checks: wiringChecks,
-  })
-
-  // Deterministic address checks
-  const deterministicChecks: Check[] = []
-  try {
-    const salts = deriveSalts({ creatorToken, owner, chainId: base.id })
-
-    const create2Factory = CONTRACTS.create2Factory as Address
-    const create2Deployer = CONTRACTS.create2Deployer as Address
-
-    const bootstrapperInitCode = makeInitCode(
-      DEPLOY_BYTECODE_FULLSTACK.VaultStrategyBootstrapper as Hex,
-      'address',
-      [owner],
-    )
-    const bootstrapperAddress = predictCreate2Address(create2Deployer, salts.bootstrapperSalt, bootstrapperInitCode)
-
-    const predictedVaultInitCode = makeInitCode(
-      DEPLOY_BYTECODE.CreatorOVault as Hex,
-      'address,address,string,string',
-      [creatorToken, bootstrapperAddress, vaultName, vaultSymbol],
-    )
-    const predictedVault = predictCreate2Address(create2Deployer, salts.vaultSalt, predictedVaultInitCode)
-
-    const predictedWrapperInitCode = makeInitCode(
-      DEPLOY_BYTECODE.CreatorOVaultWrapper as Hex,
-      'address,address,address',
-      [creatorToken, vaultAddress, owner],
-    )
-    const predictedWrapper = predictCreate2Address(create2Deployer, salts.wrapperSalt, predictedWrapperInitCode)
-
-    const oftBootstrapSalt = deriveOftBootstrapSalt()
-    const oftBootstrapInitCode = DEPLOY_BYTECODE.OFTBootstrapRegistry as Hex
-    const oftBootstrapRegistry = predictCreate2Address(create2Factory, oftBootstrapSalt, oftBootstrapInitCode)
-
-    const shareName = (await publicClient.readContract({ address: shareOFTAddress, abi: erc20Abi, functionName: 'name' })) as string
-    const shareSymbol = (await publicClient.readContract({ address: shareOFTAddress, abi: erc20Abi, functionName: 'symbol' })) as string
-    const shareOftSalt = deriveShareOftUniversalSalt({ owner, shareSymbol })
-    const predictedShareInitCode = makeInitCode(
-      DEPLOY_BYTECODE.CreatorShareOFT as Hex,
-      'string,string,address,address',
-      [shareName, shareSymbol, oftBootstrapRegistry, owner],
-    )
-    const predictedShare = predictCreate2Address(create2Factory, shareOftSalt, predictedShareInitCode)
-
-    const creatorTreasury = (await publicClient.readContract({ address: gaugeAddress, abi: GAUGE_VIEW_ABI, functionName: 'creatorTreasury' })) as Address
-    const protocolTreasury = (await publicClient.readContract({ address: gaugeAddress, abi: GAUGE_VIEW_ABI, functionName: 'protocolTreasury' })) as Address
-    const predictedGaugeInitCode = makeInitCode(
-      DEPLOY_BYTECODE.CreatorGaugeController as Hex,
-      'address,address,address,address',
-      [shareOFTAddress, creatorTreasury, protocolTreasury, owner],
-    )
-    const predictedGauge = predictCreate2Address(create2Deployer, salts.gaugeSalt, predictedGaugeInitCode)
-
-    const predictedOracleInitCode = makeInitCode(
-      DEPLOY_BYTECODE.CreatorOracle as Hex,
-      'address,address,string,address',
-      [CONTRACTS.registry as Address, CONTRACTS.chainlinkEthUsd as Address, shareSymbol, owner],
-    )
-    const predictedOracle = predictCreate2Address(create2Deployer, salts.oracleSalt, predictedOracleInitCode)
-
-    const predictedCcaInitCode = makeInitCode(
-      DEPLOY_BYTECODE.CCALaunchStrategy as Hex,
-      'address,address,address,address,address',
-      [shareOFTAddress, '0x0000000000000000000000000000000000000000', vaultAddress, vaultAddress, owner],
-    )
-    const predictedCca = predictCreate2Address(create2Deployer, salts.ccaSalt, predictedCcaInitCode)
-
-    deterministicChecks.push({
-      id: 'pred-vault',
-      label: 'Vault address matches deterministic CREATE2 prediction',
-      status: predictedVault.toLowerCase() === vaultAddress.toLowerCase() ? 'pass' : 'fail',
-      details: `predicted = ${predictedVault}`,
-    })
-    deterministicChecks.push({
-      id: 'pred-wrapper',
-      label: 'Wrapper address matches deterministic CREATE2 prediction',
-      status: predictedWrapper.toLowerCase() === wrapperAddress.toLowerCase() ? 'pass' : 'fail',
-      details: `predicted = ${predictedWrapper}`,
-    })
-    deterministicChecks.push({
-      id: 'pred-share',
-      label: 'Share token address matches deterministic CREATE2 prediction',
-      status: predictedShare.toLowerCase() === shareOFTAddress.toLowerCase() ? 'pass' : 'fail',
-      details: `predicted = ${predictedShare}`,
-    })
-    deterministicChecks.push({
-      id: 'pred-gauge',
-      label: 'Gauge address matches deterministic CREATE2 prediction',
-      status: predictedGauge.toLowerCase() === gaugeAddress.toLowerCase() ? 'pass' : 'fail',
-      details: `predicted = ${predictedGauge}`,
-    })
-    deterministicChecks.push({
-      id: 'pred-oracle',
-      label: 'Oracle address matches deterministic CREATE2 prediction',
-      status: predictedOracle.toLowerCase() === oracleAddress.toLowerCase() ? 'pass' : 'fail',
-      details: `predicted = ${predictedOracle}`,
-    })
-    const ccaHasCode = await checkBytecode(publicClient, predictedCca)
-    deterministicChecks.push({
-      id: 'pred-cca',
-      label: 'Launch strategy deployed at deterministic address',
-      status: ccaHasCode ? 'pass' : 'warn',
-      details: `predicted = ${predictedCca}`,
-      href: basescanAddressHref(predictedCca),
-    })
-
-    // Approved launcher check (only if CCA exists)
-    if (ccaHasCode) {
-      const launcherOk = (await publicClient.readContract({
-        address: predictedCca,
-        abi: CCA_VIEW_ABI,
-        functionName: 'approvedLaunchers',
-        args: [CONTRACTS.vaultActivationBatcher as Address],
-      })) as boolean
-      deterministicChecks.push({
-        id: 'cca-launcher',
-        label: 'Launch strategy approves VaultActivationBatcher',
-        status: launcherOk ? 'pass' : 'fail',
-        details: launcherOk ? 'approvedLaunchers=true' : 'approvedLaunchers=false',
-      })
-    } else {
-      deterministicChecks.push({
-        id: 'cca-launcher-skip',
-        label: 'Launch strategy approval check',
-        status: 'info',
-        details: 'Skipped (launch strategy not found at predicted address).',
-      })
-    }
-  } catch (e: any) {
-    deterministicChecks.push({
-      id: 'deterministic-error',
-      label: 'Deterministic address verification',
-      status: 'warn',
-      details: String(e?.message || 'Could not compute deterministic addresses.'),
-    })
-  }
-
-  sections.push({
-    id: 'deterministic',
-    title: 'Deterministic deployment checks',
-    description: 'Confirms contracts match their expected CREATE2 addresses for this creator coin + owner.',
-    checks: deterministicChecks,
-  })
-
-  // Strategy checks (from vault)
-  const strategyChecks: Check[] = []
-  try {
-    const [strategies, weights] = (await publicClient.readContract({
-      address: vaultAddress,
-      abi: VAULT_VIEW_ABI,
-      functionName: 'getStrategies',
-    })) as readonly [readonly Address[], readonly bigint[], readonly bigint[]]
-
-    if (!strategies.length) {
-      strategyChecks.push({
-        id: 'no-strategies',
-        label: 'Vault has strategies configured',
-        status: 'warn',
-        details: 'No strategies found.',
-      })
-    } else {
-      strategyChecks.push({
-        id: 'strategy-count',
-        label: 'Vault has strategies configured',
-        status: 'pass',
-        details: `${strategies.length} strategies`,
-      })
-    }
-
-    // Try to recover the “batch deploy” event addresses (best-effort).
-    const strategyBatcherAddress = (() => {
-      // VaultStrategyBootstrapper uses `new StrategyDeploymentBatcher()` inside `finalize`.
-      // We can’t deterministically know the batcher address from here, so event parsing is best-effort
-      // and should be considered informational only.
-      return null
-    })()
-    void strategyBatcherAddress
-
-    // Per-strategy verification
-    for (let i = 0; i < strategies.length; i++) {
-      const s = strategies[i] as Address
-      const w = weights[i]
-      const hasCode = await checkBytecode(publicClient, s)
-      const baseLabel = `${s} · weight ${w.toString()}`
-      if (!hasCode) {
-        strategyChecks.push({
-          id: `strategy-${i}-code`,
-          label: `Strategy #${i + 1}`,
-          status: 'fail',
-          details: baseLabel,
-          href: basescanAddressHref(s),
-        })
-        continue
-      }
-
-      // Common strategy checks
-      let isActive = false
-      let assetOk = false
-      let assetAddr: Address | null = null
-      try {
-        isActive = (await publicClient.readContract({ address: s, abi: STRATEGY_VIEW_ABI, functionName: 'isActive' })) as boolean
-      } catch {
-        // ignore
-      }
-      try {
-        assetAddr = (await publicClient.readContract({ address: s, abi: STRATEGY_VIEW_ABI, functionName: 'asset' })) as Address
-        assetOk = assetAddr.toLowerCase() === creatorToken.toLowerCase()
-      } catch {
-        // ignore
-      }
-
-      // Detect known strategy flavors (best-effort)
-      let flavor: string | null = null
-      let extra: string | null = null
-
-      try {
-        const charmVault = (await publicClient.readContract({ address: s, abi: CREATOR_CHARM_STRATEGY_VIEW_ABI, functionName: 'charmVault' })) as Address
-        if (isAddress(charmVault) && charmVault !== '0x0000000000000000000000000000000000000000') {
-          flavor = 'Charm LP (CreatorCharmStrategyV2)'
-          extra = `charmVault = ${charmVault}`
-        }
-      } catch {
-        // ignore
-      }
-
-      if (!flavor) {
-        try {
-          const ajnaPool = (await publicClient.readContract({ address: s, abi: AJNA_STRATEGY_VIEW_ABI, functionName: 'ajnaPool' })) as Address
-          const ajnaFactory = (await publicClient.readContract({ address: s, abi: AJNA_STRATEGY_VIEW_ABI, functionName: 'ajnaFactory' })) as Address
-          const collateralToken = (await publicClient.readContract({ address: s, abi: AJNA_STRATEGY_VIEW_ABI, functionName: 'collateralToken' })) as Address
-          flavor = 'Ajna lending (AjnaStrategy)'
-          extra = `ajnaPool = ${ajnaPool} · collateral = ${collateralToken} · factory = ${ajnaFactory}`
-        } catch {
-          // ignore
-        }
-      }
-
-      const status: CheckStatus = !isActive ? 'warn' : !assetOk ? 'fail' : 'pass'
-      strategyChecks.push({
-        id: `strategy-${i}-ok`,
-        label: flavor ? `${flavor}` : `Strategy #${i + 1}`,
-        status,
-        details: `${baseLabel}${assetAddr ? ` · asset=${assetAddr}` : ''}${extra ? ` · ${extra}` : ''}`,
-        href: basescanAddressHref(s),
-      })
-    }
-
-    // Bonus: if we can find the StrategiesDeployed event in recent logs, show it (best-effort)
-    // We’ll search a small recent window around the vault creation block range by looking at the vault’s first tx is expensive,
-    // so we instead skip this here; the deploy page already parses logs immediately on deploy.
-    void STRATEGY_BATCHER_EVENTS_ABI
-  } catch (e: any) {
-    strategyChecks.push({
-      id: 'strategies-error',
-      label: 'Vault strategies',
-      status: 'warn',
-      details: String(e?.message || 'Could not read strategies.'),
-    })
-  }
-
-  sections.push({
-    id: 'strategies',
-    title: 'Yield strategy checks',
-    description: 'Verifies the vault’s configured strategies and basic health signals.',
-    checks: strategyChecks,
-  })
-
-  return sections
 }
 
 export function Status() {
   const publicClient = usePublicClient({ chainId: base.id })
   const [searchParams, setSearchParams] = useSearchParams()
 
-  const initialVault = useMemo(() => searchParams.get('vault') ?? '', [searchParams])
-  const [vaultInput, setVaultInput] = useState<string>(initialVault)
+  const vaultParam = useMemo(() => searchParams.get('vault') ?? '', [searchParams])
+  const [vaultInput, setVaultInput] = useState<string>(vaultParam)
 
-  const vaultAddress = useMemo(() => {
+  useEffect(() => {
+    setVaultInput(vaultParam)
+  }, [vaultParam])
+
+  const vaultParamAddress = useMemo(() => {
+    const v = String(vaultParam || '').trim()
+    return isAddress(v) ? (v as Address) : null
+  }, [vaultParam])
+
+  const vaultInputAddress = useMemo(() => {
     const v = String(vaultInput || '').trim()
     return isAddress(v) ? (v as Address) : null
   }, [vaultInput])
@@ -896,9 +891,9 @@ export function Status() {
   })
 
   const vaultQuery = useQuery({
-    queryKey: ['status', 'vault', vaultAddress],
-    enabled: !!publicClient && !!vaultAddress,
-    queryFn: async () => runVaultChecks(publicClient, vaultAddress as Address),
+    queryKey: ['status', 'vault', vaultParamAddress],
+    enabled: !!publicClient && !!vaultParamAddress,
+    queryFn: async () => runVaultChecks(publicClient, vaultParamAddress as Address),
   })
 
   const globalSections = globalQuery.data ?? []
@@ -908,9 +903,8 @@ export function Status() {
   const vaultSummary = useMemo(() => summarize(vaultSections), [vaultSections])
 
   const onRun = () => {
-    const v = String(vaultInput || '').trim()
     const next = new URLSearchParams(searchParams)
-    if (isAddress(v)) next.set('vault', v)
+    if (vaultInputAddress) next.set('vault', vaultInputAddress)
     else next.delete('vault')
     setSearchParams(next)
   }
@@ -974,7 +968,12 @@ export function Status() {
               </div>
               <button
                 type="button"
-                onClick={() => setVaultInput(AKITA.vault)}
+                onClick={() => {
+                  setVaultInput(AKITA.vault)
+                  const next = new URLSearchParams(searchParams)
+                  next.set('vault', AKITA.vault)
+                  setSearchParams(next)
+                }}
                 className="text-[10px] text-zinc-600 hover:text-zinc-300 transition-colors"
               >
                 Use AKITA example
@@ -992,8 +991,8 @@ export function Status() {
                 type="button"
                 onClick={onRun}
                 className="btn-accent rounded-lg px-5 py-3 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
-                disabled={!vaultAddress || vaultQuery.isFetching}
-                title={!vaultAddress ? 'Enter a valid vault address' : 'Run checks'}
+                disabled={!vaultInputAddress || vaultQuery.isFetching}
+                title={!vaultInputAddress ? 'Enter a valid vault address' : 'Run checks'}
               >
                 <span className="inline-flex items-center gap-2">
                   {vaultQuery.isFetching ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
@@ -1002,11 +1001,11 @@ export function Status() {
               </button>
             </div>
 
-            {vaultAddress ? (
+            {vaultParamAddress || vaultInputAddress ? (
               <div className="text-xs text-zinc-600 flex items-center justify-between gap-4">
-                <div className="font-mono break-all">{vaultAddress}</div>
+                <div className="font-mono break-all">{vaultParamAddress ?? vaultInputAddress}</div>
                 <a
-                  href={basescanAddressHref(vaultAddress)}
+                  href={basescanAddressHref(String(vaultParamAddress ?? vaultInputAddress))}
                   target="_blank"
                   rel="noreferrer"
                   className="text-xs text-zinc-500 hover:text-zinc-200 underline underline-offset-2 whitespace-nowrap flex items-center gap-1"
