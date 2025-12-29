@@ -54,6 +54,11 @@ const VAULT_MANAGEMENT_ABI = [
   { type: 'function', name: 'acceptManagement', stateMutability: 'nonpayable', inputs: [], outputs: [] },
 ] as const
 
+const VAULT_YIELD_ABI = [
+  { type: 'function', name: 'deployToStrategies', stateMutability: 'nonpayable', inputs: [], outputs: [] },
+  { type: 'function', name: 'syncBalances', stateMutability: 'nonpayable', inputs: [], outputs: [] },
+] as const
+
 const BOOTSTRAPPER_ABI = [
   {
     type: 'function',
@@ -778,6 +783,12 @@ export function DeployVaultAA({
         ],
       }),
     })
+
+    // Activate yield immediately (day 1):
+    // - Deploy idle Creator Coin into configured strategies (Charm will swap ~1% to USDC internally).
+    // - Then sync vault coinBalance to account for any unused tokens returned by strategies.
+    calls.push({ to: vaultAddress, data: encodeFunctionData({ abi: VAULT_YIELD_ABI, functionName: 'deployToStrategies' }) })
+    calls.push({ to: vaultAddress, data: encodeFunctionData({ abi: VAULT_YIELD_ABI, functionName: 'syncBalances' }) })
 
     // Best-effort: collect logs so we can show the exact strategy addresses after deployment.
     const candidateLogs: Array<{ address: Address; topics: Hex[]; data: Hex }> = []
