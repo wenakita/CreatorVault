@@ -98,6 +98,13 @@ const VAULT_VIEW_ABI = [
   },
 ] as const
 
+// Some older vault versions used different getter names (or no public getter at all).
+const VAULT_WHITELIST_COMPAT_ABI = [
+  { type: 'function', name: 'whitelist', stateMutability: 'view', inputs: [{ name: '_account', type: 'address' }], outputs: [{ type: 'bool' }] },
+  { type: 'function', name: 'whitelisted', stateMutability: 'view', inputs: [{ name: '_account', type: 'address' }], outputs: [{ type: 'bool' }] },
+  { type: 'function', name: 'isWhitelisted', stateMutability: 'view', inputs: [{ name: '_account', type: 'address' }], outputs: [{ type: 'bool' }] },
+] as const
+
 const GAUGE_VIEW_ABI = [
   { type: 'function', name: 'shareOFT', stateMutability: 'view', inputs: [], outputs: [{ type: 'address' }] },
   { type: 'function', name: 'wrapper', stateMutability: 'view', inputs: [], outputs: [{ type: 'address' }] },
@@ -291,15 +298,23 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     let weights: readonly bigint[] = []
     const extraCalls: any[] = []
     if (addrOk(wrapperAddress)) {
-      extraCalls.push({ address: vaultAddress, abi: VAULT_VIEW_ABI, functionName: 'whitelist', args: [wrapperAddress] })
+      extraCalls.push({ address: vaultAddress, abi: VAULT_WHITELIST_COMPAT_ABI, functionName: 'whitelist', args: [wrapperAddress] })
+      extraCalls.push({ address: vaultAddress, abi: VAULT_WHITELIST_COMPAT_ABI, functionName: 'whitelisted', args: [wrapperAddress] })
+      extraCalls.push({ address: vaultAddress, abi: VAULT_WHITELIST_COMPAT_ABI, functionName: 'isWhitelisted', args: [wrapperAddress] })
     }
     extraCalls.push({ address: vaultAddress, abi: VAULT_VIEW_ABI, functionName: 'getStrategies' })
     const extraRes = await safeMulticall(client, extraCalls)
     if (any429(extraRes)) {
       return res.status(429).json({ success: false, error: 'Rate limited by RPC' })
     }
-    if (addrOk(wrapperAddress)) wrapperWhitelisted = pickResult<boolean>(extraRes[0])
-    const tuple = pickResult<any>(extraRes[addrOk(wrapperAddress) ? 1 : 0])
+    if (addrOk(wrapperAddress)) {
+      wrapperWhitelisted =
+        pickResult<boolean>(extraRes[0]) ??
+        pickResult<boolean>(extraRes[1]) ??
+        pickResult<boolean>(extraRes[2]) ??
+        null
+    }
+    const tuple = pickResult<any>(extraRes[addrOk(wrapperAddress) ? 3 : 0])
     if (tuple) {
       strategies = (tuple[0] ?? []) as readonly `0x${string}`[]
       weights = (tuple[1] ?? []) as readonly bigint[]
@@ -462,10 +477,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     wiringChecks.push({
       id: 'vault-whitelist',
       label: 'Wrapper is whitelisted on vault',
-      status: wrapperWhitelisted == null ? 'info' : wrapperWhitelisted ? 'pass' : 'fail',
+      status: !addrOk(wrapperAddress) ? 'info' : wrapperWhitelisted == null ? 'info' : wrapperWhitelisted ? 'pass' : 'fail',
       details:
-        wrapperWhitelisted == null
-          ? 'Could not read vault.whitelist(wrapper) (may be a legacy vault version).'
+        !addrOk(wrapperAddress)
+          ? 'No wrapper detected; whitelist check not applicable.'
+          : wrapperWhitelisted == null
+            ? 'Whitelist status is not readable for this vault version.'
           : wrapperWhitelisted
             ? 'whitelist=true'
             : 'whitelist=false',
