@@ -680,7 +680,8 @@ export function Status() {
           </div>
 
           <div className="mt-10 text-[10px] text-zinc-700">
-            These checks are informational and read-only. They do not make transactions or modify contracts.
+            Checks are read-only. If a <span className="text-zinc-600">Fix</span> is available, it will prompt a wallet transaction and is only
+            available to the contract owner.
           </div>
         </div>
       </section>
