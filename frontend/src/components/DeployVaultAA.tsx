@@ -16,6 +16,7 @@ import {
   concatHex,
   createWalletClient,
   custom,
+  decodeEventLog,
   encodeAbiParameters,
   encodeFunctionData,
   encodePacked,
@@ -68,6 +69,30 @@ const BOOTSTRAPPER_ABI = [
       { name: 'ajnaWeightBps', type: 'uint256' },
     ],
     outputs: [],
+  },
+] as const
+
+const STRATEGY_BATCHER_EVENTS_ABI = [
+  {
+    type: 'event',
+    name: 'StrategiesDeployed',
+    inputs: [
+      { name: 'creator', type: 'address', indexed: true },
+      { name: 'underlyingToken', type: 'address', indexed: true },
+      {
+        name: 'result',
+        type: 'tuple',
+        indexed: false,
+        components: [
+          { name: 'charmVault', type: 'address' },
+          { name: 'charmStrategy', type: 'address' },
+          { name: 'creatorCharmStrategy', type: 'address' },
+          { name: 'ajnaStrategy', type: 'address' },
+          { name: 'v3Pool', type: 'address' },
+        ],
+      },
+    ],
+    anonymous: false,
   },
 ] as const
 
@@ -158,6 +183,15 @@ type DeploymentAddresses = {
   oracle: Address
 }
 
+type YieldDeploymentAddresses = {
+  strategyBatcher: Address
+  v3Pool: Address
+  charmVault: Address
+  charmStrategy: Address
+  creatorCharmStrategy: Address
+  ajnaStrategy: Address
+}
+
 interface DeployVaultAAProps {
   creatorToken: Address
   /** ShareOFT symbol, e.g. "wsAKITA" */
@@ -232,6 +266,7 @@ export function DeployVaultAA({
   const [error, setError] = useState<string | null>(null)
   const [errorDetails, setErrorDetails] = useState<string | null>(null)
   const [addresses, setAddresses] = useState<DeploymentAddresses | null>(null)
+  const [yieldAddresses, setYieldAddresses] = useState<YieldDeploymentAddresses | null>(null)
   const [step, setStep] = useState(0)
   const [success, setSuccess] = useState(false)
   const [showDetails, setShowDetails] = useState(false)
@@ -246,6 +281,7 @@ export function DeployVaultAA({
     setCallBundleId(null)
     setCallBundleType(null)
     setAddresses(null)
+    setYieldAddresses(null)
     setSuccess(false)
     setShowDetails(false)
     setStep(0)
@@ -586,6 +622,9 @@ export function DeployVaultAA({
     // VaultStrategyBootstrapper sets pendingManagement to `owner` — accept it here so the bootstrapper cannot manage post-deploy.
     calls.push({ to: vaultAddress, data: encodeFunctionData({ abi: VAULT_MANAGEMENT_ABI, functionName: 'acceptManagement' }) })
 
+    // Best-effort: collect logs so we can show the exact strategy addresses after deployment.
+    const candidateLogs: Array<{ address: Address; topics: Hex[]; data: Hex }> = []
+
       // Step 1: wallet confirmation
       setStep(1)
       if (isDelegatedSmartWallet) {
@@ -607,7 +646,10 @@ export function DeployVaultAA({
         setCallBundleType('tx')
         setCallBundleId(String(txHash))
         setStep(2)
-        await publicClient.waitForTransactionReceipt({ hash: txHash as any, timeout: 120_000 })
+        const receipt = await publicClient.waitForTransactionReceipt({ hash: txHash as any, timeout: 120_000 })
+        for (const l of (receipt as any)?.logs ?? []) {
+          candidateLogs.push({ address: l.address as Address, topics: l.topics as Hex[], data: l.data as Hex })
+        }
       } else {
         let result: any
         try {
@@ -640,7 +682,12 @@ export function DeployVaultAA({
 
         // Prefer EIP-5792 status (best signal). If unsupported, we fall back to bytecode polling below.
         try {
-          await waitForCallsStatus(walletClient, { id: result.id, timeout: 120_000, throwOnFailure: true })
+          const status = await waitForCallsStatus(walletClient, { id: result.id, timeout: 120_000, throwOnFailure: true })
+          for (const r of (status as any)?.receipts ?? []) {
+            for (const l of (r as any)?.logs ?? []) {
+              candidateLogs.push({ address: l.address as Address, topics: l.topics as Hex[], data: l.data as Hex })
+            }
+          }
         } catch {
           // ignore
         }
@@ -724,6 +771,40 @@ export function DeployVaultAA({
         )
       }
 
+      // Best-effort: parse the StrategiesDeployed event so we can display exact yield strategy addresses.
+      try {
+        const found = (() => {
+          for (const l of candidateLogs) {
+            try {
+              const decoded = decodeEventLog({
+                abi: STRATEGY_BATCHER_EVENTS_ABI,
+                data: l.data,
+                topics: l.topics,
+              })
+              if (decoded.eventName !== 'StrategiesDeployed') continue
+              const args: any = decoded.args as any
+              const r: any = args?.result
+              if (!r) continue
+              const out: YieldDeploymentAddresses = {
+                strategyBatcher: l.address,
+                v3Pool: r.v3Pool,
+                charmVault: r.charmVault,
+                charmStrategy: r.charmStrategy,
+                creatorCharmStrategy: r.creatorCharmStrategy,
+                ajnaStrategy: r.ajnaStrategy,
+              }
+              if (Object.values(out).every((a) => typeof a === 'string' && isAddress(a))) return out
+            } catch {
+              // ignore
+            }
+          }
+          return null
+        })()
+        if (found) setYieldAddresses(found)
+      } catch {
+        // ignore
+      }
+
       setStep(4)
       setSuccess(true)
       onSuccess?.(predicted)
@@ -782,7 +863,7 @@ export function DeployVaultAA({
 
       {success && !isSubmitting && (
         <div className="p-4 bg-emerald-500/10 border border-emerald-500/20 rounded-lg text-emerald-200 text-sm">
-          Vault deployed successfully.
+          Vault and yield strategies deployed successfully.
         </div>
       )}
 
@@ -883,7 +964,7 @@ export function DeployVaultAA({
                         target="_blank"
                         rel="noreferrer"
                       >
-                        <span className="text-zinc-500">Controller</span>
+                        <span className="text-zinc-500">Gauge controller</span>
                         <span className="font-mono text-zinc-200">{short(addresses.gaugeController)}</span>
                       </a>
                       <a
@@ -892,7 +973,7 @@ export function DeployVaultAA({
                         target="_blank"
                         rel="noreferrer"
                       >
-                        <span className="text-zinc-500">Strategy</span>
+                        <span className="text-zinc-500">Launch strategy</span>
                         <span className="font-mono text-zinc-200">{short(addresses.ccaStrategy)}</span>
                       </a>
                       {addresses.oracle ? (
@@ -906,6 +987,68 @@ export function DeployVaultAA({
                           <span className="font-mono text-zinc-200">{short(addresses.oracle)}</span>
                         </a>
                       ) : null}
+                    </div>
+                  </div>
+                ) : null}
+
+                {yieldAddresses ? (
+                  <div className="space-y-2">
+                    <div className="label">Yield strategies</div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                      <a
+                        className="flex items-center justify-between gap-3 bg-black/20 border border-zinc-900/60 rounded-lg px-3 py-2 hover:border-zinc-800/80 transition-colors"
+                        href={`https://basescan.org/address/${yieldAddresses.creatorCharmStrategy}`}
+                        target="_blank"
+                        rel="noreferrer"
+                      >
+                        <span className="text-zinc-500">Charm strategy</span>
+                        <span className="font-mono text-zinc-200">{short(yieldAddresses.creatorCharmStrategy)}</span>
+                      </a>
+                      <a
+                        className="flex items-center justify-between gap-3 bg-black/20 border border-zinc-900/60 rounded-lg px-3 py-2 hover:border-zinc-800/80 transition-colors"
+                        href={`https://basescan.org/address/${yieldAddresses.ajnaStrategy}`}
+                        target="_blank"
+                        rel="noreferrer"
+                      >
+                        <span className="text-zinc-500">Ajna strategy</span>
+                        <span className="font-mono text-zinc-200">{short(yieldAddresses.ajnaStrategy)}</span>
+                      </a>
+                      <a
+                        className="flex items-center justify-between gap-3 bg-black/20 border border-zinc-900/60 rounded-lg px-3 py-2 hover:border-zinc-800/80 transition-colors"
+                        href={`https://basescan.org/address/${yieldAddresses.charmVault}`}
+                        target="_blank"
+                        rel="noreferrer"
+                      >
+                        <span className="text-zinc-500">Charm vault</span>
+                        <span className="font-mono text-zinc-200">{short(yieldAddresses.charmVault)}</span>
+                      </a>
+                      <a
+                        className="flex items-center justify-between gap-3 bg-black/20 border border-zinc-900/60 rounded-lg px-3 py-2 hover:border-zinc-800/80 transition-colors"
+                        href={`https://basescan.org/address/${yieldAddresses.charmStrategy}`}
+                        target="_blank"
+                        rel="noreferrer"
+                      >
+                        <span className="text-zinc-500">Charm rebalancer</span>
+                        <span className="font-mono text-zinc-200">{short(yieldAddresses.charmStrategy)}</span>
+                      </a>
+                      <a
+                        className="flex items-center justify-between gap-3 bg-black/20 border border-zinc-900/60 rounded-lg px-3 py-2 hover:border-zinc-800/80 transition-colors"
+                        href={`https://basescan.org/address/${yieldAddresses.v3Pool}`}
+                        target="_blank"
+                        rel="noreferrer"
+                      >
+                        <span className="text-zinc-500">V3 pool</span>
+                        <span className="font-mono text-zinc-200">{short(yieldAddresses.v3Pool)}</span>
+                      </a>
+                      <a
+                        className="flex items-center justify-between gap-3 bg-black/20 border border-zinc-900/60 rounded-lg px-3 py-2 hover:border-zinc-800/80 transition-colors"
+                        href={`https://basescan.org/address/${yieldAddresses.strategyBatcher}`}
+                        target="_blank"
+                        rel="noreferrer"
+                      >
+                        <span className="text-zinc-500">Strategy batcher</span>
+                        <span className="font-mono text-zinc-200">{short(yieldAddresses.strategyBatcher)}</span>
+                      </a>
                     </div>
                   </div>
                 ) : null}
