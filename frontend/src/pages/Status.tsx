@@ -56,6 +56,7 @@ type VaultFixContext = {
   oracleV3PoolConfigured?: boolean | null
   oracleV3Pool?: string | null
   v3PoolAddress?: string | null
+  v3ObservationCardinalityNext?: string | null
   ajnaStrategyAddress?: string | null
   ajnaStrategyOwner?: string | null
   ajnaBucketIndex?: string | null
@@ -229,6 +230,16 @@ const AJNA_ADMIN_ABI = [
   },
 ] as const
 
+const UNISWAP_V3_POOL_ORACLE_ABI = [
+  {
+    type: 'function',
+    name: 'increaseObservationCardinalityNext',
+    stateMutability: 'nonpayable',
+    inputs: [{ name: 'observationCardinalityNext', type: 'uint16' }],
+    outputs: [],
+  },
+] as const
+
 export function Status() {
   const [searchParams, setSearchParams] = useSearchParams()
   const { address, isConnected, chain } = useAccount()
@@ -343,6 +354,10 @@ export function Status() {
   const oracleV3PoolConfigured = typeof ctx.oracleV3PoolConfigured === 'boolean' ? ctx.oracleV3PoolConfigured : null
   const oracleV3Pool = typeof ctx.oracleV3Pool === 'string' && isAddressLike(ctx.oracleV3Pool) ? ctx.oracleV3Pool : null
   const v3Pool = typeof ctx.v3PoolAddress === 'string' && isAddressLike(ctx.v3PoolAddress) ? ctx.v3PoolAddress : null
+  const v3ObsNext =
+    typeof ctx.v3ObservationCardinalityNext === 'string' && /^\d+$/.test(ctx.v3ObservationCardinalityNext)
+      ? Number(ctx.v3ObservationCardinalityNext)
+      : null
   const ajnaStrategy = typeof ctx.ajnaStrategyAddress === 'string' && isAddressLike(ctx.ajnaStrategyAddress) ? ctx.ajnaStrategyAddress : null
   const ajnaOwner = typeof ctx.ajnaStrategyOwner === 'string' && isAddressLike(ctx.ajnaStrategyOwner) ? ctx.ajnaStrategyOwner : null
   const ajnaBucket =
@@ -533,6 +548,28 @@ export function Status() {
       })
     }
 
+    if (v3Pool && (v3ObsNext == null || v3ObsNext < 64)) {
+      actions.push({
+        id: 'fix-v3-oracle-capacity',
+        title: 'Increase Uniswap V3 TWAP capacity',
+        description:
+          'Calls increaseObservationCardinalityNext(64) on the V3 pool so TWAP pricing has enough historical observations. This does not change price; it only increases oracle storage.',
+        canRun: !!isConnected && isBase,
+        onRun: async () => {
+          setFixError(null)
+          setFixingId('fix-v3-oracle-capacity')
+          const hash = await writeContractAsync({
+            address: v3Pool as `0x${string}`,
+            abi: UNISWAP_V3_POOL_ORACLE_ABI,
+            functionName: 'increaseObservationCardinalityNext',
+            args: [64],
+            chainId: base.id,
+          })
+          setFixHash(hash)
+        },
+      })
+    }
+
     return actions
   }, [
     address,
@@ -560,6 +597,7 @@ export function Status() {
     vaultAddress,
     vaultOwner,
     v3Pool,
+    v3ObsNext,
     wrapper,
     wrapperWhitelisted,
     writeContractAsync,

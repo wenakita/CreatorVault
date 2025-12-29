@@ -505,6 +505,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     let v3PoolAddress: `0x${string}` | null = null
     let v3SpotTick: number | null = null
     let v3TwapTick: number | null = null
+    let v3ObservationCardinality: number | null = null
+    let v3ObservationCardinalityNext: number | null = null
     let v3SpotUsdPerCreator: number | null = null
     let v3TwapUsdPerCreator: number | null = null
     let suggestedAjnaBucket: number | null = null
@@ -561,6 +563,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
         if (slot0 && typeof slot0[1] === 'number') v3SpotTick = slot0[1]
         if (slot0 && typeof slot0[1] === 'bigint') v3SpotTick = Number(slot0[1])
+        if (slot0 && typeof slot0[3] === 'number') v3ObservationCardinality = slot0[3]
+        if (slot0 && typeof slot0[3] === 'bigint') v3ObservationCardinality = Number(slot0[3])
+        if (slot0 && typeof slot0[4] === 'number') v3ObservationCardinalityNext = slot0[4]
+        if (slot0 && typeof slot0[4] === 'bigint') v3ObservationCardinalityNext = Number(slot0[4])
 
         const calcMeanTick = (tickCumulatives: readonly (bigint | number)[], duration: number): number | null => {
           if (!Array.isArray(tickCumulatives) || tickCumulatives.length < 2) return null
@@ -618,6 +624,24 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             status: 'info',
             details: `spot≈${usdSpot != null ? fmt(usdSpot) : '—'} · twap≈${usdTwap != null ? fmt(usdTwap) : '—'}`,
           })
+
+          if (v3ObservationCardinalityNext != null) {
+            const ok = v3ObservationCardinalityNext >= 16
+            pricingChecks.push({
+              id: 'v3-oracle-capacity',
+              label: 'Uniswap V3 oracle capacity',
+              status: ok ? 'pass' : 'warn',
+              details: `observations=${String(v3ObservationCardinality ?? '—')} · next=${String(v3ObservationCardinalityNext)}`,
+            })
+            if (!ok) {
+              pricingChecks.push({
+                id: 'v3-oracle-tip',
+                label: 'TWAP readiness',
+                status: 'warn',
+                details: 'This pool may not be able to serve reliable TWAP yet. Recommended: increase observation cardinality (e.g. to 64).',
+              })
+            }
+          }
 
           // Ajna wants tick for CREATOR per USDC (quote per collateral).
           const orientedTick = isCreatorToken1 ? tickForPrice : -tickForPrice
@@ -824,6 +848,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           v3PoolAddress,
           v3SpotTick: v3SpotTick == null ? null : String(v3SpotTick),
           v3TwapTick: v3TwapTick == null ? null : String(v3TwapTick),
+          v3ObservationCardinality: v3ObservationCardinality == null ? null : String(v3ObservationCardinality),
+          v3ObservationCardinalityNext: v3ObservationCardinalityNext == null ? null : String(v3ObservationCardinalityNext),
           v3SpotUsdPerCreator: v3SpotUsdPerCreator == null ? null : String(v3SpotUsdPerCreator),
           v3TwapUsdPerCreator: v3TwapUsdPerCreator == null ? null : String(v3TwapUsdPerCreator),
           ajnaStrategyAddress,
