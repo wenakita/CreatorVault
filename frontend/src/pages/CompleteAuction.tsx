@@ -68,6 +68,7 @@ const CCA_STRATEGY_ABI = [
     stateMutability: 'view',
   },
   { name: 'auctionToken', type: 'function', inputs: [], outputs: [{ type: 'address' }], stateMutability: 'view' },
+  { name: 'fundsRecipient', type: 'function', inputs: [], outputs: [{ type: 'address' }], stateMutability: 'view' },
   { name: 'feeRecipient', type: 'function', inputs: [], outputs: [{ type: 'address' }], stateMutability: 'view' },
   { name: 'taxRateBps', type: 'function', inputs: [], outputs: [{ type: 'uint256' }], stateMutability: 'view' },
 ] as const
@@ -93,10 +94,17 @@ const TAX_HOOK_ABI = [
 
 type Step = 'check' | 'sweep' | 'configure' | 'complete'
 
+const VAULT_ABI = [
+  { name: 'deployToStrategies', type: 'function', inputs: [], outputs: [], stateMutability: 'nonpayable' },
+  { name: 'owner', type: 'function', inputs: [], outputs: [{ type: 'address' }], stateMutability: 'view' },
+] as const
+
+const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000' as const
+
 export function CompleteAuction() {
   const { strategy } = useParams()
   const navigate = useNavigate()
-  const { isConnected } = useAccount()
+  const { isConnected, address } = useAccount()
   const [currentStep, setCurrentStep] = useState<Step>('check')
   const [error, setError] = useState<string | null>(null)
 
@@ -116,6 +124,28 @@ export function CompleteAuction() {
     abi: CCA_STRATEGY_ABI,
     functionName: 'auctionToken',
   })
+
+  // Read funds recipient (vault)
+  const { data: fundsRecipient } = useReadContract({
+    address: strategyAddress,
+    abi: CCA_STRATEGY_ABI,
+    functionName: 'fundsRecipient',
+  })
+  const vaultAddress = (fundsRecipient && typeof fundsRecipient === 'string' ? fundsRecipient : null) as
+    | `0x${string}`
+    | null
+
+  const { data: vaultOwner } = useReadContract({
+    address: (vaultAddress ?? ZERO_ADDRESS) as `0x${string}`,
+    abi: VAULT_ABI,
+    functionName: 'owner',
+    query: { enabled: !!vaultAddress },
+  })
+  const canActivateYield =
+    !!vaultAddress &&
+    !!address &&
+    !!vaultOwner &&
+    address.toLowerCase() === String(vaultOwner).toLowerCase()
 
   // Read fee recipient (GaugeController)
   const { data: feeRecipient } = useReadContract({
@@ -151,6 +181,17 @@ export function CompleteAuction() {
   } = useWriteContract()
   const { isLoading: isConfigConfirming, isSuccess: isConfigSuccess } = useWaitForTransactionReceipt({
     hash: configTxHash,
+  })
+
+  // Optional Step: Activate yield (deploy idle funds to strategies)
+  const {
+    writeContract: activateYield,
+    data: activateTxHash,
+    isPending: isActivating,
+    error: activateError,
+  } = useWriteContract()
+  const { isLoading: isActivateConfirming, isSuccess: isActivateSuccess } = useWaitForTransactionReceipt({
+    hash: activateTxHash,
   })
 
   // Update step based on transaction status
@@ -191,6 +232,19 @@ export function CompleteAuction() {
         true,                   // enabled
         false,                  // not locked
       ],
+    })
+  }
+
+  const handleActivateYield = () => {
+    if (!vaultAddress) {
+      setError('Missing vault address')
+      return
+    }
+    setError(null)
+    activateYield({
+      address: vaultAddress,
+      abi: VAULT_ABI,
+      functionName: 'deployToStrategies',
     })
   }
 
@@ -431,14 +485,14 @@ export function CompleteAuction() {
           </div>
 
           {/* Errors */}
-          {(sweepError || configError || error) && (
+          {(sweepError || configError || activateError || error) && (
             <div className="p-4 rounded-xl bg-red-500/10 border border-red-500/30 text-red-300">
               <div className="flex items-center gap-2">
                 <AlertCircle className="w-5 h-5" />
                 <span className="font-medium">Error</span>
               </div>
               <p className="text-sm mt-1">
-                {error || sweepError?.message || configError?.message}
+                {error || sweepError?.message || configError?.message || activateError?.message}
               </p>
             </div>
           )}
@@ -470,11 +524,33 @@ export function CompleteAuction() {
             </p>
             <div className="flex flex-col sm:flex-row gap-3 justify-center">
               <button
-                onClick={() => navigate(`/vault/${AKITA.vault}`)}
+                onClick={() => navigate(`/vault/${vaultAddress ?? AKITA.vault}`)}
                 className="btn-primary flex items-center justify-center gap-2"
               >
                 View Vault
                 <ArrowRight className="w-4 h-4" />
+              </button>
+              <button
+                onClick={handleActivateYield}
+                disabled={!canActivateYield || isActivating || isActivateConfirming || isActivateSuccess}
+                className="btn-secondary flex items-center justify-center gap-2"
+              >
+                {isActivating || isActivateConfirming ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    Activating…
+                  </>
+                ) : isActivateSuccess ? (
+                  <>
+                    <CheckCircle2 className="w-4 h-4" />
+                    Yield activated
+                  </>
+                ) : (
+                  <>
+                    Activate yield
+                    <Zap className="w-4 h-4" />
+                  </>
+                )}
               </button>
               <a
                 href={`https://app.uniswap.org/swap?inputCurrency=ETH&outputCurrency=${tokenAddress}&chain=base`}
@@ -486,6 +562,21 @@ export function CompleteAuction() {
                 <ExternalLink className="w-4 h-4" />
               </a>
             </div>
+            {activateTxHash && (
+              <a
+                href={`https://basescan.org/tx/${activateTxHash}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-xs text-brand-400 hover:text-brand-300 flex items-center gap-1 mt-2 justify-center"
+              >
+                View activation transaction <ExternalLink className="w-3 h-3" />
+              </a>
+            )}
+            {!canActivateYield && vaultAddress && (
+              <p className="text-xs text-surface-500">
+                Only the vault owner can activate yield strategies.
+              </p>
+            )}
           </motion.div>
         )}
       </AnimatePresence>

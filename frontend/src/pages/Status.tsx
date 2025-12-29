@@ -281,8 +281,8 @@ export function Status() {
     retry: 2,
   })
 
-  const globalSections = protocolQuery.data?.sections ?? []
-  const vaultSections = vaultQuery.data?.sections ?? []
+  const globalSections = useMemo(() => protocolQuery.data?.sections ?? [], [protocolQuery.data?.sections])
+  const vaultSections = useMemo(() => vaultQuery.data?.sections ?? [], [vaultQuery.data?.sections])
 
   const globalSummary = useMemo(() => summarize(globalSections), [globalSections])
   const vaultSummary = useMemo(() => summarize(vaultSections), [vaultSections])
@@ -572,7 +572,6 @@ export function Status() {
 
     return actions
   }, [
-    address,
     ajnaBucket,
     ajnaOwner,
     ajnaStrategy,
