@@ -146,6 +146,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const vault = getStringQuery(req, 'vault')
   if (!vault) return res.status(400).json({ success: false, error: 'vault is required' })
   if (!isAddressLike(vault)) return res.status(400).json({ success: false, error: 'Invalid vault address' })
+  const cacheBust = getStringQuery(req, 't')
 
   const rpcUrl = getReadRpcUrl()
 
@@ -470,7 +471,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       { id: 'strategies', title: 'Yield strategy checks', description: 'Verifies the vault’s configured strategies and basic health signals.', checks: strategyChecks },
     ]
 
-    setCache(res, 120)
+    if (cacheBust) {
+      // Manual runs should be "fresh" and not stored at the edge under a unique key.
+      res.setHeader('Cache-Control', 'no-store')
+    } else {
+      setCache(res, 120)
+    }
     return res.status(200).json({
       success: true,
       data: {

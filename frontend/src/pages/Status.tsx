@@ -154,6 +154,7 @@ export function Status() {
 
   const vaultParam = useMemo(() => searchParams.get('vault') ?? '', [searchParams])
   const [vaultInput, setVaultInput] = useState<string>(vaultParam)
+  const [runId, setRunId] = useState<number>(0)
 
   useEffect(() => {
     setVaultInput(vaultParam)
@@ -175,9 +176,12 @@ export function Status() {
   })
 
   const vaultQuery = useQuery({
-    queryKey: ['status', 'vaultReport', vaultParamAddress],
+    queryKey: ['status', 'vaultReport', vaultParamAddress, runId],
     enabled: !!vaultParamAddress,
-    queryFn: async () => fetchJson<VaultReportResponse>(`/api/status/vaultReport?vault=${vaultParamAddress}`),
+    queryFn: async () =>
+      fetchJson<VaultReportResponse>(
+        `/api/status/vaultReport?vault=${vaultParamAddress}${runId ? `&t=${runId}` : ''}`,
+      ),
     retry: 2,
   })
 
@@ -193,10 +197,8 @@ export function Status() {
     else next.delete('vault')
     setSearchParams(next)
 
-    // If the param is unchanged, still let the user re-run (useful after a 429).
-    if (vaultParamAddress && vaultInputAddress && vaultParamAddress.toLowerCase() === vaultInputAddress.toLowerCase()) {
-      void vaultQuery.refetch()
-    }
+    // Always bump runId so we bypass CDN cache when the user explicitly runs checks.
+    setRunId(Date.now())
   }
 
   // SEO safety: diagnostic page + query variants.
@@ -313,6 +315,18 @@ export function Status() {
                 <div className="text-emerald-200">{vaultSummary.pass} pass</div>
                 <div className="text-amber-200">{vaultSummary.warn} warn</div>
                 <div className="text-red-200">{vaultSummary.fail} fail</div>
+                <div className="text-zinc-600">
+                  Last checked:{' '}
+                  <span className="text-zinc-500">
+                    {new Date(vaultQuery.data.generatedAt).toLocaleString(undefined, {
+                      year: 'numeric',
+                      month: 'short',
+                      day: '2-digit',
+                      hour: '2-digit',
+                      minute: '2-digit',
+                    })}
+                  </span>
+                </div>
               </div>
             )}
 
@@ -340,6 +354,18 @@ export function Status() {
             {globalSections.map((s) => (
               <SectionCard key={s.id} section={s} />
             ))}
+            {protocolQuery.data ? (
+              <div className="text-[10px] text-zinc-700">
+                Protocol checks updated:{' '}
+                {new Date(protocolQuery.data.generatedAt).toLocaleString(undefined, {
+                  year: 'numeric',
+                  month: 'short',
+                  day: '2-digit',
+                  hour: '2-digit',
+                  minute: '2-digit',
+                })}
+              </div>
+            ) : null}
           </div>
 
           {/* Vault report */}
