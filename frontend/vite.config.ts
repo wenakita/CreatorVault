@@ -78,6 +78,8 @@ function localApiRoutesPlugin(): Plugin {
         '/api/zora/topCreators': () => import('./api/zora/topCreators'),
         '/api/debank/totalBalanceBatch': () => import('./api/debank/totalBalanceBatch'),
         '/api/dexscreener/tokenStatsBatch': () => import('./api/dexscreener/tokenStatsBatch'),
+        '/api/status/protocolReport': () => import('./api/status/protocolReport'),
+        '/api/status/vaultReport': () => import('./api/status/vaultReport'),
         '/api/auth/nonce': () => import('./api/auth/nonce'),
         '/api/auth/verify': () => import('./api/auth/verify'),
         '/api/auth/me': () => import('./api/auth/me'),

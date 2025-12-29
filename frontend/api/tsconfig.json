@@ -21,6 +21,7 @@
     "./dexscreener/**/*.ts",
     "./onchain/**/*.ts",
     "./auth/**/*.ts",
+    "./status/**/*.ts",
     "../src/types/vercel-node.d.ts"
   ],
   "exclude": ["node_modules"]
