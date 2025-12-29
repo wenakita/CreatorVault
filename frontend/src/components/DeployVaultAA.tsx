@@ -144,6 +144,22 @@ const CCA_VIEW_ABI = [
   { type: 'function', name: 'approvedLaunchers', stateMutability: 'view', inputs: [{ name: 'launcher', type: 'address' }], outputs: [{ type: 'bool' }] },
 ] as const
 
+const GAUGE_ORACLE_VIEW_ABI = [
+  { type: 'function', name: 'oracle', stateMutability: 'view', inputs: [], outputs: [{ type: 'address' }] },
+] as const
+
+const CCA_ORACLE_CONFIG_VIEW_ABI = [
+  { type: 'function', name: 'oracle', stateMutability: 'view', inputs: [], outputs: [{ type: 'address' }] },
+  { type: 'function', name: 'poolManager', stateMutability: 'view', inputs: [], outputs: [{ type: 'address' }] },
+  { type: 'function', name: 'taxHook', stateMutability: 'view', inputs: [], outputs: [{ type: 'address' }] },
+  { type: 'function', name: 'feeRecipient', stateMutability: 'view', inputs: [], outputs: [{ type: 'address' }] },
+] as const
+
+const ORACLE_VIEW_ABI = [
+  { type: 'function', name: 'chainlinkFeed', stateMutability: 'view', inputs: [], outputs: [{ type: 'address' }] },
+  { type: 'function', name: 'creatorSymbol', stateMutability: 'view', inputs: [], outputs: [{ type: 'string' }] },
+] as const
+
 const REGISTRY_LZ_VIEW_ABI = [
   { type: 'function', name: 'getLayerZeroEndpoint', stateMutability: 'view', inputs: [{ name: '_chainId', type: 'uint16' }], outputs: [{ type: 'address' }] },
 ] as const
@@ -960,6 +976,60 @@ export function DeployVaultAA({
         }
         if (!hasCharm) throw new Error('Charm strategy was not deployed.')
         if (!hasAjna) throw new Error('Ajna strategy was not deployed.')
+
+        // Oracle wiring: gauge + CCA should both point to the deployed oracle, and CCA config should match protocol contracts.
+        const gaugeOracle = (await publicClient.readContract({
+          address: gaugeAddress,
+          abi: GAUGE_ORACLE_VIEW_ABI,
+          functionName: 'oracle',
+        })) as Address
+        if (!gaugeOracle || gaugeOracle.toLowerCase() !== oracleAddress.toLowerCase()) {
+          throw new Error('Gauge oracle is not set correctly.')
+        }
+
+        const [ccaOracle, ccaPoolManager, ccaTaxHook, ccaFeeRecipient] = (await publicClient.multicall({
+          contracts: [
+            { address: ccaAddress, abi: CCA_ORACLE_CONFIG_VIEW_ABI, functionName: 'oracle' },
+            { address: ccaAddress, abi: CCA_ORACLE_CONFIG_VIEW_ABI, functionName: 'poolManager' },
+            { address: ccaAddress, abi: CCA_ORACLE_CONFIG_VIEW_ABI, functionName: 'taxHook' },
+            { address: ccaAddress, abi: CCA_ORACLE_CONFIG_VIEW_ABI, functionName: 'feeRecipient' },
+          ],
+          allowFailure: true,
+        })) as any
+
+        const ccaOracleAddr = ccaOracle?.status === 'success' ? (ccaOracle.result as Address) : null
+        const ccaPmAddr = ccaPoolManager?.status === 'success' ? (ccaPoolManager.result as Address) : null
+        const ccaTaxAddr = ccaTaxHook?.status === 'success' ? (ccaTaxHook.result as Address) : null
+        const ccaFeeAddr = ccaFeeRecipient?.status === 'success' ? (ccaFeeRecipient.result as Address) : null
+
+        if (!ccaOracleAddr || ccaOracleAddr.toLowerCase() !== oracleAddress.toLowerCase()) {
+          throw new Error('CCA oracle config is not set correctly.')
+        }
+        if (!ccaPmAddr || ccaPmAddr.toLowerCase() !== poolManager.toLowerCase()) {
+          throw new Error('CCA poolManager is not set correctly.')
+        }
+        if (!ccaTaxAddr || ccaTaxAddr.toLowerCase() !== taxHook.toLowerCase()) {
+          throw new Error('CCA tax hook is not set correctly.')
+        }
+        if (!ccaFeeAddr || ccaFeeAddr.toLowerCase() !== gaugeAddress.toLowerCase()) {
+          throw new Error('CCA fee recipient is not set correctly.')
+        }
+
+        const [oracleFeedRes, oracleSymbolRes] = await publicClient.multicall({
+          contracts: [
+            { address: oracleAddress, abi: ORACLE_VIEW_ABI, functionName: 'chainlinkFeed' },
+            { address: oracleAddress, abi: ORACLE_VIEW_ABI, functionName: 'creatorSymbol' },
+          ],
+          allowFailure: true,
+        })
+        const oracleFeed = oracleFeedRes?.status === 'success' ? (oracleFeedRes.result as Address) : null
+        const oracleSymbol = oracleSymbolRes?.status === 'success' ? String(oracleSymbolRes.result) : null
+        if (!oracleFeed || oracleFeed.toLowerCase() !== chainlinkEthUsd.toLowerCase()) {
+          throw new Error('Oracle Chainlink feed is not set correctly.')
+        }
+        if (!oracleSymbol || oracleSymbol.toLowerCase() !== symbol.toLowerCase()) {
+          throw new Error('Oracle symbol is not set correctly.')
+        }
       } catch (e: any) {
         fail(
           'Deployment completed, but verification failed. Please check the addresses.',
