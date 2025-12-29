@@ -1,281 +1,236 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.28;
+pragma solidity ^0.8.20;
 
-import {AjnaStrategy} from "../strategies/AjnaStrategy.sol";
-import {CreatorCharmStrategy} from "../strategies/CreatorCharmStrategy.sol";
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {IERC20Metadata} from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
+import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
+import "../strategies/CreatorCharmStrategyV2.sol";
+import "../strategies/AjnaStrategy.sol";
+import "../charm/CharmAlphaVault.sol";
+import "../charm/CharmAlphaVaultSimple.sol";
+import "../charm/CharmAlphaStrategy.sol";
+import "../interfaces/v3/IUniswapV3Factory.sol";
+import "../interfaces/v3/IUniswapV3Pool.sol";
 
 /**
  * @title StrategyDeploymentBatcher
- * @notice Deploy and configure all vault strategies in a single transaction
- * @dev Designed for use with Account Abstraction (ERC-4337) for 1-click deployment
+ * @notice Deploy and configure all yield strategies in one AA transaction
+ * @dev Deploys in a single transaction:
+ *  1. Uniswap V3 Pool (CREATOR/USDC) - creates if doesn't exist
+ *  2. Charm Alpha Vault - for automated LP management
+ *  3. Charm Alpha Strategy - rebalancer for Charm vault
+ *  4. Creator Charm Strategy V2 - vault integration with swap support
+ *  5. Ajna Strategy (optional) - lending protocol integration
+ * 
+ * Features:
+ *  - ✅ Creates V3 pool if doesn't exist
+ *  - ✅ Single-sided deposits supported (swaps CREATOR → USDC)
+ *  - ✅ Auto-initializes approvals for swapping
+ *  - ✅ Returns all addresses for vault.addStrategy() calls
+ * 
+ * Usage with Account Abstraction:
+ * 1. Call batchDeployStrategies() with CREATOR token, USDC, vault, factory
+ * 2. All contracts deploy in one transaction
+ * 3. Use returned addresses to call vault.addStrategy()
  */
-contract StrategyDeploymentBatcher {
-    // ============================================
-    // Events
-    // ============================================
-    
+contract StrategyDeploymentBatcher is ReentrancyGuard {
+    using SafeERC20 for IERC20;
+
+    // Base Network Constants
+    address public constant V3_FACTORY = 0x33128a8fC17869897dcE68Ed026d694621f6FDfD;
+    address public constant UNISWAP_ROUTER = 0x2626664c2603336E57B271c5C0b26F421741e481;
+
+    struct DeploymentResult {
+        address charmVault;
+        address charmStrategy;
+        address creatorCharmStrategy;
+        address ajnaStrategy;
+        address v3Pool;
+    }
+
     event StrategiesDeployed(
-        address indexed vault,
-        address ajnaStrategy,
-        address charmWethStrategy,
-        address charmUsdcStrategy
+        address indexed creator,
+        address indexed underlyingToken,
+        DeploymentResult result
     );
 
-    // ============================================
-    // Errors
-    // ============================================
-    
-    error InvalidVault();
-    error InvalidToken();
-    error DeploymentFailed();
-
-    // ============================================
-    // Structs
-    // ============================================
-    
-    struct DeploymentParams {
-        address vault;
-        address creatorToken;
-        address ajnaFactory;
-        address charmVault;
-        address weth;
-        address usdc;
-        address zora;
-        address uniswapV3Factory;
-        uint256 ajnaBucketIndex;
-        uint24 wethFee;  // e.g., 10000 for 1%
-        uint24 usdcFee;  // e.g., 10000 for 1%
-        uint256 ajnaWeight;      // e.g., 100
-        uint256 charmWethWeight; // e.g., 100
-        uint256 charmUsdcWeight; // e.g., 100
-        uint256 minimumIdle;     // e.g., 12.5M tokens
-    }
-
-    // ============================================
-    // Main Deployment Function
-    // ============================================
-    
     /**
-     * @notice Deploy all strategies for a creator vault in one transaction
-     * @param params Complete deployment parameters
-     * @return ajnaStrategy Address of deployed Ajna strategy
-     * @return charmWethStrategy Address of deployed Charm WETH LP strategy
-     * @return charmUsdcStrategy Address of deployed Charm USDC LP strategy
+     * @notice Deploy all strategies for a creator vault (FULLY AUTOMATED)
+     * @param underlyingToken The creator token (e.g., CREATOR)
+     * @param quoteToken The quote token for LP (e.g., USDC - 0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913)
+     * @param creatorVault The vault that will use these strategies
+     * @param _ajnaFactory The Ajna ERC20Pool factory address (if using Ajna)
+     * @param v3FeeTier The Uniswap V3 fee tier (e.g., 3000 for 0.3%)
+     * @param initialSqrtPriceX96 Initial price for V3 pool (e.g., for 99/1 CREATOR/USDC)
+     * @param owner The creator coin owner who will own all strategies (typically the creator)
+     * @param vaultName Standard name for the Charm vault (e.g., "CreatorVault: akita/USDC")
+     * @param vaultSymbol Standard symbol for the Charm vault (e.g., "CV-akita-USDC")
+     * @return result All deployed contract addresses
+     * 
+     * @dev This function is FULLY AUTOMATED:
+     * - Deploys CharmAlphaVault, sets strategy, and transfers ownership atomically
+     * - Calls rebalance() automatically after deployment
+     * - No manual acceptance needed!
+     * - Owner gets immediate control of all contracts
      */
-    function deployAllStrategies(DeploymentParams calldata params) 
-        external 
-        returns (
-            address ajnaStrategy,
-            address charmWethStrategy,
-            address charmUsdcStrategy
-        ) 
-    {
-        // Validate inputs
-        if (params.vault == address(0)) revert InvalidVault();
-        if (params.creatorToken == address(0)) revert InvalidToken();
+    function batchDeployStrategies(
+        address underlyingToken,
+        address quoteToken,
+        address creatorVault,
+        address _ajnaFactory,
+        uint24 v3FeeTier,
+        uint160 initialSqrtPriceX96,
+        address owner,
+        string memory vaultName,
+        string memory vaultSymbol
+    ) external nonReentrant returns (DeploymentResult memory result) {
+        require(owner != address(0), "Invalid owner address");
+        require(bytes(vaultName).length > 0, "Invalid vault name");
+        require(bytes(vaultSymbol).length > 0, "Invalid vault symbol");
+        require(underlyingToken != address(0), "Zero underlying");
+        require(quoteToken != address(0), "Zero quote");
+        require(creatorVault != address(0), "Zero vault");
 
-        // ============================================
-        // 1. Deploy Ajna Strategy (CREATOR/WETH lending)
-        // ============================================
+        // ═══════════════════════════════════════════════════════════
+        // STEP 1: Create or Get V3 Pool
+        // ═══════════════════════════════════════════════════════════
+        IUniswapV3Factory factory = IUniswapV3Factory(V3_FACTORY);
+        result.v3Pool = factory.getPool(underlyingToken, quoteToken, v3FeeTier);
         
-        ajnaStrategy = address(new AjnaStrategy(
-            params.vault,
-            params.creatorToken,
-            params.ajnaFactory,
-            params.weth,
-            msg.sender  // Owner
-        ));
-
-        // ============================================
-        // 2. Deploy Charm WETH LP Strategy
-        // ============================================
-        
-        charmWethStrategy = address(new CreatorCharmStrategy(
-            params.vault,
-            params.creatorToken,
-            params.weth,
-            params.charmVault,
-            params.uniswapV3Factory,
-            params.wethFee,
-            msg.sender  // Owner
-        ));
-
-        // ============================================
-        // 3. Deploy Charm USDC LP Strategy
-        // ============================================
-        
-        charmUsdcStrategy = address(new CreatorCharmStrategy(
-            params.vault,
-            params.creatorToken,
-            params.usdc,
-            params.charmVault,
-            params.uniswapV3Factory,
-            params.usdcFee,
-            msg.sender  // Owner
-        ));
-
-        // ============================================
-        // 4. Configure Ajna Strategy
-        // ============================================
-        
-        // Find or deploy Ajna pool
-        address ajnaPool = _findAjnaPool(
-            params.ajnaFactory,
-            params.creatorToken,
-            params.weth
-        );
-        
-        if (ajnaPool == address(0)) {
-            // Deploy new Ajna pool with 5% interest rate
-            ajnaPool = IAjnaFactory(params.ajnaFactory).deployPool(
-                params.creatorToken,
-                params.weth,
-                50000000000000000 // 5%
-            );
+        if (result.v3Pool == address(0)) {
+            // Create pool if it doesn't exist
+            result.v3Pool = factory.createPool(underlyingToken, quoteToken, v3FeeTier);
+            
+            // Initialize pool
+            IUniswapV3Pool(result.v3Pool).initialize(initialSqrtPriceX96);
         }
 
-        // Configure Ajna strategy
-        AjnaStrategy(ajnaStrategy).setAjnaPool(ajnaPool);
-        if (params.ajnaBucketIndex != 3696) {
-            AjnaStrategy(ajnaStrategy).setBucketIndex(params.ajnaBucketIndex);
-        }
-        AjnaStrategy(ajnaStrategy).initializeApprovals();
+        // ═══════════════════════════════════════════════════════════
+        // STEP 2: Deploy Charm Alpha Vault (batcher is temp governance)
+        // ═══════════════════════════════════════════════════════════
+        result.charmVault = address(new CharmAlphaVaultSimple(
+            result.v3Pool,
+            10000,              // 1% protocol fee
+            type(uint256).max,  // No supply cap (unlimited)
+            vaultName,          // Standard name (e.g., "CreatorVault: akita/USDC")
+            vaultSymbol         // Standard symbol (e.g., "CV-akita-USDC")
+        ));
 
-        // ============================================
-        // 5. Configure Charm Strategies
-        // ============================================
+        // ═══════════════════════════════════════════════════════════
+        // STEP 3: Deploy Charm Alpha Strategy (Rebalancer)
+        // ═══════════════════════════════════════════════════════════
+        result.charmStrategy = address(new CharmAlphaStrategy(
+            result.charmVault,
+            3000,   // Base threshold
+            6000,   // Limit threshold
+            100,    // Max TWAP deviation
+            1800,   // 30 min TWAP
+            result.charmVault  // Keeper = vault initially (so vault can call rebalance)
+        ));
         
-        // Initialize approvals for both Charm strategies
-        CreatorCharmStrategy(charmWethStrategy).initializeApprovals();
-        CreatorCharmStrategy(charmUsdcStrategy).initializeApprovals();
-
-        // ============================================
-        // 6. Add strategies to vault
-        // ============================================
-        
-        IVault(params.vault).addStrategy(ajnaStrategy, params.ajnaWeight);
-        IVault(params.vault).addStrategy(charmWethStrategy, params.charmWethWeight);
-        IVault(params.vault).addStrategy(charmUsdcStrategy, params.charmUsdcWeight);
-
-        // ============================================
-        // 7. Set minimum idle
-        // ============================================
-        
-        if (params.minimumIdle > 0) {
-            IVault(params.vault).setMinimumTotalIdle(params.minimumIdle);
-        }
-
-        // Transfer ownership of strategies to msg.sender
-        AjnaStrategy(ajnaStrategy).transferOwnership(msg.sender);
-        CreatorCharmStrategy(charmWethStrategy).transferOwnership(msg.sender);
-        CreatorCharmStrategy(charmUsdcStrategy).transferOwnership(msg.sender);
-
-        emit StrategiesDeployed(
-            params.vault,
-            ajnaStrategy,
-            charmWethStrategy,
-            charmUsdcStrategy
+        // Initialize vault: set strategy, rebalance, transfer keeper, transfer governance
+        // This all happens atomically in one call
+        CharmAlphaVaultSimple(result.charmVault).initializeAndTransfer(
+            result.charmStrategy,
+            owner,  // Transfer governance to creator
+            owner   // Transfer keeper to creator
         );
 
-        return (ajnaStrategy, charmWethStrategy, charmUsdcStrategy);
-    }
-
-    // ============================================
-    // Helper Functions
-    // ============================================
-    
-    /**
-     * @notice Find existing Ajna pool or return address(0)
-     */
-    function _findAjnaPool(
-        address factory,
-        address tokenA,
-        address tokenB
-    ) internal view returns (address) {
-        // Try different interest rates
-        uint256[3] memory rates = [
-            uint256(50000000000000000),   // 5%
-            uint256(100000000000000000),  // 10%
-            uint256(150000000000000000)   // 15%
-        ];
-
-        for (uint256 i = 0; i < rates.length; i++) {
-            bytes32 poolKey = keccak256(
-                abi.encode(tokenA, tokenB, rates[i])
-            );
-            address pool = IAjnaFactory(factory).deployedPools(poolKey, factory);
-            if (pool != address(0)) {
-                return pool;
-            }
-        }
-
-        return address(0);
-    }
-
-    // ============================================
-    // View Functions
-    // ============================================
-    
-    /**
-     * @notice Calculate deployment gas estimate
-     */
-    function estimateDeploymentGas(DeploymentParams calldata params) 
-        external 
-        view 
-        returns (uint256) 
-    {
-        // Rough estimate:
-        // - 3 contract deployments: ~1.5M gas each = 4.5M
-        // - Configuration calls: ~500K gas
-        // - Vault operations: ~500K gas
-        // Total: ~5.5M gas
-        return 5_500_000;
-    }
-
-    /**
-     * @notice Simulate deployment (for testing)
-     */
-    function simulateDeployment(DeploymentParams calldata params)
-        external
-        view
-        returns (bool canDeploy, string memory reason)
-    {
-        if (params.vault == address(0)) {
-            return (false, "Invalid vault address");
-        }
-        if (params.creatorToken == address(0)) {
-            return (false, "Invalid creator token address");
-        }
-        if (params.ajnaFactory == address(0)) {
-            return (false, "Invalid Ajna factory address");
-        }
-        if (params.charmVault == address(0)) {
-            return (false, "Invalid Charm vault address");
-        }
+        // ═══════════════════════════════════════════════════════════
+        // STEP 4: Deploy Creator Charm Strategy V2 (Vault Integration)
+        // ═══════════════════════════════════════════════════════════
+        result.creatorCharmStrategy = address(new CreatorCharmStrategyV2(
+            creatorVault,           // vault
+            underlyingToken,        // CREATOR token
+            quoteToken,             // USDC
+            UNISWAP_ROUTER,         // SwapRouter
+            result.charmVault,      // CharmAlphaVault
+            result.v3Pool,          // CREATOR/USDC V3 pool for pricing
+            owner                   // owner (can be multisig)
+        ));
         
-        return (true, "Deployment ready");
+        // Initialize approvals for swapping
+        CreatorCharmStrategyV2(result.creatorCharmStrategy).initializeApprovals();
+
+        // ═══════════════════════════════════════════════════════════
+        // STEP 5: Deploy Ajna Strategy (if factory provided)
+        // ═══════════════════════════════════════════════════════════
+        if (_ajnaFactory != address(0)) {
+            result.ajnaStrategy = address(new AjnaStrategy(
+                creatorVault,        // vault
+                underlyingToken,     // CREATOR token
+                _ajnaFactory,        // Ajna ERC20Pool factory
+                quoteToken,          // USDC (quote token)
+                owner                // owner (can be multisig)
+            ));
+        }
+
+        emit StrategiesDeployed(msg.sender, underlyingToken, result);
+    }
+
+    /**
+     * @notice Helper to encode vault.addStrategy() calls for AA
+     * @dev Returns calldata for batched execution
+     */
+    function encodeAddStrategyBatch(
+        address vault,
+        DeploymentResult memory result,
+        uint256 charmAllocation,  // e.g., 690000000000000000 for 69%
+        uint256 ajnaAllocation    // e.g., 213900000000000000 for 21.39%
+    ) external pure returns (bytes[] memory calls) {
+        uint256 numCalls = result.ajnaStrategy != address(0) ? 2 : 1;
+        calls = new bytes[](numCalls);
+        
+        // Charm strategy
+        calls[0] = abi.encodeWithSignature(
+            "addStrategy(address,uint256)",
+            result.creatorCharmStrategy,
+            charmAllocation
+        );
+        
+        // Ajna strategy (if exists)
+        if (result.ajnaStrategy != address(0)) {
+            calls[1] = abi.encodeWithSignature(
+                "addStrategy(address,uint256)",
+                result.ajnaStrategy,
+                ajnaAllocation
+            );
+        }
     }
 }
 
-// ============================================
-// Interfaces
-// ============================================
 
-interface IVault {
-    function addStrategy(address strategy, uint256 weight) external;
-    function setMinimumTotalIdle(uint256 amount) external;
-}
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {IERC20Metadata} from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
+import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
+import "../strategies/CreatorCharmStrategyV2.sol";
+import "../strategies/AjnaStrategy.sol";
+import "../charm/CharmAlphaVault.sol";
+import "../charm/CharmAlphaVaultSimple.sol";
+import "../charm/CharmAlphaStrategy.sol";
+import "../interfaces/v3/IUniswapV3Factory.sol";
+import "../interfaces/v3/IUniswapV3Pool.sol";
 
-interface IAjnaFactory {
-    function deployPool(
-        address collateral,
-        address quote,
-        uint256 interestRate
-    ) external returns (address pool);
-    
-    function deployedPools(
-        bytes32 subsetHash,
-        address factory
-    ) external view returns (address);
-}
-
+/**
+ * @title StrategyDeploymentBatcher
+ * @notice Deploy and configure all yield strategies in one AA transaction
+ * @dev Deploys in a single transaction:
+ *  1. Uniswap V3 Pool (CREATOR/USDC) - creates if doesn't exist
+ *  2. Charm Alpha Vault - for automated LP management
+ *  3. Charm Alpha Strategy - rebalancer for Charm vault
+ *  4. Creator Charm Strategy V2 - vault integration with swap support
+ *  5. Ajna Strategy (optional) - lending protocol integration
+ * 
+ * Features:
+ *  - ✅ Creates V3 pool if doesn't exist
+ *  - ✅ Single-sided deposits supported (swaps CREATOR → USDC)
+ *  - ✅ Auto-initializes approvals for swapping
+ *  - ✅ Returns all addresses for vault.addStrategy() calls
+ * 
+ * Usage with Account Abstraction:
+ * 1. Call batchDeployStrategies() with CREATOR token, USDC, vault, factory
+ * 2. All contracts deploy in one transaction
+ * 3. Use returned addresses to call vault.addStrategy()
+ */

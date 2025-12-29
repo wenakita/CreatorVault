@@ -554,6 +554,36 @@ export function DeployVault() {
                             Provides pricing data used by the vault’s launch/graduation path.
                           </div>
                         </details>
+
+                        <details className="group border border-zinc-900/50 rounded-lg bg-black/20">
+                          <summary className="cursor-pointer list-none [&::-webkit-details-marker]:hidden px-4 py-3 flex items-center justify-between gap-4">
+                            <div>
+                              <div className="text-xs text-zinc-500">Yield strategy</div>
+                              <div className="text-sm text-zinc-200">Charm LP (CREATOR/USDC)</div>
+                              <div className="text-[10px] text-zinc-600 font-mono mt-1">Contract: CreatorCharmStrategyV2</div>
+                            </div>
+                            <div className="text-[10px] text-zinc-600 group-open:hidden">Info</div>
+                            <div className="text-[10px] text-zinc-600 hidden group-open:block">Hide</div>
+                          </summary>
+                          <div className="px-4 pb-3 text-xs text-zinc-600">
+                            Deploys and configures a Charm-managed Uniswap V3 LP strategy, then registers it in the vault allocation.
+                          </div>
+                        </details>
+
+                        <details className="group border border-zinc-900/50 rounded-lg bg-black/20">
+                          <summary className="cursor-pointer list-none [&::-webkit-details-marker]:hidden px-4 py-3 flex items-center justify-between gap-4">
+                            <div>
+                              <div className="text-xs text-zinc-500">Yield strategy</div>
+                              <div className="text-sm text-zinc-200">Ajna lending</div>
+                              <div className="text-[10px] text-zinc-600 font-mono mt-1">Contract: AjnaStrategy</div>
+                            </div>
+                            <div className="text-[10px] text-zinc-600 group-open:hidden">Info</div>
+                            <div className="text-[10px] text-zinc-600 hidden group-open:block">Hide</div>
+                          </summary>
+                          <div className="px-4 pb-3 text-xs text-zinc-600">
+                            Deploys and registers an Ajna lending strategy for the creator coin.
+                          </div>
+                        </details>
                       </div>
                     </div>
                   </div>

@@ -29,6 +29,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { CheckCircle, Loader, Rocket } from 'lucide-react'
 import { CONTRACTS } from '@/config/contracts'
 import { DEPLOY_BYTECODE } from '@/deploy/bytecode.generated'
+import { DEPLOY_BYTECODE_FULLSTACK } from '@/deploy/bytecode.fullstack'
 
 const CREATE2_DEPLOYER_ABI = [
   {
@@ -43,9 +44,31 @@ const CREATE2_DEPLOYER_ABI = [
   },
 ] as const
 
-const VAULT_ADMIN_ABI = [
-  { type: 'function', name: 'setGaugeController', stateMutability: 'nonpayable', inputs: [{ name: '_gaugeController', type: 'address' }], outputs: [] },
-  { type: 'function', name: 'setWhitelist', stateMutability: 'nonpayable', inputs: [{ name: '_account', type: 'address' }, { name: '_status', type: 'bool' }], outputs: [] },
+const VAULT_MANAGEMENT_ABI = [
+  { type: 'function', name: 'acceptManagement', stateMutability: 'nonpayable', inputs: [], outputs: [] },
+] as const
+
+const BOOTSTRAPPER_ABI = [
+  {
+    type: 'function',
+    name: 'finalize',
+    stateMutability: 'nonpayable',
+    inputs: [
+      { name: 'vault', type: 'address' },
+      { name: 'wrapper', type: 'address' },
+      { name: 'gaugeController', type: 'address' },
+      { name: 'creatorToken', type: 'address' },
+      { name: 'usdc', type: 'address' },
+      { name: 'ajnaFactory', type: 'address' },
+      { name: 'v3FeeTier', type: 'uint24' },
+      { name: 'initialSqrtPriceX96', type: 'uint160' },
+      { name: 'charmVaultName', type: 'string' },
+      { name: 'charmVaultSymbol', type: 'string' },
+      { name: 'charmWeightBps', type: 'uint256' },
+      { name: 'ajnaWeightBps', type: 'uint256' },
+    ],
+    outputs: [],
+  },
 ] as const
 
 const WRAPPER_ADMIN_ABI = [
@@ -167,6 +190,7 @@ function deriveSalts(params: { creatorToken: Address; owner: Address; chainId: n
     gaugeSalt: saltFor('gauge'),
     ccaSalt: saltFor('cca'),
     oracleSalt: saltFor('oracle'),
+    bootstrapperSalt: saltFor('bootstrapper'),
   }
 }
 
@@ -324,6 +348,14 @@ export function DeployVaultAA({
     // Salts
     const salts = deriveSalts({ creatorToken, owner, chainId: base.id })
 
+    // Full-stack bootstrapper (deployed via CREATE2; temporarily owns the vault to wire strategies + handoff)
+    const bootstrapperInitCode = makeInitCode(
+      DEPLOY_BYTECODE_FULLSTACK.VaultStrategyBootstrapper as Hex,
+      'address',
+      [owner],
+    )
+    const bootstrapperAddress = predictCreate2Address(create2Deployer, salts.bootstrapperSalt, bootstrapperInitCode)
+
     // Cross-chain deterministic ShareOFT:
     // - Deployed via the universal CREATE2 factory (0x4e59…)
     // - Salt does NOT include chainId or local creatorToken
@@ -339,7 +371,7 @@ export function DeployVaultAA({
     const vaultInitCode = makeInitCode(
       DEPLOY_BYTECODE.CreatorOVault as Hex,
       'address,address,string,string',
-      [creatorToken, owner, vaultName, vaultSymbol],
+      [creatorToken, bootstrapperAddress, vaultName, vaultSymbol],
     )
     const vaultAddress = predictCreate2Address(create2Deployer, salts.vaultSalt, vaultInitCode)
 
@@ -388,6 +420,9 @@ export function DeployVaultAA({
     }
     setAddresses(predicted)
 
+    const bootstrapperCode = await publicClient.getBytecode({ address: bootstrapperAddress })
+    const bootstrapperExists = !!bootstrapperCode && bootstrapperCode !== '0x'
+
     // Pre-flight: ensure addresses are free
     if (!publicClient) {
       fail('Network client not ready. Please try again.')
@@ -429,6 +464,16 @@ export function DeployVaultAA({
     const calls: { to: Address; data: Hex; value?: bigint }[] = []
 
     // Deploy contracts
+    if (!bootstrapperExists) {
+      calls.push({
+        to: create2Deployer,
+        data: encodeFunctionData({
+          abi: CREATE2_DEPLOYER_ABI,
+          functionName: 'deploy',
+          args: [salts.bootstrapperSalt, bootstrapperInitCode],
+        }),
+      })
+    }
     calls.push({
       to: create2Deployer,
       data: encodeFunctionData({ abi: CREATE2_DEPLOYER_ABI, functionName: 'deploy', args: [salts.vaultSalt, vaultInitCode] }),
@@ -481,9 +526,6 @@ export function DeployVaultAA({
     }
     calls.push({ to: gaugeAddress, data: encodeFunctionData({ abi: GAUGE_ADMIN_ABI, functionName: 'setOracle', args: [oracleAddress] }) })
 
-    calls.push({ to: vaultAddress, data: encodeFunctionData({ abi: VAULT_ADMIN_ABI, functionName: 'setGaugeController', args: [gaugeAddress] }) })
-    calls.push({ to: vaultAddress, data: encodeFunctionData({ abi: VAULT_ADMIN_ABI, functionName: 'setWhitelist', args: [wrapperAddress, true] }) })
-
     // CCA: allow VaultActivationBatcher to launch auctions (critical)
     calls.push({ to: ccaAddress, data: encodeFunctionData({ abi: CCA_ADMIN_ABI, functionName: 'setApprovedLauncher', args: [vaultActivationBatcher, true] }) })
 
@@ -496,6 +538,53 @@ export function DeployVaultAA({
         args: [oracleAddress, poolManager, taxHook, gaugeAddress],
       }),
     })
+
+    // Yield strategies + vault handoff (single confirmation):
+    // - Deploy Charm + Ajna strategies
+    // - Add strategies to vault allocations
+    // - Wire vault (gauge controller + wrapper whitelist)
+    // - Transfer vault ownership + management to `owner`
+    const usdc = CONTRACTS.usdc as Address
+    const ajnaFactory = CONTRACTS.ajnaErc20Factory as Address
+    const v3FeeTier = 3000
+
+    // For AKITA/USDC at $0.0001: sqrtPriceX96 ≈ 250541448375047931186413801569 (token0=CREATOR, token1=USDC)
+    const BASE_SQRT_PRICE_X96_CREATOR0_USDC1 = 250541448375047931186413801569n
+    const Q192 = 2n ** 192n
+    const creatorIsToken0 = BigInt(creatorToken) < BigInt(usdc)
+    const initialSqrtPriceX96 = creatorIsToken0
+      ? BASE_SQRT_PRICE_X96_CREATOR0_USDC1
+      : (Q192 / BASE_SQRT_PRICE_X96_CREATOR0_USDC1)
+
+    const charmVaultName = `CreatorVault: ${underlyingSymbol.toUpperCase()}/USDC`
+    const charmVaultSymbol = `CV-${underlyingSymbol.toLowerCase()}-USDC`
+
+    const charmWeightBps = 6900n
+    const ajnaWeightBps = 2139n
+
+    calls.push({
+      to: bootstrapperAddress,
+      data: encodeFunctionData({
+        abi: BOOTSTRAPPER_ABI,
+        functionName: 'finalize',
+        args: [
+          vaultAddress,
+          wrapperAddress,
+          gaugeAddress,
+          creatorToken,
+          usdc,
+          ajnaFactory,
+          v3FeeTier,
+          initialSqrtPriceX96,
+          charmVaultName,
+          charmVaultSymbol,
+          charmWeightBps,
+          ajnaWeightBps,
+        ],
+      }),
+    })
+    // VaultStrategyBootstrapper sets pendingManagement to `owner` — accept it here so the bootstrapper cannot manage post-deploy.
+    calls.push({ to: vaultAddress, data: encodeFunctionData({ abi: VAULT_MANAGEMENT_ABI, functionName: 'acceptManagement' }) })
 
       // Step 1: wallet confirmation
       setStep(1)

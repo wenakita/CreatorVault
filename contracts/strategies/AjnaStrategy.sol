@@ -8,12 +8,14 @@ import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol
 
 import {IStrategy} from "../interfaces/strategies/IStrategy.sol";
 import {IAjnaPool} from "../interfaces/ajna/IAjnaPool.sol";
+import {IAjnaPoolFactory} from "../interfaces/ajna/IAjnaPool.sol";
 
 /**
  * @title AjnaStrategy
  * @author 0xakita.eth
  * @notice Yield strategy for Creator Coins via Ajna permissionless lending
- * @dev Deposits creator tokens (AKITA, etc.) into Ajna lending pool to earn interest from borrowers
+ * @dev LENDS the vault's creator tokens as the Ajna pool QUOTE TOKEN.
+ *      Borrowers post collateral (e.g., USDC) and borrow the creator token (quote).
  * 
  * Ajna is permissionless - any token can be used without governance approval.
  * This strategy creates/uses a creator token lending pool where users can:
@@ -59,11 +61,16 @@ contract AjnaStrategy is IStrategy, Ownable, ReentrancyGuard {
     /// @notice Ajna ERC20 pool factory
     address public ajnaFactory;
 
-    /// @notice Quote token for the Ajna pool (e.g., WETH, USDC)
-    address public quoteToken;
+    /// @notice Collateral token for the Ajna pool (e.g., USDC, WETH)
+    /// @dev Borrowers post this collateral to borrow the creator token (quote).
+    address public collateralToken;
 
-    /// @notice Total tokens deposited to Ajna
-    uint256 private _totalDeposited;
+    /// @notice Ajna pool interest rate (WAD) used when deploying a new pool.
+    /// @dev Ajna factory bounds are [MIN_RATE, MAX_RATE] (on Base currently 1%..10%).
+    uint256 public immutable interestRateWad;
+
+    /// @notice Ajna pool subset hash used for standard ERC20 pools.
+    bytes32 public immutable ajnaSubsetHash;
 
     /// @notice Strategy active status
     bool private _isActive;
@@ -75,11 +82,10 @@ contract AjnaStrategy is IStrategy, Ownable, ReentrancyGuard {
     string public strategyName;
 
     /// @notice Bucket index for Ajna lending (price point)
-    /// @dev Default is 3696 (middle bucket, ~1:1 price ratio)
+    /// @dev Ajna uses "Fenwick indices" from 1..7388 (0 is invalid for add/move).
+    ///      Index 4156 corresponds to price = 1.0 (quote per collateral, WAD).
+    ///      Lower index => higher price; higher index => lower price.
     uint256 public bucketIndex;
-
-    /// @notice Total LP tokens held in Ajna pool
-    uint256 public totalAjnaLP;
 
     // ================================
     // MODIFIERS
@@ -103,10 +109,10 @@ contract AjnaStrategy is IStrategy, Ownable, ReentrancyGuard {
      * @param _vault The vault that owns this strategy
      * @param _creatorCoin The creator token to lend
      * @param _ajnaFactory The Ajna ERC20 pool factory
-     * @param _quoteToken The quote token for the pool (e.g., WETH, USDC)
+     * @param _collateralToken The collateral token for the pool (e.g., USDC, WETH)
      * @param _owner The owner of this strategy
      * 
-     * @dev Bucket index defaults to 3696 (middle bucket, ~1:1 price ratio).
+     * @dev Bucket index defaults to 4156 (price = 1.0 quote per collateral, WAD).
      *      After deployment, call setBucketIndex() to adjust based on market price
      *      or use moveToBucket() to rebalance existing positions.
      */
@@ -114,22 +120,55 @@ contract AjnaStrategy is IStrategy, Ownable, ReentrancyGuard {
         address _vault,
         address _creatorCoin,
         address _ajnaFactory,
-        address _quoteToken,
+        address _collateralToken,
         address _owner
     ) Ownable(_owner) {
         require(_vault != address(0), "Invalid vault");
         require(_creatorCoin != address(0), "Invalid creator coin");
         require(_ajnaFactory != address(0), "Invalid Ajna factory");
-        require(_quoteToken != address(0), "Invalid quote token");
+        require(_collateralToken != address(0), "Invalid collateral token");
 
         vault = _vault;
         CREATOR_COIN = IERC20(_creatorCoin);
         ajnaFactory = _ajnaFactory;
-        quoteToken = _quoteToken;
+        collateralToken = _collateralToken;
         _isActive = true;
         
         strategyName = "Ajna Lending Strategy";
-        bucketIndex = 3696; // Middle bucket (~1:1 price ratio)
+        // 1.0 price bucket (quote per collateral)
+        bucketIndex = 4156;
+
+        // Default interest rate = 5% APR (WAD). Must be within Ajna factory bounds.
+        interestRateWad = 5e16;
+
+        // Fetch subset hash constant from factory (standard ERC20 pools)
+        ajnaSubsetHash = IAjnaPoolFactory(_ajnaFactory).ERC20_NON_SUBSET_HASH();
+
+        // Auto-create or attach to the Ajna pool for (collateralToken, creatorCoin quote)
+        _initializeAjnaPool();
+    }
+
+    function _initializeAjnaPool() internal {
+        address quote = address(CREATOR_COIN);
+
+        // Lookup existing pool
+        address pool = IAjnaPoolFactory(ajnaFactory).deployedPools(ajnaSubsetHash, collateralToken, quote);
+
+        // Deploy if missing
+        if (pool == address(0)) {
+            // Ensure chosen rate is within bounds
+            uint256 minRate = IAjnaPoolFactory(ajnaFactory).MIN_RATE();
+            uint256 maxRate = IAjnaPoolFactory(ajnaFactory).MAX_RATE();
+            require(interestRateWad >= minRate && interestRateWad <= maxRate, "Invalid Ajna rate");
+
+            pool = IAjnaPoolFactory(ajnaFactory).deployPool(collateralToken, quote, interestRateWad);
+        }
+
+        // Sanity check token pair
+        require(IAjnaPool(pool).quoteTokenAddress() == quote, "Ajna quote mismatch");
+        require(IAjnaPool(pool).collateralAddress() == collateralToken, "Ajna collateral mismatch");
+
+        ajnaPool = pool;
     }
 
     // ================================
@@ -148,13 +187,13 @@ contract AjnaStrategy is IStrategy, Ownable, ReentrancyGuard {
 
         // Deploy to Ajna pool
         if (ajnaPool != address(0)) {
-            deployed = _depositToAjna(amount);
-        } else {
-            // Pool not set - keep as idle in strategy
-            deployed = amount;
+            // Best-effort: if the pool call reverts for any reason, we keep funds idle.
+            // This avoids bricking vault operations if Ajna is unavailable.
+            try this._depositToAjnaExternal(amount) {} catch {}
         }
-
-        _totalDeposited += deployed;
+        // We always "deploy" the full amount from the vault's perspective (strategy now controls it),
+        // whether it sits idle or inside Ajna.
+        deployed = amount;
         
         emit StrategyDeposit(amount, deployed);
     }
@@ -165,20 +204,28 @@ contract AjnaStrategy is IStrategy, Ownable, ReentrancyGuard {
      */
     function withdraw(uint256 amount) external override onlyVault nonReentrant returns (uint256 received) {
         if (amount == 0) return 0;
-        if (amount > _totalDeposited) revert InsufficientAssets();
 
-        // Withdraw from Ajna pool
-        if (ajnaPool != address(0)) {
-            received = _withdrawFromAjna(amount);
-        } else {
-            // No pool - use idle balance
-            received = amount;
+        uint256 idle = CREATOR_COIN.balanceOf(address(this));
+        uint256 remaining = amount;
+
+        // Use idle first
+        if (idle > 0) {
+            uint256 takeIdle = idle > remaining ? remaining : idle;
+            if (takeIdle > 0) {
+                CREATOR_COIN.safeTransfer(vault, takeIdle);
+                received += takeIdle;
+                remaining -= takeIdle;
+            }
         }
 
-        _totalDeposited -= amount;
-
-        // Transfer back to vault
-        CREATOR_COIN.safeTransfer(vault, received);
+        // Pull the rest from Ajna if needed
+        if (remaining > 0 && ajnaPool != address(0)) {
+            uint256 pulled = _withdrawFromAjna(remaining);
+            if (pulled > 0) {
+                CREATOR_COIN.safeTransfer(vault, pulled);
+                received += pulled;
+            }
+        }
 
         emit StrategyWithdraw(amount, received);
     }
@@ -187,24 +234,9 @@ contract AjnaStrategy is IStrategy, Ownable, ReentrancyGuard {
      * @notice Harvest yield from Ajna pool
      */
     function harvest() external override onlyVault returns (uint256 yieldAmount) {
-        if (ajnaPool == address(0)) return 0;
-
-        // Get current balance in Ajna (includes accrued interest)
-        uint256 currentValue = _getAjnaBalance();
-        
-        if (currentValue > _totalDeposited) {
-            yieldAmount = currentValue - _totalDeposited;
-            
-            // Withdraw yield
-            _withdrawFromAjna(yieldAmount);
-            
-            // Transfer yield to vault
-            CREATOR_COIN.safeTransfer(vault, yieldAmount);
-
-            lastHarvest = block.timestamp;
-            
-            emit YieldHarvested(yieldAmount, block.timestamp);
-        }
+        // Vault's `report()` already accounts for strategy gains via getTotalAssets().
+        // We intentionally keep harvest as a no-op to avoid forcing liquidity movements.
+        yieldAmount = 0;
     }
 
     /**
@@ -222,14 +254,15 @@ contract AjnaStrategy is IStrategy, Ownable, ReentrancyGuard {
     function emergencyWithdraw() external override onlyVault returns (uint256 amount) {
         _isActive = false;
 
-        // Withdraw everything from Ajna
+        // Withdraw everything from Ajna (best-effort) + idle balance
         if (ajnaPool != address(0)) {
-            amount = _withdrawFromAjna(_totalDeposited);
-        } else {
-            amount = CREATOR_COIN.balanceOf(address(this));
+            // withdraw up to current Ajna value
+            uint256 ajnaValue = _getAjnaQuoteBalance();
+            if (ajnaValue > 0) {
+                _withdrawFromAjna(ajnaValue);
+            }
         }
-
-        _totalDeposited = 0;
+        amount = CREATOR_COIN.balanceOf(address(this));
 
         // Send all to vault
         CREATOR_COIN.safeTransfer(vault, amount);
@@ -245,58 +278,53 @@ contract AjnaStrategy is IStrategy, Ownable, ReentrancyGuard {
      * @notice Deploy creator tokens to Ajna pool as lender
      * @dev Ajna uses a bucket-based system for lending
      */
-    function _depositToAjna(uint256 amount) internal returns (uint256) {
-        // Approve Ajna pool
+    function _depositToAjnaExternal(uint256 amount) external {
+        require(msg.sender == address(this), "internal only");
+        _depositToAjna(amount);
+    }
+
+    function _depositToAjna(uint256 amount) internal {
+        // Approve Ajna pool (quote token = CREATOR_COIN)
         CREATOR_COIN.forceApprove(ajnaPool, amount);
 
-        // Add quote tokens to lending bucket
-        // Returns: (LP tokens received, actual amount added)
-        (uint256 lpReceived, uint256 addedAmount) = IAjnaPool(ajnaPool).addQuoteToken(
+        // Add quote tokens to lending bucket.
+        // If some amount is not accepted for any reason, it remains idle in this strategy.
+        IAjnaPool(ajnaPool).addQuoteToken(
             amount,
-            bucketIndex,  // Price bucket to lend at
-            block.timestamp + 1 hours  // Expiry (1 hour from now)
+            bucketIndex,
+            block.timestamp + 1 hours
         );
-
-        // Track LP tokens
-        totalAjnaLP += lpReceived;
-
-        return addedAmount;
     }
 
     /**
      * @notice Withdraw creator tokens from Ajna pool
      */
     function _withdrawFromAjna(uint256 amount) internal returns (uint256) {
-        if (totalAjnaLP == 0) return 0;
+        // Determine LP needed to withdraw `amount` based on current bucket state.
+        (uint256 lpBalance, ) = IAjnaPool(ajnaPool).lenderInfo(bucketIndex, address(this));
+        if (lpBalance == 0) return 0;
 
-        // Calculate LP tokens to burn for desired amount
-        // In Ajna, we need to burn LP tokens to withdraw quote tokens
-        uint256 lpToBurn = (amount * totalAjnaLP) / _totalDeposited;
-        if (lpToBurn > totalAjnaLP) lpToBurn = totalAjnaLP;
+        (uint256 bucketLPTotal, , , uint256 bucketDeposit, ) = IAjnaPool(ajnaPool).bucketInfo(bucketIndex);
+        if (bucketDeposit == 0 || bucketLPTotal == 0) return 0;
 
-        // Remove quote tokens from lending bucket
-        // Returns: (amount removed, LP tokens burned)
-        (uint256 removedAmount, uint256 burnedLP) = IAjnaPool(ajnaPool).removeQuoteToken(
-            lpToBurn,
-            bucketIndex
-        );
+        // lpToBurn ≈ amount * bucketLPTotal / bucketDeposit
+        uint256 lpToBurn = (amount * bucketLPTotal) / bucketDeposit;
+        if (lpToBurn == 0) lpToBurn = 1; // ensure progress for small withdrawals
+        if (lpToBurn > lpBalance) lpToBurn = lpBalance;
 
-        // Update LP tracking
-        totalAjnaLP -= burnedLP;
-
+        (uint256 removedAmount, ) = IAjnaPool(ajnaPool).removeQuoteToken(lpToBurn, bucketIndex);
         return removedAmount;
     }
 
     /**
      * @notice Get current creator token balance in Ajna (includes interest)
      */
-    function _getAjnaBalance() internal view returns (uint256) {
-        if (ajnaPool == address(0) || totalAjnaLP == 0) {
-            return CREATOR_COIN.balanceOf(address(this));
-        }
+    function _getAjnaQuoteBalance() internal view returns (uint256) {
+        if (ajnaPool == address(0)) return 0;
 
         // Query Ajna for our LP balance in the bucket
         (uint256 lpBalance, ) = IAjnaPool(ajnaPool).lenderInfo(bucketIndex, address(this));
+        if (lpBalance == 0) return 0;
 
         // Get bucket info to calculate our share
         (uint256 bucketLPTotal, , , uint256 bucketDeposit, ) = IAjnaPool(ajnaPool).bucketInfo(bucketIndex);
@@ -307,7 +335,7 @@ contract AjnaStrategy is IStrategy, Ownable, ReentrancyGuard {
             return (lpBalance * bucketDeposit) / bucketLPTotal;
         }
 
-        return _totalDeposited;
+        return 0;
     }
 
     // ================================
@@ -319,10 +347,8 @@ contract AjnaStrategy is IStrategy, Ownable, ReentrancyGuard {
     }
 
     function getTotalAssets() public view override returns (uint256) {
-        if (ajnaPool != address(0)) {
-            return _getAjnaBalance();
-        }
-        return CREATOR_COIN.balanceOf(address(this));
+        // Total value = idle creator tokens + Ajna bucket value.
+        return CREATOR_COIN.balanceOf(address(this)) + _getAjnaQuoteBalance();
     }
 
     function isActive() external view override returns (bool) {
@@ -334,10 +360,8 @@ contract AjnaStrategy is IStrategy, Ownable, ReentrancyGuard {
     // ================================
 
     function pendingYield() external view returns (uint256) {
-        uint256 currentValue = _getAjnaBalance();
-        if (currentValue > _totalDeposited) {
-            return currentValue - _totalDeposited;
-        }
+        // Vault profit is tracked via CreatorOVault.report() using totalAssets() deltas.
+        // This strategy doesn't track principal internally (vault already tracks debt).
         return 0;
     }
 
@@ -364,25 +388,32 @@ contract AjnaStrategy is IStrategy, Ownable, ReentrancyGuard {
      * @dev Owner can deploy to a new pool if needed
      */
     function setAjnaPool(address _pool) external onlyOwner {
-        // If we have an existing pool with funds, must withdraw first
-        if (ajnaPool != address(0) && _totalDeposited > 0) {
-            revert("Withdraw from current pool first");
+        // If we have an existing pool with LP, must withdraw first
+        if (ajnaPool != address(0)) {
+            (uint256 lpBalance, ) = IAjnaPool(ajnaPool).lenderInfo(bucketIndex, address(this));
+            require(lpBalance == 0, "Withdraw from current pool first");
+        }
+        if (_pool != address(0)) {
+            require(IAjnaPool(_pool).quoteTokenAddress() == address(CREATOR_COIN), "Ajna quote mismatch");
+            require(IAjnaPool(_pool).collateralAddress() == collateralToken, "Ajna collateral mismatch");
         }
         ajnaPool = _pool;
     }
 
     /**
      * @notice Set the bucket index for lending
-     * @dev Lower index = lower price, higher index = higher price
-     *      Bucket 3696 is the middle (~ 1:1 price ratio)
+     * @dev Ajna bucket indices are Fenwick indices.
+     *      Lower index => higher price; higher index => lower price.
+     *      Index 4156 corresponds to price = 1.0 (quote per collateral, WAD).
      */
     function setBucketIndex(uint256 _index) external onlyOwner {
-        // Ajna has 7388 buckets (0-7387)
-        require(_index < 7388, "Invalid bucket index");
+        // Ajna has MAX_FENWICK_INDEX = 7388, and index 0 is invalid for add/move.
+        require(_index > 0 && _index <= 7388, "Invalid bucket index");
         
-        // If we have funds deployed, must move them first
-        if (totalAjnaLP > 0) {
-            revert("Move liquidity before changing bucket");
+        // If we have LP in the current bucket, must move it first
+        if (ajnaPool != address(0)) {
+            (uint256 lpBalance, ) = IAjnaPool(ajnaPool).lenderInfo(bucketIndex, address(this));
+            require(lpBalance == 0, "Move liquidity before changing bucket");
         }
         
         bucketIndex = _index;
@@ -393,22 +424,23 @@ contract AjnaStrategy is IStrategy, Ownable, ReentrancyGuard {
      * @dev Useful for rebalancing or adjusting to market conditions
      */
     function moveToBucket(uint256 newIndex, uint256 lpAmount) external onlyOwner {
-        require(newIndex < 7388, "Invalid bucket index");
+        require(newIndex > 0 && newIndex <= 7388, "Invalid bucket index");
         require(ajnaPool != address(0), "Pool not set");
         
-        if (lpAmount == 0) lpAmount = totalAjnaLP;
+        if (lpAmount == 0) {
+            (uint256 lpBalance, ) = IAjnaPool(ajnaPool).lenderInfo(bucketIndex, address(this));
+            lpAmount = lpBalance;
+        }
         if (lpAmount == 0) return;
 
         // Move LP tokens to new bucket
-        (uint256 fromLP, uint256 toLP, ) = IAjnaPool(ajnaPool).moveQuoteToken(
+        IAjnaPool(ajnaPool).moveQuoteToken(
             lpAmount,
             bucketIndex,      // From current bucket
             newIndex,         // To new bucket
             block.timestamp + 1 hours
         );
 
-        // Update tracking
-        totalAjnaLP = totalAjnaLP - fromLP + toLP;
         bucketIndex = newIndex;
     }
 
@@ -438,4 +470,3 @@ contract AjnaStrategy is IStrategy, Ownable, ReentrancyGuard {
         IERC20(token).safeTransfer(to, amount);
     }
 }
-
