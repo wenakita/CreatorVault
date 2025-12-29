@@ -232,11 +232,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     // Share token wiring
     let shareName: string | null = null
     let shareSymbol: string | null = null
+    let shareOwner: `0x${string}` | null = null
     let shareVault: `0x${string}` | null = null
     let shareGauge: `0x${string}` | null = null
     let shareMinterOk: boolean | null = null
     if (addrOk(shareOFTAddress)) {
       const shareCalls: any[] = [
+        { address: shareOFTAddress, abi: OWNABLE_VIEW_ABI, functionName: 'owner' },
         { address: shareOFTAddress, abi: erc20Abi, functionName: 'name' },
         { address: shareOFTAddress, abi: erc20Abi, functionName: 'symbol' },
         { address: shareOFTAddress, abi: SHAREOFT_VIEW_ABI, functionName: 'vault' },
@@ -254,19 +256,22 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       if (any429(shareRes)) {
         return res.status(429).json({ success: false, error: 'Rate limited by RPC' })
       }
-      shareName = pickResult<string>(shareRes[0])
-      shareSymbol = pickResult<string>(shareRes[1])
-      shareVault = pickResult<`0x${string}`>(shareRes[2])
-      shareGauge = pickResult<`0x${string}`>(shareRes[3])
-      if (shareRes.length >= 5) shareMinterOk = pickResult<boolean>(shareRes[4])
+      shareOwner = pickResult<`0x${string}`>(shareRes[0])
+      shareName = pickResult<string>(shareRes[1])
+      shareSymbol = pickResult<string>(shareRes[2])
+      shareVault = pickResult<`0x${string}`>(shareRes[3])
+      shareGauge = pickResult<`0x${string}`>(shareRes[4])
+      if (shareRes.length >= 6) shareMinterOk = pickResult<boolean>(shareRes[5])
     }
 
     // Wrapper wiring
     let wrapperVault: `0x${string}` | null = null
     let wrapperCoin: `0x${string}` | null = null
     let wrapperShare: `0x${string}` | null = null
+    let wrapperOwner: `0x${string}` | null = null
     if (addrOk(wrapperAddress)) {
       const wrapRes = await safeMulticall(client, [
+        { address: wrapperAddress, abi: OWNABLE_VIEW_ABI, functionName: 'owner' },
         { address: wrapperAddress, abi: WRAPPER_VIEW_ABI, functionName: 'vault' },
         { address: wrapperAddress, abi: WRAPPER_VIEW_ABI, functionName: 'creatorCoin' },
         { address: wrapperAddress, abi: WRAPPER_VIEW_ABI, functionName: 'shareOFT' },
@@ -274,9 +279,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       if (any429(wrapRes)) {
         return res.status(429).json({ success: false, error: 'Rate limited by RPC' })
       }
-      wrapperVault = pickResult<`0x${string}`>(wrapRes[0])
-      wrapperCoin = pickResult<`0x${string}`>(wrapRes[1])
-      wrapperShare = pickResult<`0x${string}`>(wrapRes[2])
+      wrapperOwner = pickResult<`0x${string}`>(wrapRes[0])
+      wrapperVault = pickResult<`0x${string}`>(wrapRes[1])
+      wrapperCoin = pickResult<`0x${string}`>(wrapRes[2])
+      wrapperShare = pickResult<`0x${string}`>(wrapRes[3])
     }
 
     // Vault whitelist + strategies
@@ -486,13 +492,20 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         context: {
           vault: vaultAddress,
           owner,
+          vaultOwner: owner,
           creatorToken,
           vaultName,
           vaultSymbol,
           creatorSymbol,
           gaugeAddress,
           shareOFTAddress,
+          shareOftOwner: shareOwner,
+          shareVault,
+          shareGaugeController: shareGauge,
+          shareMinterOk,
           wrapperAddress,
+          wrapperOwner,
+          wrapperWhitelisted,
           oracleAddress,
           creatorTreasury,
           protocolTreasury,
