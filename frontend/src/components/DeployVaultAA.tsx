@@ -175,6 +175,49 @@ const VAULT_ACTIVATION_BATCHER_ABI = [
   },
 ] as const
 
+const CCA_STATUS_VIEW_ABI = [
+  {
+    type: 'function',
+    name: 'getAuctionStatus',
+    stateMutability: 'view',
+    inputs: [],
+    outputs: [
+      { name: 'auction', type: 'address' },
+      { name: 'isActive', type: 'bool' },
+      { name: 'isGraduated', type: 'bool' },
+      { name: 'clearingPrice', type: 'uint256' },
+      { name: 'currencyRaised', type: 'uint256' },
+    ],
+  },
+] as const
+
+const VAULT_STRATEGIES_VIEW_ABI = [
+  {
+    type: 'function',
+    name: 'getStrategies',
+    stateMutability: 'view',
+    inputs: [],
+    outputs: [
+      { name: 'strategies', type: 'address[]' },
+      { name: 'weights', type: 'uint256[]' },
+      { name: 'assets', type: 'uint256[]' },
+    ],
+  },
+] as const
+
+const STRATEGY_BASIC_VIEW_ABI = [
+  { type: 'function', name: 'isActive', stateMutability: 'view', inputs: [], outputs: [{ type: 'bool' }] },
+  { type: 'function', name: 'asset', stateMutability: 'view', inputs: [], outputs: [{ type: 'address' }] },
+] as const
+
+const CREATOR_CHARM_STRATEGY_VIEW_ABI = [
+  { type: 'function', name: 'charmVault', stateMutability: 'view', inputs: [], outputs: [{ type: 'address' }] },
+] as const
+
+const AJNA_STRATEGY_VIEW_ABI = [
+  { type: 'function', name: 'ajnaPool', stateMutability: 'view', inputs: [], outputs: [{ type: 'address' }] },
+] as const
+
 const COINBASE_SMART_WALLET_ABI = [
   {
     type: 'function',
@@ -862,6 +905,61 @@ export function DeployVaultAA({
           args: [vaultActivationBatcher],
         })
         if (!launcherOk) throw new Error('CCA did not approve VaultActivationBatcher as launcher.')
+
+        // Confirm the auction was actually launched (deploy flow now includes activation + launch).
+        const auctionStatus = (await publicClient.readContract({
+          address: ccaAddress,
+          abi: CCA_STATUS_VIEW_ABI,
+          functionName: 'getAuctionStatus',
+        })) as unknown as readonly [Address, boolean, boolean, bigint, bigint]
+        const auctionAddr = auctionStatus?.[0]
+        const auctionActive = auctionStatus?.[1]
+        const ZERO = '0x0000000000000000000000000000000000000000'
+        if (!auctionAddr || auctionAddr.toLowerCase() === ZERO) {
+          throw new Error('CCA auction was not launched.')
+        }
+        if (!auctionActive) {
+          throw new Error('CCA auction is not active.')
+        }
+
+        // Confirm Charm + Ajna strategies were deployed and added to the vault.
+        const stratTuple = (await publicClient.readContract({
+          address: vaultAddress,
+          abi: VAULT_STRATEGIES_VIEW_ABI,
+          functionName: 'getStrategies',
+        })) as unknown as readonly [Address[], bigint[], bigint[]]
+        const strategies = Array.isArray(stratTuple?.[0]) ? stratTuple[0] : []
+        if (strategies.length < 2) {
+          throw new Error('Charm and Ajna strategies were not configured on the vault.')
+        }
+
+        const stratCalls = strategies.flatMap((s) => [
+          { address: s, abi: STRATEGY_BASIC_VIEW_ABI, functionName: 'isActive' as const },
+          { address: s, abi: STRATEGY_BASIC_VIEW_ABI, functionName: 'asset' as const },
+          { address: s, abi: CREATOR_CHARM_STRATEGY_VIEW_ABI, functionName: 'charmVault' as const },
+          { address: s, abi: AJNA_STRATEGY_VIEW_ABI, functionName: 'ajnaPool' as const },
+        ])
+        const stratRes = await publicClient.multicall({ contracts: stratCalls, allowFailure: true })
+        let hasCharm = false
+        let hasAjna = false
+        for (let i = 0; i < strategies.length; i++) {
+          const base = i * 4
+          const activeOk = stratRes[base]?.status === 'success' ? Boolean((stratRes[base] as any).result) : null
+          const asset = stratRes[base + 1]?.status === 'success' ? ((stratRes[base + 1] as any).result as Address) : null
+          const charmVault =
+            stratRes[base + 2]?.status === 'success' ? ((stratRes[base + 2] as any).result as Address) : null
+          const ajnaPool =
+            stratRes[base + 3]?.status === 'success' ? ((stratRes[base + 3] as any).result as Address) : null
+
+          if (activeOk !== true) throw new Error('A configured yield strategy is not active.')
+          if (!asset || asset.toLowerCase() !== creatorToken.toLowerCase()) {
+            throw new Error('A configured yield strategy has the wrong asset.')
+          }
+          if (charmVault && charmVault.toLowerCase() !== ZERO) hasCharm = true
+          if (ajnaPool && ajnaPool.toLowerCase() !== ZERO) hasAjna = true
+        }
+        if (!hasCharm) throw new Error('Charm strategy was not deployed.')
+        if (!hasAjna) throw new Error('Ajna strategy was not deployed.')
       } catch (e: any) {
         fail(
           'Deployment completed, but verification failed. Please check the addresses.',
