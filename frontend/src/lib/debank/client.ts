@@ -61,21 +61,22 @@ export async function fetchDebankTotalBalanceBatch(params: { addresses: string[]
   const results: Record<string, DebankTotalBalance | null> = {}
   let asOf = 0
 
-  try {
-    for (const group of batches) {
+  for (const group of batches) {
+    try {
       const qs = new URLSearchParams({ ids: group.join(',') })
       const envelope = await fetchJson<ApiEnvelope<DebankTotalBalanceBatch>>(`/api/debank/totalBalanceBatch?${qs.toString()}`)
       const data = envelope.data ?? null
       if (!data) continue
       asOf = Math.max(asOf, typeof data.asOf === 'number' ? data.asOf : 0)
       for (const [k, v] of Object.entries(data.results ?? {})) results[k.toLowerCase()] = v
+    } catch {
+      // Best-effort: partial results are better than flapping everything to null.
+      continue
     }
-
-    return { asOf: asOf || Date.now(), results }
-  } catch {
-    // Treat missing key / rate limits / network issues as "no DeBank" and let the UI fall back.
-    return null
   }
+
+  if (Object.keys(results).length === 0) return null
+  return { asOf: asOf || Date.now(), results }
 }
 
 

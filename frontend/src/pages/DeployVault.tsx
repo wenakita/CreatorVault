@@ -467,6 +467,7 @@ export function DeployVault() {
                                 {derivedVaultName || '—'}{' '}
                                 <span className="font-mono text-zinc-500">({derivedVaultSymbol || '—'})</span>
                               </div>
+                              <div className="text-[10px] text-zinc-600 font-mono mt-1">Contract: CreatorOVault</div>
                             </div>
                             <div className="text-[10px] text-zinc-600 group-open:hidden">Info</div>
                             <div className="text-[10px] text-zinc-600 hidden group-open:block">Hide</div>
@@ -484,6 +485,7 @@ export function DeployVault() {
                                 {derivedShareName || '—'}{' '}
                                 <span className="font-mono text-zinc-500">({derivedShareSymbol || '—'})</span>
                               </div>
+                              <div className="text-[10px] text-zinc-600 font-mono mt-1">Contract: CreatorShareOFT</div>
                             </div>
                             <div className="text-[10px] text-zinc-600 group-open:hidden">Info</div>
                             <div className="text-[10px] text-zinc-600 hidden group-open:block">Hide</div>
@@ -498,6 +500,7 @@ export function DeployVault() {
                             <div>
                               <div className="text-xs text-zinc-500">Wrapper</div>
                               <div className="text-sm text-zinc-200">Vault Wrapper</div>
+                              <div className="text-[10px] text-zinc-600 font-mono mt-1">Contract: CreatorOVaultWrapper</div>
                             </div>
                             <div className="text-[10px] text-zinc-600 group-open:hidden">Info</div>
                             <div className="text-[10px] text-zinc-600 hidden group-open:block">Hide</div>
@@ -512,6 +515,7 @@ export function DeployVault() {
                             <div>
                               <div className="text-xs text-zinc-500">Gauge controller</div>
                               <div className="text-sm text-zinc-200">Gauge Controller</div>
+                              <div className="text-[10px] text-zinc-600 font-mono mt-1">Contract: CreatorGaugeController</div>
                             </div>
                             <div className="text-[10px] text-zinc-600 group-open:hidden">Info</div>
                             <div className="text-[10px] text-zinc-600 hidden group-open:block">Hide</div>
@@ -526,6 +530,7 @@ export function DeployVault() {
                             <div>
                               <div className="text-xs text-zinc-500">Launch strategy</div>
                               <div className="text-sm text-zinc-200">Launch Strategy</div>
+                              <div className="text-[10px] text-zinc-600 font-mono mt-1">Contract: CCALaunchStrategy</div>
                             </div>
                             <div className="text-[10px] text-zinc-600 group-open:hidden">Info</div>
                             <div className="text-[10px] text-zinc-600 hidden group-open:block">Hide</div>
@@ -540,6 +545,7 @@ export function DeployVault() {
                             <div>
                               <div className="text-xs text-zinc-500">Oracle</div>
                               <div className="text-sm text-zinc-200">Oracle</div>
+                              <div className="text-[10px] text-zinc-600 font-mono mt-1">Contract: CreatorOracle</div>
                             </div>
                             <div className="text-[10px] text-zinc-600 group-open:hidden">Info</div>
                             <div className="text-[10px] text-zinc-600 hidden group-open:block">Hide</div>

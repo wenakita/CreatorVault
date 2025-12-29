@@ -282,6 +282,7 @@ function ZoraCoinRow({
   dex,
   showScore,
   creatorNetWorthUsd,
+  netWorthLoading,
   rank,
   analytics,
 }: {
@@ -291,6 +292,7 @@ function ZoraCoinRow({
   dex?: DexscreenerTokenStats | null
   showScore?: boolean
   creatorNetWorthUsd?: number | null
+  netWorthLoading?: boolean
   rank?: number
   analytics?: { maxVolume24h: number; maxMarketCap: number } | null
 }) {
@@ -330,7 +332,7 @@ function ZoraCoinRow({
     if (!Number.isFinite(n)) return '—'
     const abs = Math.abs(n)
     if (abs > 0 && abs < 0.01) return '<$0.01'
-    return Intl.NumberFormat(undefined, {
+    return Intl.NumberFormat('en-US', {
       style: 'currency',
       currency: 'USD',
       maximumFractionDigits: abs >= 1 ? 0 : 2,
@@ -400,6 +402,12 @@ function ZoraCoinRow({
   const netWorthUsd =
     typeof creatorNetWorthUsd === 'number' && Number.isFinite(creatorNetWorthUsd) ? creatorNetWorthUsd : NaN
   const netWorthText = Number.isFinite(netWorthUsd) ? fmtUsd(netWorthUsd) : null
+  const netWorthDisplay = netWorthText ?? (netWorthLoading ? '…' : '—')
+  const netWorthDisplayClass = netWorthText
+    ? 'text-zinc-200'
+    : netWorthLoading
+      ? 'text-zinc-500 animate-pulse'
+      : 'text-zinc-600'
   const netWorthScore = showScore ? computeCreatorScore({ netWorthUsd }) : null
   const netWorthScoreText = netWorthScore ? String(Math.round(netWorthScore.score)) : null
 
@@ -485,8 +493,11 @@ function ZoraCoinRow({
                   {showScore ? (
                     <>
                       <span className="text-zinc-700 lg:hidden"> · </span>
-                      <span className="font-mono tabular-nums lg:hidden" title="Portfolio value (USD)">
-                        NW {netWorthText ?? '—'}
+                      <span
+                        className={`font-mono tabular-nums lg:hidden ${netWorthLoading ? 'animate-pulse' : ''}`}
+                        title={netWorthText ? `Net worth: ${netWorthText}` : netWorthLoading ? 'Loading net worth…' : 'Net worth unavailable'}
+                      >
+                        Net worth {netWorthDisplay}
                       </span>
                       {netWorthScoreText ? (
                         <>
@@ -503,8 +514,11 @@ function ZoraCoinRow({
 
               {isCreatorCoin && showScore ? (
                 <div className="text-xs text-zinc-600 min-w-0 truncate">
-                  <span className="font-mono tabular-nums lg:hidden" title="Portfolio value (USD)">
-                    NW {netWorthText ?? '—'}
+                  <span
+                    className={`font-mono tabular-nums lg:hidden ${netWorthLoading ? 'animate-pulse' : ''}`}
+                    title={netWorthText ? `Net worth: ${netWorthText}` : netWorthLoading ? 'Loading net worth…' : 'Net worth unavailable'}
+                  >
+                    Net worth {netWorthDisplay}
                   </span>
                   {netWorthScoreText ? (
                     <>
@@ -529,7 +543,12 @@ function ZoraCoinRow({
               className="hidden sm:block sm:col-span-2 lg:col-span-1 text-right"
               title="Portfolio value (USD)"
             >
-              <div className="text-sm font-mono tabular-nums text-zinc-200">{netWorthText ?? '—'}</div>
+              <div
+                className={`text-sm font-mono tabular-nums whitespace-nowrap ${netWorthDisplayClass}`}
+                title={netWorthText ? `Net worth: ${netWorthText}` : netWorthLoading ? 'Loading net worth…' : 'Net worth unavailable'}
+              >
+                {netWorthDisplay}
+              </div>
             </div>
           ) : null}
 
@@ -798,8 +817,13 @@ export function Dashboard() {
     return out
   }, [tableCoins])
 
-  const { data: debankBatch } = useDebankTotalBalanceBatch({ addresses: debankCreatorAddresses, enabled: showScore })
+  const { data: debankBatch, isFetching: debankFetching } = useDebankTotalBalanceBatch({
+    addresses: debankCreatorAddresses,
+    enabled: showScore,
+  })
   const debankMap = debankBatch?.results ?? null
+  const debankLoading = showScore && debankCreatorAddresses.length > 0 && debankFetching && debankBatch === undefined
+  const debankUnavailable = showScore && debankCreatorAddresses.length > 0 && !debankFetching && debankBatch === null
 
   const trendingLoading =
     allExploreCoins.length === 0 &&
@@ -877,10 +901,12 @@ export function Dashboard() {
                 {showScore ? 'Hide score' : 'Show score'}
               </button>
 
-              {showScore && debankCreatorAddresses.length > 0 && !debankBatch ? (
-                <div className="text-xs text-zinc-700">
-                  Net worth is currently unavailable.
-                </div>
+              {showScore && debankCreatorAddresses.length > 0 ? (
+                debankLoading ? (
+                  <div className="text-xs text-zinc-700">Loading net worth…</div>
+                ) : debankUnavailable ? (
+                  <div className="text-xs text-zinc-700">Net worth is temporarily unavailable.</div>
+                ) : null
               ) : null}
 
               {showAnalytics ? (
@@ -1092,6 +1118,7 @@ export function Dashboard() {
                         dex={dex}
                         showScore={showScore}
                         creatorNetWorthUsd={creatorNetWorthUsd}
+                        netWorthLoading={debankLoading && Boolean(creatorAddrLc) && !debank}
                         analytics={showAnalytics ? analyticsMax : null}
                       />
                     )

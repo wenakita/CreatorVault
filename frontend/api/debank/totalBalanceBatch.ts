@@ -14,6 +14,24 @@ const CACHE_SECONDS = 300
 
 const DEBANK_BASE_URL = 'https://pro-openapi.debank.com/v1'
 
+type CacheEntry = {
+  value: DebankTotalBalance
+  asOf: number
+  expiresAt: number
+}
+
+const CACHE_TTL_MS = CACHE_SECONDS * 1000
+const MAX_STALE_MS = 1000 * 60 * 60 * 24
+const MAX_MEMORY_CACHE_ENTRIES = 10_000
+
+function getMemoryCache(): Map<string, CacheEntry> {
+  const g: any = globalThis as any
+  const cache: Map<string, CacheEntry> = (g.__creatorvault_debank_total_balance_cache ??= new Map())
+  // Safety valve: don't let the map grow unbounded on a warm function.
+  if (cache.size > MAX_MEMORY_CACHE_ENTRIES) cache.clear()
+  return cache
+}
+
 export type DebankChainBalance = {
   id: string
   name?: string
@@ -146,6 +164,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   try {
     const includeChains = getStringQuery(req, 'includeChains') === '1'
+    const now = Date.now()
+    const cache = getMemoryCache()
 
     type DebankTotalBalanceRaw = {
       total_usd_value: number
@@ -159,7 +179,19 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     const headers = { accept: 'application/json', AccessKey: accessKey }
 
-    const resultsArr = await mapWithLimit(wallets, 6, async (addrLc) => {
+    const cachedFresh: Record<string, DebankTotalBalance> = {}
+    const toFetch: string[] = []
+
+    for (const addrLc of wallets) {
+      const cached = cache.get(addrLc)
+      if (cached && now < cached.expiresAt) {
+        cachedFresh[addrLc] = cached.value
+      } else {
+        toFetch.push(addrLc)
+      }
+    }
+
+    const fetchedArr = await mapWithLimit(toFetch, 6, async (addrLc) => {
       const url = `${DEBANK_BASE_URL}/user/total_balance?id=${encodeURIComponent(addrLc)}`
       try {
         const data = await fetchJson<DebankTotalBalanceRaw>(url, headers, 8_000)
@@ -180,25 +212,35 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
               .slice(0, 8)
           : []
 
-        return {
+        const value = {
           address: addrLc,
           totalUsdValue,
           chains,
         } satisfies DebankTotalBalance
+
+        cache.set(addrLc, { value, asOf: now, expiresAt: now + CACHE_TTL_MS })
+        return value
       } catch {
+        // Fallback: if we have a cached value (even if stale), return it instead of flapping to null.
+        const cached = cache.get(addrLc)
+        if (cached && now - cached.asOf <= MAX_STALE_MS) return cached.value
         return null
       }
     })
 
     const results: Record<string, DebankTotalBalance | null> = {}
-    wallets.forEach((addrLc, i) => {
-      results[addrLc] = resultsArr[i] ?? null
+    toFetch.forEach((addrLc, i) => {
+      const v = fetchedArr[i] ?? null
+      if (v) results[addrLc] = v
     })
+    for (const addrLc of wallets) {
+      results[addrLc] = cachedFresh[addrLc] ?? results[addrLc] ?? null
+    }
 
     setCache(res, CACHE_SECONDS)
     return res.status(200).json({
       success: true,
-      data: { asOf: Date.now(), results } satisfies DebankTotalBalanceBatchResponse,
+      data: { asOf: now, results } satisfies DebankTotalBalanceBatchResponse,
     } satisfies ApiEnvelope<DebankTotalBalanceBatchResponse>)
   } catch (e: any) {
     return res.status(500).json({ success: false, error: e?.message || 'Failed to fetch DeBank balances' } satisfies ApiEnvelope<never>)
