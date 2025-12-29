@@ -303,14 +303,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (!strategies.length) {
       strategyChecks.push({
         id: 'no-strategies',
-        label: 'Vault has strategies configured',
+        label: 'Yield strategies configured',
         status: 'warn',
-        details: 'No strategies found.',
+        details: 'No strategies are configured yet. This is optional.',
       })
     } else {
       strategyChecks.push({
         id: 'strategy-count',
-        label: 'Vault has strategies configured',
+        label: 'Yield strategies configured',
         status: 'pass',
         details: `${strategies.length} strategies`,
       })
@@ -393,8 +393,56 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
     pushBool('gauge-vault', 'Gauge points to vault', same(gaugeVault, vaultAddress), `gauge.vault = ${String(gaugeVault ?? '—')}`)
     pushBool('gauge-coin', 'Gauge points to creator coin', same(gaugeCreatorCoin, creatorToken), `gauge.creatorCoin = ${String(gaugeCreatorCoin ?? '—')}`)
-    pushBool('share-vault', 'Share token points to vault', same(shareVault, vaultAddress), `shareOFT.vault = ${String(shareVault ?? '—')}`)
-    pushBool('share-gauge', 'Share token points to gauge', same(shareGauge, gaugeAddress), `shareOFT.gaugeController = ${String(shareGauge ?? '—')}`)
+    // Share token wiring is important for fee routing + accurate conversions, but not required for basic deposit/withdraw.
+    // For legacy deployments, these values may be unset; treat as warnings with recommended action instead of hard failures.
+    const isZero = (a?: string | null) => !!a && a.toLowerCase() === ZERO
+    const shareVaultOk = same(shareVault, vaultAddress)
+    if (shareVault == null) {
+      wiringChecks.push({
+        id: 'share-vault',
+        label: 'Share token wired to vault',
+        status: 'warn',
+        details: 'Could not read shareOFT.vault (may be a legacy token version).',
+      })
+    } else if (isZero(shareVault)) {
+      wiringChecks.push({
+        id: 'share-vault',
+        label: 'Share token wired to vault',
+        status: 'warn',
+        details: 'shareOFT.vault is unset. Recommended: set it to the vault address to enable accurate conversions.',
+      })
+    } else {
+      wiringChecks.push({
+        id: 'share-vault',
+        label: 'Share token wired to vault',
+        status: shareVaultOk ? 'pass' : 'fail',
+        details: `shareOFT.vault = ${String(shareVault)}`,
+      })
+    }
+
+    const shareGaugeOk = same(shareGauge, gaugeAddress)
+    if (shareGauge == null) {
+      wiringChecks.push({
+        id: 'share-gauge',
+        label: 'Share token wired to gauge',
+        status: 'warn',
+        details: 'Could not read shareOFT.gaugeController (may be a legacy token version).',
+      })
+    } else if (isZero(shareGauge)) {
+      wiringChecks.push({
+        id: 'share-gauge',
+        label: 'Share token wired to gauge',
+        status: 'warn',
+        details: 'shareOFT.gaugeController is unset. Recommended: set it to enable fee routing to the gauge.',
+      })
+    } else {
+      wiringChecks.push({
+        id: 'share-gauge',
+        label: 'Share token wired to gauge',
+        status: shareGaugeOk ? 'pass' : 'fail',
+        details: `shareOFT.gaugeController = ${String(shareGauge)}`,
+      })
+    }
     pushBool('wrapper-vault', 'Wrapper points to vault', same(wrapperVault, vaultAddress), `wrapper.vault = ${String(wrapperVault ?? '—')}`)
     pushBool('wrapper-coin', 'Wrapper points to creator coin', same(wrapperCoin, creatorToken), `wrapper.creatorCoin = ${String(wrapperCoin ?? '—')}`)
     pushBool('wrapper-share', 'Wrapper points to share token', same(wrapperShare, shareOFTAddress), `wrapper.shareOFT = ${String(wrapperShare ?? '—')}`)
@@ -407,8 +455,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     wiringChecks.push({
       id: 'vault-whitelist',
       label: 'Wrapper is whitelisted on vault',
-      status: wrapperWhitelisted == null ? 'warn' : wrapperWhitelisted ? 'pass' : 'fail',
-      details: wrapperWhitelisted == null ? 'Could not read vault.whitelist(wrapper)' : wrapperWhitelisted ? 'whitelist=true' : 'whitelist=false',
+      status: wrapperWhitelisted == null ? 'info' : wrapperWhitelisted ? 'pass' : 'fail',
+      details:
+        wrapperWhitelisted == null
+          ? 'Could not read vault.whitelist(wrapper) (may be a legacy vault version).'
+          : wrapperWhitelisted
+            ? 'whitelist=true'
+            : 'whitelist=false',
     })
 
     const sections: CheckSection[] = [
