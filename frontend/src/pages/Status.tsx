@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { motion } from 'framer-motion'
 import { useSearchParams } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
@@ -914,6 +914,25 @@ export function Status() {
     else next.delete('vault')
     setSearchParams(next)
   }
+
+  // SEO safety: this is a diagnostic/reporting page with many possible query variants.
+  // Default to noindex and canonicalize to the hub URL.
+  useEffect(() => {
+    const robots = document.createElement('meta')
+    robots.name = 'robots'
+    robots.content = 'noindex, nofollow'
+    document.head.appendChild(robots)
+
+    const canonical = document.createElement('link')
+    canonical.rel = 'canonical'
+    canonical.href = 'https://creatorvault.fun/status'
+    document.head.appendChild(canonical)
+
+    return () => {
+      robots.remove()
+      canonical.remove()
+    }
+  }, [])
 
   return (
     <div className="relative">
