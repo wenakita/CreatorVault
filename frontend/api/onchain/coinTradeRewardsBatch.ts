@@ -40,7 +40,7 @@ function getStringQuery(req: VercelRequest, key: string): string | null {
   return null
 }
 
-function getLogsRpcUrl(): string | null {
+function getLogsRpcUrl(): string {
   const logs = process.env.BASE_LOGS_RPC_URL
   if (logs && logs.length > 0) return logs
   const rpc = process.env.BASE_RPC_URL
@@ -117,9 +117,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   const rpcUrl = getLogsRpcUrl()
-  if (!rpcUrl) {
-    return res.status(501).json({ success: false, error: 'BASE_RPC_URL is not configured (server-side).' })
-  }
 
   try {
     const { createPublicClient, http, parseAbiItem } = await import('viem')

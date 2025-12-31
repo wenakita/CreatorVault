@@ -42,7 +42,7 @@ function getStringQuery(req: VercelRequest, key: string): string | null {
   return null
 }
 
-function getReadRpcUrl(): string | null {
+function getReadRpcUrl(): string {
   // Dedicated read RPC if you want it.
   const read = process.env.BASE_READ_RPC_URL
   if (read && read.length > 0) return read
@@ -84,12 +84,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   const rpcUrl = getReadRpcUrl()
-  if (!rpcUrl) {
-    return res.status(501).json({
-      success: false,
-      error: 'BASE_RPC_URL is not configured (server-side).',
-    })
-  }
 
   try {
     const { createPublicClient, http } = await import('viem')
