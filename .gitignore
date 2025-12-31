@@ -126,3 +126,13 @@ eagle-vanity-data.json
 vanity-result-found.json
 .vercel
 .env*.local
+
+# Local artifacts / generated files (do not commit)
+/CharmStrategyUSD1V2.sol
+/JQSEpu4gTTpU7_XF.mp4
+/latest.graphql
+/metadata.json
+/remappings.txt
+/lib/v3-core/
+/lib/v3-periphery/
+/lib/solidity-lib/
