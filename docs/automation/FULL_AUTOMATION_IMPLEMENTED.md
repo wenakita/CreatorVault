@@ -17,7 +17,7 @@
 A simplified version of CharmAlphaVault with:
 - ✅ Single-step governance transfer (no acceptance needed)
 - ✅ `initializeAndTransfer()` function for atomic setup
-- ✅ Sets strategy + transfers ownership in one call
+- ✅ Embeds the rebalance logic (no separate `CharmAlphaStrategy` needed for the atomic path)
 
 **Location:** `contracts/charm/CharmAlphaVaultSimple.sol`
 
@@ -26,11 +26,15 @@ A simplified version of CharmAlphaVault with:
 // Deploy with batcher as temp governance
 constructor(pool, fee, cap, name, symbol)
 
-// Atomically set strategy + transfer to creator
-function initializeAndTransfer(strategy, newGovernance) external onlyGovernance {
-    strategy = _strategy;           // Set rebalancer
-    governance = _newGovernance;    // Transfer to creator (single-step!)
-}
+// Atomically configure rebalance params + do an initial rebalance + transfer to creator
+function initializeAndTransfer(
+    newGovernance,
+    newKeeper,
+    baseThreshold,
+    limitThreshold,
+    maxTwapDeviation,
+    twapDuration
+) external onlyGovernance { /* ... */ }
 ```
 
 ---
@@ -43,14 +47,8 @@ Now performs **FULL AUTOMATION**:
 // 1. Deploy vault (batcher is temp governance)
 CharmAlphaVaultSimple vault = new CharmAlphaVaultSimple(...)
 
-// 2. Deploy strategy
-CharmAlphaStrategy strategy = new CharmAlphaStrategy(vault, ..., creator)
-
-// 3. Atomically set strategy + transfer governance to creator
-vault.initializeAndTransfer(strategy, creator)
-
-// 4. Trigger initial rebalance
-strategy.rebalance()
+// 2. Atomically configure embedded rebalance params + transfer governance/keeper to creator
+vault.initializeAndTransfer(creator, creator, 3000, 6000, 100, 1800)
 
 // DONE! Creator owns everything, no manual steps needed! ✅
 ```
@@ -77,7 +75,6 @@ DeploymentResult memory result = batcher.batchDeployStrategies(
 
 // ✅ DONE! No manual steps needed!
 // ✅ Creator owns CharmAlphaVault
-// ✅ Creator owns CharmAlphaStrategy
 // ✅ Creator owns CreatorCharmStrategyV2
 // ✅ Creator owns AjnaStrategy
 // ✅ Rebalance already called

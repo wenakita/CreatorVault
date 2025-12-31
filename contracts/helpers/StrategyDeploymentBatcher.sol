@@ -118,23 +118,19 @@ contract StrategyDeploymentBatcher is ReentrancyGuard {
         ));
 
         // ═══════════════════════════════════════════════════════════
-        // STEP 3: Deploy Charm Alpha Strategy (Rebalancer)
+        // STEP 3: Initialize embedded rebalance logic (Atomic / Simple path)
         // ═══════════════════════════════════════════════════════════
-        result.charmStrategy = address(new CharmAlphaStrategy(
-            result.charmVault,
+        // No separate CharmAlphaStrategy contract is needed here; CharmAlphaVaultSimple embeds it.
+        result.charmStrategy = address(0);
+
+        // Initialize vault: configure embedded params, do initial rebalance, transfer keeper, transfer governance.
+        CharmAlphaVaultSimple(result.charmVault).initializeAndTransfer(
+            owner,  // Transfer governance to creator
+            owner,  // Transfer keeper to creator
             3000,   // Base threshold
             6000,   // Limit threshold
             100,    // Max TWAP deviation
-            1800,   // 30 min TWAP
-            result.charmVault  // Keeper = vault initially (so vault can call rebalance)
-        ));
-        
-        // Initialize vault: set strategy, rebalance, transfer keeper, transfer governance
-        // This all happens atomically in one call
-        CharmAlphaVaultSimple(result.charmVault).initializeAndTransfer(
-            result.charmStrategy,
-            owner,  // Transfer governance to creator
-            owner   // Transfer keeper to creator
+            1800    // 30 min TWAP
         );
 
         // ═══════════════════════════════════════════════════════════
