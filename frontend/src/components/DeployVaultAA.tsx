@@ -21,6 +21,7 @@ import {
   encodeFunctionData,
   encodePacked,
   formatUnits,
+  getContractAddress,
   getCreate2Address,
   isAddress,
   keccak256,
@@ -57,6 +58,10 @@ const VAULT_MANAGEMENT_ABI = [
 const VAULT_YIELD_ABI = [
   { type: 'function', name: 'deployToStrategies', stateMutability: 'nonpayable', inputs: [], outputs: [] },
   { type: 'function', name: 'syncBalances', stateMutability: 'nonpayable', inputs: [], outputs: [] },
+] as const
+
+const CHARM_VAULT_GOVERNANCE_ABI = [
+  { type: 'function', name: 'acceptGovernance', stateMutability: 'nonpayable', inputs: [], outputs: [] },
 ] as const
 
 const BOOTSTRAPPER_ABI = [
@@ -754,6 +759,20 @@ export function DeployVaultAA({
     const charmWeightBps = 6900n
     const ajnaWeightBps = 2139n
 
+    // If deploying the canonical CharmAlphaVault, we also want governance to be fully accepted in the SAME batch.
+    //
+    // We can do that in one click by precomputing the Charm vault address:
+    // - VaultStrategyBootstrapper does `new StrategyDeploymentBatcher()` once (CREATE nonce = 1)
+    // - StrategyDeploymentBatcher.batchDeployStrategiesFullCharmVault does `new CharmAlphaVault(...)` first (CREATE nonce = 1)
+    //
+    // Both are deterministic because the bootstrapper address is deterministic via CREATE2, and its nonce ordering is fixed.
+    const predictedStrategyBatcher = useFullCharmVault
+      ? (getContractAddress({ from: bootstrapperAddress, nonce: 1n }) as Address)
+      : null
+    const predictedCharmVaultFull = useFullCharmVault
+      ? (getContractAddress({ from: predictedStrategyBatcher as Address, nonce: 1n }) as Address)
+      : null
+
     calls.push({
       to: bootstrapperAddress,
       data: encodeFunctionData({
@@ -775,6 +794,15 @@ export function DeployVaultAA({
         ],
       }),
     })
+
+    // Full-Charm path: accept Charm vault governance inside the same AA batch (true “one click”).
+    if (useFullCharmVault && predictedCharmVaultFull) {
+      calls.push({
+        to: predictedCharmVaultFull,
+        data: encodeFunctionData({ abi: CHARM_VAULT_GOVERNANCE_ABI, functionName: 'acceptGovernance' }),
+      })
+    }
+
     // VaultStrategyBootstrapper sets pendingManagement to `owner` — accept it here so the bootstrapper cannot manage post-deploy.
     calls.push({ to: vaultAddress, data: encodeFunctionData({ abi: VAULT_MANAGEMENT_ABI, functionName: 'acceptManagement' }) })
 
@@ -1136,8 +1164,8 @@ export function DeployVaultAA({
           <span>
             Deploy <span className="font-semibold">canonical</span> Charm vault bytecode (uses <span className="font-mono">CharmAlphaVault</span>).
             <div className="text-xs text-zinc-500 mt-1">
-              Requires a follow-up <span className="font-mono">acceptGovernance()</span> call on the deployed Charm vault (ownership is set as pending).
-              The fast default (unchecked) deploys <span className="font-mono">CharmAlphaVaultSimple</span> for atomic governance handoff.
+              We’ll automatically accept governance in the same AA batch to keep this truly one-click.
+              The fast default (unchecked) deploys <span className="font-mono">CharmAlphaVaultSimple</span> for atomic wiring and smaller risk of “governance pending” edge cases.
             </div>
           </span>
         </label>
