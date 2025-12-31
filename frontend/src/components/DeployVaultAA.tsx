@@ -80,6 +80,26 @@ const BOOTSTRAPPER_ABI = [
     ],
     outputs: [],
   },
+  {
+    type: 'function',
+    name: 'finalizeFullCharmVault',
+    stateMutability: 'nonpayable',
+    inputs: [
+      { name: 'vault', type: 'address' },
+      { name: 'wrapper', type: 'address' },
+      { name: 'gaugeController', type: 'address' },
+      { name: 'creatorToken', type: 'address' },
+      { name: 'usdc', type: 'address' },
+      { name: 'ajnaFactory', type: 'address' },
+      { name: 'v3FeeTier', type: 'uint24' },
+      { name: 'initialSqrtPriceX96', type: 'uint160' },
+      { name: 'charmVaultName', type: 'string' },
+      { name: 'charmVaultSymbol', type: 'string' },
+      { name: 'charmWeightBps', type: 'uint256' },
+      { name: 'ajnaWeightBps', type: 'uint256' },
+    ],
+    outputs: [],
+  },
 ] as const
 
 const STRATEGY_BATCHER_EVENTS_ABI = [
@@ -367,6 +387,7 @@ export function DeployVaultAA({
   const { sendCallsAsync } = useSendCalls()
 
   const [deploymentVersion, setDeploymentVersion] = useState<DeploymentVersion>(deploymentVersionProp ?? 'v1')
+  const [useFullCharmVault, setUseFullCharmVault] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [callBundleId, setCallBundleId] = useState<string | null>(null)
   const [callBundleType, setCallBundleType] = useState<'tx' | 'bundle' | null>(null)
@@ -737,7 +758,7 @@ export function DeployVaultAA({
       to: bootstrapperAddress,
       data: encodeFunctionData({
         abi: BOOTSTRAPPER_ABI,
-        functionName: 'finalize',
+        functionName: useFullCharmVault ? 'finalizeFullCharmVault' : 'finalize',
         args: [
           vaultAddress,
           wrapperAddress,
@@ -1102,6 +1123,26 @@ export function DeployVaultAA({
 
   return (
     <div className="space-y-4">
+      <div className="bg-black/30 border border-zinc-900/50 rounded-lg p-4 space-y-2">
+        <div className="label">Strategy deployment</div>
+        <label className="flex items-start gap-3 text-sm text-zinc-200 cursor-pointer select-none">
+          <input
+            type="checkbox"
+            className="mt-1 accent-cyan-400"
+            checked={useFullCharmVault}
+            onChange={(e) => setUseFullCharmVault(e.target.checked)}
+            disabled={isSubmitting}
+          />
+          <span>
+            Deploy <span className="font-semibold">canonical</span> Charm vault bytecode (uses <span className="font-mono">CharmAlphaVault</span>).
+            <div className="text-xs text-zinc-500 mt-1">
+              Requires a follow-up <span className="font-mono">acceptGovernance()</span> call on the deployed Charm vault (ownership is set as pending).
+              The fast default (unchecked) deploys <span className="font-mono">CharmAlphaVaultSimple</span> for atomic governance handoff.
+            </div>
+          </span>
+        </label>
+      </div>
+
       <motion.button
         onClick={() => deploy()}
         disabled={disabled}
