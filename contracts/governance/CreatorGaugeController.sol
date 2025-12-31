@@ -42,7 +42,7 @@ interface ISwapRouter {
     function exactInputSingle(ExactInputSingleParams calldata params) external payable returns (uint256 amountOut);
 }
 
-interface ICreatorChainlinkOracle {
+interface ICreatorOracle {
     function getCreatorPrice() external view returns (int256 price, uint256 timestamp);
     function getEthPrice() external view returns (int256 price, uint256 timestamp);
     function getCreatorEthTWAP(uint32 duration) external view returns (uint256 price);
@@ -146,7 +146,7 @@ contract CreatorGaugeController is Ownable, ReentrancyGuard {
     uint256 public swapSlippageBps = 100;
     
     /// @notice Oracle for price-based slippage protection
-    ICreatorChainlinkOracle public oracle;
+    ICreatorOracle public oracle;
     
     /// @notice TWAP duration for oracle price (default 30 min)
     uint32 public oracleTwapDuration = 1800;
@@ -648,10 +648,10 @@ contract CreatorGaugeController is Ownable, ReentrancyGuard {
     
     /**
      * @notice Set the oracle for price-based slippage protection
-     * @param _oracle CreatorChainlinkOracle address
+     * @param _oracle CreatorOracle address
      */
     function setOracle(address _oracle) external onlyOwner {
-        oracle = ICreatorChainlinkOracle(_oracle);
+        oracle = ICreatorOracle(_oracle);
         emit OracleSet(_oracle);
     }
     

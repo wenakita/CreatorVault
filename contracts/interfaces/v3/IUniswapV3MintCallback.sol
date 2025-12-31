@@ -16,8 +16,3 @@ interface IUniswapV3MintCallback {
         bytes calldata data
     ) external;
 }
-
-pragma solidity >=0.5.0;
-
-/// @title Callback for IUniswapV3PoolActions#mint
-/// @notice Any contract that calls IUniswapV3PoolActions#mint must implement this interface

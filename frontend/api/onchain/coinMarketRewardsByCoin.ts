@@ -65,7 +65,7 @@ function getBigIntQuery(req: VercelRequest, key: string): bigint | null {
   }
 }
 
-function getLogsRpcUrl(): string | null {
+function getLogsRpcUrl(): string {
   const logs = process.env.BASE_LOGS_RPC_URL
   if (logs && logs.length > 0) return logs
 
@@ -155,9 +155,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const hookLc = hook.toLowerCase()
 
   const rpcUrl = getLogsRpcUrl()
-  if (!rpcUrl) {
-    return res.status(501).json({ success: false, error: 'BASE_RPC_URL is not configured (server-side).' })
-  }
 
   try {
     const { createPublicClient, decodeEventLog, http, parseAbiItem } = await import('viem')

@@ -42,7 +42,7 @@ function padTopicAddress(address: string): `0x${string}` {
   return `0x${address.toLowerCase().replace(/^0x/, '').padStart(64, '0')}` as `0x${string}`
 }
 
-function getLogsRpcUrl(): string | null {
+function getLogsRpcUrl(): string {
   // Prefer a dedicated logs RPC (can be rate-limited / tuned separately).
   const logs = process.env.BASE_LOGS_RPC_URL
   if (logs && logs.length > 0) return logs
@@ -106,12 +106,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const { base } = await import('viem/chains')
 
     const rpcUrl = getLogsRpcUrl()
-    if (!rpcUrl) {
-      return res.status(501).json({
-        success: false,
-        error: 'BASE_LOGS_RPC_URL / BASE_RPC_URL is not configured (server-side).',
-      })
-    }
 
     const client = createPublicClient({
       chain: base,

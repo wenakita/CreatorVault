@@ -28,7 +28,7 @@ interface ICreatorRegistry {
         address vault;           // CreatorOVault address
         address shareOFT;        // CreatorShareOFT address
         address wrapper;         // CreatorOVaultWrapper address
-        address oracle;          // CreatorChainlinkOracle address (per-creator price oracle)
+        address oracle;          // CreatorOracle address (per-creator price oracle)
         address gaugeController; // CreatorGaugeController address (per-creator fee distribution)
         address creator;         // Creator's address (admin)
         address pool;            // Primary liquidity pool

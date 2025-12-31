@@ -9,14 +9,7 @@ import {IPoolManager} from "@uniswap/v4-core/src/interfaces/IPoolManager.sol";
 import {PoolKey} from "@uniswap/v4-core/src/types/PoolKey.sol";
 import {Currency} from "@uniswap/v4-core/src/types/Currency.sol";
 import {IHooks} from "@uniswap/v4-core/src/interfaces/IHooks.sol";
-
-/**
- * @title ICreatorChainlinkOracle
- * @notice Interface for oracle V4 pool configuration
- */
-interface ICreatorChainlinkOracle {
-    function setV4Pool(IPoolManager _poolManager, PoolKey calldata _poolKey) external;
-}
+import {ICreatorOracle} from "../interfaces/oracles/ICreatorOracle.sol";
 
 /**
  * @title ITaxHook
@@ -149,6 +142,9 @@ contract CCALaunchStrategy is Ownable, ReentrancyGuard {
     
     /// @notice Tick spacing for V4 pool
     int24 public poolTickSpacing = 60;
+    
+    /// @notice Approved addresses that can launch auctions (e.g., VaultActivationBatcher)
+    mapping(address => bool) public approvedLaunchers;
 
     // ================================
     // AUCTION CONFIG
@@ -187,6 +183,7 @@ contract CCALaunchStrategy is Ownable, ReentrancyGuard {
     event OracleConfigured(address indexed oracle, address poolManager, address hook);
     event V4PoolConfigured(address indexed oracle, address token0, address token1);
     event TaxHookConfigured(address indexed token, address indexed recipient, uint256 taxRate);
+    event LauncherApproved(address indexed launcher, bool approved);
 
     // ================================
     // ERRORS
@@ -198,6 +195,7 @@ contract CCALaunchStrategy is Ownable, ReentrancyGuard {
     error ZeroAddress();
     error ZeroAmount();
     error InvalidConfig();
+    error Unauthorized();
 
     // ================================
     // CONSTRUCTOR
@@ -229,6 +227,36 @@ contract CCALaunchStrategy is Ownable, ReentrancyGuard {
     }
 
     // ================================
+    // MODIFIERS
+    // ================================
+
+    /**
+     * @notice Only owner or approved launchers can call
+     */
+    modifier onlyApprovedOrOwner() {
+        if (msg.sender != owner() && !approvedLaunchers[msg.sender]) {
+            revert Unauthorized();
+        }
+        _;
+    }
+
+    // ================================
+    // APPROVED LAUNCHERS
+    // ================================
+
+    /**
+     * @notice Approve or revoke launcher permissions
+     * @param launcher Address to approve (e.g., VaultActivationBatcher)
+     * @param approved Whether to approve or revoke
+     * @dev Only owner can manage approved launchers
+     */
+    function setApprovedLauncher(address launcher, bool approved) external onlyOwner {
+        if (launcher == address(0)) revert ZeroAddress();
+        approvedLaunchers[launcher] = approved;
+        emit LauncherApproved(launcher, approved);
+    }
+
+    // ================================
     // LAUNCH AUCTION
     // ================================
 
@@ -244,7 +272,7 @@ contract CCALaunchStrategy is Ownable, ReentrancyGuard {
         uint256 floorPrice,
         uint128 requiredRaise,
         bytes calldata auctionSteps
-    ) external onlyOwner nonReentrant returns (address auction) {
+    ) external onlyApprovedOrOwner nonReentrant returns (address auction) {
         if (currentAuction != address(0)) {
             // Check if previous auction is still active
             if (!IContinuousClearingAuction(currentAuction).isGraduated()) {
@@ -297,7 +325,7 @@ contract CCALaunchStrategy is Ownable, ReentrancyGuard {
     function launchAuctionSimple(
         uint256 amount,
         uint128 requiredRaise
-    ) external onlyOwner nonReentrant returns (address auction) {
+    ) external onlyApprovedOrOwner nonReentrant returns (address auction) {
         // Create default linear auction steps (sell evenly over duration)
         bytes memory auctionSteps = _createLinearSteps(defaultDuration);
         
@@ -390,8 +418,9 @@ contract CCALaunchStrategy is Ownable, ReentrancyGuard {
             hooks: IHooks(taxHook)
         });
         
-        // Configure oracle
-        ICreatorChainlinkOracle(oracle).setV4Pool(poolManager, poolKey);
+        // Configure oracle (Chainlink-style price uses V4 TWAP × Chainlink ETH/USD)
+        bool creatorIsToken0 = token0 == tokenAddr;
+        ICreatorOracle(oracle).setV4Pool(address(poolManager), poolKey, creatorIsToken0);
         
         emit V4PoolConfigured(oracle, token0, token1);
     }

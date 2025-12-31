@@ -375,7 +375,7 @@ See `frontend/src/pages/AuctionBid.tsx` for a complete implementation using all 
 - `docs/cca.html` - Price discovery visualization, manifold backgrounds
 - `docs/ajnastrategy.html` - Basin cards, grain textures, sifting metaphors
 - `docs/feearchitecture.html` - Flow diagrams, strata design
-- `docs/creatorvaultfactory.html` - Technical metrics, schematic UI
+- (removed) `docs/html/creatorvaultfactory.html` - legacy schematic doc for the removed onchain mega-factory
 - `docs/solana.html` - Glass effects, bilateral layouts
 - `docs/vrf.html` - Copper tones, signal pulse animations
 
@@ -767,7 +767,7 @@ See `frontend/src/pages/AuctionBid.tsx` for a complete implementation using all 
 - `docs/cca.html` - Price discovery visualization, manifold backgrounds
 - `docs/ajnastrategy.html` - Basin cards, grain textures, sifting metaphors
 - `docs/feearchitecture.html` - Flow diagrams, strata design
-- `docs/creatorvaultfactory.html` - Technical metrics, schematic UI
+- (removed) `docs/html/creatorvaultfactory.html` - legacy schematic doc for the removed onchain mega-factory
 - `docs/solana.html` - Glass effects, bilateral layouts
 - `docs/vrf.html` - Copper tones, signal pulse animations
 

@@ -586,28 +586,3 @@ contract CharmAlphaVault is
         _;
     }
 }
-
-
-
-import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
-import "../interfaces/v3/IUniswapV3MintCallback.sol";
-import "../interfaces/v3/IUniswapV3SwapCallback.sol";
-import "../interfaces/v3/IUniswapV3Pool.sol";
-import { TickMathCompat as TickMath } from "../libraries/TickMathCompat.sol";
-import {LiquidityAmounts} from "../libraries/uniswapv3/LiquidityAmounts.sol";
-import {PositionKey} from "../libraries/uniswapv3/PositionKey.sol";
-
-/**
- * @title CharmAlphaVault
- * @notice Adapted from Charm Finance's Alpha Vault for Solidity 0.8.20
- * @dev Provides automated liquidity management for Uniswap V3 pools
- * 
- * Key features:
- * - Automated rebalancing via strategy contract
- * - Base + Limit order system for efficient capital usage
- * - Protocol fee collection
- * - ERC20 vault shares
- */

@@ -25,6 +25,7 @@ import {
   isAddress,
   keccak256,
   parseAbiParameters,
+  zeroAddress,
 } from 'viem'
 import { waitForCallsStatus } from 'viem/actions'
 import { motion, AnimatePresence } from 'framer-motion'
@@ -754,6 +755,7 @@ export function DeployVaultAA({
         ],
       }),
     })
+
     // VaultStrategyBootstrapper sets pendingManagement to `owner` — accept it here so the bootstrapper cannot manage post-deploy.
     calls.push({ to: vaultAddress, data: encodeFunctionData({ abi: VAULT_MANAGEMENT_ABI, functionName: 'acceptManagement' }) })
 
@@ -1099,6 +1101,7 @@ export function DeployVaultAA({
   const canOfferV2 = !!error && /already exists/i.test(error) && deploymentVersion === 'v1'
 
   const short = (addr: string) => `${addr.slice(0, 6)}…${addr.slice(-4)}`
+  const isZeroAddress = (addr: string) => addr.toLowerCase() === zeroAddress.toLowerCase()
 
   return (
     <div className="space-y-4">
@@ -1313,12 +1316,16 @@ export function DeployVaultAA({
                       </a>
                       <a
                         className="flex items-center justify-between gap-3 bg-black/20 border border-zinc-900/60 rounded-lg px-3 py-2 hover:border-zinc-800/80 transition-colors"
-                        href={`https://basescan.org/address/${yieldAddresses.charmStrategy}`}
+                        href={`https://basescan.org/address/${isZeroAddress(yieldAddresses.charmStrategy) ? yieldAddresses.charmVault : yieldAddresses.charmStrategy}`}
                         target="_blank"
                         rel="noreferrer"
                       >
                         <span className="text-zinc-500">Charm rebalancer</span>
-                        <span className="font-mono text-zinc-200">{short(yieldAddresses.charmStrategy)}</span>
+                        {isZeroAddress(yieldAddresses.charmStrategy) ? (
+                          <span className="text-zinc-400">Embedded in Charm vault</span>
+                        ) : (
+                          <span className="font-mono text-zinc-200">{short(yieldAddresses.charmStrategy)}</span>
+                        )}
                       </a>
                       <a
                         className="flex items-center justify-between gap-3 bg-black/20 border border-zinc-900/60 rounded-lg px-3 py-2 hover:border-zinc-800/80 transition-colors"

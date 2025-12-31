@@ -97,4 +97,3 @@ contract VaultStrategyBootstrapper {
     }
 }
 
-
