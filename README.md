@@ -159,7 +159,7 @@ CreatorVault/
 │   ├── vrf/                      # Chainlink VRF
 │   │   └── CreatorVRFConsumerV2_5.sol
 │   ├── oracles/                  # Price oracles
-│   │   └── CreatorChainlinkOracle.sol
+│   │   └── CreatorOracle.sol
 │   ├── lp/                       # LP management
 │   ├── hooks/                    # Uniswap V4 hooks
 │   ├── helpers/                  # Utility contracts
