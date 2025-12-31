@@ -79,4 +79,3 @@ export async function fetchDebankTotalBalanceBatch(params: { addresses: string[]
   return { asOf: asOf || Date.now(), results }
 }
 
-

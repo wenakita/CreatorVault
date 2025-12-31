@@ -27,4 +27,3 @@ export function useDebankTotalBalanceBatch(params: { addresses?: string[]; enabl
   })
 }
 
-

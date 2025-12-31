@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { motion } from 'framer-motion'
 import { useAccount, useReadContract, useWriteContract, useWaitForTransactionReceipt } from 'wagmi'
-import { formatUnits, parseUnits, erc20Abi } from 'viem'
+import { formatUnits, parseUnits, erc20Abi, type Address } from 'viem'
 import {
   ArrowDownToLine,
   ArrowUpFromLine,
@@ -13,6 +13,7 @@ import { AKITA } from '../config/contracts'
 import { ConnectButton } from '../components/ConnectButton'
 import { TokenImage } from '../components/TokenImage'
 import { Link } from 'react-router-dom'
+import { CcaAuctionPanel } from '@/components/cca/CcaAuctionPanel'
 
 // ABIs
 const WRAPPER_ABI = [
@@ -27,14 +28,14 @@ const SHARE_OFT_ABI = [
 
 const CCA_STRATEGY_ABI = [
   {
-    name: 'auctionStatus',
+    name: 'getAuctionStatus',
     type: 'function',
     inputs: [],
     outputs: [
+      { name: 'auction', type: 'address' },
       { name: 'isActive', type: 'bool' },
       { name: 'isGraduated', type: 'bool' },
-      { name: 'bidCount', type: 'uint256' },
-      { name: 'tokensSold', type: 'uint256' },
+      { name: 'clearingPrice', type: 'uint256' },
       { name: 'currencyRaised', type: 'uint256' },
     ],
     stateMutability: 'view',
@@ -79,7 +80,7 @@ export function Vault() {
   const { data: auctionStatus } = useReadContract({
     address: ccaStrategy as `0x${string}`,
     abi: CCA_STRATEGY_ABI,
-    functionName: 'auctionStatus',
+    functionName: 'getAuctionStatus',
   })
 
   const { data: tokenAllowance } = useReadContract({
@@ -98,7 +99,7 @@ export function Vault() {
   const { isLoading: isDepositing } = useWaitForTransactionReceipt({ hash: depositHash })
   const { isLoading: isWithdrawing } = useWaitForTransactionReceipt({ hash: withdrawHash })
 
-  const isAuctionActive = auctionStatus?.[0] || false
+  const isAuctionActive = auctionStatus?.[1] || false
 
   const formatAmount = (value: bigint, decimals: number = 18) => {
     if (!value) return '0'
@@ -158,8 +159,9 @@ export function Vault() {
             <div className="flex items-center gap-4 sm:gap-6">
               <TokenImage
                 tokenAddress={tokenAddress as `0x${string}`}
-                symbol="wsAKITA"
-                size="lg"
+                // Show the creator coin icon, and use the vault bezel to communicate "vault form".
+                symbol="AKITA"
+                size="2xl"
                 fallbackColor="from-orange-500 to-red-600"
                 isWrapped={true}
               />
@@ -196,7 +198,7 @@ export function Vault() {
                   <p className="text-zinc-500 text-sm font-light">Get wsAKITA before anyone else</p>
                 </div>
               </div>
-              <Link to={`/auction/bid/${wrapperAddress}`} className="btn-accent w-full sm:w-auto text-center">
+              <Link to={`/auction/bid/${ccaStrategy}`} className="btn-accent w-full sm:w-auto text-center">
                 Join Auction <ArrowDownToLine className="w-4 h-4 inline ml-2" />
               </Link>
             </div>
@@ -226,6 +228,14 @@ export function Vault() {
               <span className="label">Trade Fee</span>
               <div className="value mono text-2xl sm:text-3xl">6.9%</div>
             </div>
+          </div>
+
+          <div className="mt-10">
+            <CcaAuctionPanel
+              ccaStrategy={ccaStrategy as Address}
+              wsSymbol="wsAKITA"
+              vaultAddress={AKITA.vault as Address}
+            />
           </div>
         </div>
       </section>

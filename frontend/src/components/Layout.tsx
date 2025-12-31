@@ -1,8 +1,7 @@
 import { Suspense } from 'react'
 import { Outlet, Link, useLocation } from 'react-router-dom'
 import { Home, LayoutDashboard, HelpCircle, ShieldCheck } from 'lucide-react'
-import { ConnectButton } from './ConnectButton'
-import { VaultLogo } from './VaultLogo'
+import { LiquidGoldNavBar } from './liquidGold/LiquidGoldNavBar'
 
 const navItems = [
   { path: '/', icon: Home, label: 'Home' },
@@ -17,43 +16,7 @@ export function Layout() {
 
   return (
     <div className="min-h-screen flex flex-col bg-black">
-      {/* Minimal Header - Documentary Style */}
-      <header className="sticky top-0 z-50 border-b border-zinc-900/50 bg-black/80 backdrop-blur-xl">
-        <div className="max-w-7xl mx-auto px-6">
-          <div className="flex items-center justify-between h-16">
-            <Link to="/" className="flex items-center gap-4 group">
-              <div className="w-7 h-7 transition-opacity group-hover:opacity-70">
-                <VaultLogo size="sm" />
-              </div>
-              <span className="font-light text-sm tracking-[0.1em] uppercase text-zinc-400 group-hover:text-white transition-colors">
-                CreatorVault
-              </span>
-            </Link>
-
-            {/* Minimal Nav */}
-            <nav className="hidden md:flex items-center gap-8">
-              {navItems.map(({ path, label }) => {
-                const isActive = location.pathname === path
-                return (
-                  <Link
-                    key={path}
-                    to={path}
-                    className={`label transition-colors ${
-                      isActive
-                        ? 'text-zinc-400'
-                        : 'text-zinc-600 hover:text-zinc-400'
-                    }`}
-                  >
-                    {label}
-                  </Link>
-                )
-              })}
-            </nav>
-
-            <ConnectButton />
-          </div>
-        </div>
-      </header>
+      <LiquidGoldNavBar />
 
       {/* Main */}
       <main className="flex-1">
@@ -97,3 +60,5 @@ export function Layout() {
     </div>
   )
 }
+
+

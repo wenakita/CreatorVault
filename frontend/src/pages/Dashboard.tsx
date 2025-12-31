@@ -1,13 +1,13 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { useAccount, useReadContract } from 'wagmi'
-import { formatUnits, isAddress } from 'viem'
+import { useAccount } from 'wagmi'
+import { isAddress, type Address } from 'viem'
 import { base } from 'viem/chains'
 import { useIsFetching, useQueryClient } from '@tanstack/react-query'
-import { ArrowRight, Play, RotateCw } from 'lucide-react'
+import { Play, RotateCw } from 'lucide-react'
 import { AKITA } from '../config/contracts'
-import { TokenImage } from '../components/TokenImage'
+import { LiquidGoldVaultCard } from '@/components/liquidGold/LiquidGoldVaultCard'
 import { useDebankTotalBalanceBatch } from '@/lib/debank/hooks'
 import { useDexscreenerTokenStatsBatch } from '@/lib/dexscreener/hooks'
 import type { DexscreenerTokenStats } from '@/lib/dexscreener/client'
@@ -15,102 +15,16 @@ import { computeCreatorScore } from '@/lib/reputation/creatorScore'
 import { useZoraExplore, useZoraTopCreators } from '@/lib/zora/hooks'
 import type { ZoraCoin } from '@/lib/zora/types'
 
-// CCA Strategy ABI
-const CCA_STRATEGY_ABI = [
-  {
-    name: 'getAuctionStatus',
-    type: 'function',
-    inputs: [],
-    outputs: [
-      { name: 'auction', type: 'address' },
-      { name: 'isActive', type: 'bool' },
-      { name: 'isGraduated', type: 'bool' },
-      { name: 'clearingPrice', type: 'uint256' },
-      { name: 'currencyRaised', type: 'uint256' },
-    ],
-    stateMutability: 'view',
-  },
-] as const
-
 const vaults = [
   {
     id: 'akita',
     name: 'AKITA',
     symbol: 'AKITA',
-    token: AKITA.token,
-    vault: AKITA.vault,
-    ccaStrategy: AKITA.ccaStrategy,
+    token: AKITA.token as Address,
+    vault: AKITA.vault as Address,
+    ccaStrategy: AKITA.ccaStrategy as Address,
   },
 ]
-
-function VaultCard({ vault }: { vault: typeof vaults[0] }) {
-  const { data: auctionStatus } = useReadContract({
-    address: vault.ccaStrategy as `0x${string}`,
-    abi: CCA_STRATEGY_ABI,
-    functionName: 'getAuctionStatus',
-  })
-
-  const isActive = auctionStatus?.[1] || false
-  const isGraduated = auctionStatus?.[2] || false
-  const currencyRaised = auctionStatus?.[4] || 0n
-
-  return (
-    <Link to={`/vault/${vault.vault}`}>
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.6 }}
-        className="card p-8 group hover:bg-zinc-950/50 transition-all duration-300"
-      >
-        {/* Token Header */}
-        <div className="flex items-center gap-4 mb-8">
-          <div className="transition-opacity group-hover:opacity-70">
-            <TokenImage
-              tokenAddress={vault.token as `0x${string}`}
-              symbol={vault.symbol}
-              size="md"
-            />
-          </div>
-          <div>
-            <h3 className="headline text-2xl mb-1">{vault.name}</h3>
-            <span className="label">{vault.symbol}</span>
-          </div>
-        </div>
-
-        {/* Status */}
-        <div className="mb-6">
-          {isActive && (
-            <div className="status-active">
-              <span className="label text-cyan-400">CCA Active</span>
-            </div>
-          )}
-          {isGraduated && (
-            <span className="label">Vault Active</span>
-          )}
-          {!isActive && !isGraduated && (
-            <span className="label">Not Launched</span>
-          )}
-        </div>
-
-        {/* Stats */}
-        {isActive && (
-          <div className="space-y-3 mb-6 pb-6 border-b border-zinc-900/50">
-            <span className="label">Total Raised</span>
-            <div className="value mono text-2xl glow-cyan">
-              {formatUnits(currencyRaised, 18)} ETH
-            </div>
-          </div>
-        )}
-
-        {/* Action */}
-        <div className="flex items-center gap-2 text-zinc-600 group-hover:text-zinc-400 transition-colors">
-          <span className="label">View Vault</span>
-          <ArrowRight className="w-3 h-3 transition-transform group-hover:translate-x-1" />
-        </div>
-      </motion.div>
-    </Link>
-  )
-}
 
 function formatUsdDeltaCompact(value?: string): string | null {
   if (!value) return null
@@ -1164,7 +1078,7 @@ export function Dashboard() {
 
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
             {vaults.map((vault) => (
-              <VaultCard key={vault.id} vault={vault} />
+              <LiquidGoldVaultCard key={vault.id} vault={vault} />
             ))}
           </div>
         </div>

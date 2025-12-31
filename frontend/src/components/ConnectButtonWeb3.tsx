@@ -230,13 +230,13 @@ export function ConnectButtonWeb3({ autoConnect = false }: { autoConnect?: boole
 
   return (
     <div className="relative">
-      <button
+    <button
         onClick={() => setShowMenu(!showMenu)}
-        disabled={isPending}
+      disabled={isPending}
         className="btn-accent disabled:opacity-50 flex items-center gap-2"
-      >
+    >
         <Wallet className="w-4 h-4" />
-        <span className="label">{isPending ? 'Connecting...' : 'Connect Wallet'}</span>
+      <span className="label">{isPending ? 'Connecting...' : 'Connect Wallet'}</span>
         {coinbaseConnector || injectedConnector ? <ChevronDown className="w-3 h-3 text-zinc-600" /> : null}
       </button>
 
@@ -291,7 +291,7 @@ export function ConnectButtonWeb3({ autoConnect = false }: { autoConnect?: boole
                   className="w-full text-left py-3 px-4 hover:bg-zinc-950 transition-colors"
                 >
                   <span className="label block">Connect</span>
-                </button>
+    </button>
               ) : null}
             </motion.div>
           </>

@@ -29,10 +29,11 @@ function makeVercelCompatReq(req: IncomingMessage): any {
   const host = req.headers.host ?? 'localhost'
   const url = new URL(req.url ?? '/', `http://${host}`)
   const query: Record<string, string | string[] | undefined> = {}
-  for (const [k, v] of url.searchParams.entries()) {
+  // Avoid TS downlevel-iteration requirements by using forEach (Vite config runs in Node anyway).
+  url.searchParams.forEach((v, k) => {
     // last value wins (good enough for our use-cases)
     query[k] = v
-  }
+  })
   return Object.assign(req as any, { query, cookies: {}, body: undefined })
 }
 
@@ -71,10 +72,16 @@ function localApiRoutesPlugin(): Plugin {
       loadDotEnvFile(path.resolve(__dirname, '../.env'))
       loadDotEnvFile(path.resolve(__dirname, './.env.local'))
 
-      const routes: Record<string, () => Promise<{ default: (req: any, res: any) => Promise<void> | void }>> = {
+      // Keep this loosely typed: API handlers often return `VercelResponse`, and we don't want
+      // Vite's config TS project to type-check every function signature.
+      const routes: Record<string, () => Promise<{ default: (req: any, res: any) => any }>> = {
         '/api/onchain/coinMarketRewardsByCoin': () => import('./api/onchain/coinMarketRewardsByCoin'),
         '/api/onchain/coinMarketRewardsCurrency': () => import('./api/onchain/coinMarketRewardsCurrency'),
         '/api/onchain/coinTradeRewardsBatch': () => import('./api/onchain/coinTradeRewardsBatch'),
+        '/api/zora/coin': () => import('./api/zora/coin'),
+        '/api/zora/explore': () => import('./api/zora/explore'),
+        '/api/zora/profile': () => import('./api/zora/profile'),
+        '/api/zora/profileCoins': () => import('./api/zora/profileCoins'),
         '/api/zora/topCreators': () => import('./api/zora/topCreators'),
         '/api/debank/totalBalanceBatch': () => import('./api/debank/totalBalanceBatch'),
         '/api/dexscreener/tokenStatsBatch': () => import('./api/dexscreener/tokenStatsBatch'),

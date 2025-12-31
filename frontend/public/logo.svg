@@ -19,7 +19,7 @@
     <path d="M 60 46 L 58 48 L 62 48 Z" fill="#422006"/>
   </g>
   
-  <!-- Base Vault bottom portion (69% transparent) -->
+  <!-- Base Vault bottom portion -->
   <g opacity="0.9">
     <!-- Vault body -->
     <rect x="15" y="55" width="90" height="50" rx="8" fill="#0000FF"/>
@@ -47,7 +47,7 @@
   
   <!-- Gradients -->
   <defs>
-    <!-- AKITA orange/red gradient (like a Shiba Inu/Akita dog) -->
+    <!-- AKITA orange/red gradient -->
     <linearGradient id="akitaGradient" x1="0%" y1="0%" x2="100%" y2="100%">
       <stop offset="0%" style="stop-color:#fb923c;stop-opacity:1" />
       <stop offset="50%" style="stop-color:#f97316;stop-opacity:1" />
@@ -71,73 +71,4 @@
   </defs>
 </svg>
 
-  <circle cx="60" cy="40" r="35" fill="url(#akitaGradient)"/>
-  
-  <!-- Token shine -->
-  <circle cx="60" cy="40" r="35" fill="url(#shine)" opacity="0.3"/>
-  
-  <!-- Simplified dog silhouette/face -->
-  <g opacity="0.3">
-    <!-- Dog ears -->
-    <path d="M 40 30 L 35 20 L 42 28 Z" fill="#d97706"/>
-    <path d="M 80 30 L 85 20 L 78 28 Z" fill="#d97706"/>
-    <!-- Dog face outline -->
-    <circle cx="60" cy="42" r="18" fill="none" stroke="#d97706" stroke-width="2"/>
-    <!-- Eyes -->
-    <circle cx="54" cy="40" r="2" fill="#422006"/>
-    <circle cx="66" cy="40" r="2" fill="#422006"/>
-    <!-- Nose -->
-    <path d="M 60 46 L 58 48 L 62 48 Z" fill="#422006"/>
-  </g>
-  
-  <!-- Base Vault bottom portion (69% transparent) -->
-  <g opacity="0.9">
-    <!-- Vault body -->
-    <rect x="15" y="55" width="90" height="50" rx="8" fill="#0000FF"/>
-    
-    <!-- Vault door details -->
-    <rect x="20" y="60" width="80" height="40" rx="6" fill="url(#vaultGradient)"/>
-    
-    <!-- Cross-hatch pattern -->
-    <line x1="30" y1="70" x2="90" y2="70" stroke="#0052FF" stroke-width="1" opacity="0.3"/>
-    <line x1="30" y1="80" x2="90" y2="80" stroke="#0052FF" stroke-width="1" opacity="0.3"/>
-    <line x1="30" y1="90" x2="90" y2="90" stroke="#0052FF" stroke-width="1" opacity="0.3"/>
-    
-    <!-- Circular lock dial in center -->
-    <circle cx="60" cy="80" r="12" fill="#1e40af"/>
-    <circle cx="60" cy="80" r="10" fill="url(#lockGradient)"/>
-    <circle cx="60" cy="80" r="3" fill="#0a1c4f"/>
-    
-    <!-- Lock shine -->
-    <circle cx="57" cy="77" r="4" fill="white" opacity="0.4"/>
-  </g>
-  
-  <!-- Blue glow ring -->
-  <circle cx="60" cy="60" r="55" stroke="#0000FF" stroke-width="2" fill="none" opacity="0.5"/>
-  <circle cx="60" cy="60" r="56" stroke="#0000FF" stroke-width="1" fill="none" opacity="0.3"/>
-  
-  <!-- Gradients -->
-  <defs>
-    <!-- AKITA orange/red gradient (like a Shiba Inu/Akita dog) -->
-    <linearGradient id="akitaGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" style="stop-color:#fb923c;stop-opacity:1" />
-      <stop offset="50%" style="stop-color:#f97316;stop-opacity:1" />
-      <stop offset="100%" style="stop-color:#dc2626;stop-opacity:1" />
-    </linearGradient>
-    
-    <radialGradient id="shine">
-      <stop offset="0%" style="stop-color:white;stop-opacity:1" />
-      <stop offset="100%" style="stop-color:white;stop-opacity:0" />
-    </radialGradient>
-    
-    <linearGradient id="vaultGradient" x1="0%" y1="0%" x2="0%" y2="100%">
-      <stop offset="0%" style="stop-color:#0052FF;stop-opacity:1" />
-      <stop offset="100%" style="stop-color:#0000FF;stop-opacity:1" />
-    </linearGradient>
-    
-    <radialGradient id="lockGradient">
-      <stop offset="0%" style="stop-color:#3b82f6;stop-opacity:1" />
-      <stop offset="100%" style="stop-color:#1e40af;stop-opacity:1" />
-    </radialGradient>
-  </defs>
-</svg>
+

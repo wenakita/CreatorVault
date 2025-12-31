@@ -456,8 +456,8 @@ export function CreatorEarnings() {
 
                     <div className="text-right flex-shrink-0 space-y-3">
                       <div>
-                        <div className="text-xs text-zinc-600">Claimable now</div>
-                        <div className="value mono text-2xl text-cyan-400">{totalClaimableEthDisplay}</div>
+                      <div className="text-xs text-zinc-600">Claimable now</div>
+                      <div className="value mono text-2xl text-cyan-400">{totalClaimableEthDisplay}</div>
                       </div>
 
                       <div>
@@ -485,33 +485,33 @@ export function CreatorEarnings() {
 
                     {showAdvanced ? (
                       <div className="mt-4 space-y-3">
-                        <div className="flex items-center justify-between gap-4">
+                    <div className="flex items-center justify-between gap-4">
                           <div className="text-xs text-zinc-600">Earned totals (payout currency) for visible coins</div>
-                          <button
-                            className="text-xs text-zinc-600 hover:text-zinc-400 transition-colors disabled:opacity-50"
-                            disabled={payoutComputeRunning || computableCoins.length === 0}
-                            onClick={computeVisiblePayoutTotals}
-                          >
-                            {payoutComputeRunning ? 'Computing…' : 'Compute'}
-                          </button>
-                        </div>
+                      <button
+                        className="text-xs text-zinc-600 hover:text-zinc-400 transition-colors disabled:opacity-50"
+                        disabled={payoutComputeRunning || computableCoins.length === 0}
+                        onClick={computeVisiblePayoutTotals}
+                      >
+                        {payoutComputeRunning ? 'Computing…' : 'Compute'}
+                      </button>
+                    </div>
 
-                        {payoutComputeRunning ? (
-                          <div className="text-xs text-zinc-700 font-mono">
-                            {payoutComputeDone}/{payoutComputeTotal}
-                          </div>
-                        ) : null}
+                    {payoutComputeRunning ? (
+                      <div className="text-xs text-zinc-700 font-mono">
+                        {payoutComputeDone}/{payoutComputeTotal}
+                      </div>
+                    ) : null}
 
-                        {payoutComputeError ? (
-                          <div className="text-xs text-zinc-700">
-                            {coinEarnedNeedVercel ? (
-                              <>
-                                If you see 404/Failed to fetch, run <span className="font-mono">vercel dev</span> (or keep using{' '}
-                                <span className="font-mono">npm run dev</span> with the local API middleware).
-                              </>
-                            ) : (
-                              <span className="font-mono">{payoutComputeError}</span>
-                            )}
+                    {payoutComputeError ? (
+                      <div className="text-xs text-zinc-700">
+                        {coinEarnedNeedVercel ? (
+                          <>
+                            If you see 404/Failed to fetch, run <span className="font-mono">vercel dev</span> (or keep using{' '}
+                            <span className="font-mono">npm run dev</span> with the local API middleware).
+                          </>
+                        ) : (
+                          <span className="font-mono">{payoutComputeError}</span>
+                        )}
                           </div>
                         ) : null}
                       </div>
@@ -591,37 +591,37 @@ export function CreatorEarnings() {
                                 </div>
                               ) : null}
                               {showAdvanced ? (
-                                <div className="text-xs text-zinc-600">
-                                  Earned (payout currency):{' '}
-                                  <span className="font-mono text-zinc-300">
-                                    {earnedRaw !== null && earnedRaw !== undefined && currencyLabel
-                                      ? `${formatUnitsCompact(earnedRaw, currencyDecimals)} ${currencyLabel}`
-                                      : '—'}
-                                  </span>
-                                  {coinAddr && isAddress(recipientRaw) && isAddress(currencyRaw) ? (
-                                    <button
-                                      className="ml-3 text-xs text-zinc-600 hover:text-zinc-400 transition-colors disabled:opacity-50"
-                                      disabled={payoutComputeRunning}
-                                      onClick={async () => {
-                                        try {
+                              <div className="text-xs text-zinc-600">
+                                Earned (payout currency):{' '}
+                                <span className="font-mono text-zinc-300">
+                                  {earnedRaw !== null && earnedRaw !== undefined && currencyLabel
+                                    ? `${formatUnitsCompact(earnedRaw, currencyDecimals)} ${currencyLabel}`
+                                    : '—'}
+                                </span>
+                                {coinAddr && isAddress(recipientRaw) && isAddress(currencyRaw) ? (
+                                  <button
+                                    className="ml-3 text-xs text-zinc-600 hover:text-zinc-400 transition-colors disabled:opacity-50"
+                                    disabled={payoutComputeRunning}
+                                    onClick={async () => {
+                                      try {
                                           const createdAtSeconds = coin.createdAt
                                             ? Math.floor(Date.parse(String(coin.createdAt)) / 1000)
                                             : undefined
-                                          await computeOnePayoutTotal({
-                                            coinAddr: coinAddr as Address,
-                                            payoutRecipient: recipientRaw as Address,
-                                            currency: currencyRaw as Address,
-                                            createdAtSeconds,
-                                          })
-                                        } catch (err: any) {
-                                          setPayoutComputeError(err?.message || 'Failed to compute this coin')
-                                        }
-                                      }}
-                                    >
-                                      {earnedRaw === null ? 'Compute' : 'Recompute'}
-                                    </button>
-                                  ) : null}
-                                </div>
+                                        await computeOnePayoutTotal({
+                                          coinAddr: coinAddr as Address,
+                                          payoutRecipient: recipientRaw as Address,
+                                          currency: currencyRaw as Address,
+                                          createdAtSeconds,
+                                        })
+                                      } catch (err: any) {
+                                        setPayoutComputeError(err?.message || 'Failed to compute this coin')
+                                      }
+                                    }}
+                                  >
+                                    {earnedRaw === null ? 'Compute' : 'Recompute'}
+                                  </button>
+                                ) : null}
+                              </div>
                               ) : null}
                             </div>
 

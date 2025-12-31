@@ -10,11 +10,12 @@
 import { useState, memo } from 'react'
 import { useWeb3 } from '@/web3/Web3Context'
 import { useTokenMetadata } from '../hooks/useTokenMetadata'
+import { LiquidGoldBorder } from './liquidGold/LiquidGoldBorder'
 
 interface TokenImageProps {
   tokenAddress: `0x${string}`
   symbol: string
-  size?: 'sm' | 'md' | 'lg' | 'xl'
+  size?: 'sm' | 'md' | 'lg' | 'xl' | '2xl'
   className?: string
   fallbackColor?: string
   isWrapped?: boolean
@@ -25,6 +26,8 @@ const sizeClasses = {
   md: 'w-12 h-12 text-sm',
   lg: 'w-14 h-14 text-xl',
   xl: 'w-16 h-16 text-2xl',
+  // Slightly bigger than xl (64px) without jumping to Tailwind's 80px scale.
+  '2xl': 'w-[72px] h-[72px] text-3xl',
 }
 
 // Simple fallback component (no wagmi hooks)
@@ -89,51 +92,31 @@ function TokenImageInner({
     )
   }
 
-  // Wrapped version with vault overlay
+  // Wrapped version: show creator coin icon inside an elegant Liquid Gold bezel (vault form)
   return (
     <div className={`relative ${className}`}>
-      <div className={`${sizeClass} rounded-xl overflow-hidden relative shadow-xl ring-2`} style={{ 
-        '--tw-ring-color': 'rgba(0, 0, 255, 0.3)' 
-      } as React.CSSProperties}>
-        {/* Token image background */}
-        <div className="absolute inset-0">
-          {showFallback ? (
-            <div className={`w-full h-full bg-gradient-to-br ${fallbackColor} flex items-center justify-center font-display font-bold text-white`}>
-              {symbol[0]?.toUpperCase() || '?'}
-            </div>
-          ) : (
-            <img
-              src={imageUrl}
-              alt={symbol}
-              className="w-full h-full object-cover"
-              onError={() => setImgError(true)}
-              loading="lazy"
-            />
-          )}
-        </div>
-        
-        {/* Vault overlay */}
-        <div className="absolute inset-x-0 bottom-0 h-[40%] opacity-90">
-          <div className="absolute inset-0" style={{
-            background: 'linear-gradient(to bottom right, #0052FF, #0000FF, #0000CC)'
-          }} />
-          <div className="absolute inset-0 shadow-[inset_0_4px_12px_rgba(0,0,0,0.5),inset_0_-2px_8px_rgba(0,0,0,0.3)]" />
-          <div className="absolute top-0 inset-x-0 h-[2px] bg-gradient-to-r from-transparent via-white/20 to-transparent" />
-          <div className="absolute inset-[8%] rounded-sm border border-white/10 shadow-lg" />
-          
-          {/* Vault dial */}
-          <div className="absolute inset-0 flex items-center justify-center">
-            <div className="relative w-[40%] aspect-square">
-              <div className="absolute inset-0 rounded-full bg-gradient-to-br from-white/40 via-white/20 to-transparent shadow-2xl" />
-              <div className="absolute inset-[12%] rounded-full shadow-[inset_0_2px_8px_rgba(0,0,0,0.5)]" style={{
-                background: 'linear-gradient(to bottom right, #0000CC, #0000FF, #0052FF)'
-              }} />
-              <div className="absolute inset-[35%] rounded-full bg-gradient-to-br from-white/90 via-white/70 to-white/50 shadow-xl" />
+      <div className={`${sizeClass} relative`}>
+        <LiquidGoldBorder intensity="low">
+          <div className="w-full h-full p-[5px] bg-obsidian rounded-full">
+            <div className="w-full h-full rounded-full overflow-hidden relative shadow-[inset_0_0_20px_black]">
+              {showFallback ? (
+                <div
+                  className={`w-full h-full rounded-full bg-gradient-to-br ${fallbackColor} flex items-center justify-center font-display font-bold text-white`}
+                >
+                  {symbol[0]?.toUpperCase() || '?'}
+                </div>
+              ) : (
+                <img
+                  src={imageUrl}
+                  alt={symbol}
+                  className="w-full h-full object-cover rounded-full"
+                  onError={() => setImgError(true)}
+                  loading="lazy"
+                />
+              )}
             </div>
           </div>
-        </div>
-        
-        <div className="absolute inset-x-0 top-[58%] h-[4%] bg-gradient-to-b from-black/0 via-black/20 to-black/30 pointer-events-none" />
+        </LiquidGoldBorder>
       </div>
     </div>
   )
@@ -163,28 +146,21 @@ export const TokenImage = memo(function TokenImage({
         </div>
       )
     }
-    // Wrapped fallback
+    // Wrapped fallback (no wagmi hooks): still render the vault bezel.
     return (
       <div className={`relative ${className}`}>
-        <div className={`${sizeClass} rounded-xl overflow-hidden relative shadow-xl ring-2`} style={{ 
-          '--tw-ring-color': 'rgba(0, 0, 255, 0.3)' 
-        } as React.CSSProperties}>
-          <div className="absolute inset-0">
-            <div className={`w-full h-full bg-gradient-to-br ${fallbackColor} flex items-center justify-center font-display font-bold text-white`}>
-              {symbol[0]?.toUpperCase() || '?'}
-            </div>
-          </div>
-          <div className="absolute inset-x-0 bottom-0 h-[40%] opacity-90">
-            <div className="absolute inset-0" style={{
-              background: 'linear-gradient(to bottom right, #0052FF, #0000FF, #0000CC)'
-            }} />
-            <div className="absolute inset-0 flex items-center justify-center">
-              <div className="relative w-[40%] aspect-square">
-                <div className="absolute inset-0 rounded-full bg-gradient-to-br from-white/40 via-white/20 to-transparent shadow-2xl" />
-                <div className="absolute inset-[35%] rounded-full bg-gradient-to-br from-white/90 via-white/70 to-white/50 shadow-xl" />
+        <div className={`${sizeClass} relative`}>
+          <LiquidGoldBorder intensity="low">
+            <div className="w-full h-full p-[5px] bg-obsidian rounded-full">
+              <div className="w-full h-full rounded-full overflow-hidden relative shadow-[inset_0_0_20px_black]">
+                <div
+                  className={`w-full h-full rounded-full bg-gradient-to-br ${fallbackColor} flex items-center justify-center font-display font-bold text-white`}
+                >
+                  {symbol[0]?.toUpperCase() || '?'}
+                </div>
               </div>
             </div>
-          </div>
+          </LiquidGoldBorder>
         </div>
       </div>
     )
