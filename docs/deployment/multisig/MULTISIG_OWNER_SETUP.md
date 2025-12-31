@@ -62,7 +62,7 @@ DeploymentResult memory result = batcher.batchDeployStrategies(
 
 **Result:**
 - ✅ CharmAlphaVault deployed (`pendingGovernance = your multisig`)
-- ✅ CharmAlphaStrategy deployed (`keeper = your multisig`)
+- ✅ No separate CharmAlphaStrategy deployed (rebalance is embedded in CharmAlphaVaultSimple)
 - ✅ CreatorCharmStrategyV2 deployed (`owner = your multisig`)
 - ✅ AjnaStrategy deployed (`owner = your multisig`)
 
@@ -87,7 +87,7 @@ CharmAlphaVault(result.charmVault).acceptGovernance();
 | Contract | Owner | Type |
 |----------|-------|------|
 | **CharmAlphaVault** | Your Multisig | Governance (after accepting) |
-| **CharmAlphaStrategy** | Your Multisig | Keeper |
+| **CharmAlphaStrategy** | ❌ Not deployed | Embedded |
 | **CreatorCharmStrategyV2** | Your Multisig | Owner |
 | **AjnaStrategy** | Your Multisig | Owner |
 
@@ -118,7 +118,7 @@ CharmAlphaVault(result.charmVault).acceptGovernance();
         ┌────────────────────────────┐
         │  Contracts Deployed:       │
         │  - CharmAlphaVault         │
-        │  - CharmAlphaStrategy      │
+        │  - (no separate CharmAlphaStrategy) │
         │  - CreatorCharmStrategyV2  │
         │  - AjnaStrategy            │
         └────────────────────────────┘
@@ -163,7 +163,7 @@ Multisig(0x7d429eCbdcE5ff516D6e0a93299cbBa97203f2d3).call(
 ### **3. Ownership is Immediate for Most Contracts**
 - **CreatorCharmStrategyV2:** Owned immediately ✅
 - **AjnaStrategy:** Owned immediately ✅
-- **CharmAlphaStrategy:** Owned immediately ✅
+- **CharmAlphaStrategy:** Not deployed (embedded) ✅
 - **CharmAlphaVault:** Requires acceptance ⚠️
 
 ---

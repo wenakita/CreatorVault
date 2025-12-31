@@ -28,8 +28,7 @@ DeploymentResult memory result = batcher.batchDeployStrategies(
     0x7d429eCbdcE5ff516D6e0a93299cbBa97203f2d3        // ⭐ YOUR MULTISIG
 );
 
-// Step 2: Accept governance FROM YOUR MULTISIG
-CharmAlphaVault(result.charmVault).acceptGovernance();
+// No follow-up acceptance required for the automated path.
 ```
 
 ---
@@ -38,23 +37,9 @@ CharmAlphaVault(result.charmVault).acceptGovernance();
 
 | Contract | Owner | Status |
 |----------|-------|--------|
-| **CharmAlphaVault** | Your Multisig | Pending → Need to accept |
-| **CharmAlphaStrategy** | Your Multisig | ✅ Immediate |
+| **CharmAlphaVaultSimple** | Your Multisig | ✅ Immediate |
 | **CreatorCharmStrategyV2** | Your Multisig | ✅ Immediate |
 | **AjnaStrategy** | Your Multisig | ✅ Immediate |
-
----
-
-## ⚠️ **CRITICAL: Accept Governance**
-
-**Step 2 MUST be called FROM your multisig:**
-
-```solidity
-// This will REVERT if called from a different address:
-CharmAlphaVault(result.charmVault).acceptGovernance();
-
-// Must be sent by: 0x7d429eCbdcE5ff516D6e0a93299cbBa97203f2d3
-```
 
 ---
 

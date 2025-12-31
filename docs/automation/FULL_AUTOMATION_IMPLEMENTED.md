@@ -98,7 +98,7 @@ User calls batchDeployStrategies(creator)
 └─────────────────────────────────────────┘
               ↓
 ┌─────────────────────────────────────────┐
-│ STEP 3: Deploy CharmAlphaStrategy       │
+│ STEP 3: Configure embedded rebalance    │
 │ Keeper = creator                        │
 └─────────────────────────────────────────┘
               ↓
@@ -143,7 +143,6 @@ Rebalance already executed
 | Contract | Owner | When |
 |----------|-------|------|
 | **CharmAlphaVaultSimple** | Creator | ✅ Immediate (no acceptance needed) |
-| **CharmAlphaStrategy** | Creator | ✅ Immediate |
 | **CreatorCharmStrategyV2** | Creator | ✅ Immediate |
 | **AjnaStrategy** | Creator | ✅ Immediate |
 
@@ -191,7 +190,7 @@ const {
 
 // Verify ownership (all should return creatorAddress)
 console.log("CharmVault governance:", await charmVault.governance());
-console.log("CharmStrategy keeper:", await charmStrategy.keeper());
+console.log("CharmStrategy:", charmStrategy); // address(0) for atomic/simple path (rebalancer is embedded)
 console.log("CreatorCharmStrategy owner:", await creatorCharmStrategy.owner());
 console.log("AjnaStrategy owner:", await ajnaStrategy.owner());
 
@@ -207,12 +206,11 @@ After deployment, verify everything worked:
 ```solidity
 // 1. Check ownership (should all be creator)
 assert(CharmAlphaVaultSimple(charmVault).governance() == creator);
-assert(CharmAlphaStrategy(charmStrategy).keeper() == creator);
 assert(CreatorCharmStrategyV2(creatorCharmStrategy).owner() == creator);
 assert(AjnaStrategy(ajnaStrategy).owner() == creator);
 
 // 2. Check strategy is set
-assert(CharmAlphaVaultSimple(charmVault).strategy() == charmStrategy);
+assert(CharmAlphaVaultSimple(charmVault).strategy() == charmVault); // embedded strategy = self
 
 // 3. Check rebalance was called (positions should exist)
 (int24 baseLower, int24 baseUpper, , ) = CharmAlphaVaultSimple(charmVault).getTicks();

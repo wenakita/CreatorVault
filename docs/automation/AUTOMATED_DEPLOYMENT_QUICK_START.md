@@ -52,7 +52,6 @@ owner: platformManagerAddress  // Smart contract that manages creators
 | Contract | Owner | Notes |
 |----------|-------|-------|
 | CharmAlphaVaultSimple | ⭐ `owner` param | Immediate ownership |
-| CharmAlphaStrategy | ⭐ `owner` param | Immediate ownership |
 | CreatorCharmStrategyV2 | ⭐ `owner` param | Immediate ownership |
 | AjnaStrategy | ⭐ `owner` param | Immediate ownership |
 

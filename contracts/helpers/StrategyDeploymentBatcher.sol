@@ -7,9 +7,7 @@ import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol
 import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import "../strategies/CreatorCharmStrategyV2.sol";
 import "../strategies/AjnaStrategy.sol";
-import "../charm/CharmAlphaVault.sol";
 import "../charm/CharmAlphaVaultSimple.sol";
-import "../charm/CharmAlphaStrategy.sol";
 import "../interfaces/v3/IUniswapV3Factory.sol";
 import "../interfaces/v3/IUniswapV3Pool.sol";
 
@@ -159,111 +157,6 @@ contract StrategyDeploymentBatcher is ReentrancyGuard {
                 _ajnaFactory,        // Ajna ERC20Pool factory
                 quoteToken,          // USDC (quote token)
                 owner                // owner (can be multisig)
-            ));
-        }
-
-        emit StrategiesDeployed(msg.sender, underlyingToken, result);
-    }
-
-    /**
-     * @notice Deploy all strategies, using the FULL CharmAlphaVault (not CharmAlphaVaultSimple).
-     * @dev Difference vs `batchDeployStrategies`:
-     * - Deploys `CharmAlphaVault` directly (original implementation).
-     * - Sets `pendingGovernance = owner` (owner must later call `acceptGovernance()`).
-     * - Still does an initial `rebalance()` by setting keeper to this batcher temporarily.
-     *
-     * This is the path to use if you want the canonical Charm vault bytecode deployed onchain.
-     */
-    function batchDeployStrategiesFullCharmVault(
-        address underlyingToken,
-        address quoteToken,
-        address creatorVault,
-        address _ajnaFactory,
-        uint24 v3FeeTier,
-        uint160 initialSqrtPriceX96,
-        address owner,
-        string memory vaultName,
-        string memory vaultSymbol
-    ) external nonReentrant returns (DeploymentResult memory result) {
-        require(owner != address(0), "Invalid owner address");
-        require(bytes(vaultName).length > 0, "Invalid vault name");
-        require(bytes(vaultSymbol).length > 0, "Invalid vault symbol");
-        require(underlyingToken != address(0), "Zero underlying");
-        require(quoteToken != address(0), "Zero quote");
-        require(creatorVault != address(0), "Zero vault");
-
-        // ═══════════════════════════════════════════════════════════
-        // STEP 1: Create or Get V3 Pool
-        // ═══════════════════════════════════════════════════════════
-        IUniswapV3Factory factory = IUniswapV3Factory(V3_FACTORY);
-        result.v3Pool = factory.getPool(underlyingToken, quoteToken, v3FeeTier);
-
-        if (result.v3Pool == address(0)) {
-            result.v3Pool = factory.createPool(underlyingToken, quoteToken, v3FeeTier);
-            IUniswapV3Pool(result.v3Pool).initialize(initialSqrtPriceX96);
-        }
-
-        // ═══════════════════════════════════════════════════════════
-        // STEP 2: Deploy FULL Charm Alpha Vault (batcher is governance)
-        // ═══════════════════════════════════════════════════════════
-        result.charmVault = address(new CharmAlphaVault(
-            result.v3Pool,
-            10000,              // 1% protocol fee
-            type(uint256).max,  // No supply cap
-            vaultName,
-            vaultSymbol
-        ));
-
-        // ═══════════════════════════════════════════════════════════
-        // STEP 3: Deploy Charm Alpha Strategy
-        // ═══════════════════════════════════════════════════════════
-        // Keeper = this batcher so we can run an initial rebalance, then we hand keeper off to `owner`.
-        result.charmStrategy = address(new CharmAlphaStrategy(
-            result.charmVault,
-            3000,
-            6000,
-            100,
-            1800,
-            address(this)
-        ));
-
-        // Wire vault → strategy while we're governance
-        CharmAlphaVault(result.charmVault).setStrategy(result.charmStrategy);
-
-        // Initial rebalance (as keeper)
-        CharmAlphaStrategy(result.charmStrategy).rebalance();
-
-        // Hand keeper off to owner (allowed because we're vault.governance)
-        CharmAlphaStrategy(result.charmStrategy).setKeeper(owner);
-
-        // Set pending governance (owner must accept later)
-        CharmAlphaVault(result.charmVault).setGovernance(owner);
-
-        // ═══════════════════════════════════════════════════════════
-        // STEP 4: Deploy Creator Charm Strategy V2 (Vault Integration)
-        // ═══════════════════════════════════════════════════════════
-        result.creatorCharmStrategy = address(new CreatorCharmStrategyV2(
-            creatorVault,
-            underlyingToken,
-            quoteToken,
-            UNISWAP_ROUTER,
-            result.charmVault,
-            result.v3Pool,
-            owner
-        ));
-
-        CreatorCharmStrategyV2(result.creatorCharmStrategy).initializeApprovals();
-
-        // ═══════════════════════════════════════════════════════════
-        // STEP 5: Deploy Ajna Strategy (optional)
-        // ═══════════════════════════════════════════════════════════
-        if (_ajnaFactory != address(0)) {
-            result.ajnaStrategy = address(new AjnaStrategy(
-                creatorVault,
-                underlyingToken,
-                _ajnaFactory,
-                quoteToken,
-                owner
             ));
         }
 

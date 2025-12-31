@@ -21,7 +21,6 @@ import {
   encodeFunctionData,
   encodePacked,
   formatUnits,
-  getContractAddress,
   getCreate2Address,
   isAddress,
   keccak256,
@@ -61,34 +60,10 @@ const VAULT_YIELD_ABI = [
   { type: 'function', name: 'syncBalances', stateMutability: 'nonpayable', inputs: [], outputs: [] },
 ] as const
 
-const CHARM_VAULT_GOVERNANCE_ABI = [
-  { type: 'function', name: 'acceptGovernance', stateMutability: 'nonpayable', inputs: [], outputs: [] },
-] as const
-
 const BOOTSTRAPPER_ABI = [
   {
     type: 'function',
     name: 'finalize',
-    stateMutability: 'nonpayable',
-    inputs: [
-      { name: 'vault', type: 'address' },
-      { name: 'wrapper', type: 'address' },
-      { name: 'gaugeController', type: 'address' },
-      { name: 'creatorToken', type: 'address' },
-      { name: 'usdc', type: 'address' },
-      { name: 'ajnaFactory', type: 'address' },
-      { name: 'v3FeeTier', type: 'uint24' },
-      { name: 'initialSqrtPriceX96', type: 'uint160' },
-      { name: 'charmVaultName', type: 'string' },
-      { name: 'charmVaultSymbol', type: 'string' },
-      { name: 'charmWeightBps', type: 'uint256' },
-      { name: 'ajnaWeightBps', type: 'uint256' },
-    ],
-    outputs: [],
-  },
-  {
-    type: 'function',
-    name: 'finalizeFullCharmVault',
     stateMutability: 'nonpayable',
     inputs: [
       { name: 'vault', type: 'address' },
@@ -393,7 +368,6 @@ export function DeployVaultAA({
   const { sendCallsAsync } = useSendCalls()
 
   const [deploymentVersion, setDeploymentVersion] = useState<DeploymentVersion>(deploymentVersionProp ?? 'v1')
-  const [useFullCharmVault, setUseFullCharmVault] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [callBundleId, setCallBundleId] = useState<string | null>(null)
   const [callBundleType, setCallBundleType] = useState<'tx' | 'bundle' | null>(null)
@@ -760,25 +734,11 @@ export function DeployVaultAA({
     const charmWeightBps = 6900n
     const ajnaWeightBps = 2139n
 
-    // If deploying the canonical CharmAlphaVault, we also want governance to be fully accepted in the SAME batch.
-    //
-    // We can do that in one click by precomputing the Charm vault address:
-    // - VaultStrategyBootstrapper does `new StrategyDeploymentBatcher()` once (CREATE nonce = 1)
-    // - StrategyDeploymentBatcher.batchDeployStrategiesFullCharmVault does `new CharmAlphaVault(...)` first (CREATE nonce = 1)
-    //
-    // Both are deterministic because the bootstrapper address is deterministic via CREATE2, and its nonce ordering is fixed.
-    const predictedStrategyBatcher = useFullCharmVault
-      ? (getContractAddress({ from: bootstrapperAddress, nonce: 1n }) as Address)
-      : null
-    const predictedCharmVaultFull = useFullCharmVault
-      ? (getContractAddress({ from: predictedStrategyBatcher as Address, nonce: 1n }) as Address)
-      : null
-
     calls.push({
       to: bootstrapperAddress,
       data: encodeFunctionData({
         abi: BOOTSTRAPPER_ABI,
-        functionName: useFullCharmVault ? 'finalizeFullCharmVault' : 'finalize',
+        functionName: 'finalize',
         args: [
           vaultAddress,
           wrapperAddress,
@@ -795,14 +755,6 @@ export function DeployVaultAA({
         ],
       }),
     })
-
-    // Full-Charm path: accept Charm vault governance inside the same AA batch (true “one click”).
-    if (useFullCharmVault && predictedCharmVaultFull) {
-      calls.push({
-        to: predictedCharmVaultFull,
-        data: encodeFunctionData({ abi: CHARM_VAULT_GOVERNANCE_ABI, functionName: 'acceptGovernance' }),
-      })
-    }
 
     // VaultStrategyBootstrapper sets pendingManagement to `owner` — accept it here so the bootstrapper cannot manage post-deploy.
     calls.push({ to: vaultAddress, data: encodeFunctionData({ abi: VAULT_MANAGEMENT_ABI, functionName: 'acceptManagement' }) })
@@ -1153,26 +1105,6 @@ export function DeployVaultAA({
 
   return (
     <div className="space-y-4">
-      <div className="bg-black/30 border border-zinc-900/50 rounded-lg p-4 space-y-2">
-        <div className="label">Strategy deployment</div>
-        <label className="flex items-start gap-3 text-sm text-zinc-200 cursor-pointer select-none">
-          <input
-            type="checkbox"
-            className="mt-1 accent-cyan-400"
-            checked={useFullCharmVault}
-            onChange={(e) => setUseFullCharmVault(e.target.checked)}
-            disabled={isSubmitting}
-          />
-          <span>
-            Deploy <span className="font-semibold">canonical</span> Charm vault bytecode (uses <span className="font-mono">CharmAlphaVault</span>).
-            <div className="text-xs text-zinc-500 mt-1">
-              We’ll automatically accept governance in the same AA batch to keep this truly one-click.
-              The fast default (unchecked) deploys <span className="font-mono">CharmAlphaVaultSimple</span> for atomic wiring and smaller risk of “governance pending” edge cases.
-            </div>
-          </span>
-        </label>
-      </div>
-
       <motion.button
         onClick={() => deploy()}
         disabled={disabled}

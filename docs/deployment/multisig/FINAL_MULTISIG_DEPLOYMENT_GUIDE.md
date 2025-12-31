@@ -80,7 +80,7 @@ CharmAlphaVault(result.charmVault).acceptGovernance();
 | Contract | Owner After Deployment | Owner After Accepting |
 |----------|------------------------|----------------------|
 | CharmAlphaVault | ⚠️ Pending (multisig) | ✅ Multisig |
-| CharmAlphaStrategy | ✅ Multisig | ✅ Multisig |
+| CharmAlphaStrategy | ❌ Not deployed | Rebalance is embedded in CharmAlphaVaultSimple |
 | CreatorCharmStrategyV2 | ✅ Multisig | ✅ Multisig |
 | AjnaStrategy | ✅ Multisig | ✅ Multisig |
 
@@ -220,8 +220,8 @@ After deployment, verify:
 CharmAlphaVault(charmVault).governance()
 // Should return: 0x7d429eCbdcE5ff516D6e0a93299cbBa97203f2d3 ✅
 
-// 2. Check CharmAlphaStrategy keeper (should be your multisig)
-CharmAlphaStrategy(charmStrategy).keeper()
+// 2. CharmAlphaStrategy is not deployed in the automated path (embedded).
+// charmStrategy is expected to be address(0) in the StrategiesDeployed result.
 // Should return: 0x7d429eCbdcE5ff516D6e0a93299cbBa97203f2d3 ✅
 
 // 3. Check CreatorCharmStrategyV2 owner (should be your multisig)
