@@ -6,25 +6,18 @@ import "../interfaces/v3/IUniswapV3Pool.sol";
 import { TickMathCompat as TickMath } from "../libraries/TickMathCompat.sol";
 
 /**
- * @title CharmAlphaVaultAuto
- * @notice Charm Alpha Vault variant with embedded rebalance logic and atomic governance transfer.
- * @dev This contract still inherits the FULL `CharmAlphaVault` implementation.
- *      The key difference is that it embeds the tick-selection / rebalance logic so we do NOT need a
- *      separate `CharmAlphaStrategy` contract for the AA 1-click deployment path.
+ * @title CharmAlphaVaultDeploy
+ * @notice Deployment-oriented Charm Alpha Vault variant for 1-click AA setups.
+ * @dev Inherits the FULL `CharmAlphaVault` implementation but embeds the rebalance logic (tick selection),
+ *      so we do not deploy a separate rebalancer contract.
  *
- *      - `initializeAndTransfer(...)` sets:
- *        - strategy = address(this)
- *        - initial rebalance ranges (and runs the initial rebalance)
- *        - keeper + governance in a single step (no acceptGovernance)
- *
- *      - `rebalance()` is keeper-only and computes ranges internally.
+ *      Naming intent:
+ *      - This is the Charm vault we deploy as part of CreatorVault’s automated deployment flow.
  */
-contract CharmAlphaVaultAuto is CharmAlphaVault {
+contract CharmAlphaVaultDeploy is CharmAlphaVault {
     bool private _initialized;
 
-    // ─────────────────────────────────────────────────────────────────────────────
     // Embedded rebalance parameters (previously in CharmAlphaStrategy)
-    // ─────────────────────────────────────────────────────────────────────────────
     int24 public baseThreshold;
     int24 public limitThreshold;
     int24 public maxTwapDeviation;
@@ -44,10 +37,6 @@ contract CharmAlphaVaultAuto is CharmAlphaVault {
         string memory _symbol
     ) CharmAlphaVault(_pool, _protocolFee, _maxTotalSupply, _name, _symbol) {}
 
-    /**
-     * @notice Configure embedded rebalance params, do an initial rebalance, and atomically transfer governance/keeper.
-     * @dev Can only be called once by governance (the deployer / batcher).
-     */
     function initializeAndTransfer(
         address _newGovernance,
         address _newKeeper,
@@ -75,11 +64,10 @@ contract CharmAlphaVaultAuto is CharmAlphaVault {
         maxTwapDeviation = _maxTwapDeviation;
         twapDuration = _twapDuration;
 
-        // Temporary keeper = governance to run the initial rebalance while we're still governance.
+        // Temporary keeper = governance to run the initial rebalance.
         keeper = msg.sender;
         _rebalanceInternal();
 
-        // Final keeper
         keeper = _newKeeper;
 
         // Single-step governance transfer (no acceptGovernance needed).
@@ -87,10 +75,6 @@ contract CharmAlphaVaultAuto is CharmAlphaVault {
         pendingGovernance = address(0);
     }
 
-    /**
-     * @notice Compute new ranges and rebalance the vault.
-     * @dev Keeper-only.
-     */
     function rebalance() external {
         require(msg.sender == keeper, "keeper");
         _rebalanceInternal();

@@ -62,7 +62,7 @@ DeploymentResult memory result = batcher.batchDeployStrategies(
 
 **Result:**
 - ✅ CharmAlphaVault deployed (`pendingGovernance = your multisig`)
-- ✅ No separate CharmAlphaStrategy deployed (rebalance is embedded in CharmAlphaVaultAuto)
+- ✅ No separate CharmAlphaStrategy deployed (rebalance is embedded in CharmAlphaVaultDeploy)
 - ✅ CreatorCharmStrategyV2 deployed (`owner = your multisig`)
 - ✅ AjnaStrategy deployed (`owner = your multisig`)
 
