@@ -146,6 +146,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   ]
 
   setCache(res, 60)
-  return res.status(200).json({ chainId, generatedAt, sections })
+  return res.status(200).json({ success: true, data: { chainId, generatedAt, sections } })
 }
 
