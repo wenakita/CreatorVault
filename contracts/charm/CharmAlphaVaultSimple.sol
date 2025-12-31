@@ -6,7 +6,13 @@ import "./CharmAlphaVault.sol";
 /**
  * @title CharmAlphaVaultSimple
  * @notice Simplified version of CharmAlphaVault with single-step governance transfer
- * @dev Extends CharmAlphaVault but allows immediate governance assignment
+ * @dev IMPORTANT:
+ *      - This is still the FULL Charm vault implementation because it **inherits `CharmAlphaVault`**.
+ *      - The only behavioral difference is an optional one-time initializer to atomically set strategy + rebalance
+ *        and hand governance/keeper to the final owner without a separate `acceptGovernance()` transaction.
+ *
+ *      If you want the canonical CharmAlphaVault bytecode deployed directly (and are OK with the extra
+ *      `acceptGovernance()` step), use `StrategyDeploymentBatcher.batchDeployStrategiesFullCharmVault(...)`.
  * 
  * Changes from original:
  * - One-time initializer for atomic strategy setup + governance transfer

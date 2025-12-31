@@ -95,12 +95,3 @@ library LiquidityAmounts {
         }
     }
 }
-
-
-pragma solidity ^0.8.20;
-
-import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
-
-/// @notice Liquidity math helpers for Uniswap V3-style sqrtPriceX96 values.
-/// @dev Implemented locally (MIT) to avoid importing v3-periphery which pulls in v3-core `FullMath` with `<0.8.0` pragma.
-///      Formulas mirror Uniswap's LiquidityAmounts library.

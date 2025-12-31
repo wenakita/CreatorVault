@@ -19,8 +19,3 @@ interface IUniswapV3SwapCallback {
         bytes calldata data
     ) external;
 }
-
-pragma solidity >=0.5.0;
-
-/// @title Callback for IUniswapV3PoolActions#swap
-/// @notice Any contract that calls IUniswapV3PoolActions#swap must implement this interface
