@@ -1,7 +1,5 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 
-import { CONTRACTS } from '../../src/config/contracts'
-
 declare const process: { env: Record<string, string | undefined> }
 
 type CheckStatus = 'pass' | 'fail' | 'warn' | 'info'
@@ -55,6 +53,12 @@ function getReadRpcUrl(): string {
   return 'https://mainnet.base.org'
 }
 
+function pickAddress(envKey: string, fallback: string): string {
+  const raw = process.env[envKey]
+  if (raw && raw.length > 0) return raw
+  return fallback
+}
+
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   setCors(res)
   if (handleOptions(req, res)) return
@@ -103,15 +107,16 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     },
   ]
 
-  const addr = (v: unknown) => (typeof v === 'string' ? v : '')
+  // NOTE: Keep these aligned with `frontend/src/config/contracts.ts`.
+  // We inline them here to avoid any cross-bundling issues in Vercel serverless functions.
   const infra = [
-    { id: 'registry', label: 'Registry', value: addr((CONTRACTS as any).registry) },
-    { id: 'factory', label: 'Factory', value: addr((CONTRACTS as any).factory) },
-    { id: 'vaultActivationBatcher', label: 'VaultActivationBatcher', value: addr((CONTRACTS as any).vaultActivationBatcher) },
-    { id: 'create2Deployer', label: 'CREATE2Deployer', value: addr((CONTRACTS as any).create2Deployer) },
-    { id: 'taxHook', label: 'TaxHook', value: addr((CONTRACTS as any).taxHook) },
-    { id: 'poolManager', label: 'UniswapV4PoolManager', value: addr((CONTRACTS as any).poolManager) },
-    { id: 'protocolTreasury', label: 'ProtocolTreasury', value: addr((CONTRACTS as any).protocolTreasury) },
+    { id: 'registry', label: 'Registry', value: pickAddress('CREATOR_REGISTRY', '0x777e28d7617ADb6E2fE7b7C49864A173e36881EF') },
+    { id: 'factory', label: 'Factory', value: pickAddress('CREATOR_FACTORY', '0x6205c91941A207A622fD00481b92cA04308a2819') },
+    { id: 'vaultActivationBatcher', label: 'VaultActivationBatcher', value: pickAddress('VAULT_ACTIVATION_BATCHER', '0x6d796554698f5Ddd74Ff20d745304096aEf93CB6') },
+    { id: 'create2Deployer', label: 'CREATE2Deployer', value: pickAddress('CREATE2_DEPLOYER', '0xaBf645362104F34D9C3FE48440bE7c99aaDE58E7') },
+    { id: 'taxHook', label: 'TaxHook', value: pickAddress('TAX_HOOK', '0xca975B9dAF772C71161f3648437c3616E5Be0088') },
+    { id: 'poolManager', label: 'UniswapV4PoolManager', value: pickAddress('POOL_MANAGER', '0x498581fF718922c3f8e6A244956aF099B2652b2b') },
+    { id: 'protocolTreasury', label: 'ProtocolTreasury', value: pickAddress('PROTOCOL_TREASURY', '0x7d429eCbdcE5ff516D6e0a93299cbBa97203f2d3') },
   ]
 
   const infraChecks: Check[] = infra.map((item) => {
