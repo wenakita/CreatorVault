@@ -33,7 +33,7 @@ These files are NOT used by StrategyDeploymentBatcher!
 StrategyDeploymentBatcher Imports:
   ✅ CreatorCharmStrategyV2  (no V4 deps)
   ✅ AjnaStrategy            (no V4 deps)
-  ✅ CharmAlphaVaultSimple   (no V4 deps)
+  ✅ CharmAlphaVaultAuto     (no V4 deps)
   ✅ OpenZeppelin contracts  (no V4 deps)
   ✅ V3 interfaces           (no V4 deps)
 

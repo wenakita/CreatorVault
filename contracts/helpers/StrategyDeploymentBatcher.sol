@@ -7,7 +7,7 @@ import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol
 import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import "../strategies/CreatorCharmStrategyV2.sol";
 import "../strategies/AjnaStrategy.sol";
-import "../charm/CharmAlphaVaultSimple.sol";
+import "../charm/CharmAlphaVaultAuto.sol";
 import "../interfaces/v3/IUniswapV3Factory.sol";
 import "../interfaces/v3/IUniswapV3Pool.sol";
 
@@ -107,7 +107,7 @@ contract StrategyDeploymentBatcher is ReentrancyGuard {
         // ═══════════════════════════════════════════════════════════
         // STEP 2: Deploy Charm Alpha Vault (batcher is temp governance)
         // ═══════════════════════════════════════════════════════════
-        result.charmVault = address(new CharmAlphaVaultSimple(
+        result.charmVault = address(new CharmAlphaVaultAuto(
             result.v3Pool,
             10000,              // 1% protocol fee
             type(uint256).max,  // No supply cap (unlimited)
@@ -118,11 +118,11 @@ contract StrategyDeploymentBatcher is ReentrancyGuard {
         // ═══════════════════════════════════════════════════════════
         // STEP 3: Initialize embedded rebalance logic (Atomic / Simple path)
         // ═══════════════════════════════════════════════════════════
-        // No separate CharmAlphaStrategy contract is needed here; CharmAlphaVaultSimple embeds it.
+        // No separate CharmAlphaStrategy contract is needed here; CharmAlphaVaultAuto embeds it.
         result.charmStrategy = address(0);
 
         // Initialize vault: configure embedded params, do initial rebalance, transfer keeper, transfer governance.
-        CharmAlphaVaultSimple(result.charmVault).initializeAndTransfer(
+        CharmAlphaVaultAuto(result.charmVault).initializeAndTransfer(
             owner,  // Transfer governance to creator
             owner,  // Transfer keeper to creator
             3000,   // Base threshold

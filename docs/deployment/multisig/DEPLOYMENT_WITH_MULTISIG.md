@@ -37,7 +37,7 @@ DeploymentResult memory result = batcher.batchDeployStrategies(
 
 | Contract | Owner | Status |
 |----------|-------|--------|
-| **CharmAlphaVaultSimple** | Your Multisig | ✅ Immediate |
+| **CharmAlphaVaultAuto** | Your Multisig | ✅ Immediate |
 | **CreatorCharmStrategyV2** | Your Multisig | ✅ Immediate |
 | **AjnaStrategy** | Your Multisig | ✅ Immediate |
 

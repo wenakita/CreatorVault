@@ -80,7 +80,7 @@ CharmAlphaVault(result.charmVault).acceptGovernance();
 | Contract | Owner After Deployment | Owner After Accepting |
 |----------|------------------------|----------------------|
 | CharmAlphaVault | ⚠️ Pending (multisig) | ✅ Multisig |
-| CharmAlphaStrategy | ❌ Not deployed | Rebalance is embedded in CharmAlphaVaultSimple |
+| CharmAlphaStrategy | ❌ Not deployed | Rebalance is embedded in CharmAlphaVaultAuto |
 | CreatorCharmStrategyV2 | ✅ Multisig | ✅ Multisig |
 | AjnaStrategy | ✅ Multisig | ✅ Multisig |
 

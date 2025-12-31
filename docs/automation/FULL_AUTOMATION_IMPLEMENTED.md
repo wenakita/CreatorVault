@@ -12,14 +12,14 @@
 
 ## 🔧 **WHAT WAS CHANGED:**
 
-### **1. Created `CharmAlphaVaultSimple.sol`**
+### **1. Created `CharmAlphaVaultAuto.sol`**
 
 A simplified version of CharmAlphaVault with:
 - ✅ Single-step governance transfer (no acceptance needed)
 - ✅ `initializeAndTransfer()` function for atomic setup
 - ✅ Embeds the rebalance logic (no separate `CharmAlphaStrategy` needed for the atomic path)
 
-**Location:** `contracts/charm/CharmAlphaVaultSimple.sol`
+**Location:** `contracts/charm/CharmAlphaVaultAuto.sol`
 
 **Key Features:**
 ```solidity
@@ -45,7 +45,7 @@ Now performs **FULL AUTOMATION**:
 
 ```solidity
 // 1. Deploy vault (batcher is temp governance)
-CharmAlphaVaultSimple vault = new CharmAlphaVaultSimple(...)
+CharmAlphaVaultAuto vault = new CharmAlphaVaultAuto(...)
 
 // 2. Atomically configure embedded rebalance params + transfer governance/keeper to creator
 vault.initializeAndTransfer(creator, creator, 3000, 6000, 100, 1800)
@@ -93,7 +93,7 @@ User calls batchDeployStrategies(creator)
 └─────────────────────────────────────────┘
               ↓
 ┌─────────────────────────────────────────┐
-│ STEP 2: Deploy CharmAlphaVaultSimple    │
+│ STEP 2: Deploy CharmAlphaVaultAuto      │
 │ Governance = batcher (temporary)        │
 └─────────────────────────────────────────┘
               ↓
@@ -142,7 +142,7 @@ Rebalance already executed
 
 | Contract | Owner | When |
 |----------|-------|------|
-| **CharmAlphaVaultSimple** | Creator | ✅ Immediate (no acceptance needed) |
+| **CharmAlphaVaultAuto** | Creator | ✅ Immediate (no acceptance needed) |
 | **CreatorCharmStrategyV2** | Creator | ✅ Immediate |
 | **AjnaStrategy** | Creator | ✅ Immediate |
 
@@ -205,15 +205,15 @@ After deployment, verify everything worked:
 
 ```solidity
 // 1. Check ownership (should all be creator)
-assert(CharmAlphaVaultSimple(charmVault).governance() == creator);
+assert(CharmAlphaVaultAuto(charmVault).governance() == creator);
 assert(CreatorCharmStrategyV2(creatorCharmStrategy).owner() == creator);
 assert(AjnaStrategy(ajnaStrategy).owner() == creator);
 
 // 2. Check strategy is set
-assert(CharmAlphaVaultSimple(charmVault).strategy() == charmVault); // embedded strategy = self
+assert(CharmAlphaVaultAuto(charmVault).strategy() == charmVault); // embedded strategy = self
 
 // 3. Check rebalance was called (positions should exist)
-(int24 baseLower, int24 baseUpper, , ) = CharmAlphaVaultSimple(charmVault).getTicks();
+(int24 baseLower, int24 baseUpper, , ) = CharmAlphaVaultAuto(charmVault).getTicks();
 assert(baseLower != 0 || baseUpper != 0); // Positions set
 
 // ✅ ALL VERIFIED!
@@ -288,12 +288,12 @@ The `owner` parameter still exists. You can pass:
 
 ## 📚 **FILES CHANGED:**
 
-1. **`contracts/charm/CharmAlphaVaultSimple.sol`** - NEW FILE
+1. **`contracts/charm/CharmAlphaVaultAuto.sol`** - NEW FILE
    - Simplified vault with single-step transfer
    - `initializeAndTransfer()` for atomic setup
 
 2. **`contracts/helpers/StrategyDeploymentBatcher.sol`** - UPDATED
-   - Uses CharmAlphaVaultSimple
+   - Uses CharmAlphaVaultAuto
    - Calls initializeAndTransfer()
    - Triggers auto-rebalance
    - Updated documentation
