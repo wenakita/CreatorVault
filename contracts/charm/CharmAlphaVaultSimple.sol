@@ -74,17 +74,3 @@ interface ICharmAlphaStrategy {
     function rebalance() external;
     function setKeeper(address _keeper) external;
 }
-
-
-import "./CharmAlphaVault.sol";
-
-/**
- * @title CharmAlphaVaultSimple
- * @notice Simplified version of CharmAlphaVault with single-step governance transfer
- * @dev Extends CharmAlphaVault but allows immediate governance assignment
- * 
- * Changes from original:
- * - One-time initializer for atomic strategy setup + governance transfer
- * - Governance transferred in single step (no acceptance needed)
- * - Perfect for automated deployment flows
- */

@@ -199,38 +199,3 @@ contract StrategyDeploymentBatcher is ReentrancyGuard {
         }
     }
 }
-
-
-import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import {IERC20Metadata} from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
-import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
-import "../strategies/CreatorCharmStrategyV2.sol";
-import "../strategies/AjnaStrategy.sol";
-import "../charm/CharmAlphaVault.sol";
-import "../charm/CharmAlphaVaultSimple.sol";
-import "../charm/CharmAlphaStrategy.sol";
-import "../interfaces/v3/IUniswapV3Factory.sol";
-import "../interfaces/v3/IUniswapV3Pool.sol";
-
-/**
- * @title StrategyDeploymentBatcher
- * @notice Deploy and configure all yield strategies in one AA transaction
- * @dev Deploys in a single transaction:
- *  1. Uniswap V3 Pool (CREATOR/USDC) - creates if doesn't exist
- *  2. Charm Alpha Vault - for automated LP management
- *  3. Charm Alpha Strategy - rebalancer for Charm vault
- *  4. Creator Charm Strategy V2 - vault integration with swap support
- *  5. Ajna Strategy (optional) - lending protocol integration
- * 
- * Features:
- *  - ✅ Creates V3 pool if doesn't exist
- *  - ✅ Single-sided deposits supported (swaps CREATOR → USDC)
- *  - ✅ Auto-initializes approvals for swapping
- *  - ✅ Returns all addresses for vault.addStrategy() calls
- * 
- * Usage with Account Abstraction:
- * 1. Call batchDeployStrategies() with CREATOR token, USDC, vault, factory
- * 2. All contracts deploy in one transaction
- * 3. Use returned addresses to call vault.addStrategy()
- */

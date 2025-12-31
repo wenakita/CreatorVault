@@ -175,25 +175,3 @@ contract CharmAlphaStrategy {
         _;
     }
 }
-
-
-
-import "../interfaces/v3/IUniswapV3Pool.sol";
-import { TickMathCompat as TickMath } from "../libraries/TickMathCompat.sol";
-import "./CharmAlphaVault.sol";
-
-/**
- * @title CharmAlphaStrategy
- * @notice Rebalancing strategy for Charm Alpha Vault
- * @dev Adapted from Charm Finance for Solidity 0.8.20
- * 
- * Maintains two range orders:
- * 1. Base order: X - B to X + B + TS
- * 2. Limit order: Sells excess token (bid or ask)
- * 
- * Where:
- * - X = current tick (rounded to tick spacing)
- * - TS = tick spacing
- * - B = base threshold
- * - L = limit threshold
- */
