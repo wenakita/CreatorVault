@@ -46,6 +46,7 @@ import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {Pausable} from "@openzeppelin/contracts/utils/Pausable.sol";
 import {MessagingReceipt} from "@layerzerolabs/lz-evm-protocol-v2/contracts/interfaces/ILayerZeroEndpointV2.sol";
+import {ICreatorOracle} from "../interfaces/oracles/ICreatorOracle.sol";
 
 // ================================
 // INTERFACES
@@ -71,10 +72,6 @@ interface ICreatorRegistryLottery {
     
     // Global queries
     function getAllCreatorCoins() external view returns (address[] memory);
-}
-
-interface ICreatorChainlinkOracle {
-    function getCreatorPrice() external view returns (int256 price, uint256 timestamp);
 }
 
 interface ICreatorGaugeController {
@@ -463,7 +460,7 @@ contract CreatorLotteryManager is OApp, OAppOptionsType3, ReentrancyGuard, Pausa
         if (tokenIn != creatorCoin && tokenIn != shareOFT) return 0;
         if (amount == 0) return 0;
 
-        ICreatorChainlinkOracle oracle = ICreatorChainlinkOracle(oracleAddr);
+        ICreatorOracle oracle = ICreatorOracle(oracleAddr);
         (int256 priceUSD, uint256 timestamp) = oracle.getCreatorPrice();
         if (priceUSD <= 0 || timestamp == 0) return 0;
         if (block.timestamp - timestamp > 7200) return 0;

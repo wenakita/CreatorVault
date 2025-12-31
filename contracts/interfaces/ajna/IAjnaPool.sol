@@ -129,23 +129,49 @@ interface IAjnaPoolFactory {
     ) external returns (address pool);
 
     /**
+     * @notice Constant used for standard ERC20 pools (non-subset hash)
+     */
+    function ERC20_NON_SUBSET_HASH() external pure returns (bytes32);
+
+    /**
      * @notice Get deployed pool for token pair
+     * @param subsetHash Pool subset hash (use ERC20_NON_SUBSET_HASH for standard pools)
      * @param collateral Collateral token
      * @param quote Quote token
-     * @param interestRate Interest rate
      * @return pool Pool address (address(0) if doesn't exist)
      */
     function deployedPools(
+        bytes32 subsetHash,
         address collateral,
-        address quote,
-        uint256 interestRate
+        address quote
     ) external view returns (address pool);
 
     /**
-     * @notice Get deployed pools by hash
-     * @param subsetHash Hash of token pair + rate
-     * @return pool Pool address
+     * @notice Minimum allowed interest rate (WAD)
      */
-    function deployedPoolsList(bytes32 subsetHash) external view returns (address pool);
+    function MIN_RATE() external pure returns (uint256);
+
+    /**
+     * @notice Maximum allowed interest rate (WAD)
+     */
+    function MAX_RATE() external pure returns (uint256);
+
+    /**
+     * @notice Get number of deployed pools
+     */
+    function getNumberOfDeployedPools() external view returns (uint256);
+
+    /**
+     * @notice Get deployed pool by index
+     */
+    function deployedPoolsList(uint256 index) external view returns (address pool);
 }
 
+
+
+
+/**
+ * @title IAjnaPool
+ * @notice Interface for Ajna lending pools
+ * @dev Simplified interface for ERC20 pools (quote token lending)
+ */

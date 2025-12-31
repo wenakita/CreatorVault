@@ -19,7 +19,7 @@ import {CreatorOVaultWrapper} from "../contracts/vault/CreatorOVaultWrapper.sol"
 import {CreatorShareOFT} from "../contracts/layerzero/CreatorShareOFT.sol";
 import {CreatorGaugeController} from "../contracts/governance/CreatorGaugeController.sol";
 import {CCALaunchStrategy} from "../contracts/strategies/CCALaunchStrategy.sol";
-import {CreatorChainlinkOracle} from "../contracts/oracles/CreatorChainlinkOracle.sol";
+import {CreatorOracle} from "../contracts/oracles/CreatorOracle.sol";
 
 /**
  * @title DeployInfrastructure
@@ -301,7 +301,7 @@ contract DeployInfrastructure is Script {
  *      3. CreatorShareOFT - Cross-chain OFT
  *      4. CreatorGaugeController - Fee distribution
  *      5. CCALaunchStrategy - Fair launch
- *      6. CreatorChainlinkOracle - Price oracle
+ *      6. CreatorOracle - Price oracle
  */
 contract DeployCreatorVault is Script {
     
@@ -395,8 +395,8 @@ contract DeployCreatorVault is Script {
         console.log("       Address:", address(ccaStrategy));
         
         // 6. Deploy Oracle (uses registry for LZ endpoint lookup)
-        console.log("\n[6/6] Deploying CreatorChainlinkOracle...");
-        CreatorChainlinkOracle oracle = new CreatorChainlinkOracle(
+        console.log("\n[6/6] Deploying CreatorOracle...");
+        CreatorOracle oracle = new CreatorOracle(
             registryAddr,  // Registry looks up LZ endpoint for this chain
             address(0),    // chainlinkFeed - configure after deployment
             oftSymbol,
@@ -610,4 +610,3 @@ contract DeployPayoutRouter is Script {
         console.log(unicode"└─────────────────────────────────────────────────────────────────┘");
     }
 }
-

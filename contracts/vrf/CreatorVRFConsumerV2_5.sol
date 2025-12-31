@@ -39,8 +39,8 @@ interface ICreatorRegistry {
     function getSupportedChains() external view returns (uint16[] memory);
 }
 
-// Interface for CreatorChainlinkOracle
-interface ICreatorChainlinkOracle {
+// Interface for CreatorOracle
+interface ICreatorOracle {
     function getCreatorPrice() external view returns (int256 price, uint256 timestamp);
     function getCreatorEthTWAP(uint32 duration) external view returns (uint256 price);
     function getEthPrice() external view returns (int256 price, uint256 timestamp);
@@ -69,7 +69,7 @@ contract CreatorVRFConsumerV2_5 is OApp, ReentrancyGuard {
 
     IVRFCoordinatorV2Plus public vrfCoordinator;
     ICreatorRegistry public immutable registry;
-    ICreatorChainlinkOracle public priceOracle;
+    ICreatorOracle public priceOracle;
 
     /// @notice Base EID (hub chain where VRF lives)
     uint32 public immutable BASE_EID;
@@ -225,7 +225,7 @@ contract CreatorVRFConsumerV2_5 is OApp, ReentrancyGuard {
     }
 
     function setPriceOracle(address _oracle) external onlyOwner {
-        priceOracle = ICreatorChainlinkOracle(_oracle);
+        priceOracle = ICreatorOracle(_oracle);
         emit PriceOracleSet(_oracle);
     }
 

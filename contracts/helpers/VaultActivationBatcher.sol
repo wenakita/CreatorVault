@@ -126,4 +126,3 @@ contract VaultActivationBatcher is ReentrancyGuard {
         emit BatchActivation(msg.sender, vault, depositAmount, auctionAmount, auction);
     }
 }
-

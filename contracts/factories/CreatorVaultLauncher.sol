@@ -12,7 +12,7 @@ import {CreatorOVaultWrapper} from "../vault/CreatorOVaultWrapper.sol";
 import {CreatorShareOFT} from "../layerzero/CreatorShareOFT.sol";
 import {CreatorGaugeController} from "../governance/CreatorGaugeController.sol";
 import {CCALaunchStrategy} from "../strategies/CCALaunchStrategy.sol";
-import {CreatorChainlinkOracle} from "../oracles/CreatorChainlinkOracle.sol";
+import {CreatorOracle} from "../oracles/CreatorOracle.sol";
 import {CreatorRegistry} from "../core/CreatorRegistry.sol";
 import {CreatorOVaultFactory} from "./CreatorOVaultFactory.sol";
 
@@ -268,7 +268,7 @@ contract CreatorVaultLauncher is Ownable, ReentrancyGuard {
         ));
         
         // 6. Deploy Oracle (uses registry for LZ endpoint)
-        c.oracle = address(new CreatorChainlinkOracle(
+        c.oracle = address(new CreatorOracle(
             address(registry),
             CHAINLINK_ETH_USD,
             oftSymbol,
@@ -343,7 +343,7 @@ contract CreatorVaultLauncher is Ownable, ReentrancyGuard {
         CreatorShareOFT(c.shareOFT).transferOwnership(newOwner);
         CreatorGaugeController(payable(c.gaugeController)).transferOwnership(newOwner);
         CCALaunchStrategy(payable(c.ccaStrategy)).transferOwnership(newOwner);
-        CreatorChainlinkOracle(c.oracle).transferOwnership(newOwner);
+        CreatorOracle(c.oracle).transferOwnership(newOwner);
     }
 
     // ================================

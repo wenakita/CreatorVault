@@ -215,28 +215,3 @@ contract CreatorVaultLauncherLite is Ownable, ReentrancyGuard {
         oracle = oracleImpl.predictDeterministicAddress(keccak256(abi.encodePacked(salt, "oracle")));
     }
 }
-
-
-pragma solidity ^0.8.20;
-
-import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
-import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
-import {Clones} from "@openzeppelin/contracts/proxy/Clones.sol";
-
-/**
- * @title CreatorVaultLauncherLite
- * @author 0xakita.eth
- * @notice ONE-CLICK vault launch using minimal proxy clones
- * 
- * @dev Uses ERC-1167 minimal proxies to clone pre-deployed implementations.
- *      This keeps the launcher small (<24KB) while enabling one-click launches.
- * 
- * @dev FLOW:
- *      1. Admin deploys implementation contracts (one time)
- *      2. Creator calls launch() with their token
- *      3. Launcher clones all implementations
- *      4. Configures, deposits, starts auction
- *      5. Creator owns everything!
- */

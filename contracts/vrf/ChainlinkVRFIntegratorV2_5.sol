@@ -17,7 +17,6 @@ import {MessagingReceipt} from "@layerzerolabs/oapp-evm/contracts/oapp/OAppSende
 import {OAppOptionsType3} from "@layerzerolabs/oapp-evm/contracts/oapp/libs/OAppOptionsType3.sol";
 import {OptionsBuilder} from "@layerzerolabs/oapp-evm/contracts/oapp/libs/OptionsBuilder.sol";
 import {ICreatorRegistry} from "../interfaces/core/ICreatorRegistry.sol";
-import {ICreatorChainlinkOracle} from "../interfaces/oracles/ICreatorChainlinkOracle.sol";
 
 /**
  * @dev Callback interface for VRF consumers

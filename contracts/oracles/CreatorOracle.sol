@@ -3,15 +3,19 @@ pragma solidity ^0.8.20;
 
 import {OApp, Origin, MessagingFee, MessagingReceipt} from "@layerzerolabs/oapp-evm/contracts/oapp/OApp.sol";
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
+import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
+import {IERC20Metadata} from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import {IPoolManager} from "@uniswap/v4-core/src/interfaces/IPoolManager.sol";
 import {ICreatorRegistry} from "../interfaces/core/ICreatorRegistry.sol";
 import {PoolId, PoolIdLibrary} from "@uniswap/v4-core/src/types/PoolId.sol";
 import {PoolKey} from "@uniswap/v4-core/src/types/PoolKey.sol";
 import {StateLibrary} from "@uniswap/v4-core/src/libraries/StateLibrary.sol";
 import {TickMath} from "@uniswap/v4-core/src/libraries/TickMath.sol";
+import {IUniswapV3Pool} from "../interfaces/v3/IUniswapV3Pool.sol";
+import {TickMathCompat} from "../libraries/TickMathCompat.sol";
 
 /**
- * @title CreatorChainlinkOracle
+ * @title CreatorOracle
  * @author 0xakita.eth (CreatorVault)
  * @notice Omnichain oracle for Creator Coin price distribution
  * @dev Deployed to same address on all chains via CREATE2
@@ -40,7 +44,7 @@ import {TickMath} from "@uniswap/v4-core/src/libraries/TickMath.sol";
  *      - Vault: Price impact calculations
  *      - Cross-chain: Consistent pricing everywhere
  */
-contract CreatorChainlinkOracle is OApp {
+contract CreatorOracle is OApp {
     using PoolIdLibrary for PoolKey;
     using StateLibrary for IPoolManager;
     
@@ -90,6 +94,29 @@ contract CreatorChainlinkOracle is OApp {
     /// @notice Whether creator token is token0 in the pool
     bool public creatorIsToken0;
     
+    // ================================
+    // STATE - V3 POOL (CREATOR/USDC TWAP)
+    // ================================
+
+    /// @notice Uniswap V3 pool used as primary CREATOR/USD oracle (optional)
+    address public v3Pool;
+
+    /// @notice Creator token used in the V3 pool (base token)
+    address public v3CreatorToken;
+
+    /// @notice USD stable token used in the V3 pool (quote token, e.g. USDC)
+    address public v3UsdToken;
+
+    /// @notice Cached decimals for price scaling
+    uint8 public v3CreatorDecimals;
+    uint8 public v3UsdDecimals;
+
+    /// @notice Default V3 TWAP duration (seconds)
+    uint32 public v3TwapDuration = DEFAULT_TWAP_DURATION;
+
+    /// @notice Whether V3 pool is configured
+    bool public v3PoolConfigured;
+
     // ================================
     // STATE - TWAP OBSERVATIONS
     // ================================
@@ -175,6 +202,7 @@ contract CreatorChainlinkOracle is OApp {
     event CreatorPriceBroadcast(uint32[] dstEids, int256 price, uint256 timestamp);
     event CreatorPriceReceived(uint32 srcEid, int256 price, uint256 timestamp);
     event V4PoolConfigured(PoolId indexed poolId, address poolManager, bool creatorIsToken0);
+    event V3PoolConfigured(address indexed pool, address indexed creatorToken, address indexed usdToken, uint32 twapDuration);
     event ObservationRecorded(uint16 index, int24 tick, int24 truncatedTick, uint32 timestamp);
     event SwapRecorderSet(address indexed recorder, bool authorized);
     event PriceUpdaterSet(address indexed updater, bool authorized);
@@ -190,6 +218,9 @@ contract CreatorChainlinkOracle is OApp {
     error InvalidPrice();
     error Unauthorized();
     error V4NotConfigured();
+    error V3NotConfigured();
+    error InvalidV3Pool();
+    error UnsupportedDecimals();
     error NeedMoreObservations();
     error StalePrice();
     error InvalidDuration();
@@ -287,6 +318,42 @@ contract CreatorChainlinkOracle is OApp {
         tickCapState.lastCapUpdate = uint48(block.timestamp);
         
         emit V4PoolConfigured(poolId, _poolManager, _creatorIsToken0);
+    }
+
+    /**
+     * @notice Configure Uniswap V3 pool for CREATOR/USDC TWAP pricing (optional price source)
+     * @param _pool Uniswap V3 pool address (must be the CREATOR/USDC pair)
+     * @param _creatorToken Creator token address
+     * @param _usdToken USD token address (e.g., USDC)
+     * @param _twapDuration TWAP duration in seconds (e.g., 1800)
+     */
+    function setV3Pool(
+        address _pool,
+        address _creatorToken,
+        address _usdToken,
+        uint32 _twapDuration
+    ) external onlyOwner {
+        if (_pool == address(0) || _creatorToken == address(0) || _usdToken == address(0)) revert ZeroAddress();
+        if (_twapDuration == 0) revert InvalidDuration();
+
+        address t0 = IUniswapV3Pool(_pool).token0();
+        address t1 = IUniswapV3Pool(_pool).token1();
+        bool ok = (t0 == _creatorToken && t1 == _usdToken) || (t0 == _usdToken && t1 == _creatorToken);
+        if (!ok) revert InvalidV3Pool();
+
+        uint8 creatorDec = IERC20Metadata(_creatorToken).decimals();
+        uint8 usdDec = IERC20Metadata(_usdToken).decimals();
+        if (creatorDec > 18 || usdDec > 18) revert UnsupportedDecimals();
+
+        v3Pool = _pool;
+        v3CreatorToken = _creatorToken;
+        v3UsdToken = _usdToken;
+        v3CreatorDecimals = creatorDec;
+        v3UsdDecimals = usdDec;
+        v3TwapDuration = _twapDuration;
+        v3PoolConfigured = true;
+
+        emit V3PoolConfigured(_pool, _creatorToken, _usdToken, _twapDuration);
     }
     
     /**
@@ -678,6 +745,123 @@ contract CreatorChainlinkOracle is OApp {
         int24 twapTick = getTWAPTick(duration);
         price = tickToPrice(twapTick);
     }
+
+    // ================================
+    // V3 TWAP - PRICE CALCULATION (CREATOR/USDC)
+    // ================================
+
+    /**
+     * @notice Calculate V3 TWAP tick for the configured CREATOR/USDC pool
+     * @dev Uses Uniswap V3 pool observations (TWAP), not spot `slot0`.
+     */
+    function getV3TWAPTick(uint32 duration) public view returns (int24 twapTick) {
+        if (!v3PoolConfigured) revert V3NotConfigured();
+        if (duration == 0) revert InvalidDuration();
+
+        uint32[] memory secondsAgos = new uint32[](2);
+        secondsAgos[0] = duration;
+        secondsAgos[1] = 0;
+
+        (int56[] memory tickCumulatives, ) = IUniswapV3Pool(v3Pool).observe(secondsAgos);
+        int56 tickDelta = tickCumulatives[1] - tickCumulatives[0];
+        int56 timeDelta = int56(uint56(duration));
+
+        int56 meanTick = tickDelta / timeDelta;
+        // Uniswap V3 standard: round toward negative infinity
+        if (tickDelta < 0 && (tickDelta % timeDelta != 0)) meanTick--;
+
+        twapTick = int24(meanTick);
+    }
+
+    /**
+     * @notice Get CREATOR/USD TWAP price from the configured Uniswap V3 pool
+     * @param duration TWAP duration in seconds
+     * @return priceUsd18 USDC per 1 CREATOR, scaled to 1e18
+     */
+    function getCreatorUsdTWAP(uint32 duration) public view returns (uint256 priceUsd18) {
+        if (!v3PoolConfigured) revert V3NotConfigured();
+
+        int24 twapTick = getV3TWAPTick(duration);
+
+        // Quote USDC amount for 1 CREATOR (10^creatorDecimals units)
+        uint256 baseAmount = 10 ** uint256(v3CreatorDecimals);
+        uint256 quoteAmount = _getQuoteAtTick(twapTick, uint128(baseAmount), v3CreatorToken, v3UsdToken);
+
+        // Scale USDC decimals to 1e18
+        if (v3UsdDecimals < 18) {
+            priceUsd18 = quoteAmount * (10 ** uint256(18 - v3UsdDecimals));
+        } else if (v3UsdDecimals == 18) {
+            priceUsd18 = quoteAmount;
+        } else {
+            // guarded by setV3Pool() but keep safe
+            priceUsd18 = quoteAmount / (10 ** uint256(v3UsdDecimals - 18));
+        }
+    }
+
+    // ================================
+    // AJNA BUCKET HELPERS
+    // ================================
+
+    /**
+     * @notice Convert a Uniswap tick to an Ajna bucket index (approx)
+     * @dev Approximation: AjnaIndex ≈ 4156 - floor(tick / 50)
+     *      - 50 Uniswap ticks ≈ 0.5% (≈ Ajna 1.005 bucket step)
+     *      - Clamped to Ajna valid range (1..7388). Note: bucket 0 is invalid on Ajna pools.
+     *
+     *      IMPORTANT: `tick` should represent price = (quote token) per (collateral token).
+     *      For our Ajna strategy (quote=CREATOR, collateral=USDC), you want the CREATOR/USDC tick.
+     */
+    function tickToAjnaBucket(int24 tick) public pure returns (uint256 bucketIndex) {
+        int256 t = int256(tick);
+        int256 q = t / 50;
+        int256 r = t % 50;
+
+        // Solidity rounds toward 0; emulate Math.floor for negatives.
+        if (t < 0 && r != 0) q -= 1;
+
+        int256 idx = 4156 - q;
+        if (idx < 1) idx = 1;
+        if (idx > 7388) idx = 7388;
+        bucketIndex = uint256(idx);
+    }
+
+    /**
+     * @notice Suggested Ajna bucket from the configured CREATOR/USDC V3 TWAP tick
+     * @dev Uniswap ticks are for token1/token0. We need CREATOR per USDC (quote per collateral),
+     *      so we invert if CREATOR is token0 (i.e., address(creator) < address(usdc)).
+     */
+    function getAjnaBucketFromV3TWAP(uint32 duration) external view returns (uint256 bucketIndex) {
+        if (!v3PoolConfigured) revert V3NotConfigured();
+        int24 twapTick = getV3TWAPTick(duration);
+
+        int24 orientedTick = (v3CreatorToken > v3UsdToken) ? twapTick : -twapTick;
+        bucketIndex = tickToAjnaBucket(orientedTick);
+    }
+
+    /**
+     * @dev Minimal `getQuoteAtTick` (Uniswap V3 OracleLibrary-style) without importing v3-core FullMath.
+     *      Uses TickMathCompat + OpenZeppelin Math.mulDiv for full-precision mul/div.
+     */
+    function _getQuoteAtTick(
+        int24 tick,
+        uint128 baseAmount,
+        address baseToken,
+        address quoteToken
+    ) internal pure returns (uint256 quoteAmount) {
+        uint160 sqrtRatioX96 = TickMathCompat.getSqrtRatioAtTick(tick);
+
+        if (sqrtRatioX96 <= type(uint128).max) {
+            uint256 ratioX192 = uint256(sqrtRatioX96) * uint256(sqrtRatioX96);
+            quoteAmount = baseToken < quoteToken
+                ? Math.mulDiv(ratioX192, baseAmount, uint256(1) << 192)
+                : Math.mulDiv(uint256(1) << 192, baseAmount, ratioX192);
+        } else {
+            uint256 ratioX128 = Math.mulDiv(uint256(sqrtRatioX96), uint256(sqrtRatioX96), uint256(1) << 64);
+            quoteAmount = baseToken < quoteToken
+                ? Math.mulDiv(ratioX128, baseAmount, uint256(1) << 128)
+                : Math.mulDiv(uint256(1) << 128, baseAmount, ratioX128);
+        }
+    }
     
     /**
      * @notice Internal: Update price from TWAP
@@ -748,6 +932,7 @@ contract CreatorChainlinkOracle is OApp {
         if (block.chainid != BASE_CHAIN_ID && msg.sender != owner()) {
             revert Unauthorized();
         }
+        // Chainlink-style price: V4 TWAP (Creator/ETH) × Chainlink (ETH/USD).
         if (!v4PoolConfigured) revert V4NotConfigured();
         if (observationState.cardinality < 2) revert NeedMoreObservations();
         
@@ -773,6 +958,26 @@ contract CreatorChainlinkOracle is OApp {
         creatorPriceTimestamp = block.timestamp;
         
         emit CreatorPriceUpdated(creatorSymbol, creatorUSD, block.timestamp, msg.sender);
+    }
+
+    /**
+     * @notice Optional: update creator USD price from Uniswap V3 TWAP (CREATOR/USDC)
+     * @dev Useful for Ajna bucket selection or cross-checking. Does not require Chainlink.
+     */
+    function updateCreatorPriceFromV3TWAP(uint32 twapDuration) external {
+        if (block.chainid != BASE_CHAIN_ID && msg.sender != owner()) {
+            revert Unauthorized();
+        }
+        if (!v3PoolConfigured) revert V3NotConfigured();
+        uint32 dur = twapDuration == 0 ? v3TwapDuration : twapDuration;
+
+        uint256 creatorUsd18 = getCreatorUsdTWAP(dur);
+        if (creatorUsd18 == 0) revert InvalidPrice();
+
+        creatorPriceUSD = int256(creatorUsd18);
+        creatorPriceTimestamp = block.timestamp;
+
+        emit CreatorPriceUpdated(creatorSymbol, int256(creatorUsd18), block.timestamp, msg.sender);
     }
     
     // ================================
@@ -894,5 +1099,3 @@ interface IChainlinkFeed {
         uint80 answeredInRound
     );
 }
-
-

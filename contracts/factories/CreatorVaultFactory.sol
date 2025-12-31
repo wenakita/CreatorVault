@@ -126,7 +126,7 @@ contract CreatorVaultFactory is Ownable {
     // =================================
     
     /**
-     * @notice Deploy with auto-generated names based on creator coin symbol
+     * @notice Deploy with auto-generated names based on creator coin symbol (uses CREATE2)
      * @param _creatorCoin Creator Coin token address
      * @param _creator Creator's address (will be owner of deployed contracts)
      * @return vault CreatorOVault address
@@ -142,6 +142,11 @@ contract CreatorVaultFactory is Ownable {
      * 
      * @dev TOKEN FLOW:
      *      akita → deposit → sAKITA → wrap → wsAKITA (cross-chain)
+     * 
+     * @dev USES CREATE2 FOR DETERMINISTIC ADDRESSES:
+     *      - Same vault addresses across all chains
+     *      - Predictable before deployment
+     *      - Perfect for cross-chain OFT integration
      */
     function deployCreatorVaultAuto(
         address _creatorCoin,
@@ -162,13 +167,18 @@ contract CreatorVaultFactory is Ownable {
         string memory oftName = string(abi.encodePacked("Wrapped ", symbol, " Share"));
         string memory oftSymbol = string(abi.encodePacked("ws", symbol));
         
-        return this.deployCreatorVault(
+        // Generate deterministic salt based on creator coin
+        bytes32 salt = generateSalt(_creatorCoin, symbol);
+        
+        // Use CREATE2 deployment for deterministic addresses
+        return this.deployCreatorVaultDeterministic(
             _creatorCoin,
             vaultName,
             vaultSymbol,
             oftName,
             oftSymbol,
-            _creator
+            _creator,
+            salt
         );
     }
     
@@ -497,6 +507,9 @@ contract CreatorVaultFactory is Ownable {
         return address(controller);
     }
     
+    /// @notice VaultActivationBatcher address (deployed once, shared by all)
+    address public constant VAULT_ACTIVATION_BATCHER = 0x6d796554698f5Ddd74Ff20d745304096aEf93CB6;
+    
     /**
      * @notice Deploy CCA launch strategy for fair token distribution
      * @dev CCA = Continuous Clearing Auction (Official Uniswap mechanism)
@@ -518,6 +531,10 @@ contract CreatorVaultFactory is Ownable {
             _owner,           // Unsold tokens to creator
             _owner            // Strategy owner
         );
+        
+        // ✅ AUTO-APPROVE THE VAULT ACTIVATION BATCHER
+        // This allows users to launch the CCA in one transaction via the batcher
+        strategy.setApprovedLauncher(VAULT_ACTIVATION_BATCHER, true);
         
         return address(strategy);
     }
@@ -719,8 +736,7 @@ contract CreatorVaultFactory is Ownable {
     /**
      * @notice Generate a standard salt for a Creator Coin
      */
-    function generateSalt(address _creatorCoin, string memory _symbol) external pure returns (bytes32) {
+    function generateSalt(address _creatorCoin, string memory _symbol) public pure returns (bytes32) {
         return keccak256(abi.encodePacked("CREATORTECH_V1_", _creatorCoin, _symbol));
     }
 }
-
