@@ -23,7 +23,6 @@ export const CONTRACTS = {
 
   // Legacy activator (older 2-click flow). Kept for backwards compatibility.
   vaultActivator: '0x1bf02C90B226C028720D25dE535b345e5FfB9743' as const,
-  lpDeployer: '0x0000000000000000000000000000000000000000' as const, // TODO: Deploy SimpleLPDeployer
 
   // External - Uniswap V4
   poolManager: '0x498581fF718922c3f8e6A244956aF099B2652b2b' as const,

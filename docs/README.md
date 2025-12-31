@@ -45,7 +45,6 @@ This repo keeps the root clean (only `README.md`) and stores project documentati
 - `strategies/charm/CREATOR_CHARM_V2_GUIDE.md`
 - `strategies/charm/CREATOR_USDC_DEPLOYMENT.md`
 - `strategies/charm/CREATOR_WETH_ANALYSIS.md`
-- `strategies/charm/LP_DEPLOYMENT_GUIDE.md`
 - `strategies/charm/CHARM_GOVERNANCE_FIX.md`
 - `strategies/charm/CHARM_OWNERSHIP_ANSWER.md`
 
