@@ -99,7 +99,6 @@ This repo keeps the root clean (only `README.md`) and stores project documentati
 
 All HTML docs live in `docs/html/`:
 
-- `html/creatorvaultfactory.html`
 - `html/feearchitecture.html`
 - `html/cca.html`
 - `html/ajnastrategy.html`

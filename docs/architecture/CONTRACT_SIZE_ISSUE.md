@@ -1,46 +1,21 @@
-# ⚠️ **CONTRACT SIZE ISSUE - FACTORY TOO LARGE**
+# ⚠️ **CONTRACT SIZE ISSUE - ONCHAIN “MEGA FACTORY” TOO LARGE**
 
-## 🚨 **PROBLEM**
+## 🚨 **PROBLEM (Historical)**
 
-The `CreatorVaultFactory` is **141KB** - way over the Ethereum **24KB limit**!
+The old `CreatorVaultFactory` approach (a single onchain contract that deploys + wires many contracts) exceeded the EVM **24KB** contract size limit.
 
-**Cannot deploy as-is.**
-
----
-
-## 💡 **SOLUTIONS**
-
-### **Option 1: Minimal Factory** ✅ (Recommended)
-Create a simplified factory that:
-- Only deploys core contracts (Vault, Wrapper, ShareOFT)
-- Gauge and CCA deployed separately
-- Uses interfaces for configuration
-
-### **Option 2: Factory Split**
-Split into multiple factories:
-- `CoreVaultFactory` - Vault + Wrapper
-- `OFTFactory` - ShareOFT
-- `GaugeFactory` - GaugeController
-- `CCAFactory` - CCALaunchStrategy
-
-### **Option 3: Proxy Pattern**
-Use a factory that deploys clones/proxies instead of new contracts
-
-### **Option 4: External Deployment**
-Deploy contracts via scripts, use factory as registry only
+**Resolution:** We removed `CreatorVaultFactory.sol` and moved to a script/AA-based deployment flow, with onchain state tracked via `CreatorOVaultFactory` (registry) + `CreatorRegistry` (canonical lookups).
 
 ---
 
-## 🎯 **RECOMMENDED: MINIMAL FACTORY**
+## 💡 **Solution we use now**
 
-I'll create a streamlined version that:
-1. Deploys Vault, Wrapper, ShareOFT via CREATE2
-2. Auto-configures permissions
-3. Returns addresses for manual Gauge/CCA deployment
-
-**Size target: < 20KB** ✅
+### **External deployment + registry**
+- Deploy contracts via **Foundry scripts** or **Account Abstraction** (CREATE2 deployers), avoiding the onchain size limit entirely.
+- Record deployments in `CreatorOVaultFactory` (`registerDeployment`) and wire canonical lookups in `CreatorRegistry`.
 
 ---
 
-**Want me to create the minimal factory now?**
+## ✅ Status
+This is already implemented in the repo’s current deployment flow.
 

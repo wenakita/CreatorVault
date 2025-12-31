@@ -131,14 +131,13 @@ Vault + Wrapper + ShareOFT on Base
 ## 🚀 **WHAT YOU ALREADY HAVE**
 
 You already have the script approach ready to use:
-- ✅ `CreatorVaultFactory.sol` - Can be used as reference
-- ✅ All contracts are CREATE2-compatible
+- ✅ `CreatorOVaultFactory.sol` (onchain registry of deployments)
+- ✅ CREATE2-based deployment flow (AA + deployers)
 - ✅ VaultActivationBatcher deployed
 
 **You just need:**
-1. Create deployment script
-2. Build simple API endpoint
-3. Frontend calls API
+1. Use the existing AA deploy flow (`frontend/src/components/DeployVaultAA.tsx` / `script/deploy-with-aa.ts`)
+2. Or run Foundry scripts to deploy and then `registerDeployment(...)` in `CreatorOVaultFactory`
 
 ---
 
@@ -146,8 +145,10 @@ You already have the script approach ready to use:
 
 ### **1. Create Script**
 ```bash
-# I'll create this for you
-script/DeployVaultWithCREATE2.s.sol
+# Prefer the AA deploy flow (one-signature) or the existing Foundry scripts in /script.
+# See:
+# - script/DeployInfrastructure.s.sol
+# - script/deploy-with-aa.ts
 ```
 
 ### **2. Test Locally**
