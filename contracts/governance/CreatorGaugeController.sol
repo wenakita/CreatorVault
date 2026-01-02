@@ -49,46 +49,59 @@ interface ICreatorOracle {
     function isPriceFresh() external view returns (bool);
 }
 
+interface IVaultGaugeVoting {
+    function getVaultWeight(address vault) external view returns (uint256);
+    function getTotalWeight() external view returns (uint256);
+    function getVaultWeightBps(address vault) external view returns (uint256);
+    function currentEpoch() external view returns (uint256);
+}
+
+interface IVoterRewardsDistributor {
+    function notifyRewards(address vault, address token, uint256 amount) external;
+}
+
 /**
  * @title CreatorGaugeController
  * @author 0xakita.eth
  * @notice Manages fee distribution for Creator Coin vaults - THE SOCIAL-FI ENGINE
  * 
- * @dev THE CORE MECHANIC - Swap-to-Win Lottery:
+ * @dev THE CORE MECHANIC - ve(3,3) Swap-to-Win Lottery:
  *      When someone trades the creator's ShareOFT tokens, 6.9% fees flow here from TWO sources:
  *      
  *      SOURCE 1: ShareOFT Token (6.9% on buys) - built into token contract
  *      SOURCE 2: V4 Tax Hook (6.9% on sells) - external hook on pool
  *      
- *      Fee Distribution:
+ *      Fee Distribution (ve(3,3) Economics):
  *      
- *      1. LOTTERY (90%): Jackpot pool for swap-to-win lottery
- *         → Every swap is a lottery ticket
- *         → veAKITA holders get up to 2.5x boost on win probability
+ *      1. LOTTERY (69%): Jackpot pool for swap-to-win lottery
+ *         → Probability directed by veAKITA gauge votes
+ *         → veAKITA holders get up to 2.5x personal boost on win probability
  *      
- *      2. BURN (5%): Burns vault shares → increases PPS for all holders
- *         → Creators benefit since they hold large vault positions
+ *      2. BURN (21.39%): Burns vault shares → increases PPS for all holders
+ *         → Passive value accrual for ALL vault holders
+ *         → Creates deflationary pressure on supply
  *      
- *      3. PROTOCOL (5%): CreatorVault multisig (platform fee)
-
+ *      3. PROTOCOL (9.61%): CreatorVault multisig (platform fee)
+ *         → Operations, gas, development
  * 
  * @dev TOKEN FLOW (both sources):
  *      wsAKITA → GaugeController → distribute directly as wsAKITA
  *                                       ↓
  *               ┌───────────────────────┼───────────────────────┐
  *               ↓                       ↓                       ↓
- *             90%                      5%                      5%
+ *            69%                    21.39%                   9.61%
  *           LOTTERY                  BURN                  PROTOCOL
  *          (jackpot)          (unwrap→burn)              (multisig)
  *           wsAKITA              sAKITA                   wsAKITA
  * 
- * @dev DEFAULT SPLIT:
- *      - 90% → Lottery Reserve (jackpot payouts)
- *      - 5%  → Burn (increases PPS for all holders)
- *      - 5%  → Protocol Treasury (multisig)
+ * @dev ve(3,3) SPLIT:
+ *      - 69%    → Lottery Reserve (jackpot payouts, vote-directed probability)
+ *      - 21.39% → Burn (increases PPS for all holders)
+ *      - 9.61%  → Protocol Treasury (multisig)
  *      
- *      Note: Creators benefit from the 5% burn since it increases PPS
- *      for all vault holders (creators typically hold large vault positions)
+ *      Note: Creators earn through coin appreciation and potential bribes,
+ *      not direct fee share. The 69% lottery pool probability is directed
+ *      by veAKITA gauge votes (ve(3,3) mechanics).
  * 
  */
 contract CreatorGaugeController is Ownable, ReentrancyGuard {
@@ -154,21 +167,27 @@ contract CreatorGaugeController is Ownable, ReentrancyGuard {
     /// @notice Whether to use oracle for slippage (if false, uses 0 minimum)
     bool public useOracleSlippage = true;
     
+    /// @notice VaultGaugeVoting for ve(3,3) probability direction
+    IVaultGaugeVoting public vaultGaugeVoting;
+
+    /// @notice Voter rewards distributor (receives the 9.61% voter slice)
+    IVoterRewardsDistributor public voterRewardsDistributor;
+    
     // ================================
     // FEE SPLIT (in basis points)
     // ================================
     
     /// @notice Percentage to burn (increases PPS for all holders)
-    uint256 public burnShareBps = 500; // 5%
+    uint256 public burnShareBps = 2139; // 21.39% - ve(3,3) passive value accrual
     
     /// @notice Percentage to lottery reserve (jackpot)
-    uint256 public lotteryShareBps = 9000; // 90%
+    uint256 public lotteryShareBps = 6900; // 69% - vote-directed probability pool
     
     /// @notice Percentage to creator treasury
-    uint256 public creatorShareBps = 0; // 0% - disabled
+    uint256 public creatorShareBps = 0; // 0% - creators earn via appreciation + bribes
     
     /// @notice Percentage to protocol treasury (multisig)
-    uint256 public protocolShareBps = 500; // 5%
+    uint256 public protocolShareBps = 961; // 9.61% - platform operations
     
     // ================================
     // ACCUMULATION & DISTRIBUTION
@@ -246,6 +265,8 @@ contract CreatorGaugeController is Ownable, ReentrancyGuard {
     event SwapConfigUpdated(uint24 feeTier, uint256 slippageBps);
     event OracleSet(address indexed oracle);
     event OracleConfigUpdated(uint32 twapDuration, bool useOracle);
+    event VaultGaugeVotingUpdated(address indexed vaultGaugeVoting);
+    event VoterRewardsDistributorUpdated(address indexed distributor);
     
     // ================================
     // ERRORS
@@ -527,12 +548,17 @@ contract CreatorGaugeController is Ownable, ReentrancyGuard {
             toCreator = 0;
         }
         
-        // Send to protocol (5% default)
-        if (toProtocol > 0 && protocolTreasury != address(0)) {
+        // Voter rewards (9.61% default): route to veAKITA voters (bribes/fees)
+        if (toProtocol > 0 && address(voterRewardsDistributor) != address(0)) {
+            vaultShares.forceApprove(address(voterRewardsDistributor), toProtocol);
+            voterRewardsDistributor.notifyRewards(address(vault), address(vaultShares), toProtocol);
+            totalProtocolEarned += toProtocol; // legacy name: tracks total voter rewards routed
+        } else if (toProtocol > 0 && protocolTreasury != address(0)) {
+            // Fallback: if distributor isn't configured, send to protocol treasury
             vaultShares.safeTransfer(protocolTreasury, toProtocol);
             totalProtocolEarned += toProtocol;
         } else if (toProtocol > 0) {
-            // If no protocol treasury set, add to jackpot
+            // Final fallback: add to jackpot
             jackpotReserve += toProtocol;
             toLottery += toProtocol;
             toProtocol = 0;
@@ -665,6 +691,24 @@ contract CreatorGaugeController is Ownable, ReentrancyGuard {
         oracleTwapDuration = _twapDuration;
         useOracleSlippage = _useOracle;
         emit OracleConfigUpdated(_twapDuration, _useOracle);
+    }
+    
+    /**
+     * @notice Set VaultGaugeVoting for ve(3,3) probability direction
+     * @param _vaultGaugeVoting Address of the VaultGaugeVoting contract
+     */
+    function setVaultGaugeVoting(address _vaultGaugeVoting) external onlyOwner {
+        vaultGaugeVoting = IVaultGaugeVoting(_vaultGaugeVoting);
+        emit VaultGaugeVotingUpdated(_vaultGaugeVoting);
+    }
+
+    /**
+     * @notice Set the voter rewards distributor to receive the 9.61% voter slice.
+     * @dev If unset, we fall back to protocolTreasury (or jackpot if that is unset).
+     */
+    function setVoterRewardsDistributor(address _distributor) external onlyOwner {
+        voterRewardsDistributor = IVoterRewardsDistributor(_distributor);
+        emit VoterRewardsDistributorUpdated(_distributor);
     }
     
     /**

@@ -18,7 +18,7 @@ Visit: https://vercel.com/akita-llc
 
 ### Step 2: Find Old Project with Domain
 
-Look for any project (possibly `47-Eagle` or similar) that has `creatorvault.fun` assigned
+Look for any project that has `creatorvault.fun` assigned
 
 ### Step 3: Remove Domain from Old Project
 
@@ -104,7 +104,7 @@ Once domain is added, it will also be available at:
 ## 🎯 Summary
 
 ✅ **Project Setup**: COMPLETE
-- Unlinked from 47-Eagle
+- Unlinked from the old project (if needed)
 - Linked to creator-vault
 - Deployed successfully
 

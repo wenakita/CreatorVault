@@ -31,6 +31,10 @@ The AjnaStrategy is now **production-ready** with real Ajna protocol calls!
 
 ## How Ajna Works
 
+## References
+
+- Ajna Protocol Whitepaper (Oct 12, 2023): `https://www.ajna.finance/pdf/Ajna_Protocol_Whitepaper_10-12-2023.pdf`
+
 ### Bucket System
 
 Ajna uses **7,388 price buckets** (Fenwick index **1..7388**; **0 is invalid** for add/move).
@@ -138,6 +142,17 @@ cast send $AJNA_STRATEGY \
 # Initialize approvals
 cast send $AJNA_STRATEGY \
   "initializeApprovals()" \
+  --rpc-url base \
+  --private-key $PRIVATE_KEY
+
+# (Recommended) Keep a small % of assets idle inside the strategy so withdrawals
+# don't have to touch Ajna every time.
+# - 0      = fully deploy (previous behavior)
+# - 1000   = 10% idle buffer
+# - 2000   = 20% idle buffer
+cast send $AJNA_STRATEGY \
+  "setIdleBufferBps(uint256)" \
+  1000 \
   --rpc-url base \
   --private-key $PRIVATE_KEY
 

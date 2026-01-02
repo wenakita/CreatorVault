@@ -271,8 +271,27 @@ export function CcaAuctionPanel({
         <div>
           <span className="label block mb-2">Continuous Clearing Auction</span>
           <h3 className="headline text-2xl sm:text-3xl">{tokenSymbol} Price Discovery</h3>
-          <p className="text-zinc-600 text-sm font-light mt-2">
-            Powered by Uniswap CCA. Clearing price updates as bids arrive; bids are spread over time.
+          <p className="text-zinc-600 text-sm font-light mt-2 flex items-center gap-2">
+            <span>
+              Powered by{' '}
+              <a
+                href="https://cca.uniswap.org"
+                target="_blank"
+                rel="noreferrer"
+                className="text-cyan-400 hover:text-cyan-300 underline underline-offset-4 decoration-cyan-400/30 hover:decoration-cyan-300/40 transition-colors"
+              >
+                Uniswap Continuous Clearing Auction
+              </a>
+              . Clearing price updates as bids arrive; bids are spread over time.
+            </span>
+            <img
+              src="/protocols/uniswap.png"
+              alt="Uniswap"
+              width={16}
+              height={16}
+              className="w-4 h-4 object-contain"
+              loading="lazy"
+            />
           </p>
         </div>
         <div className="flex gap-2">
@@ -474,5 +493,6 @@ export function CcaAuctionPanel({
     </div>
   )
 }
+
 
 

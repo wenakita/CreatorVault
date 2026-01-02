@@ -36,6 +36,7 @@ contract AjnaStrategy is IStrategy, Ownable, ReentrancyGuard {
     event YieldHarvested(uint256 amount, uint256 timestamp);
     event StrategyRebalanced(uint256 totalAssets, uint256 timestamp);
     event EmergencyWithdrawn(uint256 amount, address recipient);
+    event IdleBufferBpsUpdated(uint256 oldBps, uint256 newBps);
 
     // ================================
     // ERRORS
@@ -86,6 +87,12 @@ contract AjnaStrategy is IStrategy, Ownable, ReentrancyGuard {
     ///      Index 4156 corresponds to price = 1.0 (quote per collateral, WAD).
     ///      Lower index => higher price; higher index => lower price.
     uint256 public bucketIndex;
+
+    /// @notice Target % of total strategy assets to keep idle in the strategy (basis points).
+    /// @dev Inspired by Ajna's buffered ERC-4626 vault pattern, but implemented as a simple
+    ///      best-effort idle buffer inside the strategy (no separate Buffer contract).
+    ///      Keeping some idle reduces the chance we need to touch Ajna during withdrawals.
+    uint256 public idleBufferBps = 1000; // 10% by default
 
     // ================================
     // MODIFIERS
@@ -187,9 +194,15 @@ contract AjnaStrategy is IStrategy, Ownable, ReentrancyGuard {
 
         // Deploy to Ajna pool
         if (ajnaPool != address(0)) {
-            // Best-effort: if the pool call reverts for any reason, we keep funds idle.
-            // This avoids bricking vault operations if Ajna is unavailable.
-            try this._depositToAjnaExternal(amount) {} catch {}
+            // Best-effort: keep a target idle buffer (idleBufferBps) and only deposit the excess.
+            // If any Ajna call reverts, we keep funds idle (never brick the vault).
+            uint256 total = getTotalAssets(); // safe: _getAjnaQuoteBalance is best-effort
+            uint256 desiredIdle = (total * idleBufferBps) / 10_000;
+            uint256 idle = CREATOR_COIN.balanceOf(address(this));
+            uint256 toDeploy = idle > desiredIdle ? idle - desiredIdle : 0;
+            if (toDeploy > 0) {
+                try this._depositToAjnaExternal(toDeploy) {} catch {}
+            }
         }
         // We always "deploy" the full amount from the vault's perspective (strategy now controls it),
         // whether it sits idle or inside Ajna.
@@ -243,9 +256,30 @@ contract AjnaStrategy is IStrategy, Ownable, ReentrancyGuard {
      * @notice Rebalance strategy positions
      */
     function rebalance() external override onlyVault {
-        // For Ajna, rebalancing might involve moving to different price buckets
-        // For now, this is a no-op as Ajna handles liquidity automatically
-        emit StrategyRebalanced(getTotalAssets(), block.timestamp);
+        // Best-effort idle buffer maintenance:
+        // - if idle is above target, deposit the excess to Ajna
+        // - if idle is below target, attempt to withdraw from Ajna to refill idle
+        //
+        // NOTE: This does NOT change bucketIndex; moving buckets is an owner/admin action.
+        uint256 total = getTotalAssets(); // safe
+        uint256 desiredIdle = (total * idleBufferBps) / 10_000;
+        uint256 idle = CREATOR_COIN.balanceOf(address(this));
+
+        if (ajnaPool != address(0)) {
+            if (idle > desiredIdle) {
+                uint256 toDeploy = idle - desiredIdle;
+                if (toDeploy > 0) {
+                    try this._depositToAjnaExternal(toDeploy) {} catch {}
+                }
+            } else if (idle < desiredIdle) {
+                uint256 toPull = desiredIdle - idle;
+                if (toPull > 0) {
+                    _withdrawFromAjna(toPull);
+                }
+            }
+        }
+
+        emit StrategyRebalanced(total, block.timestamp);
     }
 
     /**
@@ -301,10 +335,28 @@ contract AjnaStrategy is IStrategy, Ownable, ReentrancyGuard {
      */
     function _withdrawFromAjna(uint256 amount) internal returns (uint256) {
         // Determine LP needed to withdraw `amount` based on current bucket state.
-        (uint256 lpBalance, ) = IAjnaPool(ajnaPool).lenderInfo(bucketIndex, address(this));
+        uint256 lpBalance;
+        try IAjnaPool(ajnaPool).lenderInfo(bucketIndex, address(this)) returns (uint256 _lp, uint256 /* depositTime */) {
+            lpBalance = _lp;
+        } catch {
+            return 0;
+        }
         if (lpBalance == 0) return 0;
 
-        (uint256 bucketLPTotal, , , uint256 bucketDeposit, ) = IAjnaPool(ajnaPool).bucketInfo(bucketIndex);
+        uint256 bucketLPTotal;
+        uint256 bucketDeposit;
+        try IAjnaPool(ajnaPool).bucketInfo(bucketIndex) returns (
+            uint256 _bucketLPTotal,
+            uint256 /* collateral */,
+            uint256 /* bankruptcyTime */,
+            uint256 _bucketDeposit,
+            uint256 /* scale */
+        ) {
+            bucketLPTotal = _bucketLPTotal;
+            bucketDeposit = _bucketDeposit;
+        } catch {
+            return 0;
+        }
         if (bucketDeposit == 0 || bucketLPTotal == 0) return 0;
 
         // lpToBurn ≈ amount * bucketLPTotal / bucketDeposit
@@ -312,8 +364,11 @@ contract AjnaStrategy is IStrategy, Ownable, ReentrancyGuard {
         if (lpToBurn == 0) lpToBurn = 1; // ensure progress for small withdrawals
         if (lpToBurn > lpBalance) lpToBurn = lpBalance;
 
-        (uint256 removedAmount, ) = IAjnaPool(ajnaPool).removeQuoteToken(lpToBurn, bucketIndex);
-        return removedAmount;
+        try IAjnaPool(ajnaPool).removeQuoteToken(lpToBurn, bucketIndex) returns (uint256 removedAmount, uint256 /* redeemedLP */) {
+            return removedAmount;
+        } catch {
+            return 0;
+        }
     }
 
     /**
@@ -323,11 +378,29 @@ contract AjnaStrategy is IStrategy, Ownable, ReentrancyGuard {
         if (ajnaPool == address(0)) return 0;
 
         // Query Ajna for our LP balance in the bucket
-        (uint256 lpBalance, ) = IAjnaPool(ajnaPool).lenderInfo(bucketIndex, address(this));
+        uint256 lpBalance;
+        try IAjnaPool(ajnaPool).lenderInfo(bucketIndex, address(this)) returns (uint256 _lp, uint256 /* depositTime */) {
+            lpBalance = _lp;
+        } catch {
+            return 0;
+        }
         if (lpBalance == 0) return 0;
 
         // Get bucket info to calculate our share
-        (uint256 bucketLPTotal, , , uint256 bucketDeposit, ) = IAjnaPool(ajnaPool).bucketInfo(bucketIndex);
+        uint256 bucketLPTotal;
+        uint256 bucketDeposit;
+        try IAjnaPool(ajnaPool).bucketInfo(bucketIndex) returns (
+            uint256 _bucketLPTotal,
+            uint256 /* collateral */,
+            uint256 /* bankruptcyTime */,
+            uint256 _bucketDeposit,
+            uint256 /* scale */
+        ) {
+            bucketLPTotal = _bucketLPTotal;
+            bucketDeposit = _bucketDeposit;
+        } catch {
+            return 0;
+        }
 
         // Calculate our share of the bucket deposits
         // Our value = (our LP / total LP) * total deposits
@@ -458,6 +531,17 @@ contract AjnaStrategy is IStrategy, Ownable, ReentrancyGuard {
      */
     function setActive(bool active) external onlyOwner {
         _isActive = active;
+    }
+
+    /**
+     * @notice Set the strategy's idle buffer target.
+     * @dev 0 = fully deploy to Ajna (previous behavior). 10_000 = keep everything idle.
+     */
+    function setIdleBufferBps(uint256 newBps) external onlyOwner {
+        require(newBps <= 10_000, "Invalid bps");
+        uint256 old = idleBufferBps;
+        idleBufferBps = newBps;
+        emit IdleBufferBpsUpdated(old, newBps);
     }
 
     /**

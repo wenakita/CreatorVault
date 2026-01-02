@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { motion } from 'framer-motion'
 import { useAccount, useReadContract } from 'wagmi'
 import type { Address } from 'viem'
@@ -6,16 +6,68 @@ import { erc20Abi, formatUnits, isAddress } from 'viem'
 import { Link, useSearchParams } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { coinABI } from '@zoralabs/protocol-deployments'
+import { BarChart3, Layers, Lock, Rocket, RotateCw, ShieldCheck } from 'lucide-react'
 import { ConnectButton } from '@/components/ConnectButton'
 import { DeployVaultAA } from '@/components/DeployVaultAA'
+import { CONTRACTS } from '@/config/contracts'
+import { DerivedTokenIcon } from '@/components/DerivedTokenIcon'
 import { useZoraCoin, useZoraProfile } from '@/lib/zora/hooks'
 import { fetchCoinMarketRewardsByCoinFromApi } from '@/lib/onchain/coinMarketRewardsByCoin'
+
+const MIN_FIRST_DEPOSIT = 50_000_000n * 10n ** 18n
+const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000' as const
+
+function ExplainerRow({
+  icon,
+  label,
+  title,
+  contractName,
+  note,
+  metaLine,
+}: {
+  icon: ReactNode
+  label: string
+  title: ReactNode
+  contractName: string
+  note: string
+  metaLine?: ReactNode
+}) {
+  return (
+    <div className="px-4 py-4 grid grid-cols-[56px_minmax(0,1fr)_auto] gap-x-4 items-start hover:bg-white/[0.02] transition-colors">
+      <div className="w-14 shrink-0 pt-0.5 flex justify-center">{icon}</div>
+
+      <div className="min-w-0">
+        <div className="text-[15px] leading-5 text-zinc-100 font-medium truncate min-w-0">{title}</div>
+
+        <div className="text-[11px] text-zinc-500 mt-1 leading-5">
+          <span className="inline-flex align-middle items-center rounded-md border border-white/5 bg-black/20 px-2 py-0.5 font-mono text-[10px] leading-4 text-zinc-300">
+            {contractName}
+          </span>
+          {metaLine ? (
+            <>
+              <span className="text-zinc-800">{' · '}</span>
+              <span className="align-middle">{metaLine}</span>
+            </>
+          ) : null}
+        </div>
+
+        <div className="text-[11px] text-zinc-600 leading-relaxed mt-2">{note}</div>
+      </div>
+
+      <div className="shrink-0 pt-[3px] text-[10px] leading-4 uppercase tracking-[0.34em] text-zinc-500/90 font-medium whitespace-nowrap text-right">
+        {label}
+      </div>
+    </div>
+  )
+}
 
 export function DeployVault() {
   const { address, isConnected } = useAccount()
   const [creatorToken, setCreatorToken] = useState('')
   const [deployAs, setDeployAs] = useState('')
   const [showAdvanced, setShowAdvanced] = useState(false)
+  const [showFundingDetails, setShowFundingDetails] = useState(false)
+  const [lastDeployedVault, setLastDeployedVault] = useState<Address | null>(null)
 
   const [searchParams] = useSearchParams()
   const prefillToken = useMemo(() => searchParams.get('token') ?? '', [searchParams])
@@ -61,16 +113,6 @@ export function DeployVault() {
     autofillRef.current.tokenFor = addressLc
   }, [isConnected, addressLc, prefillToken, creatorToken, detectedCreatorCoin])
 
-  useEffect(() => {
-    if (!isConnected || !addressLc) return
-    if (deployAs.trim().length > 0) return
-    if (!detectedSmartWallet) return
-    if (autofillRef.current.deployAsFor === addressLc) return
-
-    setDeployAs(detectedSmartWallet)
-    autofillRef.current.deployAsFor = addressLc
-  }, [isConnected, addressLc, deployAs, detectedSmartWallet])
-
   const tokenIsValid = isAddress(creatorToken)
   const deployAsTrim = deployAs.trim()
   const deployAsAddress = useMemo(() => {
@@ -78,6 +120,66 @@ export function DeployVault() {
     return isAddress(deployAsTrim) ? (deployAsTrim as Address) : null
   }, [deployAsTrim])
   const deployAsIsValid = deployAsTrim.length === 0 || !!deployAsAddress
+  const executeAsIsSupported = useMemo(() => {
+    // Blank means "use connected wallet".
+    if (!deployAsAddress) return true
+    // Today we only support deploying "as" the detected Coinbase Smart Wallet contract.
+    // (Other EOAs or contract wallets would require different batching/permission checks.)
+    if (detectedSmartWallet && deployAsAddress.toLowerCase() === detectedSmartWallet.toLowerCase()) return true
+    return false
+  }, [deployAsAddress, detectedSmartWallet])
+
+  const connectedWalletAddress = useMemo(() => {
+    const a = address ? String(address) : ''
+    return isAddress(a) ? (a as Address) : null
+  }, [address])
+
+  const { data: connectedTokenBalance } = useReadContract({
+    address: tokenIsValid ? (creatorToken as `0x${string}`) : undefined,
+    abi: erc20Abi,
+    functionName: 'balanceOf',
+    args: [(connectedWalletAddress ?? ZERO_ADDRESS) as `0x${string}`],
+    query: { enabled: tokenIsValid && !!connectedWalletAddress },
+  })
+
+  const { data: smartWalletTokenBalance } = useReadContract({
+    address: tokenIsValid ? (creatorToken as `0x${string}`) : undefined,
+    abi: erc20Abi,
+    functionName: 'balanceOf',
+    args: [((detectedSmartWallet ?? ZERO_ADDRESS) as Address) as `0x${string}`],
+    query: { enabled: tokenIsValid && !!detectedSmartWallet },
+  })
+
+  const connectedHasMinDeposit =
+    typeof connectedTokenBalance === 'bigint' && connectedTokenBalance >= MIN_FIRST_DEPOSIT
+  const smartWalletHasMinDeposit =
+    typeof smartWalletTokenBalance === 'bigint' && smartWalletTokenBalance >= MIN_FIRST_DEPOSIT
+
+  useEffect(() => {
+    if (!isConnected || !addressLc) return
+    if (deployAs.trim().length > 0) return
+    if (!detectedSmartWallet) return
+    if (!tokenIsValid) return
+
+    const key = `${addressLc}:${String(creatorToken).toLowerCase()}`
+    if (autofillRef.current.deployAsFor === key) return
+
+    // Avoid surprising creators: only auto-pick the smart wallet when it's the only obvious choice.
+    // (If both wallets have >=50M, we leave it to the user.)
+    if (smartWalletHasMinDeposit && !connectedHasMinDeposit) {
+      setDeployAs(String(detectedSmartWallet))
+      autofillRef.current.deployAsFor = key
+    }
+  }, [
+    isConnected,
+    addressLc,
+    deployAs,
+    detectedSmartWallet,
+    tokenIsValid,
+    creatorToken,
+    smartWalletHasMinDeposit,
+    connectedHasMinDeposit,
+  ])
 
   const {
     data: zoraCoin,
@@ -139,7 +241,18 @@ export function DeployVault() {
     return `Wrapped ${underlyingSymbolUpper} Vault Share`
   }, [underlyingSymbolUpper])
 
+  const charmPairLabel = useMemo(() => {
+    return underlyingSymbolUpper ? `${underlyingSymbolUpper.toLowerCase()}/USDC` : 'creator/USDC'
+  }, [underlyingSymbolUpper])
+
   const short = (addr: string) => `${addr.slice(0, 6)}…${addr.slice(-4)}`
+  function formatToken18(raw?: bigint): string {
+    if (raw === undefined) return '—'
+    const s = formatUnits(raw, 18)
+    const n = Number(s)
+    if (Number.isFinite(n)) return n.toLocaleString(undefined, { maximumFractionDigits: 2 })
+    return s
+  }
 
   const creatorAddress = zoraCoin?.creatorAddress ? String(zoraCoin.creatorAddress) : null
   const isOriginalCreator =
@@ -192,9 +305,56 @@ export function DeployVault() {
     return isAddress(r) ? (r as Address) : null
   }, [onchainPayoutRecipient, zoraCoin?.payoutRecipientAddress])
 
+  const { data: payoutRecipientTokenBalance } = useReadContract({
+    address: tokenIsValid ? (creatorToken as `0x${string}`) : undefined,
+    abi: erc20Abi,
+    functionName: 'balanceOf',
+    args: [((payoutRecipient ?? ZERO_ADDRESS) as Address) as `0x${string}`],
+    query: { enabled: tokenIsValid && !!payoutRecipient },
+  })
+
+  const payoutRecipientHasMinDeposit =
+    typeof payoutRecipientTokenBalance === 'bigint' && payoutRecipientTokenBalance >= MIN_FIRST_DEPOSIT
+
   const isPayoutRecipient =
     !!address && !!payoutRecipient && address.toLowerCase() === payoutRecipient.toLowerCase()
   const isAuthorizedDeployer = isOriginalCreator || isPayoutRecipient
+
+  const selectedOwnerAddress = useMemo(() => {
+    if (deployAsAddress) return deployAsAddress
+    return connectedWalletAddress
+  }, [deployAsAddress, connectedWalletAddress])
+
+  const selectedOwnerTokenBalance = useMemo(() => {
+    if (!selectedOwnerAddress) return undefined
+    const selectedLc = selectedOwnerAddress.toLowerCase()
+    if (connectedWalletAddress && selectedLc === connectedWalletAddress.toLowerCase()) {
+      return typeof connectedTokenBalance === 'bigint' ? connectedTokenBalance : undefined
+    }
+    if (detectedSmartWallet && selectedLc === detectedSmartWallet.toLowerCase()) {
+      return typeof smartWalletTokenBalance === 'bigint' ? smartWalletTokenBalance : undefined
+    }
+    if (payoutRecipient && selectedLc === payoutRecipient.toLowerCase()) {
+      return typeof payoutRecipientTokenBalance === 'bigint' ? payoutRecipientTokenBalance : undefined
+    }
+    return undefined
+  }, [
+    selectedOwnerAddress,
+    connectedWalletAddress,
+    connectedTokenBalance,
+    detectedSmartWallet,
+    smartWalletTokenBalance,
+    payoutRecipient,
+    payoutRecipientTokenBalance,
+  ])
+
+  const selectedOwnerHasMinDeposit =
+    typeof selectedOwnerTokenBalance === 'bigint' && selectedOwnerTokenBalance >= MIN_FIRST_DEPOSIT
+  const ownerFundingDetailsAreForced =
+    tokenIsValid && typeof selectedOwnerTokenBalance === 'bigint' && !selectedOwnerHasMinDeposit
+  const showOwnerFundingDetails =
+    showFundingDetails ||
+    (tokenIsValid && typeof selectedOwnerTokenBalance === 'bigint' && !selectedOwnerHasMinDeposit)
 
   const poolCurrencyAddress = useMemo(() => {
     const c = zoraCoin?.poolCurrencyToken?.address ? String(zoraCoin.poolCurrencyToken.address) : ''
@@ -285,7 +445,8 @@ export function DeployVault() {
     isAuthorizedDeployer &&
     !!derivedShareSymbol &&
     !!derivedShareName &&
-    deployAsIsValid
+    deployAsIsValid &&
+    executeAsIsSupported
 
   return (
     <div className="relative">
@@ -383,10 +544,26 @@ export function DeployVault() {
 
                       {zoraCoin?.poolCurrencyToken?.name && (
                         <div className="data-row">
-                          <div className="label">Trade currency</div>
-                          <div className="text-xs text-zinc-300">{String(zoraCoin.poolCurrencyToken.name)}</div>
+                          <div className="label">Paired token</div>
+                          <div className="text-xs text-zinc-300">
+                            {String(zoraCoin.poolCurrencyToken.name).toUpperCase()}
+                          </div>
                         </div>
                       )}
+
+                      <div className="data-row">
+                        <div className="label">Chain</div>
+                        <div className="text-xs text-zinc-300 inline-flex items-center gap-2">
+                          <img
+                            src="/protocols/base.png"
+                            alt=""
+                            aria-hidden="true"
+                            loading="lazy"
+                            className="w-3.5 h-3.5 opacity-90"
+                          />
+                          Base
+                        </div>
+                      </div>
                     </div>
 
                     {/* Stats */}
@@ -454,136 +631,234 @@ export function DeployVault() {
                     {/* Vault configuration */}
                     <div className="pt-4 border-t border-zinc-900/50 space-y-3">
                       <div className="label">Contracts deployed</div>
-                      <div className="text-xs text-zinc-600">
-                        Deployed together in one confirmation.
-                      </div>
 
-                      <div className="space-y-2">
-                        <details className="group border border-zinc-900/50 rounded-lg bg-black/20">
-                          <summary className="cursor-pointer list-none [&::-webkit-details-marker]:hidden px-4 py-3 flex items-center justify-between gap-4">
-                            <div>
-                              <div className="text-xs text-zinc-500">Vault token</div>
-                              <div className="text-sm text-zinc-200">
-                                {derivedVaultName || '—'}{' '}
-                                <span className="font-mono text-zinc-500">({derivedVaultSymbol || '—'})</span>
-                              </div>
-                              <div className="text-[10px] text-zinc-600 font-mono mt-1">Contract: CreatorOVault</div>
-                            </div>
-                            <div className="text-[10px] text-zinc-600 group-open:hidden">Info</div>
-                            <div className="text-[10px] text-zinc-600 hidden group-open:block">Hide</div>
-                          </summary>
-                          <div className="px-4 pb-3 text-xs text-zinc-600">
-                            The vault’s share token. You receive it when you deposit creator coins.
-                          </div>
-                        </details>
+                      <div className="rounded-2xl border border-white/5 bg-[#080808]/60 backdrop-blur-2xl overflow-hidden divide-y divide-white/5">
+                        <div className="px-4 py-2 text-[10px] uppercase tracking-wide text-zinc-500 bg-white/[0.02]">
+                          Core stack
+                        </div>
 
-                        <details className="group border border-zinc-900/50 rounded-lg bg-black/20">
-                          <summary className="cursor-pointer list-none [&::-webkit-details-marker]:hidden px-4 py-3 flex items-center justify-between gap-4">
-                            <div>
-                              <div className="text-xs text-zinc-500">Share token</div>
-                              <div className="text-sm text-zinc-200">
-                                {derivedShareName || '—'}{' '}
-                                <span className="font-mono text-zinc-500">({derivedShareSymbol || '—'})</span>
-                              </div>
-                              <div className="text-[10px] text-zinc-600 font-mono mt-1">Contract: CreatorShareOFT</div>
+                        <ExplainerRow
+                          icon={
+                            <div className="w-14 h-14 rounded-full bg-black/30 border border-white/5 shadow-[inset_0_0_24px_rgba(0,0,0,0.9)] flex items-center justify-center text-zinc-500">
+                              <Lock className="w-5 h-5" />
                             </div>
-                            <div className="text-[10px] text-zinc-600 group-open:hidden">Info</div>
-                            <div className="text-[10px] text-zinc-600 hidden group-open:block">Hide</div>
-                          </summary>
-                          <div className="px-4 pb-3 text-xs text-zinc-600">
-                            A wrapped share token used by the vault system.
-                          </div>
-                        </details>
+                          }
+                          label="Vault token"
+                          title={`${derivedVaultName || '—'} (${derivedVaultSymbol || '—'})`}
+                          contractName="CreatorOVault"
+                          note="Core vault that holds creator coin deposits and mints shares."
+                          metaLine={
+                            <>
+                              <span className="font-mono text-zinc-400">ERC-4626</span>
+                              {' · '}
+                              <span className="inline-flex items-center gap-1.5 text-zinc-400">
+                                <img
+                                  src="/protocols/layerzero.svg"
+                                  alt=""
+                                  aria-hidden="true"
+                                  loading="lazy"
+                                  className="w-3.5 h-3.5 opacity-90"
+                                />
+                                LayerZero
+                              </span>
+                              {' · '}
+                              <span className="inline-flex items-center gap-1.5 text-zinc-400">
+                                <img
+                                  src="/protocols/yearn.svg"
+                                  alt=""
+                                  aria-hidden="true"
+                                  loading="lazy"
+                                  className="w-3.5 h-3.5 opacity-90"
+                                />
+                                Yearn v3
+                              </span>
+                            </>
+                          }
+                        />
 
-                        <details className="group border border-zinc-900/50 rounded-lg bg-black/20">
-                          <summary className="cursor-pointer list-none [&::-webkit-details-marker]:hidden px-4 py-3 flex items-center justify-between gap-4">
-                            <div>
-                              <div className="text-xs text-zinc-500">Wrapper</div>
-                              <div className="text-sm text-zinc-200">Vault Wrapper</div>
-                              <div className="text-[10px] text-zinc-600 font-mono mt-1">Contract: CreatorOVaultWrapper</div>
-                            </div>
-                            <div className="text-[10px] text-zinc-600 group-open:hidden">Info</div>
-                            <div className="text-[10px] text-zinc-600 hidden group-open:block">Hide</div>
-                          </summary>
-                          <div className="px-4 pb-3 text-xs text-zinc-600">
-                            Handles deposits/withdrawals and wraps vault shares into the share token.
-                          </div>
-                        </details>
+                        <ExplainerRow
+                          icon={
+                            tokenIsValid ? (
+                              <DerivedTokenIcon
+                                tokenAddress={creatorToken as `0x${string}`}
+                                symbol={underlyingSymbolUpper || 'TOKEN'}
+                                variant="share"
+                                size="lg"
+                              />
+                            ) : null
+                          }
+                          label="Share token"
+                          title={`${derivedShareName || '—'} (${derivedShareSymbol || '—'})`}
+                          contractName="CreatorShareOFT"
+                          note="Wrapped vault shares token (wsToken) used for routing fees."
+                          metaLine={
+                            <>
+                              <span className="inline-flex items-center gap-1.5 text-zinc-400">
+                                <img
+                                  src="/protocols/layerzero.svg"
+                                  alt=""
+                                  aria-hidden="true"
+                                  loading="lazy"
+                                  className="w-3.5 h-3.5 opacity-90"
+                                />
+                                LayerZero OFT
+                              </span>
+                            </>
+                          }
+                        />
 
-                        <details className="group border border-zinc-900/50 rounded-lg bg-black/20">
-                          <summary className="cursor-pointer list-none [&::-webkit-details-marker]:hidden px-4 py-3 flex items-center justify-between gap-4">
-                            <div>
-                              <div className="text-xs text-zinc-500">Gauge controller</div>
-                              <div className="text-sm text-zinc-200">Gauge Controller</div>
-                              <div className="text-[10px] text-zinc-600 font-mono mt-1">Contract: CreatorGaugeController</div>
+                        <ExplainerRow
+                          icon={
+                            <div className="w-8 h-8 flex items-center justify-center text-zinc-600">
+                              <Layers className="w-4 h-4" />
                             </div>
-                            <div className="text-[10px] text-zinc-600 group-open:hidden">Info</div>
-                            <div className="text-[10px] text-zinc-600 hidden group-open:block">Hide</div>
-                          </summary>
-                          <div className="px-4 pb-3 text-xs text-zinc-600">
-                            Coordinates incentives and fee routing for the vault.
-                          </div>
-                        </details>
+                          }
+                          label="Wrapper"
+                          title="Vault Wrapper"
+                          contractName="CreatorOVaultWrapper"
+                          note="Wraps/unlocks vault shares into the wsToken."
+                        />
 
-                        <details className="group border border-zinc-900/50 rounded-lg bg-black/20">
-                          <summary className="cursor-pointer list-none [&::-webkit-details-marker]:hidden px-4 py-3 flex items-center justify-between gap-4">
-                            <div>
-                              <div className="text-xs text-zinc-500">Launch strategy</div>
-                              <div className="text-sm text-zinc-200">Launch Strategy</div>
-                              <div className="text-[10px] text-zinc-600 font-mono mt-1">Contract: CCALaunchStrategy</div>
+                        <ExplainerRow
+                          icon={
+                            <div className="w-8 h-8 flex items-center justify-center text-zinc-600">
+                              <BarChart3 className="w-4 h-4" />
                             </div>
-                            <div className="text-[10px] text-zinc-600 group-open:hidden">Info</div>
-                            <div className="text-[10px] text-zinc-600 hidden group-open:block">Hide</div>
-                          </summary>
-                          <div className="px-4 pb-3 text-xs text-zinc-600">
-                            Manages the initial launch flow used by the vault.
-                          </div>
-                        </details>
+                          }
+                          label="Gauge controller"
+                          title="Fees & incentives"
+                          contractName="CreatorGaugeController"
+                          note="Routes fees (burn / lottery / voters) and manages gauges."
+                        />
 
-                        <details className="group border border-zinc-900/50 rounded-lg bg-black/20">
-                          <summary className="cursor-pointer list-none [&::-webkit-details-marker]:hidden px-4 py-3 flex items-center justify-between gap-4">
-                            <div>
-                              <div className="text-xs text-zinc-500">Oracle</div>
-                              <div className="text-sm text-zinc-200">Oracle</div>
-                              <div className="text-[10px] text-zinc-600 font-mono mt-1">Contract: CreatorOracle</div>
+                        <ExplainerRow
+                          icon={
+                            <div className="w-8 h-8 flex items-center justify-center text-zinc-600">
+                              <Rocket className="w-4 h-4" />
                             </div>
-                            <div className="text-[10px] text-zinc-600 group-open:hidden">Info</div>
-                            <div className="text-[10px] text-zinc-600 hidden group-open:block">Hide</div>
-                          </summary>
-                          <div className="px-4 pb-3 text-xs text-zinc-600">
-                            Provides pricing data used by the vault’s launch/graduation path.
-                          </div>
-                        </details>
+                          }
+                          label="Launch strategy"
+                          title={
+                            <a
+                              href="https://cca.uniswap.org"
+                              target="_blank"
+                              rel="noreferrer"
+                              className="inline-block max-w-full hover:text-white transition-colors underline underline-offset-4 decoration-white/15 hover:decoration-white/30"
+                              title="Open cca.uniswap.org"
+                            >
+                              Uniswap Continuous Clearing Auction
+                            </a>
+                          }
+                          contractName="CCALaunchStrategy"
+                          note="Runs Uniswap’s Continuous Clearing Auction (CCA) for fair price discovery."
+                          metaLine={
+                            <>
+                              <span className="inline-flex items-center gap-1.5 text-zinc-400">
+                                <img
+                                  src="/protocols/uniswap.png"
+                                  alt=""
+                                  aria-hidden="true"
+                                  loading="lazy"
+                                  className="w-3.5 h-3.5 opacity-90"
+                                />
+                                Uniswap
+                              </span>
+                            </>
+                          }
+                        />
 
-                        <details className="group border border-zinc-900/50 rounded-lg bg-black/20">
-                          <summary className="cursor-pointer list-none [&::-webkit-details-marker]:hidden px-4 py-3 flex items-center justify-between gap-4">
-                            <div>
-                              <div className="text-xs text-zinc-500">Yield strategy</div>
-                              <div className="text-sm text-zinc-200">Charm LP (CREATOR/USDC)</div>
-                              <div className="text-[10px] text-zinc-600 font-mono mt-1">Contract: CreatorCharmStrategyV2</div>
+                        <ExplainerRow
+                          icon={
+                            <div className="w-8 h-8 flex items-center justify-center text-zinc-600">
+                              <ShieldCheck className="w-4 h-4" />
                             </div>
-                            <div className="text-[10px] text-zinc-600 group-open:hidden">Info</div>
-                            <div className="text-[10px] text-zinc-600 hidden group-open:block">Hide</div>
-                          </summary>
-                          <div className="px-4 pb-3 text-xs text-zinc-600">
-                            Deploys and configures a Charm-managed Uniswap V3 LP strategy, then registers it in the vault allocation.
-                          </div>
-                        </details>
+                          }
+                          label="Oracle"
+                          title="Price oracle"
+                          contractName="CreatorOracle"
+                          note="Price oracle used by the auction and strategies."
+                          metaLine={
+                            <>
+                              <span className="inline-flex items-center gap-1.5 text-zinc-400">
+                                <img
+                                  src="/protocols/chainlink.svg"
+                                  alt=""
+                                  aria-hidden="true"
+                                  loading="lazy"
+                                  className="w-3.5 h-3.5 opacity-90"
+                                />
+                                Chainlink
+                              </span>
+                            </>
+                          }
+                        />
 
-                        <details className="group border border-zinc-900/50 rounded-lg bg-black/20">
-                          <summary className="cursor-pointer list-none [&::-webkit-details-marker]:hidden px-4 py-3 flex items-center justify-between gap-4">
-                            <div>
-                              <div className="text-xs text-zinc-500">Yield strategy</div>
-                              <div className="text-sm text-zinc-200">Ajna lending</div>
-                              <div className="text-[10px] text-zinc-600 font-mono mt-1">Contract: AjnaStrategy</div>
+                        <div className="px-4 py-2 text-[10px] uppercase tracking-wide text-zinc-500 bg-white/[0.02]">
+                          Yield strategies
+                        </div>
+
+                        <ExplainerRow
+                          icon={
+                            <div className="w-8 h-8 flex items-center justify-center text-zinc-600">
+                              <RotateCw className="w-4 h-4" />
                             </div>
-                            <div className="text-[10px] text-zinc-600 group-open:hidden">Info</div>
-                            <div className="text-[10px] text-zinc-600 hidden group-open:block">Hide</div>
-                          </summary>
-                          <div className="px-4 pb-3 text-xs text-zinc-600">
-                            Deploys and registers an Ajna lending strategy for the creator coin.
-                          </div>
-                        </details>
+                          }
+                          label="Yield strategy"
+                          title={`${charmPairLabel} Uniswap V3 LP (0.3%) — Charm Alpha Pro`}
+                          contractName="CreatorCharmStrategyV2"
+                          note={`Charm Alpha Pro Vault manages the Uniswap V3 LP position for ${charmPairLabel} (0.3% fee tier).`}
+                          metaLine={
+                            <>
+                              <span className="inline-flex items-center gap-1.5 text-zinc-400">
+                                <img
+                                  src="/protocols/charm.png"
+                                  alt=""
+                                  aria-hidden="true"
+                                  loading="lazy"
+                                  className="w-3.5 h-3.5 opacity-90"
+                                />
+                                Charm
+                              </span>
+                              {' · '}
+                              <span className="inline-flex items-center gap-1.5 text-zinc-400">
+                                <img
+                                  src="/protocols/uniswap.png"
+                                  alt=""
+                                  aria-hidden="true"
+                                  loading="lazy"
+                                  className="w-3.5 h-3.5 opacity-90"
+                                />
+                                Uniswap V3
+                              </span>
+                            </>
+                          }
+                        />
+
+                        <ExplainerRow
+                          icon={
+                            <div className="w-8 h-8 flex items-center justify-center text-zinc-600">
+                              <RotateCw className="w-4 h-4" />
+                            </div>
+                          }
+                          label="Yield strategy"
+                          title="Ajna lending"
+                          contractName="AjnaStrategy"
+                          note="Collateralized lending via Ajna: deposit collateral (e.g. USDC), borrow creator coin (can be sold for liquidity), repay to unlock collateral (liquidation risk)."
+                          metaLine={
+                            <>
+                              <span className="inline-flex items-center gap-1.5 text-zinc-400">
+                                <img
+                                  src="/protocols/ajna.svg"
+                                  alt=""
+                                  aria-hidden="true"
+                                  loading="lazy"
+                                  className="w-3.5 h-3.5 opacity-90"
+                                />
+                                Ajna
+                              </span>
+                            </>
+                          }
+                        />
                       </div>
                     </div>
                   </div>
@@ -731,6 +1006,16 @@ export function DeployVault() {
                       ) : null
                     ) : (
                       <div className="flex items-center gap-3">
+                        {address ? (
+                          <button
+                            type="button"
+                            onClick={() => setDeployAs('')}
+                            className="text-[10px] text-zinc-600 hover:text-zinc-300 transition-colors"
+                            title="Use the connected wallet as the vault owner"
+                          >
+                            Use connected wallet
+                          </button>
+                        ) : null}
                         {detectedSmartWallet ? (
                           <button
                             type="button"
@@ -741,15 +1026,13 @@ export function DeployVault() {
                             Use smart wallet
                           </button>
                         ) : null}
-                        {payoutRecipient ? (
-                          <button
-                            type="button"
-                            onClick={() => setDeployAs(String(payoutRecipient))}
-                            className="text-[10px] text-zinc-600 hover:text-zinc-300 transition-colors"
-                            title="Use the coin’s current payout recipient address"
+                        {payoutRecipient && address && payoutRecipient.toLowerCase() !== address.toLowerCase() ? (
+                          <div
+                            className="text-[10px] text-zinc-700"
+                            title="To deploy owned by a different EOA, connect that wallet (owner must sign the deploy batch)."
                           >
-                            Use payout recipient
-                          </button>
+                            Payout recipient differs
+                          </div>
                         ) : null}
                       </div>
                     )}
@@ -772,9 +1055,116 @@ export function DeployVault() {
 
                   {!deployAsIsValid ? (
                     <div className="text-xs text-red-400/80">Invalid wallet address.</div>
+                  ) : !executeAsIsSupported ? (
+                    <div className="text-xs text-amber-300/90">
+                      Unsupported owner wallet. Leave this blank to deploy from your connected wallet, or choose your
+                      Coinbase Smart Wallet.
+                    </div>
                   ) : (
-                    <div className="text-xs text-zinc-600">
-                      Vault contracts will be owned by this wallet.
+                    <div className="text-xs text-zinc-600 space-y-2">
+                      <div>Vault contracts will be owned by this wallet.</div>
+
+                      {tokenIsValid ? (
+                        <div className="space-y-2">
+                          <div className="text-[11px] text-zinc-700">
+                            We’ll deposit{' '}
+                            <span className="text-zinc-300 font-medium">50,000,000</span>{' '}
+                            <span className="text-zinc-300 font-medium">{underlyingSymbolUpper || 'TOKENS'}</span> from
+                            the owner wallet during deployment (same transaction).
+                          </div>
+
+                          <div className="flex items-center justify-between text-[11px]">
+                            <span className="text-zinc-600">Owner balance</span>
+                            <span className={selectedOwnerHasMinDeposit ? 'text-emerald-400' : 'text-amber-300/90'}>
+                              {formatToken18(typeof selectedOwnerTokenBalance === 'bigint' ? selectedOwnerTokenBalance : undefined)}{' '}
+                              {underlyingSymbolUpper || ''}
+                            </span>
+                          </div>
+
+                          {!selectedOwnerHasMinDeposit ? (
+                            <div className="text-[11px] text-amber-300/90">
+                              Pick a wallet with 50M (or transfer tokens to the owner wallet) to deploy & launch.
+                            </div>
+                          ) : null}
+
+                          {!selectedOwnerHasMinDeposit && detectedSmartWallet && smartWalletHasMinDeposit ? (
+                            <button
+                              type="button"
+                              onClick={() => setDeployAs(String(detectedSmartWallet))}
+                              className="text-[11px] text-cyan-200 hover:text-cyan-100 transition-colors text-left"
+                            >
+                              Use smart wallet (has 50M)
+                            </button>
+                          ) : null}
+
+                          {!selectedOwnerHasMinDeposit && connectedWalletAddress && connectedHasMinDeposit && !!deployAsAddress ? (
+                            <button
+                              type="button"
+                              onClick={() => setDeployAs('')}
+                              className="text-[11px] text-cyan-200 hover:text-cyan-100 transition-colors text-left"
+                            >
+                              Use connected wallet (has 50M)
+                            </button>
+                          ) : null}
+
+                          {!selectedOwnerHasMinDeposit &&
+                          payoutRecipient &&
+                          payoutRecipientHasMinDeposit &&
+                          connectedWalletAddress &&
+                          payoutRecipient.toLowerCase() !== connectedWalletAddress.toLowerCase() ? (
+                            <div className="text-[11px] text-amber-300/90">
+                              Your payout recipient wallet appears to have 50M. Connect that wallet to deploy (owner
+                              must sign).
+                            </div>
+                          ) : null}
+
+                          {!ownerFundingDetailsAreForced ? (
+                            <button
+                              type="button"
+                              onClick={() => setShowFundingDetails((v) => !v)}
+                              className="text-[10px] text-zinc-600 hover:text-zinc-200 transition-colors text-left"
+                            >
+                              {showOwnerFundingDetails ? 'Hide balances' : 'Show balances'}
+                            </button>
+                          ) : null}
+
+                          {showOwnerFundingDetails ? (
+                            <div className="grid grid-cols-1 gap-1 text-[11px]">
+                              {connectedWalletAddress ? (
+                                <div className="flex items-center justify-between">
+                                  <span className="text-zinc-600">Connected wallet</span>
+                                  <span className={connectedHasMinDeposit ? 'text-emerald-400' : 'text-zinc-500'}>
+                                    {formatToken18(typeof connectedTokenBalance === 'bigint' ? connectedTokenBalance : undefined)}{' '}
+                                    {underlyingSymbolUpper || ''}
+                                  </span>
+                                </div>
+                              ) : null}
+
+                              {detectedSmartWallet ? (
+                                <div className="flex items-center justify-between">
+                                  <span className="text-zinc-600">Smart wallet</span>
+                                  <span className={smartWalletHasMinDeposit ? 'text-emerald-400' : 'text-zinc-500'}>
+                                    {formatToken18(typeof smartWalletTokenBalance === 'bigint' ? smartWalletTokenBalance : undefined)}{' '}
+                                    {underlyingSymbolUpper || ''}
+                                  </span>
+                                </div>
+                              ) : null}
+
+                              {payoutRecipient ? (
+                                <div className="flex items-center justify-between">
+                                  <span className="text-zinc-600">Payout recipient</span>
+                                  <span className={payoutRecipientHasMinDeposit ? 'text-emerald-400' : 'text-zinc-500'}>
+                                    {formatToken18(
+                                      typeof payoutRecipientTokenBalance === 'bigint' ? payoutRecipientTokenBalance : undefined,
+                                    )}{' '}
+                                    {underlyingSymbolUpper || ''}
+                                  </span>
+                                </div>
+                              ) : null}
+                            </div>
+                          ) : null}
+                        </div>
+                      ) : null}
                     </div>
                   )}
                 </div>
@@ -808,6 +1198,7 @@ export function DeployVault() {
                   // even if you choose to deploy the vault *owned by* a different smart wallet.
                   creatorTreasury={((payoutRecipient ?? (address as Address)) as Address) as `0x${string}`}
                   executeAs={deployAsAddress ?? undefined}
+                  onSuccess={(a) => setLastDeployedVault(a.vault)}
                 />
               ) : tokenIsValid && (symbolLoading || zoraLoading) ? (
                 <button
@@ -837,6 +1228,58 @@ export function DeployVault() {
                 <p>Requires a 50M token deposit to start the fair launch.</p>
                 <p>Recommended: Coinbase Smart Wallet.</p>
               </div>
+            </div>
+
+            {/* Status */}
+            <div className="card rounded-xl p-8 space-y-4">
+              <div className="flex items-center justify-between gap-4">
+                <div className="label">Status</div>
+                <Link
+                  to="/status"
+                  className="text-[10px] text-zinc-600 hover:text-zinc-300 transition-colors whitespace-nowrap"
+                >
+                  Open
+                </Link>
+              </div>
+
+              <div className="flex items-start justify-between gap-6">
+                <div className="space-y-2">
+                  <div className="text-sm text-zinc-200 flex items-center gap-2">
+                    <ShieldCheck className="w-4 h-4 text-emerald-300" />
+                    Verification checks
+                  </div>
+                  <div className="text-xs text-zinc-600 max-w-prose">
+                    Verify your vault wiring on Base and generate a shareable report. If a fix is available, it’s creator-only and requires a
+                    wallet transaction.
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex flex-col sm:flex-row gap-3">
+                <Link
+                  to="/status"
+                  className="w-full sm:w-auto inline-flex items-center justify-center gap-2 rounded-lg bg-black/30 border border-zinc-900/60 px-5 py-3 text-sm text-zinc-200 hover:text-white hover:border-white/10 transition-colors"
+                >
+                  Open status checks
+                </Link>
+
+                {lastDeployedVault ? (
+                  <Link
+                    to={`/status?vault=${encodeURIComponent(lastDeployedVault)}`}
+                    className="w-full sm:w-auto btn-accent rounded-lg px-5 py-3 text-sm text-center"
+                  >
+                    Verify this vault
+                  </Link>
+                ) : null}
+              </div>
+
+              {lastDeployedVault ? (
+                <div className="text-[10px] text-zinc-700">
+                  Vault: <span className="font-mono break-all text-zinc-500">{lastDeployedVault}</span>
+                </div>
+              ) : (
+                <div className="text-[10px] text-zinc-700">Tip: after deploying, use the vault address shown in the Deploy details panel.</div>
+              )}
             </div>
           </div>
         </div>

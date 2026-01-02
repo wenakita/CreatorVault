@@ -1,15 +1,27 @@
 import { Suspense } from 'react'
 import { Outlet, Link, useLocation } from 'react-router-dom'
-import { Home, LayoutDashboard, HelpCircle, ShieldCheck } from 'lucide-react'
+import { Home, LayoutDashboard, HelpCircle } from 'lucide-react'
 import { LiquidGoldNavBar } from './liquidGold/LiquidGoldNavBar'
 
-const navItems = [
-  { path: '/', icon: Home, label: 'Home' },
-  { path: '/dashboard', icon: LayoutDashboard, label: 'Vaults' },
-  { path: '/deploy', icon: LayoutDashboard, label: 'Deploy' },
-  { path: '/status', icon: ShieldCheck, label: 'Status' },
-  { path: '/faq', icon: HelpCircle, label: 'FAQ' },
+type MobileNavItem = {
+  label: string
+  path: string
+  icon: any
+  activePrefixes?: string[]
+}
+
+const navItems: MobileNavItem[] = [
+  { path: '/', icon: Home, label: 'Home', activePrefixes: ['/'] },
+  { path: '/dashboard', icon: LayoutDashboard, label: 'Vaults', activePrefixes: ['/dashboard', '/vault'] },
+  { path: '/deploy', icon: LayoutDashboard, label: 'Deploy', activePrefixes: ['/deploy', '/launch', '/status'] },
+  { path: '/faq', icon: HelpCircle, label: 'FAQ', activePrefixes: ['/faq'] },
 ]
+
+function isActivePath(pathname: string, item: MobileNavItem): boolean {
+  if (item.path === '/') return pathname === '/'
+  const prefixes = item.activePrefixes && item.activePrefixes.length > 0 ? item.activePrefixes : [item.path]
+  return prefixes.some((p) => (p === '/' ? pathname === '/' : pathname === p || pathname.startsWith(`${p}/`)))
+}
 
 export function Layout() {
   const location = useLocation()
@@ -36,8 +48,9 @@ export function Layout() {
       {/* Mobile Nav - Minimal */}
       <nav className="md:hidden fixed bottom-0 left-0 right-0 border-t border-zinc-900/50 bg-black/80 backdrop-blur-xl">
         <div className="flex items-center justify-around py-4 px-6">
-          {navItems.map(({ path, icon: Icon, label }) => {
-            const isActive = location.pathname === path
+          {navItems.map((item) => {
+            const { path, icon: Icon, label } = item
+            const isActive = isActivePath(location.pathname, item)
             return (
               <Link
                 key={path}

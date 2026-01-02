@@ -36,6 +36,7 @@ This repo keeps the root clean (only `README.md`) and stores project documentati
 - `strategies/ajna/AJNA_DEPLOYMENT.md`
 - `strategies/ajna/AJNA_BUCKET_CALCULATOR.md`
 - `strategies/ajna/CREATOR_AJNA_GUIDE.md`
+- `strategies/ajna/AJNA_ERC4626_VAULT_REVIEW.md`
 
 ### Charm / LP
 
@@ -110,3 +111,7 @@ All HTML docs live in `docs/html/`:
 
 - `examples/aa.js`
 - `examples/AKITA_LAUNCH_NOW.md`
+
+## Governance (ve(3,3))
+
+- `governance/VE33_PROGRESS.md`

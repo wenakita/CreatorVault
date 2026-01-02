@@ -2,7 +2,7 @@
 
 ## Issue
 
-The project is currently deployed to the wrong Vercel project (`47-Eagle` / `app.47eagle.com`) when it should be on the `CreatorVault` project (`creatorvault.fun`).
+The repo is currently linked to the wrong Vercel project when it should be linked to the `CreatorVault` project (`creatorvault.fun`).
 
 ---
 
@@ -15,7 +15,7 @@ cd /home/akitav2/projects/CreatorVault
 vercel unlink
 ```
 
-This removes the link to the `47-Eagle` project.
+This removes the link to the currently linked (wrong) Vercel project.
 
 ### Step 2: Link to Correct Project
 
@@ -82,27 +82,24 @@ Or via Vercel Dashboard:
 
 ---
 
-## 🚨 Remove Old Deployment
+## 🚨 Remove old project/domain assignment
 
-If the old deployment is still live on `app.47eagle.com`:
+If `creatorvault.fun` (or `www.creatorvault.fun`) is currently assigned to another Vercel project, remove it there first.
 
-### Via Vercel CLI:
+### Via Vercel Dashboard (recommended)
+
+1. Go to your Vercel dashboard
+2. Open the project that currently owns `creatorvault.fun`
+3. Settings → Domains
+4. Remove `creatorvault.fun` (and `www.creatorvault.fun` if present)
+
+### Via Vercel CLI (optional)
 
 ```bash
-# List projects
+# List projects + domains (scope/team name may be required)
 vercel projects ls
-
-# Remove deployment from wrong project
-vercel remove 47-eagle --yes
+vercel domains ls --scope=<your-team>
 ```
-
-### Via Vercel Dashboard:
-
-1. Go to https://vercel.com/dashboard
-2. Find the `47-Eagle` project
-3. Settings → General
-4. Scroll to "Delete Project"
-5. Or just remove the deployment if you want to keep the project
 
 ---
 
@@ -144,7 +141,7 @@ vercel projects ls
 
 # Should show:
 # - creator-vault (correct) → creatorvault.fun
-# - 47-eagle or frontend (wrong) → app.47eagle.com (remove this)
+# - any other project still holding creatorvault.fun (wrong) → remove the domain there
 
 # List deployments for current directory
 vercel ls
@@ -171,8 +168,8 @@ Vercel Project:
 - Name: creator-vault (or creatorvault)
 - Domain: creatorvault.fun
 - Framework: Vite
-- Root Directory: ./
-- Output Directory: frontend/dist
+- Root Directory: frontend
+- Output Directory: dist
 
 Deployment:
 - Production: https://creatorvault.fun
@@ -183,7 +180,7 @@ Deployment:
 
 ## 🎯 Summary
 
-**The issue:** Deployed to `47-Eagle` project (`app.47eagle.com`)  
+**The issue:** Repo linked to the wrong Vercel project  
 **The fix:** Unlink, relink to `creator-vault` project  
 **The result:** Deploy to `creatorvault.fun`
 
@@ -219,6 +216,6 @@ vercel domains inspect creatorvault.fun
 
 ---
 
-**After fixing, the CreatorVault app will be at `creatorvault.fun`, not `app.47eagle.com`!** ✅
+**After fixing, the CreatorVault app will be at `creatorvault.fun`.** ✅
 
 

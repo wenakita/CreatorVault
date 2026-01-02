@@ -6,7 +6,7 @@
  * - Uses EIP-5792 batching (wagmi `useSendCalls`) so the user signs once.
  */
 
-import { useMemo, useState } from 'react'
+import { useMemo, useState, type ReactNode } from 'react'
 import { useAccount, usePublicClient } from 'wagmi'
 import { useSendCalls } from 'wagmi/experimental'
 import { base } from 'wagmi/chains'
@@ -25,12 +25,12 @@ import {
   isAddress,
   keccak256,
   parseAbiParameters,
-  zeroAddress,
 } from 'viem'
 import { waitForCallsStatus } from 'viem/actions'
 import { motion, AnimatePresence } from 'framer-motion'
-import { CheckCircle, Loader, Rocket } from 'lucide-react'
+import { BarChart3, CheckCircle, Copy, ExternalLink, Layers, Loader, Lock, Rocket, RotateCw, ShieldCheck } from 'lucide-react'
 import { CONTRACTS } from '@/config/contracts'
+import { DerivedTokenIcon } from '@/components/DerivedTokenIcon'
 import { DEPLOY_BYTECODE } from '@/deploy/bytecode.generated'
 import { DEPLOY_BYTECODE_FULLSTACK } from '@/deploy/bytecode.fullstack'
 
@@ -375,6 +375,7 @@ export function DeployVaultAA({
   const [errorDetails, setErrorDetails] = useState<string | null>(null)
   const [addresses, setAddresses] = useState<DeploymentAddresses | null>(null)
   const [yieldAddresses, setYieldAddresses] = useState<YieldDeploymentAddresses | null>(null)
+  const [copiedAddress, setCopiedAddress] = useState<Address | null>(null)
   const [step, setStep] = useState(0)
   const [success, setSuccess] = useState(false)
   const [showDetails, setShowDetails] = useState(false)
@@ -833,7 +834,7 @@ export function DeployVaultAA({
           const msg = String(e?.shortMessage || e?.message || '')
           if (/wallet_sendCalls|sendCalls|5792|capabilit/i.test(msg)) {
             fail(
-              'This wallet can’t batch deploy. Use Coinbase Smart Wallet (recommended), or deploy from an owner EOA.',
+              'This wallet can’t 1-click deploy (EIP-5792 wallet_sendCalls not supported). Use Coinbase Smart Wallet (recommended) or deploy via script.',
               msg,
             )
           }
@@ -1087,6 +1088,8 @@ export function DeployVaultAA({
 
       setStep(4)
       setSuccess(true)
+      // Make the “Contracts deployed” summary visible by default (better for demos / screen recordings).
+      setShowDetails(true)
       onSuccess?.(predicted)
     } catch (e: any) {
       setError(String(e?.shortMessage || e?.message || 'Deployment failed.'))
@@ -1101,7 +1104,99 @@ export function DeployVaultAA({
   const canOfferV2 = !!error && /already exists/i.test(error) && deploymentVersion === 'v1'
 
   const short = (addr: string) => `${addr.slice(0, 6)}…${addr.slice(-4)}`
-  const isZeroAddress = (addr: string) => addr.toLowerCase() === zeroAddress.toLowerCase()
+  const basescanAddressHref = (addr: string) => `https://basescan.org/address/${addr}`
+  const vaultSymbol = symbol.startsWith('ws') ? `s${symbol.slice(2)}` : `s${symbol}`
+  const vaultName = symbol.startsWith('ws') ? `${symbol.slice(2)} Vault Share` : `${symbol} Vault Share`
+  const underlyingSymbolUpper = (symbol.startsWith('ws') ? symbol.slice(2) : symbol).toUpperCase()
+  const charmPairLabel = `${underlyingSymbolUpper.toLowerCase()}/USDC`
+
+  async function copyAddress(addr: Address) {
+    try {
+      await navigator.clipboard.writeText(addr)
+      setCopiedAddress(addr)
+      window.setTimeout(() => setCopiedAddress(null), 1200)
+    } catch {
+      // ignore
+    }
+  }
+
+  function ContractRow({
+    icon,
+    label,
+    title,
+    contractName,
+    addr,
+    note,
+    metaLine,
+  }: {
+    icon?: ReactNode
+    label: string
+    title: ReactNode
+    contractName: string
+    addr: Address
+    note?: string
+    metaLine?: ReactNode
+  }) {
+    return (
+      <div className="px-4 py-3 grid grid-cols-[56px_minmax(0,1fr)_auto] gap-x-4 items-start hover:bg-white/[0.02] transition-colors">
+        <div className="w-14 shrink-0 pt-0.5 flex justify-center">{icon}</div>
+
+        <div className="min-w-0">
+          <div className="text-[15px] leading-5 text-zinc-100 font-medium truncate min-w-0">{title}</div>
+          <div className="text-[11px] text-zinc-500 mt-1 leading-5">
+            <span className="inline-flex align-middle items-center rounded-md border border-white/5 bg-black/20 px-2 py-0.5 font-mono text-[10px] leading-4 text-zinc-300">
+              {contractName}
+            </span>
+            {metaLine ? (
+              <>
+                <span className="text-zinc-800">{' · '}</span>
+                <span className="align-middle">{metaLine}</span>
+              </>
+            ) : null}
+          </div>
+          {note ? (
+            <div className="text-[11px] text-zinc-600 leading-relaxed mt-2">{note}</div>
+          ) : null}
+        </div>
+
+        <div className="shrink-0 flex flex-col items-end gap-2">
+          <div className="pt-[3px] text-[10px] leading-4 uppercase tracking-[0.34em] text-zinc-500/90 font-medium whitespace-nowrap text-right">
+            {label}
+          </div>
+          <a
+            className="font-mono text-xs text-zinc-200 hover:text-white transition-colors inline-flex items-center rounded-md bg-black/20 border border-white/5 px-2 py-1 hover:border-white/10"
+            href={basescanAddressHref(addr)}
+            target="_blank"
+            rel="noreferrer"
+            title="View on Basescan"
+          >
+            {short(addr)}
+          </a>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => void copyAddress(addr)}
+              className="inline-flex items-center gap-1 text-[11px] text-zinc-500 hover:text-zinc-200 transition-colors"
+              title="Copy address"
+            >
+              <Copy className="w-3 h-3" />
+              {copiedAddress?.toLowerCase() === addr.toLowerCase() ? 'Copied' : 'Copy'}
+            </button>
+            <a
+              className="inline-flex items-center gap-1 text-[11px] text-zinc-500 hover:text-zinc-200 transition-colors"
+              href={basescanAddressHref(addr)}
+              target="_blank"
+              rel="noreferrer"
+              title="Open in new tab"
+            >
+              <ExternalLink className="w-3 h-3" />
+              Basescan
+            </a>
+          </div>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="space-y-4">
@@ -1181,7 +1276,7 @@ export function DeployVaultAA({
             onClick={() => setShowDetails((v) => !v)}
             className="w-full px-4 py-3 flex items-center justify-between text-left"
           >
-            <div className="label">Details</div>
+            <div className="label">Deployment details</div>
             <div className="text-[10px] text-zinc-600">{showDetails ? 'Hide' : 'Show'}</div>
           </button>
 
@@ -1221,130 +1316,248 @@ export function DeployVaultAA({
 
                 {addresses ? (
                   <div className="space-y-2">
-                    <div className="label">Addresses</div>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
-                      <a
-                        className="flex items-center justify-between gap-3 bg-black/20 border border-zinc-900/60 rounded-lg px-3 py-2 hover:border-zinc-800/80 transition-colors"
-                        href={`https://basescan.org/address/${addresses.vault}`}
-                        target="_blank"
-                        rel="noreferrer"
-                      >
-                        <span className="text-zinc-500">Vault</span>
-                        <span className="font-mono text-zinc-200">{short(addresses.vault)}</span>
-                      </a>
-                      <a
-                        className="flex items-center justify-between gap-3 bg-black/20 border border-zinc-900/60 rounded-lg px-3 py-2 hover:border-zinc-800/80 transition-colors"
-                        href={`https://basescan.org/address/${addresses.wrapper}`}
-                        target="_blank"
-                        rel="noreferrer"
-                      >
-                        <span className="text-zinc-500">Wrapper</span>
-                        <span className="font-mono text-zinc-200">{short(addresses.wrapper)}</span>
-                      </a>
-                      <a
-                        className="flex items-center justify-between gap-3 bg-black/20 border border-zinc-900/60 rounded-lg px-3 py-2 hover:border-zinc-800/80 transition-colors"
-                        href={`https://basescan.org/address/${addresses.shareOFT}`}
-                        target="_blank"
-                        rel="noreferrer"
-                      >
-                        <span className="text-zinc-500">Share token</span>
-                        <span className="font-mono text-zinc-200">{short(addresses.shareOFT)}</span>
-                      </a>
-                      <a
-                        className="flex items-center justify-between gap-3 bg-black/20 border border-zinc-900/60 rounded-lg px-3 py-2 hover:border-zinc-800/80 transition-colors"
-                        href={`https://basescan.org/address/${addresses.gaugeController}`}
-                        target="_blank"
-                        rel="noreferrer"
-                      >
-                        <span className="text-zinc-500">Gauge controller</span>
-                        <span className="font-mono text-zinc-200">{short(addresses.gaugeController)}</span>
-                      </a>
-                      <a
-                        className="flex items-center justify-between gap-3 bg-black/20 border border-zinc-900/60 rounded-lg px-3 py-2 hover:border-zinc-800/80 transition-colors"
-                        href={`https://basescan.org/address/${addresses.ccaStrategy}`}
-                        target="_blank"
-                        rel="noreferrer"
-                      >
-                        <span className="text-zinc-500">Launch strategy</span>
-                        <span className="font-mono text-zinc-200">{short(addresses.ccaStrategy)}</span>
-                      </a>
-                      {addresses.oracle ? (
-                        <a
-                          className="flex items-center justify-between gap-3 bg-black/20 border border-zinc-900/60 rounded-lg px-3 py-2 hover:border-zinc-800/80 transition-colors"
-                          href={`https://basescan.org/address/${addresses.oracle}`}
-                          target="_blank"
-                          rel="noreferrer"
-                        >
-                          <span className="text-zinc-500">Oracle</span>
-                          <span className="font-mono text-zinc-200">{short(addresses.oracle)}</span>
-                        </a>
-                      ) : null}
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="label">{success ? 'Contracts deployed' : 'Deployment addresses'}</div>
+                      <div className="text-[10px] text-zinc-600">
+                        {success
+                          ? 'Deployed together in one confirmation.'
+                          : callBundleId
+                            ? 'Deterministic addresses for this deployment.'
+                            : 'Deterministic addresses (not deployed yet).'}
+                      </div>
                     </div>
-                  </div>
-                ) : null}
 
-                {yieldAddresses ? (
-                  <div className="space-y-2">
-                    <div className="label">Yield strategies</div>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
-                      <a
-                        className="flex items-center justify-between gap-3 bg-black/20 border border-zinc-900/60 rounded-lg px-3 py-2 hover:border-zinc-800/80 transition-colors"
-                        href={`https://basescan.org/address/${yieldAddresses.creatorCharmStrategy}`}
-                        target="_blank"
-                        rel="noreferrer"
-                      >
-                        <span className="text-zinc-500">Charm strategy</span>
-                        <span className="font-mono text-zinc-200">{short(yieldAddresses.creatorCharmStrategy)}</span>
-                      </a>
-                      <a
-                        className="flex items-center justify-between gap-3 bg-black/20 border border-zinc-900/60 rounded-lg px-3 py-2 hover:border-zinc-800/80 transition-colors"
-                        href={`https://basescan.org/address/${yieldAddresses.ajnaStrategy}`}
-                        target="_blank"
-                        rel="noreferrer"
-                      >
-                        <span className="text-zinc-500">Ajna strategy</span>
-                        <span className="font-mono text-zinc-200">{short(yieldAddresses.ajnaStrategy)}</span>
-                      </a>
-                      <a
-                        className="flex items-center justify-between gap-3 bg-black/20 border border-zinc-900/60 rounded-lg px-3 py-2 hover:border-zinc-800/80 transition-colors"
-                        href={`https://basescan.org/address/${yieldAddresses.charmVault}`}
-                        target="_blank"
-                        rel="noreferrer"
-                      >
-                        <span className="text-zinc-500">Charm vault</span>
-                        <span className="font-mono text-zinc-200">{short(yieldAddresses.charmVault)}</span>
-                      </a>
-                      <a
-                        className="flex items-center justify-between gap-3 bg-black/20 border border-zinc-900/60 rounded-lg px-3 py-2 hover:border-zinc-800/80 transition-colors"
-                        href={`https://basescan.org/address/${isZeroAddress(yieldAddresses.charmStrategy) ? yieldAddresses.charmVault : yieldAddresses.charmStrategy}`}
-                        target="_blank"
-                        rel="noreferrer"
-                      >
-                        <span className="text-zinc-500">Charm rebalancer</span>
-                        {isZeroAddress(yieldAddresses.charmStrategy) ? (
-                          <span className="text-zinc-400">Embedded in Charm vault</span>
-                        ) : (
-                          <span className="font-mono text-zinc-200">{short(yieldAddresses.charmStrategy)}</span>
-                        )}
-                      </a>
-                      <a
-                        className="flex items-center justify-between gap-3 bg-black/20 border border-zinc-900/60 rounded-lg px-3 py-2 hover:border-zinc-800/80 transition-colors"
-                        href={`https://basescan.org/address/${yieldAddresses.v3Pool}`}
-                        target="_blank"
-                        rel="noreferrer"
-                      >
-                        <span className="text-zinc-500">V3 pool</span>
-                        <span className="font-mono text-zinc-200">{short(yieldAddresses.v3Pool)}</span>
-                      </a>
-                      <a
-                        className="flex items-center justify-between gap-3 bg-black/20 border border-zinc-900/60 rounded-lg px-3 py-2 hover:border-zinc-800/80 transition-colors"
-                        href={`https://basescan.org/address/${yieldAddresses.strategyBatcher}`}
-                        target="_blank"
-                        rel="noreferrer"
-                      >
-                        <span className="text-zinc-500">Strategy batcher</span>
-                        <span className="font-mono text-zinc-200">{short(yieldAddresses.strategyBatcher)}</span>
-                      </a>
+                    <div className="rounded-2xl border border-white/5 bg-[#080808]/60 backdrop-blur-2xl overflow-hidden divide-y divide-white/5">
+                      <div className="px-4 py-2 text-[10px] uppercase tracking-wide text-zinc-500 bg-white/[0.02]">
+                        Core stack
+                      </div>
+                      <ContractRow
+                        label="Vault token"
+                        title={`${vaultName} (${vaultSymbol})`}
+                        contractName="CreatorOVault"
+                        addr={addresses.vault}
+                        note="Core vault that holds creator coin deposits and mints shares."
+                        icon={
+                          <div className="w-14 h-14 rounded-full bg-black/30 border border-white/5 shadow-[inset_0_0_24px_rgba(0,0,0,0.9)] flex items-center justify-center text-zinc-500">
+                            <Lock className="w-5 h-5" />
+                          </div>
+                        }
+                        metaLine={
+                          <>
+                            <span className="font-mono text-zinc-400">ERC-4626</span>
+                            {' · '}
+                            <span className="inline-flex items-center gap-1.5 text-zinc-400">
+                              <img
+                                src="/protocols/layerzero.svg"
+                                alt=""
+                                aria-hidden="true"
+                                loading="lazy"
+                                className="w-3.5 h-3.5 opacity-90"
+                              />
+                              LayerZero
+                            </span>
+                            {' · '}
+                            <span className="inline-flex items-center gap-1.5 text-zinc-400">
+                              <img
+                                src="/protocols/yearn.svg"
+                                alt=""
+                                aria-hidden="true"
+                                loading="lazy"
+                                className="w-3.5 h-3.5 opacity-90"
+                              />
+                              Yearn v3
+                            </span>
+                          </>
+                        }
+                      />
+                      <ContractRow
+                        label="Share token"
+                        title={`Wrapped ${vaultName} (${symbol})`}
+                        contractName="CreatorShareOFT"
+                        addr={addresses.shareOFT}
+                        note="Wrapped vault shares token (wsToken) used for routing fees."
+                        icon={
+                          <DerivedTokenIcon
+                            tokenAddress={creatorToken}
+                            symbol={underlyingSymbolUpper || 'TOKEN'}
+                            variant="share"
+                            size="lg"
+                          />
+                        }
+                        metaLine={
+                          <>
+                            <span className="inline-flex items-center gap-1.5 text-zinc-400">
+                              <img
+                                src="/protocols/layerzero.svg"
+                                alt=""
+                                aria-hidden="true"
+                                loading="lazy"
+                                className="w-3.5 h-3.5 opacity-90"
+                              />
+                              LayerZero OFT
+                            </span>
+                          </>
+                        }
+                      />
+                      <ContractRow
+                        label="Wrapper"
+                        title="Vault Wrapper"
+                        contractName="CreatorOVaultWrapper"
+                        addr={addresses.wrapper}
+                        note="Wraps/unlocks vault shares into the wsToken."
+                        icon={
+                          <div className="w-8 h-8 flex items-center justify-center text-zinc-600">
+                            <Layers className="w-4 h-4" />
+                          </div>
+                        }
+                      />
+                      <ContractRow
+                        label="Gauge controller"
+                        title="Fees & incentives"
+                        contractName="CreatorGaugeController"
+                        addr={addresses.gaugeController}
+                        note="Routes fees (burn / lottery / voters) and manages gauges."
+                        icon={
+                          <div className="w-8 h-8 flex items-center justify-center text-zinc-600">
+                            <BarChart3 className="w-4 h-4" />
+                          </div>
+                        }
+                      />
+                      <ContractRow
+                        label="Launch strategy"
+        title={
+          <a
+            href="https://cca.uniswap.org"
+            target="_blank"
+            rel="noreferrer"
+            className="inline-block max-w-full hover:text-white transition-colors underline underline-offset-4 decoration-white/15 hover:decoration-white/30"
+            title="Open cca.uniswap.org"
+          >
+            Uniswap Continuous Clearing Auction
+          </a>
+        }
+                        contractName="CCALaunchStrategy"
+                        addr={addresses.ccaStrategy}
+                        note="Runs Uniswap’s Continuous Clearing Auction (CCA) for fair price discovery."
+                        icon={
+                          <div className="w-8 h-8 flex items-center justify-center text-zinc-600">
+                            <Rocket className="w-4 h-4" />
+                          </div>
+                        }
+                        metaLine={
+                          <>
+                            <span className="inline-flex items-center gap-1.5 text-zinc-400">
+                              <img
+                                src="/protocols/uniswap.png"
+                                alt=""
+                                aria-hidden="true"
+                                loading="lazy"
+                                className="w-3.5 h-3.5 opacity-90"
+                              />
+                              Uniswap
+                            </span>
+                          </>
+                        }
+                      />
+                      {addresses.oracle ? (
+                        <ContractRow
+                          label="Oracle"
+                          title="Price oracle"
+                          contractName="CreatorOracle"
+                          addr={addresses.oracle}
+                          note="Price oracle used by the auction and strategies."
+                          icon={
+                            <div className="w-8 h-8 flex items-center justify-center text-zinc-600">
+                              <ShieldCheck className="w-4 h-4" />
+                            </div>
+                          }
+                          metaLine={
+                            <>
+                              <span className="inline-flex items-center gap-1.5 text-zinc-400">
+                                <img
+                                  src="/protocols/chainlink.svg"
+                                  alt=""
+                                  aria-hidden="true"
+                                  loading="lazy"
+                                  className="w-3.5 h-3.5 opacity-90"
+                                />
+                                Chainlink
+                              </span>
+                            </>
+                          }
+                        />
+                      ) : null}
+
+                      {yieldAddresses ? (
+                        <>
+                          <div className="px-4 py-2 text-[10px] uppercase tracking-wide text-zinc-500 bg-white/[0.02]">
+                            Yield strategies
+                          </div>
+                          <ContractRow
+                            label="Yield strategy"
+                            title={`${charmPairLabel} Uniswap V3 LP (0.3%) — Charm Alpha Pro`}
+                            contractName="CreatorCharmStrategyV2"
+                            addr={yieldAddresses.creatorCharmStrategy}
+                            note={`Charm Alpha Pro Vault manages the Uniswap V3 LP position for ${charmPairLabel} (0.3% fee tier).`}
+                            icon={
+                              <div className="w-8 h-8 flex items-center justify-center text-zinc-600">
+                                <RotateCw className="w-4 h-4" />
+                              </div>
+                            }
+                            metaLine={
+                              <>
+                                <span className="inline-flex items-center gap-1.5 text-zinc-400">
+                                  <img
+                                    src="/protocols/charm.png"
+                                    alt=""
+                                    aria-hidden="true"
+                                    loading="lazy"
+                                    className="w-3.5 h-3.5 opacity-90"
+                                  />
+                                  Charm
+                                </span>
+                                {' · '}
+                                <span className="inline-flex items-center gap-1.5 text-zinc-400">
+                                  <img
+                                    src="/protocols/uniswap.png"
+                                    alt=""
+                                    aria-hidden="true"
+                                    loading="lazy"
+                                    className="w-3.5 h-3.5 opacity-90"
+                                  />
+                                  Uniswap V3
+                                </span>
+                              </>
+                            }
+                          />
+                          <ContractRow
+                            label="Yield strategy"
+                            title="Ajna lending"
+                            contractName="AjnaStrategy"
+                            addr={yieldAddresses.ajnaStrategy}
+                            note="Collateralized lending via Ajna: deposit collateral (e.g. USDC), borrow creator coin (can be sold for liquidity), repay to unlock collateral (liquidation risk)."
+                            icon={
+                              <div className="w-8 h-8 flex items-center justify-center text-zinc-600">
+                                <RotateCw className="w-4 h-4" />
+                              </div>
+                            }
+                            metaLine={
+                              <>
+                                <span className="inline-flex items-center gap-1.5 text-zinc-400">
+                                  <img
+                                    src="/protocols/ajna.svg"
+                                    alt=""
+                                    aria-hidden="true"
+                                    loading="lazy"
+                                    className="w-3.5 h-3.5 opacity-90"
+                                  />
+                                  Ajna
+                                </span>
+                              </>
+                            }
+                          />
+                        </>
+                      ) : null}
                     </div>
                   </div>
                 ) : null}

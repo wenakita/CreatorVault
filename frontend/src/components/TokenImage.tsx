@@ -30,6 +30,14 @@ const sizeClasses = {
   '2xl': 'w-[72px] h-[72px] text-3xl',
 }
 
+const innerPadBySize: Record<NonNullable<TokenImageProps['size']>, string> = {
+  sm: 'p-[4px]',
+  md: 'p-[5px]',
+  lg: 'p-[6px]',
+  xl: 'p-[7px]',
+  '2xl': 'p-[8px]',
+}
+
 // Simple fallback component (no wagmi hooks)
 function TokenFallback({
   symbol,
@@ -53,6 +61,7 @@ function TokenFallback({
 function TokenImageInner({
   tokenAddress,
   symbol,
+  size,
   sizeClass,
   fallbackColor,
   isWrapped,
@@ -60,6 +69,7 @@ function TokenImageInner({
 }: {
   tokenAddress: `0x${string}`
   symbol: string
+  size: NonNullable<TokenImageProps['size']>
   sizeClass: string
   fallbackColor: string
   isWrapped: boolean
@@ -93,27 +103,40 @@ function TokenImageInner({
   }
 
   // Wrapped version: show creator coin icon inside an elegant Liquid Gold bezel (vault form)
+  const padClass = innerPadBySize[size]
   return (
     <div className={`relative ${className}`}>
       <div className={`${sizeClass} relative`}>
         <LiquidGoldBorder intensity="low">
-          <div className="w-full h-full p-[5px] bg-obsidian rounded-full">
+          <div className={`w-full h-full ${padClass} bg-obsidian rounded-full`}>
             <div className="w-full h-full rounded-full overflow-hidden relative shadow-[inset_0_0_20px_black]">
-              {showFallback ? (
-                <div
-                  className={`w-full h-full rounded-full bg-gradient-to-br ${fallbackColor} flex items-center justify-center font-display font-bold text-white`}
-                >
-                  {symbol[0]?.toUpperCase() || '?'}
-                </div>
-              ) : (
-                <img
-                  src={imageUrl}
-                  alt={symbol}
-                  className="w-full h-full object-cover rounded-full"
-                  onError={() => setImgError(true)}
-                  loading="lazy"
-                />
-              )}
+              {/* Token body */}
+              <div className="absolute inset-0 rounded-full overflow-hidden bg-black">
+                {showFallback ? (
+                  <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-gold-300/30 via-gold-900/10 to-black">
+                    <span className="text-white/80 font-serif text-base leading-none select-none">
+                      {symbol.trim()?.[0]?.toUpperCase() || '?'}
+                    </span>
+                  </div>
+                ) : (
+                  <img
+                    src={imageUrl}
+                    alt={symbol}
+                    className="w-full h-full object-cover"
+                    onError={() => setImgError(true)}
+                    loading="lazy"
+                  />
+                )}
+
+                {/* Cinematic vignette */}
+                <div className="absolute inset-0 shadow-[inset_0_0_40px_rgba(0,0,0,0.8)] pointer-events-none" />
+              </div>
+
+              {/* Static glass reflection (high-end “lens” feel) */}
+              <div className="absolute inset-0 rounded-full pointer-events-none opacity-40 mix-blend-overlay bg-[radial-gradient(circle_at_30%_20%,rgba(255,255,255,0.75)_0%,transparent_60%)]" />
+
+              {/* Heavy glass lens rim */}
+              <div className="absolute inset-0 rounded-full border border-white/10 pointer-events-none shadow-[inset_0_4px_20px_rgba(255,255,255,0.1)]" />
             </div>
           </div>
         </LiquidGoldBorder>
@@ -136,6 +159,7 @@ export const TokenImage = memo(function TokenImage({
 }: TokenImageProps) {
   const { status } = useWeb3()
   const sizeClass = sizeClasses[size]
+  const padClass = innerPadBySize[size]
   
   // If web3 isn't ready, show simple fallback
   if (status !== 'ready') {
@@ -151,13 +175,18 @@ export const TokenImage = memo(function TokenImage({
       <div className={`relative ${className}`}>
         <div className={`${sizeClass} relative`}>
           <LiquidGoldBorder intensity="low">
-            <div className="w-full h-full p-[5px] bg-obsidian rounded-full">
+            <div className={`w-full h-full ${padClass} bg-obsidian rounded-full`}>
               <div className="w-full h-full rounded-full overflow-hidden relative shadow-[inset_0_0_20px_black]">
-                <div
-                  className={`w-full h-full rounded-full bg-gradient-to-br ${fallbackColor} flex items-center justify-center font-display font-bold text-white`}
-                >
-                  {symbol[0]?.toUpperCase() || '?'}
+                <div className="absolute inset-0 rounded-full overflow-hidden bg-black">
+                  <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-gold-300/30 via-gold-900/10 to-black">
+                    <span className="text-white/80 font-serif text-base leading-none select-none">
+                      {symbol.trim()?.[0]?.toUpperCase() || '?'}
+                    </span>
+                  </div>
+                  <div className="absolute inset-0 shadow-[inset_0_0_40px_rgba(0,0,0,0.8)] pointer-events-none" />
                 </div>
+                <div className="absolute inset-0 rounded-full pointer-events-none opacity-40 mix-blend-overlay bg-[radial-gradient(circle_at_30%_20%,rgba(255,255,255,0.75)_0%,transparent_60%)]" />
+                <div className="absolute inset-0 rounded-full border border-white/10 pointer-events-none shadow-[inset_0_4px_20px_rgba(255,255,255,0.1)]" />
               </div>
             </div>
           </LiquidGoldBorder>
@@ -171,6 +200,7 @@ export const TokenImage = memo(function TokenImage({
     <TokenImageInner
       tokenAddress={tokenAddress}
       symbol={symbol}
+      size={size}
       sizeClass={sizeClass}
       fallbackColor={fallbackColor}
       isWrapped={isWrapped}

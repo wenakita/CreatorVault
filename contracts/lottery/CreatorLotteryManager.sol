@@ -98,6 +98,11 @@ interface IveAKITABoostManager {
     function hasBoost(address user) external view returns (bool);
 }
 
+interface IVaultGaugeVoting {
+    /// @notice Vault's vote-directed probability boost (PPM) from the global gauge budget.
+    function getVaultGaugeProbabilityBoostPPM(address vault) external view returns (uint256);
+}
+
 contract CreatorLotteryManager is OApp, OAppOptionsType3, ReentrancyGuard, Pausable {
     using OptionsBuilder for bytes;
     using SafeERC20 for IERC20;
@@ -138,6 +143,12 @@ contract CreatorLotteryManager is OApp, OAppOptionsType3, ReentrancyGuard, Pausa
 
     /// @notice Boost manager for veAKITA lockers
     IveAKITABoostManager public boostManager;
+
+    /// @notice VaultGaugeVoting for ve(3,3) vault probability direction
+    IVaultGaugeVoting public vaultGaugeVoting;
+
+    /// @notice Minimum vault weight in bps (vaults with 0 votes get this minimum)
+    uint256 public minVaultWeightBps = 100; // 1% minimum
 
     /// @notice Lottery configuration (shared across all creators)
     struct LotteryConfig {
@@ -215,6 +226,8 @@ contract CreatorLotteryManager is OApp, OAppOptionsType3, ReentrancyGuard, Pausa
     event WinnerReceivedFromRemote(uint32 indexed srcEid, address indexed creatorCoin, address indexed winner, uint16 payoutBps);
     event VRFConsumerUpdated(address indexed consumer);
     event BoostManagerUpdated(address indexed manager);
+    event VaultGaugeVotingUpdated(address indexed vaultGaugeVoting);
+    event MinVaultWeightUpdated(uint256 minWeightBps);
 
     // ================================
     // ERRORS
@@ -313,9 +326,12 @@ contract CreatorLotteryManager is OApp, OAppOptionsType3, ReentrancyGuard, Pausa
             return 0;
         }
 
-        // Calculate win probability with boost
+        // Get vault for this creator coin (for ve(3,3) vault weighting)
+        address vault = registry.getVaultForToken(creatorCoin);
+
+        // Calculate win probability with ve(3,3) boosts
         uint256 baseWinChance = calculateWinChance(swapValueUSD);
-        uint256 boostedWinChance = _applyBoost(buyer, baseWinChance);
+        uint256 boostedWinChance = _applyBoost(buyer, vault, swapValueUSD, baseWinChance);
 
         // Request VRF
         if (useLocalVRF && address(localVRFConsumer) != address(0)) {
@@ -490,35 +506,77 @@ contract CreatorLotteryManager is OApp, OAppOptionsType3, ReentrancyGuard, Pausa
         winChancePPM = lotteryConfig.baseWinChance + (scaledAmount * chanceRange / maxScale);
     }
 
+    /**
+     * @notice Apply ve(3,3) boosts to base win probability
+     * @param user The user who made the swap
+     * @param vault The vault where the swap occurred (for gauge allocation)
+     * @param swapAmountUSD Swap size in USD (1e6)
+     * @param baseWinChance Base win chance in PPM
+     * @return boostedWinChance Final win chance after all boosts
+     *
+     * @dev ve(3,3) PROBABILITY MODEL (current implementation):
+     *      FinalPPM = BasePPM × PersonalBoost + LockDurationBoostPPM + VaultGaugeBoostPPM
+     *
+     * Where:
+     * - BasePPM: derived from swap size
+     * - PersonalBoost: veAKITA (up to 2.5x)
+     * - LockDurationBoostPPM: additional additive boost from lock duration
+     * - VaultGaugeBoostPPM: additive boost allocated from a bounded weekly gauge budget
+     */
     function _applyBoost(
         address user,
+        address vault,
+        uint256 swapAmountUSD,
         uint256 baseWinChance
     ) internal view returns (uint256 boostedWinChance) {
         boostedWinChance = baseWinChance;
 
-        if (address(boostManager) == address(0)) {
-            return boostedWinChance;
+        // STEP 1: Apply personal veAKITA boost (up to 2.5x)
+        if (address(boostManager) != address(0)) {
+            try boostManager.calculateBoost(user) returns (uint256 boostBPS) {
+                if (boostBPS > 10000) {
+                    boostBPS = boostBPS > MAX_VE_BOOST ? MAX_VE_BOOST : boostBPS;
+                    boostedWinChance = (baseWinChance * boostBPS) / 10000;
+                }
+            } catch {}
+
+            // Additional probability boost from lock duration
+            try boostManager.getTotalProbabilityBoost(user) returns (uint256 probBoostBps) {
+                if (probBoostBps > 0) {
+                    uint256 additionalPPM = probBoostBps * 100;
+                    boostedWinChance += additionalPPM;
+                }
+            } catch {}
         }
 
-        // veAKITA boost (users who lock wrapped shares)
-        try boostManager.calculateBoost(user) returns (uint256 boostBPS) {
-            if (boostBPS > 10000) {
-                boostBPS = boostBPS > MAX_VE_BOOST ? MAX_VE_BOOST : boostBPS;
-                boostedWinChance = (baseWinChance * boostBPS) / 10000;
-            }
-        } catch {}
+        // STEP 2: Add vault gauge boost (vote-directed probability budget)
+        // The gauge returns a bounded PPM boost for this vault. We scale it by swap size so
+        // tiny swaps don't fully capture the weekly budget (anti-spam).
+        if (address(vaultGaugeVoting) != address(0) && vault != address(0)) {
+            try vaultGaugeVoting.getVaultGaugeProbabilityBoostPPM(vault) returns (uint256 gaugeBoostPPM) {
+                if (gaugeBoostPPM > 0) {
+                    boostedWinChance += _scaleGaugeBoostBySwapSize(gaugeBoostPPM, swapAmountUSD);
+                }
+            } catch {}
+        }
 
-        // Probability boost from gauge votes
-        try boostManager.getTotalProbabilityBoost(user) returns (uint256 vaultBoostBps) {
-            if (vaultBoostBps > 0) {
-                uint256 additionalPPM = vaultBoostBps * 100;
-                boostedWinChance += additionalPPM;
-            }
-        } catch {}
-
+        // Cap at maximum
         if (boostedWinChance > lotteryConfig.maxWinChance) {
             boostedWinChance = lotteryConfig.maxWinChance;
         }
+    }
+
+    function _scaleGaugeBoostBySwapSize(uint256 gaugeBoostPPM, uint256 swapAmountUSD) internal view returns (uint256) {
+        // Mirror the same linear scaling region used by calculateWinChance()
+        uint256 minSwap = lotteryConfig.minSwapAmount;
+        if (swapAmountUSD <= minSwap) return 0;
+
+        uint256 scaledAmount = swapAmountUSD - minSwap;
+        uint256 maxScale = 1_000_000_000; // $1000 (6 decimals)
+        if (scaledAmount >= maxScale) return gaugeBoostPPM;
+
+        // Linear ramp from 0 → full boost over the first $1000 above minSwap
+        return (gaugeBoostPPM * scaledAmount) / maxScale;
     }
 
     function _processWin(
@@ -645,15 +703,15 @@ contract CreatorLotteryManager is OApp, OAppOptionsType3, ReentrancyGuard, Pausa
         // Check for winner notify message (from remote to hub)
         if (_payload.length >= 66) {
             // Try to decode as notify message first
-            (uint16 msgType, address creatorCoin, address winner, uint16 payoutBps) = abi.decode(
+            (uint16 msgType, address notifyCreatorCoin, address notifyWinner, uint16 notifyPayoutBps) = abi.decode(
                 _payload, 
                 (uint16, address, address, uint16)
             );
 
             if (msgType == MSG_TYPE_WINNER_NOTIFY && registry.isHubChain()) {
-                emit WinnerReceivedFromRemote(_origin.srcEid, creatorCoin, winner, payoutBps);
-                _payoutLocalJackpot(creatorCoin, winner, payoutBps);
-                _broadcastWinnerToRemoteChains(creatorCoin, winner, payoutBps);
+                emit WinnerReceivedFromRemote(_origin.srcEid, notifyCreatorCoin, notifyWinner, notifyPayoutBps);
+                _payoutLocalJackpot(notifyCreatorCoin, notifyWinner, notifyPayoutBps);
+                _broadcastWinnerToRemoteChains(notifyCreatorCoin, notifyWinner, notifyPayoutBps);
                 return;
             }
         }
@@ -661,11 +719,11 @@ contract CreatorLotteryManager is OApp, OAppOptionsType3, ReentrancyGuard, Pausa
         require(!registry.isHubChain(), "Hub doesn't receive broadcasts");
 
         // Decode as broadcast message (hub to remote)
-        (address creatorCoin, address winner, uint16 payoutBps) = abi.decode(
+        (address broadcastCreatorCoin, address broadcastWinner, uint16 broadcastPayoutBps) = abi.decode(
             _payload, 
             (address, address, uint16)
         );
-        _payoutLocalJackpot(creatorCoin, winner, payoutBps);
+        _payoutLocalJackpot(broadcastCreatorCoin, broadcastWinner, broadcastPayoutBps);
     }
 
     /**
@@ -760,6 +818,25 @@ contract CreatorLotteryManager is OApp, OAppOptionsType3, ReentrancyGuard, Pausa
     function setBoostManager(address _manager) external onlyOwner {
         boostManager = IveAKITABoostManager(_manager);
         emit BoostManagerUpdated(_manager);
+    }
+
+    /**
+     * @notice Set VaultGaugeVoting for ve(3,3) probability direction
+     * @param _vaultGaugeVoting Address of the VaultGaugeVoting contract
+     */
+    function setVaultGaugeVoting(address _vaultGaugeVoting) external onlyOwner {
+        vaultGaugeVoting = IVaultGaugeVoting(_vaultGaugeVoting);
+        emit VaultGaugeVotingUpdated(_vaultGaugeVoting);
+    }
+
+    /**
+     * @notice Set minimum vault weight in bps
+     * @param _minWeightBps Minimum weight (e.g., 100 = 1%)
+     */
+    function setMinVaultWeightBps(uint256 _minWeightBps) external onlyOwner {
+        require(_minWeightBps <= 1000, "Max 10%"); // Cap at 10%
+        minVaultWeightBps = _minWeightBps;
+        emit MinVaultWeightUpdated(_minWeightBps);
     }
 
     function setLotteryConfig(

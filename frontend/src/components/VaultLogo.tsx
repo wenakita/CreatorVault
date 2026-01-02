@@ -1,4 +1,4 @@
-import { TokenImage } from './TokenImage'
+import { DerivedTokenIcon } from './DerivedTokenIcon'
 import { AKITA } from '../config/contracts'
 
 interface VaultLogoProps {
@@ -9,13 +9,7 @@ interface VaultLogoProps {
 export function VaultLogo({ size = 'md', className = '' }: VaultLogoProps) {
   return (
     <div className={`relative ${className}`}>
-      <TokenImage
-        tokenAddress={AKITA.token as `0x${string}`}
-        symbol="AKITA"
-        size={size}
-        fallbackColor="from-orange-500 to-red-600"
-        isWrapped={true}
-      />
+      <DerivedTokenIcon tokenAddress={AKITA.token as `0x${string}`} symbol="AKITA" variant="share" size={size} />
     </div>
   )
 }

@@ -1,12 +1,12 @@
-import { useState } from 'react'
 import { Link } from 'react-router-dom'
-import { motion, AnimatePresence } from 'framer-motion'
-import { ArrowLeft, ArrowRight, ChevronRight } from 'lucide-react'
+import { motion } from 'framer-motion'
+import { ArrowLeft, ArrowRight } from 'lucide-react'
 import { TokenImage } from '@/components/TokenImage'
 import { AKITA } from '@/config/contracts'
 
 export function FaqHowItWorks() {
-  const [carouselPage, setCarouselPage] = useState(0)
+  const surface =
+    'bg-[#080808]/70 backdrop-blur-2xl border border-white/5 ring-1 ring-white/5 rounded-2xl shadow-[0_30px_80px_rgba(0,0,0,0.6)]'
 
   return (
     <div className="relative">
@@ -26,596 +26,110 @@ export function FaqHowItWorks() {
             initial={{ opacity: 0, y: 16 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6 }}
-            className="space-y-6"
+            className="space-y-8"
           >
             <div>
               <span className="label">FAQ</span>
               <h1 className="headline text-4xl sm:text-6xl mt-4">How it works</h1>
               <p className="text-zinc-500 text-sm sm:text-base font-light mt-4 max-w-2xl">
-                CreatorVault turns a creator coin into a vault token (wsTOKEN). You can deposit, earn from trade fees,
-                and withdraw back to the original token.
+                The short version: deposit a creator coin → receive a vault share token (<span className="mono">wsTOKEN</span>) → the vault earns fees and
+                runs strategies → you can redeem by burning <span className="mono">wsTOKEN</span>.
               </p>
             </div>
 
-            {/* Steps (moved from Home) */}
-            <div className="space-y-0 border-t border-zinc-900/50">
-              <div className="data-row group">
-                <div className="space-y-2">
-                  <span className="label">Step 01</span>
-                  <h2 className="text-2xl text-white font-light">Deposit Creator Coins</h2>
-                  <p className="text-zinc-600 text-sm font-light">
-                    Deposit the creator coin into a vault to receive wsTOKEN.
-                  </p>
+            <div className={`${surface} p-6 sm:p-8`}>
+              <span className="label">The 30-second flow</span>
+              <div className="mt-6 space-y-0 border-t border-white/5">
+                <div className="data-row group border-white/5">
+                  <div className="space-y-2">
+                    <span className="label">Step 01</span>
+                    <h2 className="text-2xl text-white font-light">Deposit</h2>
+                    <p className="text-zinc-600 text-sm font-light">
+                      Deposit the creator coin into its vault. You receive <span className="mono">wsTOKEN</span> shares.
+                    </p>
+                  </div>
                 </div>
-                <div className="text-right hidden sm:block">
-                  <div className="value mono text-cyan-400">~1:1</div>
-                  <span className="label">Exchange Rate</span>
-                </div>
-              </div>
 
-              <div className="data-row group">
-                <div className="space-y-2">
-                  <span className="label">Step 02</span>
-                  <h2 className="text-2xl text-white font-light">Earn From Trades</h2>
-                  <p className="text-zinc-600 text-sm font-light">
-                    Trade fees are routed through the vault system and accrue to holders.
-                  </p>
+                <div className="data-row group border-white/5">
+                  <div className="space-y-2">
+                    <span className="label">Step 02</span>
+                    <h2 className="text-2xl text-white font-light">Earn</h2>
+                    <p className="text-zinc-600 text-sm font-light">
+                      The vault can earn from fee routing and from strategy results. This is not guaranteed yield.
+                    </p>
+                  </div>
                 </div>
-                <div className="text-right hidden sm:block">
-                  <div className="value mono text-purple-400">6.9%</div>
-                  <span className="label">Trade Fee</span>
-                </div>
-              </div>
 
-              <div className="data-row group border-none">
-                <div className="space-y-2">
-                  <span className="label">Step 03</span>
-                  <h2 className="text-2xl text-white font-light">Withdraw Anytime</h2>
-                  <p className="text-zinc-600 text-sm font-light">
-                    Burn wsTOKEN and withdraw back to the underlying creator coin.
-                  </p>
-                </div>
-                <div className="text-right hidden sm:block">
-                  <div className="value mono text-amber-400">Instant</div>
-                  <span className="label">Redeem</span>
+                <div className="data-row group border-none">
+                  <div className="space-y-2">
+                    <span className="label">Step 03</span>
+                    <h2 className="text-2xl text-white font-light">Redeem</h2>
+                    <p className="text-zinc-600 text-sm font-light">
+                      Burn <span className="mono">wsTOKEN</span> to redeem the underlying creator coin from the vault.
+                    </p>
+                  </div>
                 </div>
               </div>
             </div>
-          </motion.div>
-        </div>
-      </section>
 
-      {/* Deep-dive carousel (moved from /dashboard) */}
-      <section className="cinematic-section">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6">
-          <motion.div
-            initial={{ opacity: 0 }}
-            whileInView={{ opacity: 1 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.8 }}
-            className="mb-12"
-          >
-            <span className="label">How it works</span>
-            <h2 className="headline text-4xl sm:text-5xl mt-6">Deposit · Wrap · Earn</h2>
-          </motion.div>
+            <div className="grid lg:grid-cols-3 gap-6 items-stretch">
+              <div className={`${surface} p-6 sm:p-8 space-y-5`}>
+                <span className="label">Deposit → shares</span>
+                <div className="flex items-center justify-center gap-5 py-2">
+                  <TokenImage tokenAddress={AKITA.token as `0x${string}`} symbol="AKITA" size="md" isWrapped={false} />
+                  <ArrowRight className="w-5 h-5 text-zinc-700" />
+                  <TokenImage tokenAddress={AKITA.token as `0x${string}`} symbol="AKITA" size="md" isWrapped />
+                </div>
+                <p className="text-zinc-600 text-sm font-light leading-relaxed">
+                  You deposit the creator coin and receive <span className="mono">wsTOKEN</span>. Your ownership is represented by shares, not a fixed “1:1.”
+                  As vault assets change, the share price changes.
+                </p>
+              </div>
 
-          {/* Carousel Container */}
-          <div className="relative">
-            <AnimatePresence mode="wait">
-              {carouselPage === 0 && (
-                <motion.div
-                  key="page-0"
-                  initial={{ opacity: 0, x: 20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  exit={{ opacity: 0, x: -20 }}
-                  transition={{ duration: 0.4 }}
-                >
-                  {/* Page 1: Token Transformation */}
-                  <div className="grid lg:grid-cols-3 gap-8 items-center mb-12">
-                    {/* Step 1: Underlying Token */}
-                    <div className="card p-8 space-y-6">
-                      <span className="label">Step 1: Deposit</span>
-                      <div className="flex items-center justify-center py-8">
-                        <TokenImage
-                          tokenAddress={AKITA.token as `0x${string}`}
-                          symbol="AKITA"
-                          size="lg"
-                          isWrapped={false}
-                        />
-                      </div>
-                      <div className="text-center space-y-2">
-                        <div className="headline text-2xl">AKITA</div>
-                        <p className="text-zinc-600 text-sm font-light">Creator Token</p>
-                      </div>
-                      <div className="pt-4 border-t border-zinc-900/50 space-y-2">
-                        <div className="flex justify-between text-sm">
-                          <span className="text-zinc-500">Type</span>
-                          <span className="value mono">ERC-20</span>
-                        </div>
-                        <div className="flex justify-between text-sm">
-                          <span className="text-zinc-500">Yield</span>
-                          <span className="value mono text-zinc-600">None</span>
-                        </div>
-                      </div>
-                    </div>
+              <div className={`${surface} p-6 sm:p-8 space-y-5`}>
+                <span className="label">Earning sources</span>
+                <ul className="list-disc list-inside space-y-2 text-zinc-600 text-sm font-light">
+                  <li>Fee routing from trading activity (when pools are live)</li>
+                  <li>Strategy results (e.g. LP ranges, lending/borrowing)</li>
+                  <li>Some capital may be kept idle for withdrawals</li>
+                </ul>
+                <p className="text-zinc-700 text-xs font-light">
+                  Nothing here implies a promised APY. The vault can make or lose money depending on market conditions and strategy behavior.
+                </p>
+              </div>
 
-                    {/* Arrow */}
-                    <div className="hidden lg:flex justify-center">
-                      <div className="flex flex-col items-center gap-4">
-                        <div className="w-12 h-12 rounded-full bg-purple-500/10 border border-purple-500/30 flex items-center justify-center">
-                          <ArrowRight className="w-6 h-6 text-purple-400" />
-                        </div>
-                        <span className="label text-purple-400">Vault Wraps</span>
-                      </div>
-                    </div>
-
-                    {/* Step 2: ShareOFT Token */}
-                    <div className="card p-8 space-y-6 border-purple-500/30">
-                      <span className="label text-purple-400">Step 2: Receive</span>
-                      <div className="flex items-center justify-center py-8">
-                        <TokenImage
-                          tokenAddress={AKITA.token as `0x${string}`}
-                          symbol="AKITA"
-                          size="lg"
-                          isWrapped={true}
-                        />
-                      </div>
-                      <div className="text-center space-y-2">
-                        <div className="headline text-2xl glow-purple">wsAKITA</div>
-                        <p className="text-zinc-600 text-sm font-light">Vault Share (OFT)</p>
-                      </div>
-                      <div className="pt-4 border-t border-zinc-900/50 space-y-2">
-                        <div className="flex justify-between text-sm">
-                          <span className="text-zinc-500">Type</span>
-                          <span className="value mono text-cyan-400">OFT</span>
-                        </div>
-                        <div className="flex justify-between text-sm">
-                          <span className="text-zinc-500">Yield</span>
-                          <span className="value mono glow-cyan">Auto-Compound</span>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Key Difference */}
-                  <div className="card p-10">
-                    <div className="grid lg:grid-cols-2 gap-12">
-                      <div className="space-y-4">
-                        <span className="label">Vault Deploys</span>
-                        <div className="value mono text-3xl">AKITA</div>
-                        <p className="text-zinc-600 font-light leading-relaxed">
-                          Your deposited tokens work across LP, lending, and reserves
-                        </p>
-                      </div>
-                      <div className="space-y-4">
-                        <span className="label">You Hold</span>
-                        <div className="value mono text-3xl glow-purple">wsAKITA</div>
-                        <p className="text-zinc-600 font-light leading-relaxed">
-                          Vault share token that auto-compounds earnings from all underlying strategies
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                </motion.div>
-              )}
-
-              {carouselPage === 1 && (
-                <motion.div
-                  key="page-1"
-                  initial={{ opacity: 0, x: 20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  exit={{ opacity: 0, x: -20 }}
-                  transition={{ duration: 0.4 }}
-                >
-                  {/* Page 2: Strategy Allocation */}
-                  <div className="space-y-8">
-                    <div className="text-center space-y-4">
-                      <span className="label">Automated Deployment</span>
-                      <h3 className="headline text-4xl">Multi-Strategy Allocation</h3>
-                      <p className="text-zinc-600 font-light max-w-2xl mx-auto">
-                        Your underlying AKITA tokens are automatically deployed across four strategies
-                      </p>
-                    </div>
-
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-px bg-zinc-900">
-                      <motion.div
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ duration: 0.4, delay: 0.1 }}
-                        className="bg-black p-8 space-y-4"
-                      >
-                        <span className="label">AKITA/USDC Charm LP</span>
-                        <div className="value mono text-6xl glow-cyan">69%</div>
-                        <p className="text-zinc-700 text-xs font-light mt-4">
-                          Stable pair liquidity with auto-rebalancing
-                        </p>
-                      </motion.div>
-
-                      <motion.div
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ duration: 0.4, delay: 0.2 }}
-                        className="bg-black p-8 space-y-4"
-                      >
-                        <span className="label">Ajna Lending</span>
-                        <div className="value mono text-6xl glow-purple">21.39%</div>
-                        <p className="text-zinc-700 text-xs font-light mt-4">
-                          Permissionless lending yield
-                        </p>
-                      </motion.div>
-
-                      <motion.div
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ duration: 0.4, delay: 0.3 }}
-                        className="bg-black p-8 space-y-4"
-                      >
-                        <span className="label">Idle Reserve</span>
-                        <div className="value mono text-6xl">9.61%</div>
-                        <p className="text-zinc-700 text-xs font-light mt-4">
-                          Available for instant withdrawals
-                        </p>
-                      </motion.div>
-                    </div>
-
-                    <div className="card p-10">
-                      <div className="grid lg:grid-cols-3 gap-8">
-                        <div className="space-y-4">
-                          <span className="label">Total Deployed</span>
-                          <div className="value mono text-3xl glow-cyan">90.39%</div>
-                          <p className="text-zinc-600 text-sm font-light">
-                            Earning yield across LP and lending strategies
-                          </p>
-                        </div>
-                        <div className="space-y-4">
-                          <span className="label">Idle Reserve</span>
-                          <div className="value mono text-3xl">9.61%</div>
-                          <p className="text-zinc-600 text-sm font-light">
-                            Ready for withdrawals anytime
-                          </p>
-                        </div>
-                        <div className="space-y-4">
-                          <span className="label">Auto-Optimization</span>
-                          <div className="value mono text-3xl text-purple-400">Active</div>
-                          <p className="text-zinc-600 text-sm font-light">
-                            Automated rebalancing and yield optimization
-                          </p>
-                        </div>
-                      </div>
-
-                      <div className="mt-8 pt-8 border-t border-zinc-900/50">
-                        <p className="text-zinc-600 text-sm font-light text-center">
-                          <span className="text-purple-400">💡 Allocation mirrors fee distribution:</span> 69% jackpot · 21.39% burns · 9.61% treasury
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                </motion.div>
-              )}
-
-              {carouselPage === 2 && (
-                <motion.div
-                  key="page-2"
-                  initial={{ opacity: 0, x: 20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  exit={{ opacity: 0, x: -20 }}
-                  transition={{ duration: 0.4 }}
-                >
-                  {/* Page 3: CCA Launch Process */}
-                  <div className="space-y-8">
-                    <div className="text-center space-y-4">
-                      <span className="label">Fair Launch Mechanism</span>
-                      <h3 className="headline text-4xl">7-Day CCA Auction</h3>
-                      <p className="text-zinc-600 font-light max-w-2xl mx-auto">
-                        When a creator activates their vault, a Continuous Clearing Auction begins for transparent price discovery
-                      </p>
-                    </div>
-
-                    <div className="card p-10">
-                      <div className="space-y-8">
-                        {/* Timeline */}
-                        <div className="relative">
-                          {/* Timeline Line */}
-                          <div className="absolute left-8 top-8 bottom-8 w-px bg-zinc-800" />
-
-                          {/* Day 0 */}
-                          <div className="relative flex gap-6 mb-8">
-                            <div className="relative z-10">
-                              <div className="w-16 h-16 rounded-full bg-purple-500/10 border-2 border-purple-500 flex items-center justify-center flex-shrink-0">
-                                <span className="value text-xl text-purple-400">0</span>
-                              </div>
-                            </div>
-                            <div className="flex-1 pt-2">
-                              <span className="label block mb-2">Launch Day</span>
-                              <h4 className="headline text-2xl mb-3">Vault Activation</h4>
-                              <p className="text-zinc-600 font-light mb-4">
-                                Creator deposits tokens, vault is configured, and CCA auction begins automatically
-                              </p>
-                              <div className="grid grid-cols-2 gap-3">
-                                <div className="bg-zinc-950 p-4 rounded-md border border-zinc-800">
-                                  <span className="label block mb-2">Deposited</span>
-                                  <div className="value mono text-lg">50M AKITA</div>
-                                </div>
-                                <div className="bg-zinc-950 p-4 rounded-md border border-zinc-800">
-                                  <span className="label block mb-2">To Auction</span>
-                                  <div className="value mono text-lg glow-purple">25M wsAKITA</div>
-                                </div>
-                              </div>
-                            </div>
-                          </div>
-
-                          {/* Days 1-7 */}
-                          <div className="relative flex gap-6 mb-8">
-                            <div className="relative z-10">
-                              <div className="w-16 h-16 rounded-full bg-cyan-500/10 border-2 border-cyan-500 flex items-center justify-center flex-shrink-0">
-                                <span className="value text-xl text-cyan-400">1-7</span>
-                              </div>
-                            </div>
-                            <div className="flex-1 pt-2">
-                              <span className="label block mb-2">Auction Period</span>
-                              <h4 className="headline text-2xl mb-3">Price Discovery</h4>
-                              <p className="text-zinc-600 font-light mb-4">
-                                Community bids ETH for wsAKITA. Each block clears at market-discovered price. Fully transparent and onchain.
-                              </p>
-                              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                                <div className="bg-zinc-950 p-4 rounded-md border border-zinc-800">
-                                  <span className="label block mb-2">Mechanism</span>
-                                  <div className="value text-sm">Continuous Clearing</div>
-                                </div>
-                                <div className="bg-zinc-950 p-4 rounded-md border border-zinc-800">
-                                  <span className="label block mb-2">Access</span>
-                                  <div className="value text-sm text-cyan-400">Open to All</div>
-                                </div>
-                                <div className="bg-zinc-950 p-4 rounded-md border border-zinc-800">
-                                  <span className="label block mb-2">Pricing</span>
-                                  <div className="value text-sm text-cyan-400">Market-Driven</div>
-                                </div>
-                              </div>
-                            </div>
-                          </div>
-
-                          {/* Day 7+ */}
-                          <div className="relative flex gap-6">
-                            <div className="relative z-10">
-                              <div className="w-16 h-16 rounded-full bg-amber-500/10 border-2 border-amber-500 flex items-center justify-center flex-shrink-0">
-                                <span className="value text-xl text-amber-400">7+</span>
-                              </div>
-                            </div>
-                            <div className="flex-1 pt-2">
-                              <span className="label block mb-2">Completion</span>
-                              <h4 className="headline text-2xl mb-3">Liquidity Launch</h4>
-                              <p className="text-zinc-600 font-light mb-4">
-                                Auction completes, Uniswap V4 pool created at discovered price, trading begins immediately with Swap to Win lottery
-                              </p>
-                              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                                <div className="bg-zinc-950 p-4 rounded-md border border-zinc-800">
-                                  <span className="label block mb-2">Pool Created</span>
-                                  <div className="value text-sm text-amber-400">wsAKITA/ETH V4</div>
-                                </div>
-                                <div className="bg-zinc-950 p-4 rounded-md border border-zinc-800">
-                                  <span className="label block mb-2">Fee Hook</span>
-                                  <div className="value text-sm text-amber-400">6.9% Enabled</div>
-                                </div>
-                                <div className="bg-zinc-950 p-4 rounded-md border border-zinc-800">
-                                  <span className="label block mb-2">Lottery</span>
-                                  <div className="value text-sm glow-purple">Swap to Win</div>
-                                </div>
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Key Benefits */}
-                    <div className="grid lg:grid-cols-3 gap-6">
-                      <div className="card p-6 space-y-3">
-                        <span className="label">Fair Access</span>
-                        <div className="value text-2xl text-purple-400">No Gatekeeping</div>
-                        <p className="text-zinc-600 text-sm font-light">
-                          Everyone can participate from day one
-                        </p>
-                      </div>
-                      <div className="card p-6 space-y-3">
-                        <span className="label">Transparent</span>
-                        <div className="value text-2xl text-cyan-400">Fully Onchain</div>
-                        <p className="text-zinc-600 text-sm font-light">
-                          All bids and prices visible in real-time
-                        </p>
-                      </div>
-                      <div className="card p-6 space-y-3">
-                        <span className="label">Instant Liquidity</span>
-                        <div className="value text-2xl text-amber-400">V4 Pool</div>
-                        <p className="text-zinc-600 text-sm font-light">
-                          Trading starts immediately after auction
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                </motion.div>
-              )}
-
-              {carouselPage === 3 && (
-                <motion.div
-                  key="page-3"
-                  initial={{ opacity: 0, x: 20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  exit={{ opacity: 0, x: -20 }}
-                  transition={{ duration: 0.4 }}
-                >
-                  {/* Page 4: Fee Architecture */}
-                  <div className="space-y-8">
-                    <div className="grid lg:grid-cols-2 gap-8">
-                      {/* Liquidity Pool */}
-                      <div className="card p-8 space-y-6">
-                        <div className="flex items-start justify-between">
-                          <div>
-                            <span className="label block mb-4">Trading Pair</span>
-                            <div className="headline text-3xl mb-2">wsAKITA/ETH</div>
-                            <p className="text-zinc-600 text-sm font-light">Uniswap V4 with Hook</p>
-                          </div>
-                          <div className="text-right">
-                            <span className="label block mb-2">Fee Tier</span>
-                            <div className="value mono text-2xl">0.3%</div>
-                          </div>
-                        </div>
-
-                        <div className="h-px bg-zinc-900" />
-
-                        <div className="space-y-4">
-                          <div className="flex justify-between items-center">
-                            <span className="text-sm text-zinc-500 font-light">Protocol</span>
-                            <div className="value mono text-sm text-cyan-400">Uniswap V4</div>
-                          </div>
-                          <div className="flex justify-between items-center">
-                            <span className="text-sm text-zinc-500 font-light">Hook Enabled</span>
-                            <div className="value mono text-sm text-purple-400">6.9% Tax</div>
-                          </div>
-                          <div className="flex justify-between items-center">
-                            <span className="text-sm text-zinc-500 font-light">Status</span>
-                            <div className="value mono text-sm text-cyan-400">Live Trading</div>
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Fee Distribution */}
-                      <div className="card p-8 space-y-6">
-                        <div>
-                          <span className="label block mb-4">Buy & Sell Fees</span>
-                          <div className="headline text-3xl mb-2">6.9% Total</div>
-                          <p className="text-zinc-600 text-sm font-light">Applied on every trade</p>
-                        </div>
-
-                        <div className="h-px bg-zinc-900" />
-
-                        <div className="space-y-4">
-                          <div className="flex justify-between items-center">
-                            <span className="text-sm text-zinc-500 font-light">To Jackpot</span>
-                            <div className="value mono text-sm glow-purple">69%</div>
-                          </div>
-                          <div className="flex justify-between items-center">
-                            <span className="text-sm text-zinc-500 font-light">Burned</span>
-                            <div className="value mono text-sm glow-amber">21.4%</div>
-                          </div>
-                          <div className="flex justify-between items-center">
-                            <span className="text-sm text-zinc-500 font-light">To Treasury</span>
-                            <div className="value mono text-sm">9.6%</div>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Flow Diagram */}
-                    <div className="card p-10">
-                      <span className="label block mb-8">Fee Flow</span>
-                      
-                      <div className="space-y-0">
-                        <div className="data-row group">
-                          <div className="flex items-center gap-6">
-                            <div className="w-8 h-8 rounded-full bg-cyan-500/10 border border-cyan-500/30 flex items-center justify-center flex-shrink-0">
-                              <div className="w-2 h-2 rounded-full bg-cyan-400" />
-                            </div>
-                            <div>
-                              <span className="label block mb-1">Trade Executed</span>
-                              <p className="text-zinc-600 text-sm font-light">User buys or sells wsAKITA</p>
-                            </div>
-                          </div>
-                          <div className="value mono text-xl">6.9%</div>
-                        </div>
-
-                        <div className="data-row group">
-                          <div className="flex items-center gap-6">
-                            <div className="w-8 h-8 rounded-full bg-purple-500/10 border border-purple-500/30 flex items-center justify-center flex-shrink-0">
-                              <div className="w-2 h-2 rounded-full bg-purple-400" />
-                            </div>
-                            <div>
-                              <span className="label block mb-1">Jackpot Funded</span>
-                              <p className="text-zinc-600 text-sm font-light">Largest portion goes to global prize pool</p>
-                            </div>
-                          </div>
-                          <div className="value mono text-xl glow-purple">4.8%</div>
-                        </div>
-
-                        <div className="data-row group">
-                          <div className="flex items-center gap-6">
-                            <div className="w-8 h-8 rounded-full bg-amber-500/10 border border-amber-500/30 flex items-center justify-center flex-shrink-0">
-                              <div className="w-2 h-2 rounded-full bg-amber-400" />
-                            </div>
-                            <div>
-                              <span className="label block mb-1">Tokens Burned</span>
-                              <p className="text-zinc-600 text-sm font-light">Deflationary mechanism increases value</p>
-                            </div>
-                          </div>
-                          <div className="value mono text-xl glow-amber">1.5%</div>
-                        </div>
-
-                        <div className="data-row border-none group">
-                          <div className="flex items-center gap-6">
-                            <div className="w-8 h-8 rounded-full bg-zinc-800/50 border border-zinc-700 flex items-center justify-center flex-shrink-0">
-                              <div className="w-2 h-2 rounded-full bg-zinc-600" />
-                            </div>
-                            <div>
-                              <span className="label block mb-1">Treasury</span>
-                              <p className="text-zinc-600 text-sm font-light">Protocol development and sustainability</p>
-                            </div>
-                          </div>
-                          <div className="value mono text-xl">0.6%</div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </motion.div>
-              )}
-            </AnimatePresence>
-
-            {/* Carousel Navigation */}
-            <button
-              onClick={() => setCarouselPage((prev) => (prev + 1) % 4)}
-              className="hidden md:block absolute -right-16 top-1/2 -translate-y-1/2 p-4 rounded-full bg-zinc-900/80 hover:bg-purple-900/80 border border-zinc-800 hover:border-purple-500/50 transition-all group"
-            >
-              <ChevronRight className="w-6 h-6 text-zinc-400 group-hover:text-purple-400 transition-colors" />
-            </button>
-
-            {/* Dot Indicators */}
-            <div className="flex justify-center gap-3 mt-12">
-              <button
-                onClick={() => setCarouselPage(0)}
-                className={`transition-all ${
-                  carouselPage === 0
-                    ? 'w-8 h-2 bg-purple-500'
-                    : 'w-2 h-2 bg-zinc-700 hover:bg-zinc-600'
-                } rounded-full`}
-                aria-label="Carousel page 1"
-              />
-              <button
-                onClick={() => setCarouselPage(1)}
-                className={`transition-all ${
-                  carouselPage === 1
-                    ? 'w-8 h-2 bg-purple-500'
-                    : 'w-2 h-2 bg-zinc-700 hover:bg-zinc-600'
-                } rounded-full`}
-                aria-label="Carousel page 2"
-              />
-              <button
-                onClick={() => setCarouselPage(2)}
-                className={`transition-all ${
-                  carouselPage === 2
-                    ? 'w-8 h-2 bg-purple-500'
-                    : 'w-2 h-2 bg-zinc-700 hover:bg-zinc-600'
-                } rounded-full`}
-                aria-label="Carousel page 3"
-              />
-              <button
-                onClick={() => setCarouselPage(3)}
-                className={`transition-all ${
-                  carouselPage === 3
-                    ? 'w-8 h-2 bg-purple-500'
-                    : 'w-2 h-2 bg-zinc-700 hover:bg-zinc-600'
-                } rounded-full`}
-                aria-label="Carousel page 4"
-              />
+              <div className={`${surface} p-6 sm:p-8 space-y-5`}>
+                <span className="label">Launch (optional)</span>
+                <p className="text-zinc-600 text-sm font-light leading-relaxed">
+                  New vaults can use a Uniswap Continuous Clearing Auction (CCA) to bootstrap fair price discovery and initial liquidity.
+                </p>
+                <div className="flex flex-col gap-2">
+                  <Link to="/dashboard" className="text-cyan-400 hover:text-cyan-300 underline underline-offset-4 text-sm">
+                    Explore vaults
+                  </Link>
+                  <Link to="/faq" className="text-cyan-400 hover:text-cyan-300 underline underline-offset-4 text-sm">
+                    Read the full FAQ
+                  </Link>
+                </div>
+              </div>
             </div>
-          </div>
+
+            <div className={`${surface} p-6 sm:p-8`}>
+              <span className="label">What to verify</span>
+              <div className="mt-4 space-y-3 text-sm text-zinc-500 font-light leading-relaxed">
+                <p>
+                  If you’re about to deploy or bid, verify contracts and configuration on the{' '}
+                  <Link to="/status" className="text-cyan-400 hover:text-cyan-300 underline underline-offset-4">
+                    Status
+                  </Link>{' '}
+                  page first.
+                </p>
+                <p className="text-zinc-600">
+                  CreatorVault is experimental software. Start small and avoid signing transactions you don’t understand.
+                </p>
+              </div>
+            </div>
+          </motion.div>
         </div>
       </section>
     </div>

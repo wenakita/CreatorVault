@@ -1,3 +1,5 @@
 export { useVault } from './useVault'
 export { useActivator } from './useActivator'
 export { useTokenMetadata, useTokenImage } from './useTokenMetadata'
+export { useVaultGaugeVoting, useTimeRemaining, formatVotingPower } from './useVaultGaugeVoting'
+export type { VaultVote, EpochInfo, VotingPowerInfo } from './useVaultGaugeVoting'

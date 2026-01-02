@@ -63,6 +63,11 @@ const Status = lazy(async () => {
   return { default: m.Status }
 })
 
+const GaugeVoting = lazy(async () => {
+  const m = await import('./pages/GaugeVoting')
+  return { default: m.default }
+})
+
 function App() {
   return (
     <>
@@ -80,6 +85,7 @@ function App() {
           <Route path="/faq" element={<Faq />} />
           <Route path="/faq/how-it-works" element={<FaqHowItWorks />} />
           <Route path="/status" element={<Status />} />
+          <Route path="/vote" element={<GaugeVoting />} />
           <Route path="/activate-akita" element={<ActivateAkita />} />
           <Route path="/auction/bid/:address" element={<AuctionBid />} />
           <Route path="/complete-auction" element={<CompleteAuction />} />

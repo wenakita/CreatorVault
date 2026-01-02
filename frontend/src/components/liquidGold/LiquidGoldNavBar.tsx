@@ -14,8 +14,7 @@ type NavItem = {
 const NAV_ITEMS: NavItem[] = [
   { label: 'HOME', to: '/', activePrefixes: ['/'] },
   { label: 'VAULTS', to: '/dashboard', activePrefixes: ['/dashboard', '/vault'] },
-  { label: 'DEPLOY', to: '/deploy', activePrefixes: ['/deploy', '/launch'] },
-  { label: 'STATUS', to: '/status', activePrefixes: ['/status'] },
+  { label: 'DEPLOY', to: '/deploy', activePrefixes: ['/deploy', '/launch', '/status'] },
   { label: 'FAQ', to: '/faq', activePrefixes: ['/faq'] },
 ]
 
@@ -152,5 +151,6 @@ export function LiquidGoldNavBar() {
     </header>
   )
 }
+
 
 
