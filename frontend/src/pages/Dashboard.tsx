@@ -776,6 +776,28 @@ export function Dashboard() {
         </div>
       </section>
 
+      {/* Vaults */}
+      <section className="cinematic-section">
+        <div className="max-w-6xl mx-auto px-6">
+          <motion.div
+            initial={{ opacity: 0 }}
+            whileInView={{ opacity: 1 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.8 }}
+            className="mb-16"
+          >
+            <span className="label">Available Now</span>
+            <h2 className="headline text-5xl mt-6">Active Vaults</h2>
+          </motion.div>
+
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            {vaults.map((vault) => (
+              <LiquidGoldVaultCard key={vault.id} vault={vault} />
+            ))}
+          </div>
+        </div>
+      </section>
+
       {/* Zora Coins */}
       <section className="cinematic-section">
         <div className="max-w-6xl mx-auto px-6">
@@ -1058,28 +1080,6 @@ export function Dashboard() {
             ) : (
               <div className="p-6 text-sm text-zinc-600">No matches for this filter.</div>
             )}
-          </div>
-        </div>
-      </section>
-
-      {/* Vaults */}
-      <section className="cinematic-section">
-        <div className="max-w-6xl mx-auto px-6">
-          <motion.div
-            initial={{ opacity: 0 }}
-            whileInView={{ opacity: 1 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.8 }}
-            className="mb-16"
-          >
-            <span className="label">Available Now</span>
-            <h2 className="headline text-5xl mt-6">Active Vaults</h2>
-          </motion.div>
-
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            {vaults.map((vault) => (
-              <LiquidGoldVaultCard key={vault.id} vault={vault} />
-            ))}
           </div>
         </div>
       </section>
