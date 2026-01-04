@@ -6,7 +6,7 @@ import { erc20Abi, formatUnits, isAddress } from 'viem'
 import { Link, useSearchParams } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { coinABI } from '@zoralabs/protocol-deployments'
-import { BarChart3, Layers, Lock, Rocket, RotateCw, ShieldCheck } from 'lucide-react'
+import { BarChart3, Layers, Lock, Rocket, ShieldCheck } from 'lucide-react'
 import { base } from 'wagmi/chains'
 import { ConnectButton } from '@/components/ConnectButton'
 import { DeployVaultAA } from '@/components/DeployVaultAA'
@@ -252,10 +252,6 @@ export function DeployVault() {
   const derivedShareName = useMemo(() => {
     if (!underlyingSymbolUpper) return ''
     return `Wrapped ${underlyingSymbolUpper} Vault Share`
-  }, [underlyingSymbolUpper])
-
-  const charmPairLabel = useMemo(() => {
-    return underlyingSymbolUpper ? `${underlyingSymbolUpper.toLowerCase()}/USDC` : 'creator/USDC'
   }, [underlyingSymbolUpper])
 
   const short = (addr: string) => `${addr.slice(0, 6)}…${addr.slice(-4)}`
@@ -902,71 +898,12 @@ export function DeployVault() {
                         />
 
                         <div className="px-4 py-2 text-[10px] uppercase tracking-wide text-zinc-500 bg-white/[0.02]">
-                          Yield strategies
+                          Yield strategies (post-auction)
                         </div>
-
-                        <ExplainerRow
-                          icon={
-                            <div className="w-8 h-8 flex items-center justify-center text-zinc-600">
-                              <RotateCw className="w-4 h-4" />
-                            </div>
-                          }
-                          label="Yield strategy"
-                          title={`${charmPairLabel} Uniswap V3 LP (0.3%) — Charm Alpha Pro`}
-                          contractName="CreatorCharmStrategyV2"
-                          note={`Charm Alpha Pro Vault manages the Uniswap V3 LP position for ${charmPairLabel} (0.3% fee tier).`}
-                          metaLine={
-                            <>
-                              <span className="inline-flex items-center gap-1.5 text-zinc-400">
-                                <img
-                                  src="/protocols/charm.png"
-                                  alt=""
-                                  aria-hidden="true"
-                                  loading="lazy"
-                                  className="w-3.5 h-3.5 opacity-90"
-                                />
-                                Charm
-                              </span>
-                              {' · '}
-                              <span className="inline-flex items-center gap-1.5 text-zinc-400">
-                                <img
-                                  src="/protocols/uniswap.png"
-                                  alt=""
-                                  aria-hidden="true"
-                                  loading="lazy"
-                                  className="w-3.5 h-3.5 opacity-90"
-                                />
-                                Uniswap V3
-                              </span>
-                            </>
-                          }
-                        />
-
-                        <ExplainerRow
-                          icon={
-                            <div className="w-8 h-8 flex items-center justify-center text-zinc-600">
-                              <RotateCw className="w-4 h-4" />
-                            </div>
-                          }
-                          label="Yield strategy"
-                          title="Ajna lending"
-                          contractName="AjnaStrategy"
-                          note="Collateralized lending via Ajna: deposit collateral (e.g. USDC), borrow creator coin (can be sold for liquidity), repay to unlock collateral (liquidation risk)."
-                          metaLine={
-                            <>
-                              <span className="inline-flex items-center gap-1.5 text-zinc-400">
-                                <img
-                                  src="/protocols/ajna.svg"
-                                  alt=""
-                                  aria-hidden="true"
-                                  loading="lazy"
-                                  className="w-3.5 h-3.5 opacity-90"
-                                />
-                                Ajna
-                              </span>
-                            </>
-                          }
-                        />
+                        <div className="px-4 py-3 text-[12px] text-zinc-500">
+                          Yield strategies are deployed after launch (post-auction) to keep the initial deployment deterministic and
+                          compatible with Smart Wallet simulation.
+                        </div>
                       </div>
                     </div>
                   </div>
