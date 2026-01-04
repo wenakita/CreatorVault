@@ -206,6 +206,11 @@ const COINBASE_SMART_WALLET_ABI = [
   },
 ] as const
 
+const OWNABLE_ABI = [
+  { type: 'function', name: 'owner', stateMutability: 'view', inputs: [], outputs: [{ type: 'address' }] },
+  { type: 'function', name: 'transferOwnership', stateMutability: 'nonpayable', inputs: [{ name: 'newOwner', type: 'address' }], outputs: [] },
+] as const
+
 const DEFAULT_CCA_FLOOR_PRICE_WEI = 1_000_000_000_000_000n // 1e15 (matches CCALaunchStrategy.defaultFloorPrice)
 const DEFAULT_CCA_DURATION_BLOCKS = 302_400n // matches CCALaunchStrategy.defaultDuration
 const DEFAULT_CCA_MPS = 10_000_000n
@@ -791,7 +796,56 @@ export function DeployVaultAA({
       }),
     })
 
-    const calls = [...deployCalls, ...wiringCalls, ...launchCalls]
+    // Finalize ownership (security):
+    // After the stack is deployed + launched, transfer admin ownership to the protocol multisig.
+    // This prevents creators from rerouting fee recipients post-launch.
+    const finalizeCalls: { to: Address; data: Hex; value?: bigint }[] = []
+    const finalOwner = protocolTreasury
+    if (finalOwner.toLowerCase() !== owner.toLowerCase()) {
+      const targets: Array<{ addr: Address; exists: boolean; label: string }> = [
+        { addr: vaultAddress, exists: vaultExists, label: 'Vault' },
+        { addr: wrapperAddress, exists: wrapperExists, label: 'Wrapper' },
+        { addr: shareOftAddress, exists: shareOftExists, label: 'Share token' },
+        { addr: gaugeAddress, exists: gaugeExists, label: 'Gauge controller' },
+        { addr: ccaAddress, exists: ccaExists, label: 'Launch strategy' },
+        { addr: oracleAddress, exists: oracleExists, label: 'Oracle' },
+      ]
+
+      for (const t of targets) {
+        if (!t.exists) {
+          finalizeCalls.push({
+            to: t.addr,
+            data: encodeFunctionData({ abi: OWNABLE_ABI, functionName: 'transferOwnership', args: [finalOwner] }),
+          })
+          continue
+        }
+
+        let currentOwner: Address | null = null
+        try {
+          currentOwner = (await publicClient.readContract({
+            address: t.addr,
+            abi: OWNABLE_ABI,
+            functionName: 'owner',
+          })) as Address
+        } catch {
+          fail('Failed to verify existing deployment owner.', `${t.label} ${t.addr}`)
+        }
+        const curLc = String(currentOwner).toLowerCase()
+        if (curLc === finalOwner.toLowerCase()) continue
+        if (curLc !== owner.toLowerCase()) {
+          fail(
+            'This deployment is already owned by a different address. Please contact support.',
+            `${t.label} owner is ${String(currentOwner)} (expected ${owner} or ${finalOwner})`,
+          )
+        }
+        finalizeCalls.push({
+          to: t.addr,
+          data: encodeFunctionData({ abi: OWNABLE_ABI, functionName: 'transferOwnership', args: [finalOwner] }),
+        })
+      }
+    }
+
+    const calls = [...deployCalls, ...wiringCalls, ...launchCalls, ...finalizeCalls]
 
       // Step 1: wallet confirmation
       setStep(1)
@@ -852,8 +906,8 @@ export function DeployVaultAA({
           setStep(2)
           await waitTx(wiringHash as any)
 
-          // Launch tx (approve + batchActivate)
-          const launchBatch = launchCalls.map((c) => ({ target: c.to, value: 0n, data: c.data }))
+          // Launch tx (approve + deposit + launch + finalize ownership)
+          const launchBatch = [...launchCalls, ...finalizeCalls].map((c) => ({ target: c.to, value: 0n, data: c.data }))
           const launchHash = await tryExecuteBatch(launchBatch)
           setCallBundleId(String(launchHash))
           setStep(2)
@@ -927,7 +981,7 @@ export function DeployVaultAA({
 
           for (const c of deployCalls) await sendTx(c)
           for (const c of wiringCalls) await sendTx(c)
-          for (const c of launchCalls) await sendTx(c)
+          for (const c of [...launchCalls, ...finalizeCalls]) await sendTx(c)
         }
 
         const sendBundle = async (bundleCalls: { to: Address; data: Hex; value?: bigint }[]) => {
@@ -970,8 +1024,8 @@ export function DeployVaultAA({
             }
             // Step 1b: wiring (small bundle)
             await sendBundle(wiringCalls)
-            // Step 1c: launch (small bundle)
-            await sendBundle(launchCalls)
+            // Step 1c: launch + finalize ownership (small bundle)
+            await sendBundle([...launchCalls, ...finalizeCalls])
           }
         }
       }

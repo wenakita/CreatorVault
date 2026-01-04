@@ -1194,7 +1194,10 @@ export function DeployVault() {
                     </div>
                   ) : (
                     <div className="text-xs text-zinc-600 space-y-2">
-                      <div>Vault contracts will be owned by this wallet.</div>
+                      <div>This wallet signs deployment and funds the first 50M deposit.</div>
+                      <div className="text-[11px] text-zinc-700">
+                        After launch, ownership is transferred to the protocol multisig to lock fee routing.
+                      </div>
 
                       {tokenIsValid ? (
                         <div className="space-y-2">
@@ -1443,8 +1446,7 @@ export function DeployVault() {
                     Verification checks
                   </div>
                   <div className="text-xs text-zinc-600 max-w-prose">
-                    Verify your vault wiring on Base and generate a shareable report. If a fix is available, it’s creator-only and requires a
-                    wallet transaction.
+                    Verify your vault wiring on Base and generate a shareable report. If a fix is available, it requires an owner transaction.
                   </div>
                 </div>
               </div>

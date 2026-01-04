@@ -165,7 +165,7 @@ const FAQ_SECTIONS: FaqSection[] = [
             </p>
             <p>
               For wiring / health checks, use the <Link to="/status" className="text-cyan-400 hover:text-cyan-300 underline underline-offset-4">Status</Link> page.
-              Creator-only “fix actions” appear when the connected wallet is the onchain owner.
+              “Fix actions” appear when the connected wallet is the onchain owner.
             </p>
           </>
         ),
@@ -404,7 +404,7 @@ const FAQ_SECTIONS: FaqSection[] = [
               a suggested bucket based on TWAP may be unreliable.
             </p>
             <p>
-              This is why the Status page surfaces oracle capacity and provides creator-only fix actions (like increasing V3 observation cardinality).
+              This is why the Status page surfaces oracle capacity and provides owner-only fix actions (like increasing V3 observation cardinality).
             </p>
           </>
         ),
@@ -526,7 +526,7 @@ const FAQ_SECTIONS: FaqSection[] = [
               <li>Share the vault link with your community</li>
             </ul>
             <p className="text-zinc-600">
-              If something is miswired and you’re the owner, creator-only fix actions appear on the Status page.
+              If something is miswired and you’re the owner, fix actions appear on the Status page.
             </p>
           </>
         ),
@@ -706,7 +706,7 @@ export function Faq() {
                   <Link to="/status" className="flex items-center justify-between gap-4 rounded-xl px-3 py-3 hover:bg-white/[0.03] transition-colors">
                     <div className="space-y-1">
                       <div className="text-white font-light">Status & fixes</div>
-                      <div className="text-xs text-zinc-600 font-light">Wiring checks + creator-only fix actions</div>
+                      <div className="text-xs text-zinc-600 font-light">Wiring checks + owner-only fix actions</div>
                     </div>
                     <ArrowRight className="w-4 h-4 text-zinc-600" />
                   </Link>
