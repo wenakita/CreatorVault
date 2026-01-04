@@ -380,8 +380,23 @@ export function DeployVault() {
 
   const isAuthorizedDeployer = isOriginalCreator || isPayoutRecipient || isAuthorizedViaSmartWallet
 
-  // NOTE: We intentionally do NOT auto-select the coin’s smart wallet as the vault owner.
-  // Many creators won’t have direct access to the original coin-deploy wallet, and defaulting here is confusing.
+  // If the coin is controlled by a linked owner wallet, default to deploying owned by that wallet.
+  // This is done silently (no wallet-brand UX): we just pick the correct onchain owner when possible.
+  useEffect(() => {
+    if (!isConnected || !addressLc) return
+    if (!tokenIsValid) return
+    if (!coinSmartWallet) return
+    if (!isAuthorizedViaSmartWallet) return
+    if (deployAs.trim().length > 0) return
+    if (!connectedWalletAddress) return
+    if (connectedWalletAddress.toLowerCase() === coinSmartWallet.toLowerCase()) return
+
+    const key = `${addressLc}:${String(creatorToken).toLowerCase()}:owner`
+    if (autofillRef.current.deployAsFor === key) return
+
+    setDeployAs(String(coinSmartWallet))
+    autofillRef.current.deployAsFor = key
+  }, [isConnected, addressLc, tokenIsValid, coinSmartWallet, isAuthorizedViaSmartWallet, deployAs, connectedWalletAddress, creatorToken])
 
   const creatorAllowlistQuery = useCreatorAllowlist(tokenIsValid ? { coin: creatorToken } : undefined)
   const allowlistMode = creatorAllowlistQuery.data?.mode
@@ -913,8 +928,8 @@ export function DeployVault() {
                           Yield strategies (post-auction)
                         </div>
                         <div className="px-4 py-3 text-[12px] text-zinc-500">
-                          Yield strategies are deployed after launch (post-auction) to keep the initial deployment deterministic and
-                          compatible with Smart Wallet simulation.
+                          Yield strategies are deployed after launch (post-auction) to keep the initial deployment deterministic and compatible with
+                          wallet simulation.
                         </div>
                       </div>
                     </div>
@@ -1063,7 +1078,7 @@ export function DeployVault() {
                             ? 'bg-white/[0.06] text-zinc-100'
                             : 'text-zinc-500 hover:text-zinc-200 hover:bg-white/[0.03]'
                         }`}
-                        title="Default deterministic addresses (v2). Optimized for 1-click Smart Wallet deploys when universal bytecode store is available."
+                        title="Default deterministic addresses (v2). Optimized for 1-click deploys (smaller calldata) when universal bytecode store is available."
                       >
                         v2
                       </button>
@@ -1085,8 +1100,8 @@ export function DeployVault() {
                   )}
 
                   <div className="text-xs text-zinc-600">
-                    v2 uses new deterministic addresses and is optimized for 1-click Smart Wallet deploys (when the universal bytecode store is
-                    deployed). v1 is kept as an admin-only fallback.
+                    v2 uses new deterministic addresses and is optimized for 1-click deploys (smaller calldata) when the universal bytecode store is
+                    deployed. v1 is kept as an admin-only fallback.
                   </div>
 
                   {!isSignedIn ? (
@@ -1115,7 +1130,7 @@ export function DeployVault() {
                       deployAsAddress ? (
                         detectedSmartWallet &&
                         deployAsAddress.toLowerCase() === detectedSmartWallet.toLowerCase() ? (
-                          <div className="text-[10px] text-zinc-700">Smart wallet</div>
+                          <div className="text-[10px] text-zinc-700">{coinSmartWallet ? 'Coin owner wallet' : 'Linked wallet'}</div>
                         ) : (
                           <div className="text-[10px] text-zinc-700">Custom</div>
                         )
@@ -1139,9 +1154,9 @@ export function DeployVault() {
                             type="button"
                             onClick={() => setDeployAs(String(detectedSmartWallet))}
                             className="text-[10px] text-zinc-600 hover:text-zinc-300 transition-colors"
-                            title="Use your detected smart wallet address"
+                            title={coinSmartWallet ? 'Use the coin owner wallet address' : 'Use your linked wallet address'}
                           >
-                            Use smart wallet
+                            {coinSmartWallet ? 'Use coin owner wallet' : 'Use linked wallet'}
                           </button>
                         ) : null}
                         {payoutRecipient && address && payoutRecipient.toLowerCase() !== address.toLowerCase() ? (
@@ -1211,13 +1226,13 @@ export function DeployVault() {
                                 onClick={() => void fundOwnerWallet()}
                                 disabled={isFundingPending || isFundingConfirming || isFundingSuccess}
                                 className="text-[11px] text-cyan-200 hover:text-cyan-100 transition-colors text-left disabled:opacity-60"
-                                title="Transfers the missing amount from your connected wallet to the owner smart wallet so it can fund the 50M deposit during deployment."
+                                title="Transfers the missing amount from your connected wallet to the owner wallet so it can fund the 50M deposit during deployment."
                               >
                                 {isFundingPending || isFundingConfirming
-                                  ? 'Transferring to smart wallet…'
+                                  ? 'Transferring to owner wallet…'
                                   : isFundingSuccess
                                     ? 'Transferred — refresh balances'
-                                    : `Transfer ${Number(formatUnits(missingToMinDeposit ?? 0n, 18)).toLocaleString(undefined, { maximumFractionDigits: 2 })} ${underlyingSymbolUpper || 'TOKENS'} to smart wallet`}
+                                    : `Transfer ${Number(formatUnits(missingToMinDeposit ?? 0n, 18)).toLocaleString(undefined, { maximumFractionDigits: 2 })} ${underlyingSymbolUpper || 'TOKENS'} to owner wallet`}
                               </button>
                               {fundingTxHash ? (
                                 <div className="text-[10px] text-zinc-700 mt-1">
@@ -1240,7 +1255,7 @@ export function DeployVault() {
                               onClick={() => setDeployAs(String(detectedSmartWallet))}
                               className="text-[11px] text-cyan-200 hover:text-cyan-100 transition-colors text-left"
                             >
-                              Use smart wallet (has 50M)
+                              {coinSmartWallet ? 'Use coin owner wallet (has 50M)' : 'Use linked wallet (has 50M)'}
                             </button>
                           ) : null}
 
@@ -1289,7 +1304,7 @@ export function DeployVault() {
 
                               {detectedSmartWallet ? (
                                 <div className="flex items-center justify-between">
-                                  <span className="text-zinc-600">Smart wallet</span>
+                                  <span className="text-zinc-600">{coinSmartWallet ? 'Coin owner wallet' : 'Linked wallet'}</span>
                                   <span className={smartWalletHasMinDeposit ? 'text-emerald-400' : 'text-zinc-500'}>
                                     {formatToken18(typeof smartWalletTokenBalance === 'bigint' ? smartWalletTokenBalance : undefined)}{' '}
                                     {underlyingSymbolUpper || ''}
@@ -1350,9 +1365,9 @@ export function DeployVault() {
                 >
                   {coinSmartWallet ? (
                     smartWalletOwnerQuery.isLoading ? (
-                      'Verifying Smart Wallet ownership…'
+                      'Verifying owner authorization…'
                     ) : (
-                      'Authorized only: connect the coin’s creator/payout wallet (or a wallet that is an on-chain owner of the creator smart wallet).'
+                      'Authorized only: connect the coin’s creator/payout wallet (or an owner wallet for the coin owner address).'
                     )
                   ) : (
                     'Authorized only: connect the coin’s creator or payout recipient wallet to deploy'

@@ -417,10 +417,10 @@ export function DeployVaultAA({
             args: [signer],
           })
           if (!ok) {
-            fail('Connected wallet is not an owner of the selected smart wallet.')
+            fail('Connected wallet is not an on-chain owner of the selected owner wallet.')
           }
         } catch {
-          fail('Selected owner wallet is not a supported smart wallet.')
+          fail('Selected owner wallet is not supported for batched execution.')
         }
       }
 
@@ -816,7 +816,7 @@ export function DeployVaultAA({
           const receipt = await publicClient.waitForTransactionReceipt({ hash: hash as any, timeout: 120_000 })
           const status = (receipt as any)?.status
           if (status === 'reverted' || status === 0 || status === '0x0') {
-            throw new Error('Smart Wallet transaction reverted.')
+            throw new Error('Batched transaction reverted.')
           }
           return receipt
         }
@@ -1526,8 +1526,8 @@ export function DeployVaultAA({
                       ) : null}
 
                       <div className="px-4 py-3 text-[12px] text-zinc-500">
-                        Yield strategies are deployed after launch (post-auction) to keep the initial deployment deterministic and
-                        compatible with Smart Wallet simulation.
+                        Yield strategies are deployed after launch (post-auction) to keep the initial deployment deterministic and compatible with
+                        wallet simulation.
                       </div>
                     </div>
                   </div>
