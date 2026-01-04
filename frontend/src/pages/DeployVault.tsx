@@ -80,6 +80,7 @@ export function DeployVault() {
   const [deployAs, setDeployAs] = useState('')
   const [showAdvanced, setShowAdvanced] = useState(false)
   const [showFundingDetails, setShowFundingDetails] = useState(false)
+  const [deploymentVersion, setDeploymentVersion] = useState<'v1' | 'v2'>('v1')
   const [lastDeployedVault, setLastDeployedVault] = useState<Address | null>(null)
 
   const [searchParams] = useSearchParams()
@@ -1033,6 +1034,48 @@ export function DeployVault() {
                 )}
               </div>
 
+              {/* Deployment */}
+              {isConnected && showAdvanced ? (
+                <div className="pt-3 border-t border-zinc-900/50 space-y-2">
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="label">Deployment</div>
+                    <div className="text-[10px] text-zinc-700">{deploymentVersion === 'v2' ? '1-click (v2)' : 'Legacy (v1)'}</div>
+                  </div>
+
+                  <div className="inline-flex rounded-lg border border-zinc-900/60 bg-black/30 p-1 gap-1">
+                    <button
+                      type="button"
+                      onClick={() => setDeploymentVersion('v1')}
+                      className={`px-3 py-1.5 text-[11px] rounded-md transition-colors ${
+                        deploymentVersion === 'v1'
+                          ? 'bg-white/[0.06] text-zinc-100'
+                          : 'text-zinc-500 hover:text-zinc-200 hover:bg-white/[0.03]'
+                      }`}
+                      title="Original deterministic addresses (legacy)"
+                    >
+                      v1
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setDeploymentVersion('v2')}
+                      className={`px-3 py-1.5 text-[11px] rounded-md transition-colors ${
+                        deploymentVersion === 'v2'
+                          ? 'bg-white/[0.06] text-zinc-100'
+                          : 'text-zinc-500 hover:text-zinc-200 hover:bg-white/[0.03]'
+                      }`}
+                      title="New deterministic addresses (1-click optimized when universal bytecode store is available)"
+                    >
+                      v2
+                    </button>
+                  </div>
+
+                  <div className="text-xs text-zinc-600">
+                    v2 uses new deterministic addresses and is optimized for 1-click Smart Wallet deploys (when the universal bytecode store is
+                    deployed).
+                  </div>
+                </div>
+              ) : null}
+
               {/* Vault owner wallet */}
               {isConnected ? (
                 <div className="pt-3 border-t border-zinc-900/50 space-y-2">
@@ -1318,6 +1361,7 @@ export function DeployVault() {
                   creatorToken={creatorToken as `0x${string}`}
                   symbol={derivedShareSymbol}
                   name={derivedShareName}
+                  deploymentVersion={deploymentVersion}
                   // Keep revenue flowing to the coin’s payout recipient by default,
                   // even if you choose to deploy the vault *owned by* a different smart wallet.
                   creatorTreasury={((payoutRecipient ?? (address as Address)) as Address) as `0x${string}`}
@@ -1337,6 +1381,7 @@ export function DeployVault() {
                 <p>Designed for one wallet confirmation (some wallets may require multiple confirmations).</p>
                 <p>Requires a 50M token deposit to start the fair launch.</p>
                 <p>Recommended: Coinbase Smart Wallet.</p>
+                <p>Advanced: select v2 to enable the 1-click optimized deterministic stack.</p>
               </div>
             </div>
 
