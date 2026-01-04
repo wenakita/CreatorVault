@@ -26,6 +26,8 @@
     "./creator-access/**/*.ts",
     "./admin/**/*.ts",
     "./_lib/**/*.ts",
+    "./analytics.ts",
+    "./sync-vault-data.ts",
     "../src/types/vercel-node.d.ts"
   ],
   "exclude": ["node_modules"]

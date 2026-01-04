@@ -65,6 +65,31 @@ const SNAPSHOT_QUERY = `
   }
 `;
 
+type GraphQlError = { message?: string }
+type GraphQlResponse<T> = { data?: T; errors?: GraphQlError[] }
+
+type CharmVaultSnapshot = {
+  timestamp: string
+  feeApr?: string | null
+  annualVsHoldPerfSince?: string | null
+  totalAmount0?: string | null
+  totalAmount1?: string | null
+  totalSupply?: string | null
+}
+
+type CharmVault = {
+  id?: string
+  baseLower?: string | null
+  baseUpper?: string | null
+  limitLower?: string | null
+  limitUpper?: string | null
+  fullRangeWeight?: string | null
+  total0?: string | null
+  total1?: string | null
+  totalSupply?: string | null
+  snapshot?: CharmVaultSnapshot[] | null
+}
+
 async function fetchFromCharmGraphQL(vaultAddress: string, first: number = 100, skip: number = 0) {
   const response = await fetch('https://stitching-v2.herokuapp.com/1', {
     method: 'POST',
@@ -79,14 +104,18 @@ async function fetchFromCharmGraphQL(vaultAddress: string, first: number = 100, 
     })
   });
 
-  const result = await response.json();
+  const result = (await response.json().catch(() => null)) as GraphQlResponse<{ vault?: CharmVault | null }> | null;
   
-  if (result.errors) {
+  if (!result) {
+    throw new Error('Invalid response from Charm GraphQL');
+  }
+
+  if (Array.isArray(result.errors) && result.errors.length > 0) {
     console.error('[sync-vault-data] GraphQL errors:', result.errors);
     throw new Error('GraphQL query failed');
   }
   
-  return result.data?.vault;
+  return result.data?.vault ?? null;
 }
 
 async function syncVaultSnapshots(vaultAddress: string) {
