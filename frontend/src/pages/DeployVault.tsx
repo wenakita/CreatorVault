@@ -13,12 +13,24 @@ import { DeployVaultAA } from '@/components/DeployVaultAA'
 import { DerivedTokenIcon } from '@/components/DerivedTokenIcon'
 import { SmartWalletSwitchNotice } from '@/components/SmartWalletSwitchNotice'
 import { RequestCreatorAccess } from '@/components/RequestCreatorAccess'
+import { useSiweAuth } from '@/hooks/useSiweAuth'
 import { useCreatorAllowlist } from '@/hooks'
 import { useZoraCoin, useZoraProfile } from '@/lib/zora/hooks'
 import { fetchCoinMarketRewardsByCoinFromApi } from '@/lib/onchain/coinMarketRewardsByCoin'
 
 const MIN_FIRST_DEPOSIT = 50_000_000n * 10n ** 18n
 const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000' as const
+
+type ApiEnvelope<T> = { success: boolean; data?: T; error?: string }
+type AdminAuthResponse = { address: string; isAdmin: boolean } | null
+
+async function fetchAdminAuth(): Promise<AdminAuthResponse> {
+  const res = await fetch('/api/auth/admin', { method: 'GET', headers: { Accept: 'application/json' } })
+  const json = (await res.json().catch(() => null)) as ApiEnvelope<AdminAuthResponse> | null
+  if (!res.ok || !json) return null
+  if (!json.success) return null
+  return (json.data ?? null) as AdminAuthResponse
+}
 
 const COINBASE_SMART_WALLET_OWNER_ABI = [
   {
@@ -80,7 +92,7 @@ export function DeployVault() {
   const [deployAs, setDeployAs] = useState('')
   const [showAdvanced, setShowAdvanced] = useState(false)
   const [showFundingDetails, setShowFundingDetails] = useState(false)
-  const [deploymentVersion, setDeploymentVersion] = useState<'v1' | 'v2'>('v1')
+  const [deploymentVersion, setDeploymentVersion] = useState<'v1' | 'v2'>('v2')
   const [lastDeployedVault, setLastDeployedVault] = useState<Address | null>(null)
 
   const [searchParams] = useSearchParams()
@@ -95,6 +107,20 @@ export function DeployVault() {
   // Detect "your" creator coin + smart wallet from your Zora profile and prefill inputs once.
   const myProfileQuery = useZoraProfile(address)
   const myProfile = myProfileQuery.data
+
+  const { isSignedIn, busy: authBusy, error: authError, signIn } = useSiweAuth()
+  const adminAuthQuery = useQuery({
+    queryKey: ['adminAuth'],
+    enabled: isConnected && showAdvanced && isSignedIn,
+    queryFn: fetchAdminAuth,
+    staleTime: 30_000,
+    retry: 0,
+  })
+  const isAdmin = Boolean(adminAuthQuery.data?.isAdmin)
+
+  useEffect(() => {
+    if (!isAdmin && deploymentVersion === 'v1') setDeploymentVersion('v2')
+  }, [isAdmin, deploymentVersion])
 
   const detectedCreatorCoin = useMemo(() => {
     const v = myProfile?.creatorCoin?.address ? String(myProfile.creatorCoin.address) : ''
@@ -1039,40 +1065,59 @@ export function DeployVault() {
                 <div className="pt-3 border-t border-zinc-900/50 space-y-2">
                   <div className="flex items-center justify-between gap-3">
                     <div className="label">Deployment</div>
-                    <div className="text-[10px] text-zinc-700">{deploymentVersion === 'v2' ? '1-click (v2)' : 'Legacy (v1)'}</div>
+                    <div className="text-[10px] text-zinc-700">{deploymentVersion === 'v2' ? 'Default (v2)' : 'Legacy (v1)'}</div>
                   </div>
 
-                  <div className="inline-flex rounded-lg border border-zinc-900/60 bg-black/30 p-1 gap-1">
-                    <button
-                      type="button"
-                      onClick={() => setDeploymentVersion('v1')}
-                      className={`px-3 py-1.5 text-[11px] rounded-md transition-colors ${
-                        deploymentVersion === 'v1'
-                          ? 'bg-white/[0.06] text-zinc-100'
-                          : 'text-zinc-500 hover:text-zinc-200 hover:bg-white/[0.03]'
-                      }`}
-                      title="Original deterministic addresses (legacy)"
-                    >
-                      v1
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setDeploymentVersion('v2')}
-                      className={`px-3 py-1.5 text-[11px] rounded-md transition-colors ${
-                        deploymentVersion === 'v2'
-                          ? 'bg-white/[0.06] text-zinc-100'
-                          : 'text-zinc-500 hover:text-zinc-200 hover:bg-white/[0.03]'
-                      }`}
-                      title="New deterministic addresses (1-click optimized when universal bytecode store is available)"
-                    >
-                      v2
-                    </button>
-                  </div>
+                  {isAdmin ? (
+                    <div className="inline-flex rounded-lg border border-zinc-900/60 bg-black/30 p-1 gap-1">
+                      <button
+                        type="button"
+                        onClick={() => setDeploymentVersion('v2')}
+                        className={`px-3 py-1.5 text-[11px] rounded-md transition-colors ${
+                          deploymentVersion === 'v2'
+                            ? 'bg-white/[0.06] text-zinc-100'
+                            : 'text-zinc-500 hover:text-zinc-200 hover:bg-white/[0.03]'
+                        }`}
+                        title="Default deterministic addresses (v2). Optimized for 1-click Smart Wallet deploys when universal bytecode store is available."
+                      >
+                        v2
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setDeploymentVersion('v1')}
+                        className={`px-3 py-1.5 text-[11px] rounded-md transition-colors ${
+                          deploymentVersion === 'v1'
+                            ? 'bg-white/[0.06] text-zinc-100'
+                            : 'text-zinc-500 hover:text-zinc-200 hover:bg-white/[0.03]'
+                        }`}
+                        title="Legacy deterministic addresses (v1). Admin-only."
+                      >
+                        v1 (admin)
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="text-xs text-zinc-600">Using v2 (default). Legacy v1 is admin-only.</div>
+                  )}
 
                   <div className="text-xs text-zinc-600">
                     v2 uses new deterministic addresses and is optimized for 1-click Smart Wallet deploys (when the universal bytecode store is
-                    deployed).
+                    deployed). v1 is kept as an admin-only fallback.
                   </div>
+
+                  {!isSignedIn ? (
+                    <div className="pt-1">
+                      <button
+                        type="button"
+                        onClick={() => void signIn()}
+                        disabled={authBusy}
+                        className="text-[11px] text-zinc-500 hover:text-zinc-200 transition-colors disabled:opacity-60"
+                        title="Admin sign-in unlocks legacy v1 controls if your wallet is allowlisted."
+                      >
+                        {authBusy ? 'Signing in…' : 'Admin sign-in (optional)'}
+                      </button>
+                      {authError ? <div className="text-[11px] text-red-400/90 mt-1">{authError}</div> : null}
+                    </div>
+                  ) : null}
                 </div>
               ) : null}
 
@@ -1381,7 +1426,7 @@ export function DeployVault() {
                 <p>Designed for one wallet confirmation (some wallets may require multiple confirmations).</p>
                 <p>Requires a 50M token deposit to start the fair launch.</p>
                 <p>Recommended: Coinbase Smart Wallet.</p>
-                <p>Advanced: select v2 to enable the 1-click optimized deterministic stack.</p>
+                <p>Advanced: v2 is the default. v1 is admin-only.</p>
               </div>
             </div>
 
