@@ -8,6 +8,7 @@ import { useIsFetching, useQueryClient } from '@tanstack/react-query'
 import { Play, RotateCw } from 'lucide-react'
 import { AKITA } from '../config/contracts'
 import { LiquidGoldVaultCard } from '@/components/liquidGold/LiquidGoldVaultCard'
+import { CoinTradeModal } from '@/components/market/CoinTradeModal'
 import { useDebankTotalBalanceBatch } from '@/lib/debank/hooks'
 import { useDexscreenerTokenStatsBatch } from '@/lib/dexscreener/hooks'
 import type { DexscreenerTokenStats } from '@/lib/dexscreener/client'
@@ -211,6 +212,7 @@ function ZoraCoinRow({
   netWorthLoading,
   rank,
   analytics,
+  onTrade,
 }: {
   coin: ZoraCoin
   sortKey: SortKey
@@ -221,6 +223,7 @@ function ZoraCoinRow({
   netWorthLoading?: boolean
   rank?: number
   analytics?: { maxVolume24h: number; maxMarketCap: number } | null
+  onTrade?: (coin: ZoraCoin) => void
 }) {
   const image = coin.mediaContent?.previewImage?.medium || coin.mediaContent?.previewImage?.small
   const symbol = coin.symbol ? String(coin.symbol) : 'COIN'
@@ -245,6 +248,14 @@ function ZoraCoinRow({
   const avatarTitle = isContentCoin ? 'Not eligible for vaults (Creator Coins only)' : isCreatorCoin ? 'Eligible for vaults' : undefined
 
   const href = coin.address ? `/deploy?token=${encodeURIComponent(String(coin.address))}` : '/deploy'
+  const canTrade = Boolean(onTrade && coin.address && isAddress(String(coin.address)))
+
+  function openTrade(e: React.MouseEvent) {
+    if (!canTrade) return
+    e.preventDefault()
+    e.stopPropagation()
+    onTrade?.(coin)
+  }
 
   // Replace “direct payouts” label with “fees generated”.
   // This is an estimate derived from API-provided 24h volume (fast, no RPC).
@@ -355,7 +366,7 @@ function ZoraCoinRow({
 
   return (
     <Link to={href}>
-      <div className="px-6 py-4 hover:bg-zinc-950/20 transition-colors">
+      <div className="px-6 py-4 hover:bg-zinc-950/20 transition-colors group">
         <div className="grid grid-cols-12 items-center gap-4">
           <div className="col-span-7 sm:col-span-4 lg:col-span-3 flex items-center gap-3 min-w-0">
             {typeof rank === 'number' ? (
@@ -413,6 +424,16 @@ function ZoraCoinRow({
                   <div className="text-[10px] text-zinc-600 font-mono uppercase tracking-[0.18em] flex-shrink-0">
                     {symbolDisplay}
                   </div>
+                ) : null}
+                {canTrade ? (
+                  <button
+                    type="button"
+                    onClick={openTrade}
+                    className="hidden sm:inline-flex lg:hidden h-7 px-3 rounded-full border border-white/10 bg-black/20 text-[10px] uppercase tracking-[0.18em] text-zinc-500 hover:text-zinc-200 hover:border-white/20 transition-colors flex-shrink-0"
+                    title="Buy / sell"
+                  >
+                    Trade
+                  </button>
                 ) : null}
               </div>
 
@@ -487,6 +508,16 @@ function ZoraCoinRow({
           {/* Mobile: show only the active sort column value */}
           <div className="col-span-5 sm:hidden text-right">
             <div className="text-sm font-mono tabular-nums text-zinc-200">{mobileMetric}</div>
+            {canTrade ? (
+              <button
+                type="button"
+                onClick={openTrade}
+                className="mt-2 inline-flex items-center justify-center h-8 px-3 rounded-full border border-white/10 bg-black/20 text-[10px] uppercase tracking-[0.18em] text-zinc-500 hover:text-zinc-200 hover:border-white/20 transition-colors"
+                title="Buy / sell"
+              >
+                Trade
+              </button>
+            ) : null}
           </div>
 
           {showScore ? (
@@ -523,13 +554,28 @@ function ZoraCoinRow({
             ) : null}
           </div>
 
-          <div className={`hidden sm:block ${showScore ? 'sm:col-span-2 lg:col-span-3' : 'sm:col-span-4 lg:col-span-4'} text-right`}>
+          <div className={`hidden sm:block ${showScore ? 'sm:col-span-2 lg:col-span-2' : 'sm:col-span-4 lg:col-span-3'} text-right`}>
             <div className="text-sm font-mono tabular-nums text-zinc-200">{mcapText}</div>
             {analytics && timeframe === '24H' && deltaPctText ? (
               <div className={`mt-1 text-[10px] font-mono tabular-nums ${deltaClass} opacity-70`}>
                 <span className="opacity-70">Mcap 24h:</span> {deltaText} <span className="opacity-70">({deltaPctText})</span>
               </div>
             ) : null}
+          </div>
+
+          <div className="hidden lg:block lg:col-span-1 text-right">
+            {canTrade ? (
+              <button
+                type="button"
+                onClick={openTrade}
+                className="inline-flex items-center justify-center h-8 px-3 rounded-full border border-white/10 bg-black/20 text-[10px] uppercase tracking-[0.18em] text-zinc-500 hover:text-zinc-200 hover:border-white/20 transition-colors"
+                title="Buy / sell"
+              >
+                Trade
+              </button>
+            ) : (
+              <span className="text-[10px] text-zinc-700">—</span>
+            )}
           </div>
         </div>
 
@@ -566,6 +612,7 @@ export function Dashboard() {
   const isRefreshing = dashboardFetchCount > 0
 
   const { address: viewerAddress } = useAccount()
+  const [tradeCoin, setTradeCoin] = useState<ZoraCoin | null>(null)
   const [showAnalytics, setShowAnalytics] = useState(false)
   const [showScore, setShowScore] = useState(false)
   // Default to All so the first view feels like a true market leaderboard.
@@ -787,6 +834,7 @@ export function Dashboard() {
 
   return (
     <div className="relative">
+      <CoinTradeModal coin={tradeCoin} open={Boolean(tradeCoin)} onClose={() => setTradeCoin(null)} />
       {/* Particle atmosphere */}
       <div className="particles">
         <div className="absolute top-1/4 left-1/3 w-px h-px bg-purple-500 rounded-full" style={{ animation: 'particle-float 8s ease-in-out infinite' }} />
@@ -1068,12 +1116,16 @@ export function Dashboard() {
                           setSortDir('desc')
                         }
                       }}
-                      className={`hidden sm:block ${showScore ? 'sm:col-span-2 lg:col-span-4' : 'sm:col-span-4 lg:col-span-5'} text-right hover:text-zinc-300 transition-colors ${
+                      className={`hidden sm:block ${showScore ? 'sm:col-span-2 lg:col-span-2' : 'sm:col-span-4 lg:col-span-3'} text-right hover:text-zinc-300 transition-colors ${
                         sortKey === 'MARKET_CAP' ? 'text-zinc-300' : ''
                       }`}
                     >
                       Mcap{sortKey === 'MARKET_CAP' ? ` ${sortDir === 'desc' ? '↓' : '↑'}` : ''}
                     </button>
+
+                    <div className="hidden lg:block lg:col-span-1 text-right">
+                      Trade
+                    </div>
                   </div>
                 </div>
 
@@ -1097,6 +1149,7 @@ export function Dashboard() {
                         creatorNetWorthUsd={creatorNetWorthUsd}
                         netWorthLoading={debankLoading && Boolean(creatorAddrLc) && !debank}
                         analytics={showAnalytics ? analyticsMax : null}
+                        onTrade={(c) => setTradeCoin(c)}
                       />
                     )
                   })}

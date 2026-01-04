@@ -25,7 +25,7 @@ export function SmartWalletSwitchNotice({
   context = 'vault',
   className = '',
 }: {
-  context?: 'vault' | 'auction'
+  context?: 'vault' | 'auction' | 'market'
   className?: string
 }) {
   const { address, isConnected, connector } = useAccount()
@@ -55,11 +55,18 @@ export function SmartWalletSwitchNotice({
     isAddress(detectedSmartWallet) &&
     smartLc !== addressLc
 
-  const title = context === 'auction' ? 'Auction actions use Smart Wallet' : 'Vault actions use Smart Wallet'
+  const title =
+    context === 'auction'
+      ? 'Auction actions use Smart Wallet'
+      : context === 'market'
+        ? 'Trades use Smart Wallet'
+        : 'Vault actions use Smart Wallet'
   const subtitle =
     context === 'auction'
       ? 'Switch to Coinbase Smart Wallet to bid and complete auction steps.'
-      : 'Switch to Coinbase Smart Wallet to deposit and withdraw.'
+      : context === 'market'
+        ? 'Switch to Coinbase Smart Wallet to buy and sell on Base.'
+        : 'Switch to Coinbase Smart Wallet to deposit and withdraw.'
 
   function handleSwitch() {
     if (!coinbaseConnector) return

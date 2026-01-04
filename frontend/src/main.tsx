@@ -6,6 +6,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import App from './App'
 import { Web3Gate } from './web3/Web3Gate'
 import { initZoraCoinsSdk } from '@/lib/zora/init'
+import '@coinbase/onchainkit/styles.css'
 import './index.css'
 
 const queryClient = new QueryClient({
