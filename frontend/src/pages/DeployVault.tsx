@@ -10,6 +10,7 @@ import { BarChart3, Layers, Lock, Rocket, RotateCw, ShieldCheck } from 'lucide-r
 import { ConnectButton } from '@/components/ConnectButton'
 import { DeployVaultAA } from '@/components/DeployVaultAA'
 import { DerivedTokenIcon } from '@/components/DerivedTokenIcon'
+import { useCreatorAllowlist } from '@/hooks'
 import { useZoraCoin, useZoraProfile } from '@/lib/zora/hooks'
 import { fetchCoinMarketRewardsByCoinFromApi } from '@/lib/onchain/coinMarketRewardsByCoin'
 
@@ -319,6 +320,14 @@ export function DeployVault() {
     !!address && !!payoutRecipient && address.toLowerCase() === payoutRecipient.toLowerCase()
   const isAuthorizedDeployer = isOriginalCreator || isPayoutRecipient
 
+  const creatorAllowlistQuery = useCreatorAllowlist(
+    tokenIsValid && isCreatorCoin && !!creatorAddress && isAddress(creatorAddress) ? creatorAddress : null,
+  )
+  const allowlistMode = creatorAllowlistQuery.data?.mode
+  const allowlistEnforced = allowlistMode === 'enforced'
+  const isAllowlistedCreator = creatorAllowlistQuery.data?.allowed === true
+  const passesCreatorAllowlist = allowlistMode === 'disabled' ? true : isAllowlistedCreator
+
   const selectedOwnerAddress = useMemo(() => {
     if (deployAsAddress) return deployAsAddress
     return connectedWalletAddress
@@ -442,6 +451,8 @@ export function DeployVault() {
     !!zoraCoin &&
     isCreatorCoin &&
     isAuthorizedDeployer &&
+    creatorAllowlistQuery.isSuccess &&
+    passesCreatorAllowlist &&
     !!derivedShareSymbol &&
     !!derivedShareName &&
     deployAsIsValid &&
@@ -457,7 +468,8 @@ export function DeployVault() {
               <span className="label">Deploy</span>
               <h1 className="headline text-4xl sm:text-6xl">Deploy Vault</h1>
               <p className="text-zinc-600 text-sm font-light">
-                Deploy a vault for your Creator Coin on Base. Only the creator or current payout recipient can deploy.
+                Deploy a vault for your Creator Coin on Base. Only the creator or current payout recipient can deploy. Deploy is invite-only during
+                early launch.
               </p>
             </div>
 
@@ -1188,17 +1200,6 @@ export function DeployVault() {
                 >
                   Not eligible: vaults are Creator Coin–only
                 </button>
-              ) : canDeploy ? (
-                <DeployVaultAA
-                  creatorToken={creatorToken as `0x${string}`}
-                  symbol={derivedShareSymbol}
-                  name={derivedShareName}
-                  // Keep revenue flowing to the coin’s payout recipient by default,
-                  // even if you choose to deploy the vault *owned by* a different smart wallet.
-                  creatorTreasury={((payoutRecipient ?? (address as Address)) as Address) as `0x${string}`}
-                  executeAs={deployAsAddress ?? undefined}
-                  onSuccess={(a) => setLastDeployedVault(a.vault)}
-                />
               ) : tokenIsValid && (symbolLoading || zoraLoading) ? (
                 <button
                   disabled
@@ -1213,6 +1214,38 @@ export function DeployVault() {
                 >
                   Authorized only: connect the coin’s creator or payout recipient wallet to deploy
                 </button>
+              ) : tokenIsValid && zoraCoin && creatorAllowlistQuery.isLoading ? (
+                <button
+                  disabled
+                  className="w-full py-4 bg-black/30 border border-zinc-900/60 rounded-lg text-zinc-600 text-sm cursor-not-allowed"
+                >
+                  Checking creator access…
+                </button>
+              ) : tokenIsValid && zoraCoin && creatorAllowlistQuery.isError ? (
+                <button
+                  disabled
+                  className="w-full py-4 bg-black/30 border border-zinc-900/60 rounded-lg text-zinc-600 text-sm cursor-not-allowed"
+                >
+                  Couldn’t verify creator access. Refresh and try again.
+                </button>
+              ) : tokenIsValid && zoraCoin && allowlistEnforced && !isAllowlistedCreator ? (
+                <button
+                  disabled
+                  className="w-full py-4 bg-black/30 border border-zinc-900/60 rounded-lg text-zinc-600 text-sm cursor-not-allowed"
+                >
+                  Invite-only: this creator isn’t approved to deploy vaults
+                </button>
+              ) : canDeploy ? (
+                <DeployVaultAA
+                  creatorToken={creatorToken as `0x${string}`}
+                  symbol={derivedShareSymbol}
+                  name={derivedShareName}
+                  // Keep revenue flowing to the coin’s payout recipient by default,
+                  // even if you choose to deploy the vault *owned by* a different smart wallet.
+                  creatorTreasury={((payoutRecipient ?? (address as Address)) as Address) as `0x${string}`}
+                  executeAs={deployAsAddress ?? undefined}
+                  onSuccess={(a) => setLastDeployedVault(a.vault)}
+                />
               ) : (
                 <button
                   disabled

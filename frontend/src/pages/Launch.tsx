@@ -16,6 +16,7 @@ import {
 } from 'lucide-react'
 import { CONTRACTS } from '../config/contracts'
 import { ConnectButton } from '../components/ConnectButton'
+import { useCreatorAllowlist } from '../hooks'
 
 // Step states
 type StepStatus = 'pending' | 'active' | 'loading' | 'complete' | 'error'
@@ -59,6 +60,7 @@ const VAULT_ACTIVATOR_ABI = [
 export function Launch() {
   const navigate = useNavigate()
   const { address, isConnected } = useAccount()
+  const creatorAllowlistQuery = useCreatorAllowlist(address ?? null)
   const [tokenAddress, setTokenAddress] = useState('')
   const [depositAmount, setDepositAmount] = useState('100000000')
   const [auctionPercent, setAuctionPercent] = useState('50')
@@ -192,6 +194,78 @@ export function Launch() {
             Connect your wallet to launch your Creator Vault
           </p>
           <ConnectButton />
+        </motion.div>
+      </div>
+    )
+  }
+
+  if (creatorAllowlistQuery.isLoading) {
+    return (
+      <div className="min-h-[60vh] flex items-center justify-center">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="glass-card p-8 max-w-md text-center space-y-4"
+        >
+          <div className="w-16 h-16 rounded-2xl bg-brand-500/10 flex items-center justify-center mx-auto">
+            <Loader2 className="w-8 h-8 text-brand-500 animate-spin" />
+          </div>
+          <h2 className="font-display text-2xl font-bold">Checking access</h2>
+          <p className="text-surface-400">CreatorVault launches are invite-only during early access.</p>
+        </motion.div>
+      </div>
+    )
+  }
+
+  if (creatorAllowlistQuery.isError) {
+    return (
+      <div className="min-h-[60vh] flex items-center justify-center">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="glass-card p-8 max-w-md text-center space-y-4"
+        >
+          <div className="w-16 h-16 rounded-2xl bg-brand-500/10 flex items-center justify-center mx-auto">
+            <AlertCircle className="w-8 h-8 text-brand-500" />
+          </div>
+          <h2 className="font-display text-2xl font-bold">Couldn’t verify access</h2>
+          <p className="text-surface-400">Please refresh and try again.</p>
+          <button
+            type="button"
+            onClick={() => navigate('/dashboard')}
+            className="inline-flex items-center justify-center gap-2 px-5 py-3 rounded-xl bg-white/5 hover:bg-white/10 text-white transition-colors"
+          >
+            Back to Vaults
+            <ArrowRight className="w-4 h-4" />
+          </button>
+        </motion.div>
+      </div>
+    )
+  }
+
+  if (creatorAllowlistQuery.data?.mode === 'enforced' && !creatorAllowlistQuery.data.allowed) {
+    return (
+      <div className="min-h-[60vh] flex items-center justify-center">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="glass-card p-8 max-w-md text-center space-y-4"
+        >
+          <div className="w-16 h-16 rounded-2xl bg-brand-500/10 flex items-center justify-center mx-auto">
+            <Zap className="w-8 h-8 text-brand-500" />
+          </div>
+          <h2 className="font-display text-2xl font-bold">Invite-only</h2>
+          <p className="text-surface-400">
+            This wallet isn’t approved to launch a Creator Vault yet.
+          </p>
+          <button
+            type="button"
+            onClick={() => navigate('/dashboard')}
+            className="inline-flex items-center justify-center gap-2 px-5 py-3 rounded-xl bg-white/5 hover:bg-white/10 text-white transition-colors"
+          >
+            Back to Vaults
+            <ArrowRight className="w-4 h-4" />
+          </button>
         </motion.div>
       </div>
     )
