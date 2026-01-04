@@ -265,6 +265,7 @@ function predictCreate2Address(create2Deployer: Address, salt: Hex, initCode: He
 }
 
 const OVERSIZED_DATA_RE = /oversized data|data too large|payload too large|request too large|too large/i
+const FAILED_TO_CREATE_RE = /fail(?:ed)? to create|unknown error|internal error/i
 
 function extractErrorText(e: any): string {
   const parts = [
@@ -676,30 +677,17 @@ export function DeployVaultAA({
         }
 
         try {
-          const batchedCalls = calls.map((c) => ({ target: c.to, value: 0n, data: c.data }))
-          const txHash = await tryExecuteBatch(batchedCalls)
-
-          setCallBundleType('tx')
-          setCallBundleId(String(txHash))
-          setStep(2)
-          await publicClient.waitForTransactionReceipt({ hash: txHash as any, timeout: 120_000 })
-        } catch (e: any) {
-          const msg = extractErrorText(e)
-          if (!OVERSIZED_DATA_RE.test(msg)) {
-            throw e
-          }
-
+        const runSplitFlow = async () => {
           // Compatibility fallback:
           // Some wallets refuse to submit the large executeBatch() payload (initcode-heavy).
           // We split the flow:
           // 1) Deploy contracts directly from the connected EOA (permissionless deployers)
-          // 2) Run owner-only wiring + finalize + launch via Smart Wallet executeBatch (small calldata)
+          // 2) Run owner-only wiring + launch via Smart Wallet executeBatch (small calldata)
           //
-          // This requires multiple confirmations, but avoids the wallet-side size ceiling.
+          // This requires multiple confirmations, but avoids wallet-side size ceilings.
           setCallBundleType('tx')
           setCallBundleId(null)
 
-          // Step 1a: deploy initcode-heavy calls as the connected wallet (EOA signer)
           for (const c of deployCalls) {
             const txHash = await walletClient.sendTransaction({
               account: signer,
@@ -712,12 +700,57 @@ export function DeployVaultAA({
             await publicClient.waitForTransactionReceipt({ hash: txHash as any, timeout: 120_000 })
           }
 
-          // Step 1b: owner-only wiring/launch via Smart Wallet (small payload)
           const ownerBatch = ownerCalls.map((c) => ({ target: c.to, value: 0n, data: c.data }))
           const txHash2 = await tryExecuteBatch(ownerBatch)
           setCallBundleId(String(txHash2))
           setStep(2)
           await publicClient.waitForTransactionReceipt({ hash: txHash2 as any, timeout: 120_000 })
+        }
+
+        const batchedCalls = calls.map((c) => ({ target: c.to, value: 0n, data: c.data }))
+        const encoded = encodeFunctionData({
+          abi: COINBASE_SMART_WALLET_ABI,
+          functionName: 'executeBatch',
+          args: [batchedCalls],
+        })
+        const approxBytes = Math.max(0, (encoded.length - 2) / 2)
+        // If the outer tx is very large, many wallets will fail to "create" it before it even hits the network.
+        if (approxBytes > 45_000) {
+          await runSplitFlow()
+        } else {
+          const txHash = await tryExecuteBatch(batchedCalls)
+
+          setCallBundleType('tx')
+          setCallBundleId(String(txHash))
+          setStep(2)
+          await publicClient.waitForTransactionReceipt({ hash: txHash as any, timeout: 120_000 })
+        }
+        } catch (e: any) {
+          const msg = extractErrorText(e)
+        if (!OVERSIZED_DATA_RE.test(msg) && !FAILED_TO_CREATE_RE.test(msg)) {
+            throw e
+          }
+        // Retry using split flow.
+        setCallBundleType('tx')
+        setCallBundleId(null)
+
+        for (const c of deployCalls) {
+          const txHash = await walletClient.sendTransaction({
+            account: signer,
+            chain: base as any,
+            to: c.to,
+            data: c.data,
+            value: c.value ?? 0n,
+          })
+          setCallBundleId(String(txHash))
+          await publicClient.waitForTransactionReceipt({ hash: txHash as any, timeout: 120_000 })
+        }
+
+        const ownerBatch = ownerCalls.map((c) => ({ target: c.to, value: 0n, data: c.data }))
+        const txHash2 = await tryExecuteBatch(ownerBatch)
+        setCallBundleId(String(txHash2))
+        setStep(2)
+        await publicClient.waitForTransactionReceipt({ hash: txHash2 as any, timeout: 120_000 })
         }
       } else {
         const walletClient = createWalletClient({
