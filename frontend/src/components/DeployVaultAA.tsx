@@ -140,6 +140,24 @@ const OFT_BOOTSTRAP_ABI = [
   { type: 'function', name: 'setLayerZeroEndpoint', stateMutability: 'nonpayable', inputs: [{ name: 'chainId', type: 'uint16' }, { name: 'endpoint', type: 'address' }], outputs: [] },
 ] as const
 
+const BYTECODE_STORE_VIEW_ABI = [
+  { type: 'function', name: 'pointers', stateMutability: 'view', inputs: [{ name: 'codeId', type: 'bytes32' }], outputs: [{ type: 'address' }] },
+] as const
+
+const UNIVERSAL_CREATE2_FROM_STORE_ABI = [
+  {
+    type: 'function',
+    name: 'deploy',
+    stateMutability: 'nonpayable',
+    inputs: [
+      { name: 'salt', type: 'bytes32' },
+      { name: 'codeId', type: 'bytes32' },
+      { name: 'constructorArgs', type: 'bytes' },
+    ],
+    outputs: [{ name: 'addr', type: 'address' }],
+  },
+] as const
+
 const ERC20_APPROVE_ABI = [
   { type: 'function', name: 'approve', stateMutability: 'nonpayable', inputs: [{ name: 'spender', type: 'address' }, { name: 'amount', type: 'uint256' }], outputs: [{ type: 'bool' }] },
   { type: 'function', name: 'balanceOf', stateMutability: 'view', inputs: [{ name: 'account', type: 'address' }], outputs: [{ type: 'uint256' }] },
@@ -456,17 +474,6 @@ export function DeployVaultAA({
     // Salts
     const salts = deriveSalts({ creatorToken, owner, chainId: base.id, version })
 
-    // Cross-chain deterministic ShareOFT:
-    // - Deployed via the universal CREATE2 factory (0x4e59…)
-    // - Salt does NOT include chainId or local creatorToken
-    // - Constructor arg `_registry` is a deterministic bootstrap contract address (same on all chains),
-    //   and is immediately replaced via `setRegistry(registry)` after deployment.
-    const oftBootstrapSalt = deriveOftBootstrapSalt()
-    const oftBootstrapInitCode = DEPLOY_BYTECODE.OFTBootstrapRegistry as Hex
-    const oftBootstrapRegistry = predictCreate2Address(create2Factory, oftBootstrapSalt, oftBootstrapInitCode)
-
-    const shareOftSalt = deriveShareOftUniversalSalt({ owner, shareSymbol: symbol, version })
-
     // Init codes (constructor args appended)
     const vaultInitCode = makeInitCode(
       DEPLOY_BYTECODE.CreatorOVault as Hex,
@@ -482,12 +489,72 @@ export function DeployVaultAA({
     )
     const wrapperAddress = predictCreate2Address(create2Deployer, salts.wrapperSalt, wrapperInitCode)
 
-    const shareOftInitCode = makeInitCode(
-      DEPLOY_BYTECODE.CreatorShareOFT as Hex,
-      'string,string,address,address',
-      [name, symbol, oftBootstrapRegistry, owner],
+    // Cross-chain deterministic ShareOFT:
+    // - v1: deployed via the universal CREATE2 factory (0x4e59…)
+    // - v2+: prefer deploying via the universal bytecode store (small calldata; Smart Wallet friendly),
+    //        when the infra is deployed + seeded.
+    //
+    // Salt does NOT include chainId or local creatorToken.
+    const oftBootstrapSalt = deriveOftBootstrapSalt()
+    const oftBootstrapInitCode = DEPLOY_BYTECODE.OFTBootstrapRegistry as Hex
+    const shareOftSalt = deriveShareOftUniversalSalt({ owner, shareSymbol: symbol, version })
+
+    const universalBytecodeStore = (CONTRACTS as any).universalBytecodeStore as Address | undefined
+    const universalCreate2FromStore = (CONTRACTS as any).universalCreate2DeployerFromStore as Address | undefined
+
+    const bootstrapCodeId = keccak256(oftBootstrapInitCode)
+    const shareOftCodeId = keccak256(DEPLOY_BYTECODE.CreatorShareOFT as Hex)
+
+    let useUniversalOftStore = false
+    const ZERO = '0x0000000000000000000000000000000000000000'
+    if (version === 'v2' && universalBytecodeStore && universalCreate2FromStore) {
+      try {
+        const [storeCode, deployerCode] = await Promise.all([
+          publicClient.getBytecode({ address: universalBytecodeStore }),
+          publicClient.getBytecode({ address: universalCreate2FromStore }),
+        ])
+        if (storeCode && storeCode !== '0x' && deployerCode && deployerCode !== '0x') {
+          const [bootPtr, oftPtr] = await Promise.all([
+            publicClient.readContract({
+              address: universalBytecodeStore,
+              abi: BYTECODE_STORE_VIEW_ABI,
+              functionName: 'pointers',
+              args: [bootstrapCodeId],
+            }),
+            publicClient.readContract({
+              address: universalBytecodeStore,
+              abi: BYTECODE_STORE_VIEW_ABI,
+              functionName: 'pointers',
+              args: [shareOftCodeId],
+            }),
+          ])
+          useUniversalOftStore =
+            (bootPtr as Address).toLowerCase() !== ZERO &&
+            (oftPtr as Address).toLowerCase() !== ZERO
+        }
+      } catch {
+        useUniversalOftStore = false
+      }
+    }
+
+    const oftBootstrapRegistry = predictCreate2Address(
+      useUniversalOftStore ? universalCreate2FromStore! : create2Factory,
+      oftBootstrapSalt,
+      oftBootstrapInitCode,
     )
-    const shareOftAddress = predictCreate2Address(create2Factory, shareOftSalt, shareOftInitCode)
+
+    const shareOftConstructorArgs = encodeAbiParameters(parseAbiParameters('string,string,address,address'), [
+      name,
+      symbol,
+      oftBootstrapRegistry,
+      owner,
+    ])
+    const shareOftInitCode = concatHex([DEPLOY_BYTECODE.CreatorShareOFT as Hex, shareOftConstructorArgs])
+    const shareOftAddress = predictCreate2Address(
+      useUniversalOftStore ? universalCreate2FromStore! : create2Factory,
+      shareOftSalt,
+      shareOftInitCode,
+    )
 
     const gaugeInitCode = makeInitCode(
       DEPLOY_BYTECODE.CreatorGaugeController as Hex,
@@ -583,22 +650,46 @@ export function DeployVaultAA({
       })
     }
 
-    // Universal CREATE2 factory deployments for cross-chain IDENTICAL ShareOFT.
+    // Cross-chain ShareOFT bootstrap + deployment
+    // - v1: universal CREATE2 factory (salt || initCode)
+    // - v2+: prefer universal bytecode store deployer (small calldata) when available
     if (!bootstrapExists) {
-      deployCalls.push({
-        to: create2Factory,
-        data: encodeCreate2FactoryDeployData(oftBootstrapSalt, oftBootstrapInitCode),
-      })
+      if (useUniversalOftStore) {
+        deployCalls.push({
+          to: universalCreate2FromStore!,
+          data: encodeFunctionData({
+            abi: UNIVERSAL_CREATE2_FROM_STORE_ABI,
+            functionName: 'deploy',
+            args: [oftBootstrapSalt, bootstrapCodeId, '0x'],
+          }),
+        })
+      } else {
+        deployCalls.push({
+          to: create2Factory,
+          data: encodeCreate2FactoryDeployData(oftBootstrapSalt, oftBootstrapInitCode),
+        })
+      }
     }
     deployCalls.push({
       to: oftBootstrapRegistry,
       data: encodeFunctionData({ abi: OFT_BOOTSTRAP_ABI, functionName: 'setLayerZeroEndpoint', args: [base.id, resolvedLzEndpoint] }),
     })
     if (!shareOftExists) {
-      deployCalls.push({
-        to: create2Factory,
-        data: encodeCreate2FactoryDeployData(shareOftSalt, shareOftInitCode),
-      })
+      if (useUniversalOftStore) {
+        deployCalls.push({
+          to: universalCreate2FromStore!,
+          data: encodeFunctionData({
+            abi: UNIVERSAL_CREATE2_FROM_STORE_ABI,
+            functionName: 'deploy',
+            args: [shareOftSalt, shareOftCodeId, shareOftConstructorArgs],
+          }),
+        })
+      } else {
+        deployCalls.push({
+          to: create2Factory,
+          data: encodeCreate2FactoryDeployData(shareOftSalt, shareOftInitCode),
+        })
+      }
     }
     if (!gaugeExists) {
       deployCalls.push({

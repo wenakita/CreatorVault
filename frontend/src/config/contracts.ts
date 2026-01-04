@@ -15,6 +15,15 @@ export const CONTRACTS = {
   // Phase 2 (AA): CREATE2 deployer for permissionless, one-signature deployments
   create2Deployer: '0xaBf645362104F34D9C3FE48440bE7c99aaDE58E7' as const,
 
+  // Universal AA optimization:
+  // Store large creation bytecode once, then deploy via CREATE2 using (codeId + constructor args).
+  // Deployed via the universal CREATE2 factory (0x4e59…) with chain-agnostic salts.
+  //
+  // NOTE: These addresses may not be deployed on every chain yet. The frontend should treat them as optional
+  // and fall back to calldata-based deployments when missing.
+  universalBytecodeStore: '0xbec0c922835136949032223860C021484b0Cbdfa' as const,
+  universalCreate2DeployerFromStore: '0x6E01e598e450F07551200e7b2db333BEcC66b35e' as const,
+
   // Phase 1/2 (AA): Vault activation batcher (approve + deposit + wrap + launch auction)
   vaultActivationBatcher: '0x6d796554698f5Ddd74Ff20d745304096aEf93CB6' as const,
 
