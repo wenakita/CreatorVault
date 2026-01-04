@@ -10,6 +10,7 @@ import { BarChart3, Layers, Lock, Rocket, RotateCw, ShieldCheck } from 'lucide-r
 import { ConnectButton } from '@/components/ConnectButton'
 import { DeployVaultAA } from '@/components/DeployVaultAA'
 import { DerivedTokenIcon } from '@/components/DerivedTokenIcon'
+import { SmartWalletSwitchNotice } from '@/components/SmartWalletSwitchNotice'
 import { RequestCreatorAccess } from '@/components/RequestCreatorAccess'
 import { useCreatorAllowlist } from '@/hooks'
 import { useZoraCoin, useZoraProfile } from '@/lib/zora/hooks'
@@ -17,6 +18,16 @@ import { fetchCoinMarketRewardsByCoinFromApi } from '@/lib/onchain/coinMarketRew
 
 const MIN_FIRST_DEPOSIT = 50_000_000n * 10n ** 18n
 const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000' as const
+
+const COINBASE_SMART_WALLET_OWNER_ABI = [
+  {
+    type: 'function',
+    name: 'isOwnerAddress',
+    stateMutability: 'view',
+    inputs: [{ name: 'account', type: 'address' }],
+    outputs: [{ type: 'bool' }],
+  },
+] as const
 
 function ExplainerRow({
   icon,
@@ -162,7 +173,7 @@ export function DeployVault() {
     if (!detectedSmartWallet) return
     if (!tokenIsValid) return
 
-    const key = `${addressLc}:${String(creatorToken).toLowerCase()}`
+    const key = `${addressLc}:${String(creatorToken).toLowerCase()}:funding`
     if (autofillRef.current.deployAsFor === key) return
 
     // Avoid surprising creators: only auto-pick the smart wallet when it's the only obvious choice.
@@ -319,7 +330,49 @@ export function DeployVault() {
 
   const isPayoutRecipient =
     !!address && !!payoutRecipient && address.toLowerCase() === payoutRecipient.toLowerCase()
-  const isAuthorizedDeployer = isOriginalCreator || isPayoutRecipient
+
+  // Zora creators often deploy coins from a Coinbase Smart Wallet (Privy-managed), then add EOAs later.
+  // Treat the Smart Wallet address as canonical and allow the connected EOA to act if it is an onchain owner.
+  const coinSmartWallet = useMemo(() => {
+    if (!detectedSmartWallet) return null
+    const smartLc = detectedSmartWallet.toLowerCase()
+    if (payoutRecipient && payoutRecipient.toLowerCase() === smartLc) return detectedSmartWallet
+    if (creatorAddress && creatorAddress.toLowerCase() === smartLc) return detectedSmartWallet
+    return null
+  }, [detectedSmartWallet, payoutRecipient, creatorAddress])
+
+  const smartWalletOwnerQuery = useReadContract({
+    address: coinSmartWallet ? (coinSmartWallet as `0x${string}`) : undefined,
+    abi: COINBASE_SMART_WALLET_OWNER_ABI,
+    functionName: 'isOwnerAddress',
+    args: [(connectedWalletAddress ?? ZERO_ADDRESS) as `0x${string}`],
+    query: {
+      enabled: !!coinSmartWallet && !!connectedWalletAddress && !isOriginalCreator && !isPayoutRecipient,
+      retry: false,
+    },
+  })
+
+  const isAuthorizedViaSmartWallet =
+    !!coinSmartWallet && smartWalletOwnerQuery.data === true
+
+  const isAuthorizedDeployer = isOriginalCreator || isPayoutRecipient || isAuthorizedViaSmartWallet
+
+  // If the coin is controlled by your detected smart wallet, default to deploying *as* that smart wallet.
+  // This avoids EIP-5792 `wallet_sendCalls` issues and matches how Zora coins are typically owned.
+  useEffect(() => {
+    if (!isConnected || !addressLc) return
+    if (!coinSmartWallet) return
+    if (deployAs.trim().length > 0) return
+    if (!tokenIsValid) return
+    if (!connectedWalletAddress) return
+    if (connectedWalletAddress.toLowerCase() === coinSmartWallet.toLowerCase()) return
+
+    const key = `${addressLc}:${String(creatorToken).toLowerCase()}:ownership`
+    if (autofillRef.current.deployAsFor === key) return
+
+    setDeployAs(String(coinSmartWallet))
+    autofillRef.current.deployAsFor = key
+  }, [isConnected, addressLc, coinSmartWallet, deployAs, tokenIsValid, connectedWalletAddress, creatorToken])
 
   const creatorAllowlistQuery = useCreatorAllowlist(tokenIsValid ? { coin: creatorToken } : undefined)
   const allowlistMode = creatorAllowlistQuery.data?.mode
@@ -1185,6 +1238,10 @@ export function DeployVault() {
             <div className="card rounded-xl p-8 space-y-4">
               <div className="label">Deploy</div>
 
+              {isConnected && tokenIsValid && zoraCoin ? (
+                <SmartWalletSwitchNotice context="deploy" />
+              ) : null}
+
               {!isConnected ? (
                 <button
                   disabled
@@ -1211,7 +1268,15 @@ export function DeployVault() {
                   disabled
                   className="w-full py-4 bg-black/30 border border-zinc-900/60 rounded-lg text-zinc-600 text-sm cursor-not-allowed"
                 >
-                  Authorized only: connect the coin’s creator or payout recipient wallet to deploy
+                  {coinSmartWallet ? (
+                    smartWalletOwnerQuery.isLoading ? (
+                      'Verifying Smart Wallet ownership…'
+                    ) : (
+                      'Authorized only: connect the coin’s Smart Wallet (creator/payout) or an owner EOA and deploy as Smart Wallet.'
+                    )
+                  ) : (
+                    'Authorized only: connect the coin’s creator or payout recipient wallet to deploy'
+                  )}
                 </button>
               ) : tokenIsValid && zoraCoin && creatorAllowlistQuery.isLoading ? (
                 <button
