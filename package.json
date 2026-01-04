@@ -1,11 +1,29 @@
 {
   "dependencies": {
-    "@chainlink/contracts": "^1.4.0",
+    "@chainlink/contracts": "1.2.0",
     "@layerzerolabs/lz-evm-protocol-v2": "^3.0.151",
     "@layerzerolabs/oapp-evm": "^0.4.1",
     "@layerzerolabs/oft-evm": "^4.0.1",
     "@openzeppelin/contracts": "^5.4.0",
     "@uniswap/v4-core": "^1.0.2",
     "@uniswap/v4-periphery": "^1.0.3"
+  },
+  "overrides": {
+    "@arbitrum/nitro-contracts": {
+      "@openzeppelin/contracts": "4.9.6",
+      "@openzeppelin/contracts-upgradeable": "4.9.6"
+    },
+    "@offchainlabs/upgrade-executor": {
+      "@openzeppelin/contracts": "4.9.6",
+      "@openzeppelin/contracts-upgradeable": "4.9.6"
+    },
+    "@chainlink/contracts-ccip": "1.6.4",
+    "@openzeppelin/contracts@4.9.3": "4.9.6",
+    "@openzeppelin/contracts-upgradeable@4.9.3": "4.9.6",
+    "@openzeppelin/contracts-4.8.3": "npm:@openzeppelin/contracts@4.9.6",
+    "axios": "1.13.2",
+    "elliptic": "6.6.1",
+    "tmp": "0.2.4",
+    "ws": "8.18.0"
   }
 }
