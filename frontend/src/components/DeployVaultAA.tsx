@@ -520,12 +520,12 @@ export function DeployVaultAA({
       publicClient.getBytecode({ address: ccaAddress }),
       publicClient.getBytecode({ address: oracleAddress }),
     ])
-    if (existingBytecodes.some((x) => x && x !== '0x')) {
-      fail(
-        'A vault already exists for this coin + owner wallet.',
-        'If you need to deploy a fresh stack (one-time upgrade), use Deploy v2 to create new deterministic addresses.',
-      )
-    }
+    const vaultExists = !!existingBytecodes[0] && existingBytecodes[0] !== '0x'
+    const wrapperExists = !!existingBytecodes[1] && existingBytecodes[1] !== '0x'
+    const shareOftExists = !!existingBytecodes[2] && existingBytecodes[2] !== '0x'
+    const gaugeExists = !!existingBytecodes[3] && existingBytecodes[3] !== '0x'
+    const ccaExists = !!existingBytecodes[4] && existingBytecodes[4] !== '0x'
+    const oracleExists = !!existingBytecodes[5] && existingBytecodes[5] !== '0x'
 
     // ShareOFT bootstrap (cross-chain deterministic):
     // - Deploy deterministic `OFTBootstrapRegistry` on the universal factory (0x4e59…) if missing
@@ -558,14 +558,18 @@ export function DeployVaultAA({
     const launchCalls: { to: Address; data: Hex; value?: bigint }[] = []
 
     // Deploy contracts
-    deployCalls.push({
-      to: create2Deployer,
-      data: encodeFunctionData({ abi: CREATE2_DEPLOYER_ABI, functionName: 'deploy', args: [salts.vaultSalt, vaultInitCode] }),
-    })
-    deployCalls.push({
-      to: create2Deployer,
-      data: encodeFunctionData({ abi: CREATE2_DEPLOYER_ABI, functionName: 'deploy', args: [salts.wrapperSalt, wrapperInitCode] }),
-    })
+    if (!vaultExists) {
+      deployCalls.push({
+        to: create2Deployer,
+        data: encodeFunctionData({ abi: CREATE2_DEPLOYER_ABI, functionName: 'deploy', args: [salts.vaultSalt, vaultInitCode] }),
+      })
+    }
+    if (!wrapperExists) {
+      deployCalls.push({
+        to: create2Deployer,
+        data: encodeFunctionData({ abi: CREATE2_DEPLOYER_ABI, functionName: 'deploy', args: [salts.wrapperSalt, wrapperInitCode] }),
+      })
+    }
 
     // Universal CREATE2 factory deployments for cross-chain IDENTICAL ShareOFT.
     if (!bootstrapExists) {
@@ -578,22 +582,30 @@ export function DeployVaultAA({
       to: oftBootstrapRegistry,
       data: encodeFunctionData({ abi: OFT_BOOTSTRAP_ABI, functionName: 'setLayerZeroEndpoint', args: [base.id, resolvedLzEndpoint] }),
     })
-    deployCalls.push({
-      to: create2Factory,
-      data: encodeCreate2FactoryDeployData(shareOftSalt, shareOftInitCode),
-    })
-    deployCalls.push({
-      to: create2Deployer,
-      data: encodeFunctionData({ abi: CREATE2_DEPLOYER_ABI, functionName: 'deploy', args: [salts.gaugeSalt, gaugeInitCode] }),
-    })
-    deployCalls.push({
-      to: create2Deployer,
-      data: encodeFunctionData({ abi: CREATE2_DEPLOYER_ABI, functionName: 'deploy', args: [salts.ccaSalt, ccaInitCode] }),
-    })
-    deployCalls.push({
-      to: create2Deployer,
-      data: encodeFunctionData({ abi: CREATE2_DEPLOYER_ABI, functionName: 'deploy', args: [salts.oracleSalt, oracleInitCode] }),
-    })
+    if (!shareOftExists) {
+      deployCalls.push({
+        to: create2Factory,
+        data: encodeCreate2FactoryDeployData(shareOftSalt, shareOftInitCode),
+      })
+    }
+    if (!gaugeExists) {
+      deployCalls.push({
+        to: create2Deployer,
+        data: encodeFunctionData({ abi: CREATE2_DEPLOYER_ABI, functionName: 'deploy', args: [salts.gaugeSalt, gaugeInitCode] }),
+      })
+    }
+    if (!ccaExists) {
+      deployCalls.push({
+        to: create2Deployer,
+        data: encodeFunctionData({ abi: CREATE2_DEPLOYER_ABI, functionName: 'deploy', args: [salts.ccaSalt, ccaInitCode] }),
+      })
+    }
+    if (!oracleExists) {
+      deployCalls.push({
+        to: create2Deployer,
+        data: encodeFunctionData({ abi: CREATE2_DEPLOYER_ABI, functionName: 'deploy', args: [salts.oracleSalt, oracleInitCode] }),
+      })
+    }
 
     // Wiring / configuration
     wiringCalls.push({ to: wrapperAddress, data: encodeFunctionData({ abi: WRAPPER_ADMIN_ABI, functionName: 'setShareOFT', args: [shareOftAddress] }) })
