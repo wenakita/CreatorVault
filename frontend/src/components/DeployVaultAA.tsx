@@ -417,6 +417,7 @@ export function DeployVaultAA({
 
     const fail = (message: string, details?: string): never => {
       const err: any = new Error(message)
+      err.isUserFacing = true
       if (details) err.details = details
       throw err
     }
@@ -511,6 +512,8 @@ export function DeployVaultAA({
           )
         }
       } catch (e: any) {
+        // Preserve our own user-facing errors (e.g. "need 50M") instead of wrapping them.
+        if (e?.isUserFacing) throw e
         // If the token doesn't behave like an ERC20, bubble up a useful error.
         fail('Failed to verify your token balance.', String(e?.shortMessage || e?.message || 'balanceOf failed'))
       }

@@ -1,12 +1,13 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { motion } from 'framer-motion'
-import { useAccount, useReadContract } from 'wagmi'
+import { useAccount, useReadContract, useWaitForTransactionReceipt, useWriteContract } from 'wagmi'
 import type { Address } from 'viem'
 import { erc20Abi, formatUnits, isAddress } from 'viem'
 import { Link, useSearchParams } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { coinABI } from '@zoralabs/protocol-deployments'
 import { BarChart3, Layers, Lock, Rocket, RotateCw, ShieldCheck } from 'lucide-react'
+import { base } from 'wagmi/chains'
 import { ConnectButton } from '@/components/ConnectButton'
 import { DeployVaultAA } from '@/components/DeployVaultAA'
 import { DerivedTokenIcon } from '@/components/DerivedTokenIcon'
@@ -410,6 +411,50 @@ export function DeployVault() {
 
   const selectedOwnerHasMinDeposit =
     typeof selectedOwnerTokenBalance === 'bigint' && selectedOwnerTokenBalance >= MIN_FIRST_DEPOSIT
+
+  const missingToMinDeposit = useMemo(() => {
+    if (typeof selectedOwnerTokenBalance !== 'bigint') return null
+    if (selectedOwnerTokenBalance >= MIN_FIRST_DEPOSIT) return 0n
+    return MIN_FIRST_DEPOSIT - selectedOwnerTokenBalance
+  }, [selectedOwnerTokenBalance])
+
+  const selectedOwnerIsSmartWallet = useMemo(() => {
+    if (!selectedOwnerAddress) return false
+    const sel = selectedOwnerAddress.toLowerCase()
+    if (detectedSmartWallet && sel === detectedSmartWallet.toLowerCase()) return true
+    if (coinSmartWallet && sel === coinSmartWallet.toLowerCase()) return true
+    return false
+  }, [selectedOwnerAddress, detectedSmartWallet, coinSmartWallet])
+
+  const canFundOwnerFromConnected =
+    tokenIsValid &&
+    !!connectedWalletAddress &&
+    !!selectedOwnerAddress &&
+    selectedOwnerIsSmartWallet &&
+    !selectedOwnerHasMinDeposit &&
+    connectedHasMinDeposit &&
+    connectedWalletAddress.toLowerCase() !== selectedOwnerAddress.toLowerCase() &&
+    typeof missingToMinDeposit === 'bigint' &&
+    missingToMinDeposit > 0n
+
+  const { writeContractAsync: writeFundingTx, data: fundingTxHash, isPending: isFundingPending } = useWriteContract()
+  const { isLoading: isFundingConfirming, isSuccess: isFundingSuccess } = useWaitForTransactionReceipt({
+    hash: fundingTxHash,
+    chainId: base.id,
+    query: { enabled: !!fundingTxHash },
+  })
+
+  async function fundOwnerWallet() {
+    if (!canFundOwnerFromConnected) return
+    if (!selectedOwnerAddress || !connectedWalletAddress) return
+    if (typeof missingToMinDeposit !== 'bigint' || missingToMinDeposit <= 0n) return
+    await writeFundingTx({
+      address: creatorToken as `0x${string}`,
+      abi: erc20Abi,
+      functionName: 'transfer',
+      args: [selectedOwnerAddress as `0x${string}`, missingToMinDeposit],
+    })
+  }
   const ownerFundingDetailsAreForced =
     tokenIsValid && typeof selectedOwnerTokenBalance === 'bigint' && !selectedOwnerHasMinDeposit
   const showOwnerFundingDetails =
@@ -1150,6 +1195,36 @@ export function DeployVault() {
                             </div>
                           ) : null}
 
+                          {canFundOwnerFromConnected ? (
+                            <div className="pt-1">
+                              <button
+                                type="button"
+                                onClick={() => void fundOwnerWallet()}
+                                disabled={isFundingPending || isFundingConfirming || isFundingSuccess}
+                                className="text-[11px] text-cyan-200 hover:text-cyan-100 transition-colors text-left disabled:opacity-60"
+                                title="Transfers the missing amount from your connected wallet to the owner smart wallet so it can fund the 50M deposit during deployment."
+                              >
+                                {isFundingPending || isFundingConfirming
+                                  ? 'Transferring to smart wallet…'
+                                  : isFundingSuccess
+                                    ? 'Transferred — refresh balances'
+                                    : `Transfer ${Number(formatUnits(missingToMinDeposit ?? 0n, 18)).toLocaleString(undefined, { maximumFractionDigits: 2 })} ${underlyingSymbolUpper || 'TOKENS'} to smart wallet`}
+                              </button>
+                              {fundingTxHash ? (
+                                <div className="text-[10px] text-zinc-700 mt-1">
+                                  <a
+                                    href={`https://basescan.org/tx/${fundingTxHash}`}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    className="text-zinc-500 hover:text-zinc-200 underline underline-offset-2"
+                                  >
+                                    View transfer on Basescan
+                                  </a>
+                                </div>
+                              ) : null}
+                            </div>
+                          ) : null}
+
                           {!selectedOwnerHasMinDeposit && detectedSmartWallet && smartWalletHasMinDeposit ? (
                             <button
                               type="button"
@@ -1294,6 +1369,13 @@ export function DeployVault() {
                 </button>
               ) : tokenIsValid && zoraCoin && allowlistEnforced && !isAllowlistedCreator ? (
                 <RequestCreatorAccess coin={creatorToken} />
+              ) : canDeploy && typeof selectedOwnerTokenBalance === 'bigint' && !selectedOwnerHasMinDeposit ? (
+                <button
+                  disabled
+                  className="w-full py-4 bg-black/30 border border-zinc-900/60 rounded-lg text-zinc-600 text-sm cursor-not-allowed"
+                >
+                  Owner wallet needs 50,000,000 {underlyingSymbolUpper || 'TOKENS'} to deploy & launch
+                </button>
               ) : canDeploy ? (
                 <DeployVaultAA
                   creatorToken={creatorToken as `0x${string}`}
