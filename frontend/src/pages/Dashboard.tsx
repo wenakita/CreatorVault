@@ -58,6 +58,18 @@ function shortAddress(addr?: string): string | null {
   return `${addr.slice(0, 6)}…${addr.slice(-4)}`
 }
 
+function formatDaysSinceIso(iso?: string): string | null {
+  if (!iso) return null
+  const ms = Date.parse(String(iso))
+  if (!Number.isFinite(ms)) return null
+  const delta = Date.now() - ms
+  if (!Number.isFinite(delta)) return null
+  if (delta < 0) return '<1d'
+  const days = Math.floor(delta / 86_400_000)
+  if (days <= 0) return '<1d'
+  return `${days}d`
+}
+
 type CoinTypeFilter = 'ALL' | 'CREATOR' | 'CONTENT' | 'VIDEO'
 type SortKey = 'MARKET_CAP' | 'VOLUME' | 'CHANGE_24H'
 type Timeframe = 'TOTAL' | '24H'
@@ -216,6 +228,9 @@ function ZoraCoinRow({
   const creatorHandle = coin.creatorProfile?.handle ? `@${coin.creatorProfile.handle}` : null
   const creatorAddr = coin.creatorAddress ? String(coin.creatorAddress) : undefined
   const creatorLabel = creatorHandle ?? shortAddress(creatorAddr) ?? null
+
+  const launchAge = formatDaysSinceIso(coin.createdAt)
+  const launchAgeTitle = coin.createdAt ? `Coin launched: ${coin.createdAt}` : undefined
 
   const coinType = coin.coinType ? String(coin.coinType).toUpperCase() : ''
   const isCreatorCoin = coinType === 'CREATOR'
@@ -423,6 +438,14 @@ function ZoraCoinRow({
                       ) : null}
                     </>
                   ) : null}
+                  {launchAge ? (
+                    <>
+                      <span className="text-zinc-700"> · </span>
+                      <span className="font-mono tabular-nums" title={launchAgeTitle}>
+                        Age {launchAge}
+                      </span>
+                    </>
+                  ) : null}
                 </div>
               ) : null}
 
@@ -442,6 +465,15 @@ function ZoraCoinRow({
                       </span>
                     </>
                   ) : null}
+                </div>
+              ) : null}
+
+              {/* Always show launch age for creator coins; show it for other coins when we don't have a creator label line. */}
+              {launchAge && (isCreatorCoin || !creatorLabel) ? (
+                <div className="text-xs text-zinc-600 min-w-0 truncate">
+                  <span className="font-mono tabular-nums" title={launchAgeTitle}>
+                    Age {launchAge}
+                  </span>
                 </div>
               ) : null}
             </div>
