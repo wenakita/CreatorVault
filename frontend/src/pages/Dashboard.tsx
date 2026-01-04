@@ -439,12 +439,12 @@ function ZoraCoinRow({
                     </>
                   ) : null}
                   {launchAge ? (
-                    <>
+                    <span className="lg:hidden">
                       <span className="text-zinc-700"> · </span>
                       <span className="font-mono tabular-nums" title={launchAgeTitle}>
                         Age {launchAge}
                       </span>
-                    </>
+                    </span>
                   ) : null}
                 </div>
               ) : null}
@@ -470,13 +470,18 @@ function ZoraCoinRow({
 
               {/* Always show launch age for creator coins; show it for other coins when we don't have a creator label line. */}
               {launchAge && (isCreatorCoin || !creatorLabel) ? (
-                <div className="text-xs text-zinc-600 min-w-0 truncate">
+                <div className="text-xs text-zinc-600 min-w-0 truncate lg:hidden">
                   <span className="font-mono tabular-nums" title={launchAgeTitle}>
                     Age {launchAge}
                   </span>
                 </div>
               ) : null}
             </div>
+          </div>
+
+          {/* Age (days since launch) */}
+          <div className="hidden lg:block lg:col-span-1 text-right" title={launchAgeTitle ?? 'Days since coin launch'}>
+            <div className="text-sm font-mono tabular-nums text-zinc-200">{launchAge ?? '—'}</div>
           </div>
 
           {/* Mobile: show only the active sort column value */}
@@ -518,7 +523,7 @@ function ZoraCoinRow({
             ) : null}
           </div>
 
-          <div className={`hidden sm:block ${showScore ? 'sm:col-span-2 lg:col-span-4' : 'sm:col-span-4 lg:col-span-5'} text-right`}>
+          <div className={`hidden sm:block ${showScore ? 'sm:col-span-2 lg:col-span-3' : 'sm:col-span-4 lg:col-span-4'} text-right`}>
             <div className="text-sm font-mono tabular-nums text-zinc-200">{mcapText}</div>
             {analytics && timeframe === '24H' && deltaPctText ? (
               <div className={`mt-1 text-[10px] font-mono tabular-nums ${deltaClass} opacity-70`}>
@@ -1002,6 +1007,10 @@ export function Dashboard() {
                         }
                       })()}
                       <span className="ml-1">{sortDir === 'desc' ? '↓' : '↑'}</span>
+                    </div>
+
+                    <div className="hidden lg:block lg:col-span-1 text-right" title="Days since coin launch">
+                      Age
                     </div>
 
                     {showScore ? (
