@@ -9,7 +9,6 @@ import { Swap } from '@coinbase/onchainkit/swap'
 
 import type { ZoraCoin } from '@/lib/zora/types'
 import { CONTRACTS } from '@/config/contracts'
-import { SmartWalletSwitchNotice } from '@/components/SmartWalletSwitchNotice'
 
 function safeStr(v: unknown): string {
   return typeof v === 'string' ? v : ''
@@ -134,10 +133,6 @@ export function CoinTradeModal({
                 </a>
               </div>
             ) : null}
-
-            <div className="mt-4">
-              <SmartWalletSwitchNotice context="market" />
-            </div>
 
             <div className="mt-4 flex justify-center">
               {/* OnchainKit swap UI */}

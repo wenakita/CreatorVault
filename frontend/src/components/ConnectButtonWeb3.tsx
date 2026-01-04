@@ -264,8 +264,8 @@ export function ConnectButtonWeb3({ autoConnect = false }: { autoConnect?: boole
                   }}
                   className="w-full text-left py-3 px-4 hover:bg-zinc-950 transition-colors"
                 >
-                  <span className="label block mb-1">Coinbase Smart Wallet</span>
-                  <span className="text-xs text-zinc-600">Recommended for 1‑click deploy</span>
+                  <span className="label block mb-1">Coinbase Wallet</span>
+                  <span className="text-xs text-zinc-600">Coinbase wallet app / extension</span>
                 </button>
               ) : null}
 

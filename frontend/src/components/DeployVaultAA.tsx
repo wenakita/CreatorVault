@@ -243,7 +243,7 @@ interface DeployVaultAAProps {
   /** Creator treasury for GaugeController (defaults to connected address) */
   creatorTreasury?: Address
   /**
-   * Optional: execute deployment *as* this account (e.g. a Coinbase Smart Wallet contract),
+   * Optional: execute deployment *as* this account (e.g. a smart wallet contract),
    * while signing the outer transaction with the connected wallet if it is an owner.
    */
   executeAs?: Address
@@ -360,7 +360,7 @@ export function DeployVaultAA({
       return
     }
     if (!window.ethereum) {
-      setError('No wallet detected. Please use Coinbase Wallet / Smart Wallet.')
+      setError('No wallet detected. Please connect a wallet.')
       return
     }
     if (!isAddress(creatorToken)) {
@@ -396,7 +396,7 @@ export function DeployVaultAA({
     try {
 
       // Preflight:
-      // - If executing as a Coinbase Smart Wallet contract (owner != signer), require signer to be an owner,
+      // - If executing as a smart wallet contract (owner != signer), require signer to be an owner,
       //   then we can call executeBatch (EOA pays the outer tx gas; smart wallet is msg.sender for inner calls).
       if (isDelegatedSmartWallet) {
         // Preflight: "deploy as" must be a deployed contract, and signer must be an owner.
@@ -420,7 +420,7 @@ export function DeployVaultAA({
             fail('Connected wallet is not an owner of the selected smart wallet.')
           }
         } catch {
-          fail('Selected owner wallet is not a supported Coinbase Smart Wallet.')
+          fail('Selected owner wallet is not a supported smart wallet.')
         }
       }
 
@@ -893,6 +893,43 @@ export function DeployVaultAA({
           transport: custom(window.ethereum),
         })
 
+        const waitTx = async (hash: Hex) => {
+          const receipt = await publicClient.waitForTransactionReceipt({ hash: hash as any, timeout: 120_000 })
+          const status = (receipt as any)?.status
+          if (status === 'reverted' || status === 0 || status === '0x0') {
+            throw new Error('Transaction reverted.')
+          }
+          return receipt
+        }
+
+        const sendTx = async (c: { to: Address; data: Hex; value?: bigint }) => {
+          const txHash = await walletClient.sendTransaction({
+            account: owner,
+            chain: base as any,
+            to: c.to,
+            data: c.data,
+            value: c.value ?? 0n,
+          })
+          setCallBundleType('tx')
+          setCallBundleId(String(txHash))
+          setStep(2)
+          await waitTx(txHash as any)
+          return txHash
+        }
+
+        const runMultiTxFlow = async () => {
+          // Compatibility fallback:
+          // If the connected wallet does not support EIP-5792 (wallet_sendCalls), fall back to
+          // sequential normal transactions (multiple confirmations).
+          setCallBundleType('tx')
+          setCallBundleId(null)
+          setStep(1)
+
+          for (const c of deployCalls) await sendTx(c)
+          for (const c of wiringCalls) await sendTx(c)
+          for (const c of launchCalls) await sendTx(c)
+        }
+
         const sendBundle = async (bundleCalls: { to: Address; data: Hex; value?: bigint }[]) => {
           const res = await sendCallsAsync({
             calls: bundleCalls,
@@ -917,29 +954,25 @@ export function DeployVaultAA({
         } catch (e: any) {
           const msg = extractErrorText(e)
           if (/wallet_sendCalls|sendCalls|5792|capabilit/i.test(msg)) {
-            fail(
-              'This wallet can’t 1-click deploy (EIP-5792 wallet_sendCalls not supported). Use Coinbase Smart Wallet (recommended) or deploy via script.',
-              msg,
-            )
-          }
-          if (!OVERSIZED_DATA_RE.test(msg)) {
+            await runMultiTxFlow()
+          } else if (!OVERSIZED_DATA_RE.test(msg)) {
             throw e
-          }
+          } else {
+            // Compatibility fallback:
+            // Some wallets refuse to submit a single large `wallet_sendCalls` payload.
+            // We split into multiple smaller call bundles (multiple confirmations).
+            setCallBundleType('bundle')
+            setCallBundleId(null)
 
-          // Compatibility fallback:
-          // Some wallets refuse to submit a single large `wallet_sendCalls` payload.
-          // We split into multiple smaller call bundles (multiple confirmations).
-          setCallBundleType('bundle')
-          setCallBundleId(null)
-
-          // Step 1a: deploy initcode-heavy calls in small bundles
-          for (const c of deployCalls) {
-            await sendBundle([c])
+            // Step 1a: deploy initcode-heavy calls in small bundles
+            for (const c of deployCalls) {
+              await sendBundle([c])
+            }
+            // Step 1b: wiring (small bundle)
+            await sendBundle(wiringCalls)
+            // Step 1c: launch (small bundle)
+            await sendBundle(launchCalls)
           }
-          // Step 1b: wiring (small bundle)
-          await sendBundle(wiringCalls)
-          // Step 1c: launch (small bundle)
-          await sendBundle(launchCalls)
         }
       }
 

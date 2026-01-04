@@ -81,7 +81,7 @@ export function ActivateAkita() {
   const auctionAmountBigInt = (depositAmountBigInt * BigInt(auctionPercent)) / 100n
   const requiredRaiseBigInt = parseUnits(requiredRaise, 18)
 
-  // Check if using smart wallet (Coinbase Smart Wallet supports batching)
+  // NOTE: This legacy page relies on wallet batching behavior that is wallet-dependent.
   const isSmartWallet = connector?.id === 'coinbaseWalletSDK'
 
   const handleBatchedActivation = async () => {
@@ -167,7 +167,7 @@ export function ActivateAkita() {
         to: address, // Smart wallet will batch these
         data: '0x',
         value: 0n,
-        // @ts-ignore - Coinbase Smart Wallet supports calls array
+        // @ts-ignore - Some wallets support `calls` for batched transactions.
         calls,
       })
     } catch (error) {
@@ -372,14 +372,7 @@ export function ActivateAkita() {
           </div>
         </div>
 
-        {!isSmartWallet && (
-          <div className="mt-4 p-3 rounded-lg bg-yellow-500/10 border border-yellow-500/20 text-sm">
-            <p className="text-yellow-400 font-medium mb-1">💡 Pro Tip</p>
-            <p className="text-yellow-300/80">
-              Connect with Coinbase Smart Wallet for gasless batched transactions
-            </p>
-          </div>
-        )}
+        {/* (Removed) Smart wallet promo: most creators will not have access to the original coin-deploy wallet. */}
       </motion.div>
 
       {/* Configuration */}
@@ -480,8 +473,8 @@ export function ActivateAkita() {
 
         <p className="text-xs text-slate-500 text-center max-w-md">
           {isSmartWallet 
-            ? 'All 7 steps batched into one gasless transaction via Coinbase Smart Wallet'
-            : 'Powered by ERC-4337 Account Abstraction'
+            ? 'All 7 steps batched into one transaction (when supported).'
+            : 'This flow may require a wallet that supports call batching.'
           }
         </p>
 

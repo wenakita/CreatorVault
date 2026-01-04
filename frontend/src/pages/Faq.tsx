@@ -505,8 +505,8 @@ const FAQ_SECTIONS: FaqSection[] = [
               The deploy flow is designed to batch multiple contract calls into a single user approval (including the first deposit and auction launch).
             </p>
             <p className="text-zinc-600">
-              Some wallets don’t support call batching. If you see a <span className="mono">wallet_sendCalls</span> error, try Coinbase Smart Wallet or
-              a wallet that supports EIP‑5792 style batching.
+              Some wallets don’t support call batching. If you see a <span className="mono">wallet_sendCalls</span> error, Creator Vaults will fall back
+              to multiple confirmations.
             </p>
             <p className="text-zinc-600">
               If your wallet blocks large transaction payloads (e.g. “oversized data”), Creator Vaults will fall back to multiple confirmations.

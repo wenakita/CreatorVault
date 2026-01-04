@@ -5,7 +5,6 @@ import type { Address } from 'viem'
 import { formatUnits, isAddress, parseEther, parseEventLogs } from 'viem'
 
 import { ConnectButton } from '@/components/ConnectButton'
-import { SmartWalletSwitchNotice } from '@/components/SmartWalletSwitchNotice'
 import {
   MAX_UINT128,
   Q96,
@@ -349,7 +348,6 @@ export function CcaAuctionPanel({
         </div>
       ) : (
         <div className="space-y-4">
-          <SmartWalletSwitchNotice context="auction" />
           {!hasAuction && (
             <div className="bg-black/40 border border-white/5 rounded-xl p-4 text-zinc-600 text-sm">
               No active auction contract yet.

@@ -11,7 +11,6 @@ import { base } from 'wagmi/chains'
 import { ConnectButton } from '@/components/ConnectButton'
 import { DeployVaultAA } from '@/components/DeployVaultAA'
 import { DerivedTokenIcon } from '@/components/DerivedTokenIcon'
-import { SmartWalletSwitchNotice } from '@/components/SmartWalletSwitchNotice'
 import { RequestCreatorAccess } from '@/components/RequestCreatorAccess'
 import { useSiweAuth } from '@/hooks/useSiweAuth'
 import { useCreatorAllowlist } from '@/hooks'
@@ -163,7 +162,7 @@ export function DeployVault() {
   const executeAsIsSupported = useMemo(() => {
     // Blank means "use connected wallet".
     if (!deployAsAddress) return true
-    // Today we only support deploying "as" the detected Coinbase Smart Wallet contract.
+    // Today we only support deploying "as" the detected smart wallet contract.
     // (Other EOAs or contract wallets would require different batching/permission checks.)
     if (detectedSmartWallet && deployAsAddress.toLowerCase() === detectedSmartWallet.toLowerCase()) return true
     return false
@@ -355,7 +354,7 @@ export function DeployVault() {
   const isPayoutRecipient =
     !!address && !!payoutRecipient && address.toLowerCase() === payoutRecipient.toLowerCase()
 
-  // Zora creators often deploy coins from a Coinbase Smart Wallet (Privy-managed), then add EOAs later.
+  // Zora creators often deploy coins from a smart wallet (Privy-managed), then add EOAs later.
   // Treat the Smart Wallet address as canonical and allow the connected EOA to act if it is an onchain owner.
   const coinSmartWallet = useMemo(() => {
     if (!detectedSmartWallet) return null
@@ -381,22 +380,8 @@ export function DeployVault() {
 
   const isAuthorizedDeployer = isOriginalCreator || isPayoutRecipient || isAuthorizedViaSmartWallet
 
-  // If the coin is controlled by your detected smart wallet, default to deploying *as* that smart wallet.
-  // This avoids EIP-5792 `wallet_sendCalls` issues and matches how Zora coins are typically owned.
-  useEffect(() => {
-    if (!isConnected || !addressLc) return
-    if (!coinSmartWallet) return
-    if (deployAs.trim().length > 0) return
-    if (!tokenIsValid) return
-    if (!connectedWalletAddress) return
-    if (connectedWalletAddress.toLowerCase() === coinSmartWallet.toLowerCase()) return
-
-    const key = `${addressLc}:${String(creatorToken).toLowerCase()}:ownership`
-    if (autofillRef.current.deployAsFor === key) return
-
-    setDeployAs(String(coinSmartWallet))
-    autofillRef.current.deployAsFor = key
-  }, [isConnected, addressLc, coinSmartWallet, deployAs, tokenIsValid, connectedWalletAddress, creatorToken])
+  // NOTE: We intentionally do NOT auto-select the coin’s smart wallet as the vault owner.
+  // Many creators won’t have direct access to the original coin-deploy wallet, and defaulting here is confusing.
 
   const creatorAllowlistQuery = useCreatorAllowlist(tokenIsValid ? { coin: creatorToken } : undefined)
   const allowlistMode = creatorAllowlistQuery.data?.mode
@@ -1190,8 +1175,7 @@ export function DeployVault() {
                     <div className="text-xs text-red-400/80">Invalid wallet address.</div>
                   ) : !executeAsIsSupported ? (
                     <div className="text-xs text-amber-300/90">
-                      Unsupported owner wallet. Leave this blank to deploy from your connected wallet, or choose your
-                      Coinbase Smart Wallet.
+                      Unsupported owner wallet. Leave this blank to deploy from your connected wallet.
                     </div>
                   ) : (
                     <div className="text-xs text-zinc-600 space-y-2">
@@ -1338,10 +1322,6 @@ export function DeployVault() {
             <div className="card rounded-xl p-8 space-y-4">
               <div className="label">Deploy</div>
 
-              {isConnected && tokenIsValid && zoraCoin ? (
-                <SmartWalletSwitchNotice context="deploy" />
-              ) : null}
-
               {!isConnected ? (
                 <button
                   disabled
@@ -1372,7 +1352,7 @@ export function DeployVault() {
                     smartWalletOwnerQuery.isLoading ? (
                       'Verifying Smart Wallet ownership…'
                     ) : (
-                      'Authorized only: connect the coin’s Smart Wallet (creator/payout) or an owner EOA and deploy as Smart Wallet.'
+                      'Authorized only: connect the coin’s creator/payout wallet (or a wallet that is an on-chain owner of the creator smart wallet).'
                     )
                   ) : (
                     'Authorized only: connect the coin’s creator or payout recipient wallet to deploy'
@@ -1425,7 +1405,6 @@ export function DeployVault() {
               <div className="text-xs text-zinc-600 space-y-1">
                 <p>Designed for one wallet confirmation (some wallets may require multiple confirmations).</p>
                 <p>Requires a 50M token deposit to start the fair launch.</p>
-                <p>Recommended: Coinbase Smart Wallet.</p>
                 <p>Advanced: v2 is the default. v1 is admin-only.</p>
               </div>
             </div>
