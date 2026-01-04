@@ -9,18 +9,18 @@
     "name": "CreatorVault",
     "subtitle": "Creator coin vaults on Base",
     "description": "Deposit creator coins into vaults, track markets, and manage vault launches on Base.",
-    "screenshotUrls": ["https://creatorvaults.fun/screenshot-portrait.svg"],
-    "iconUrl": "https://creatorvaults.fun/miniapp-icon.svg",
-    "splashImageUrl": "https://creatorvaults.fun/miniapp-splash.svg",
+    "screenshotUrls": ["https://www.creatorvaults.fun/screenshot-portrait.svg"],
+    "iconUrl": "https://www.creatorvaults.fun/miniapp-icon.svg",
+    "splashImageUrl": "https://www.creatorvaults.fun/miniapp-splash.svg",
     "splashBackgroundColor": "#000000",
-    "homeUrl": "https://creatorvaults.fun",
+    "homeUrl": "https://www.creatorvaults.fun",
     "primaryCategory": "finance",
     "tags": ["creator-coins", "vaults", "base", "zora"],
-    "heroImageUrl": "https://creatorvaults.fun/miniapp-hero.svg",
+    "heroImageUrl": "https://www.creatorvaults.fun/miniapp-hero.svg",
     "tagline": "Vaults for creator coins.",
     "ogTitle": "CreatorVault",
     "ogDescription": "Deposit creator coins into vaults. Earn from trading fees. Everyone earns together.",
-    "ogImageUrl": "https://creatorvaults.fun/miniapp-hero.svg"
+    "ogImageUrl": "https://www.creatorvaults.fun/miniapp-hero.svg"
   }
 }
 

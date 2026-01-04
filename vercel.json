@@ -9,19 +9,19 @@
     {
       "source": "/(.*)",
       "has": [{ "type": "host", "value": "creatorvault.fun" }],
-      "destination": "https://creatorvaults.fun/$1",
+      "destination": "https://www.creatorvaults.fun/$1",
       "permanent": true
     },
     {
       "source": "/(.*)",
       "has": [{ "type": "host", "value": "www.creatorvault.fun" }],
-      "destination": "https://creatorvaults.fun/$1",
+      "destination": "https://www.creatorvaults.fun/$1",
       "permanent": true
     },
     {
       "source": "/(.*)",
       "has": [{ "type": "host", "value": "www.creatorvaults.fun" }],
-      "destination": "https://creatorvaults.fun/$1",
+      "destination": "https://www.creatorvaults.fun/$1",
       "permanent": true
     }
   ],

@@ -4,6 +4,20 @@
   "installCommand": "npm install --production=false",
   "framework": "vite",
   "outputDirectory": "dist",
+  "redirects": [
+    {
+      "source": "/(.*)",
+      "has": [{ "type": "host", "value": "creatorvault.fun" }],
+      "destination": "https://www.creatorvaults.fun/$1",
+      "permanent": true
+    },
+    {
+      "source": "/(.*)",
+      "has": [{ "type": "host", "value": "www.creatorvault.fun" }],
+      "destination": "https://www.creatorvaults.fun/$1",
+      "permanent": true
+    }
+  ],
   "rewrites": [
     {
       "source": "/(.*)",
