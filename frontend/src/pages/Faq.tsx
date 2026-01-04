@@ -102,16 +102,16 @@ const FAQ_SECTIONS: FaqSection[] = [
   {
     id: 'basics',
     title: 'Basics',
-    description: 'What CreatorVault is (and what it isn’t).',
+    description: 'What Creator Vaults is (and what it isn’t).',
     items: [
       {
         id: 'what-is-creatorvault',
-        question: 'What is CreatorVault?',
+        question: 'What is Creator Vaults?',
         search: 'creatorvault vault ws token shareoft',
         answer: (
           <>
             <p>
-              CreatorVault is a set of onchain contracts that let a creator coin act like a “vault share token.”
+              Creator Vaults is a set of onchain contracts that let a creator coin act like a “vault share token.”
               You deposit the creator coin into its vault and receive a wrapped share token (shown as <span className="mono">wsTOKEN</span>).
             </p>
             <p>
@@ -139,7 +139,7 @@ const FAQ_SECTIONS: FaqSection[] = [
       },
       {
         id: 'is-custodial',
-        question: 'Is CreatorVault custodial?',
+        question: 'Is Creator Vaults custodial?',
         search: 'custodial noncustodial self custody',
         answer: (
           <>
@@ -176,7 +176,7 @@ const FAQ_SECTIONS: FaqSection[] = [
         search: 'base chain network',
         answer: (
           <p>
-            CreatorVault targets <span className="text-white">Base</span> for production deployments. Always double‑check the network in your wallet
+            Creator Vaults targets <span className="text-white">Base</span> for production deployments. Always double‑check the network in your wallet
             before signing.
           </p>
         ),
@@ -348,7 +348,7 @@ const FAQ_SECTIONS: FaqSection[] = [
         answer: (
           <>
             <p>
-              CreatorVault can wire in multiple strategies. Two core ones in this stack are:
+              Creator Vaults can wire in multiple strategies. Two core ones in this stack are:
             </p>
             <ul className="list-disc list-inside space-y-1 text-zinc-500">
               <li>

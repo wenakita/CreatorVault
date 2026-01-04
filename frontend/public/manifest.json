@@ -1,6 +1,6 @@
 {
-  "name": "CreatorVault",
-  "short_name": "Vault",
+  "name": "Creator Vaults",
+  "short_name": "Creator Vaults",
   "description": "Deposit creator coins into vaults. Earn from trading fees. Everyone earns together.",
   "start_url": "/",
   "display": "standalone",

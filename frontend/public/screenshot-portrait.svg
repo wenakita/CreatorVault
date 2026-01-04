@@ -20,7 +20,7 @@
   <rect width="1080" height="1920" fill="url(#bg)"/>
 
   <text x="140" y="210" fill="rgba(255,255,255,0.88)" font-family="Inter, ui-sans-serif, system-ui" font-size="54" font-weight="300">
-    CreatorVault
+    Creator Vaults
   </text>
   <text x="140" y="280" fill="rgba(255,255,255,0.55)" font-family="Inter, ui-sans-serif, system-ui" font-size="26" font-weight="300">
     Creator coin vaults on Base

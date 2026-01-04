@@ -52,7 +52,7 @@
 
   <!-- title (as vector path-less text using system font; acceptable for preview) -->
   <text x="520" y="155" fill="rgba(255,255,255,0.86)" font-family="Inter, ui-sans-serif, system-ui" font-size="34" font-weight="300">
-    CreatorVault
+    Creator Vaults
   </text>
   <text x="520" y="470" fill="rgba(255,255,255,0.58)" font-family="Inter, ui-sans-serif, system-ui" font-size="18" font-weight="300">
     Creator coin vaults on Base

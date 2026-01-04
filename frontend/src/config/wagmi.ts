@@ -7,7 +7,7 @@ export const wagmiConfig = createConfig({
   connectors: [
     injected(),
     coinbaseWallet({
-      appName: 'CreatorVault',
+      appName: 'Creator Vaults',
       preference: 'smartWalletOnly', // Use Smart Wallet for gasless txs
     }),
   ],

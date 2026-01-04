@@ -125,7 +125,7 @@ export function FaqHowItWorks() {
                   page first.
                 </p>
                 <p className="text-zinc-600">
-                  CreatorVault is experimental software. Start small and avoid signing transactions you don’t understand.
+                  Creator Vaults is experimental software. Start small and avoid signing transactions you don’t understand.
                 </p>
               </div>
             </div>

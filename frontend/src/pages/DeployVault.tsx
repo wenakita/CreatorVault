@@ -434,7 +434,7 @@ export function DeployVault() {
     zoraCoin?.tokenPrice?.priceInPoolToken,
   ])
 
-  // CreatorVaults are creator-initiated. If we can't confidently identify the creator, default to locked.
+  // Creator Vaults are creator-initiated. If we can't confidently identify the creator, default to locked.
   const coinTypeUpper = String(zoraCoin?.coinType ?? '').toUpperCase()
   const isCreatorCoin = coinTypeUpper === 'CREATOR'
   const coinTypeLabel =
@@ -483,7 +483,7 @@ export function DeployVault() {
                   <div className="text-sm text-zinc-600">Loading coin details…</div>
                 ) : !zoraCoin ? (
                   <div className="text-sm text-red-400/80">
-                    This token does not appear to be a Zora Coin. CreatorVaults can only be created for Zora{' '}
+                    This token does not appear to be a Zora Coin. Creator Vaults can only be created for Zora{' '}
                     <span className="text-zinc-200">Creator Coins</span>.
                   </div>
                 ) : baseSymbol ? (
@@ -623,7 +623,7 @@ export function DeployVault() {
 
                     {String(zoraCoin?.coinType ?? '').toUpperCase() === 'CONTENT' && (
                       <div className="text-xs text-amber-300/90 pt-4 border-t border-zinc-900/50">
-                        This is a <span className="font-mono">Content Coin</span>. CreatorVaults can only be created for{' '}
+                        This is a <span className="font-mono">Content Coin</span>. Creator Vaults can only be created for{' '}
                         <span className="font-mono">Creator Coins</span>.
                       </div>
                     )}

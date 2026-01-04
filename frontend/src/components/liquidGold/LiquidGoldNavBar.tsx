@@ -87,7 +87,7 @@ export function LiquidGoldNavBar() {
             <span className="text-sm tracking-[0.1em] text-white font-medium group-hover:text-gold-100 transition-colors duration-300 font-serif">
               CREATOR
               <span className="text-transparent bg-clip-text bg-gradient-to-r from-gold-300 to-gold-600 italic ml-1">
-                VAULT
+                VAULTS
               </span>
             </span>
           </div>

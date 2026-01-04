@@ -81,7 +81,7 @@ export function ConnectButtonWeb3({ autoConnect = false }: { autoConnect?: boole
 
       if (!nonce) throw new Error('Failed to start sign-in')
 
-      const message = `${domain} wants you to sign in with your Ethereum account:\n${address}\n\nSign in to CreatorVault.\n\nURI: ${uri}\nVersion: 1\nChain ID: ${chainId}\nNonce: ${nonce}\nIssued At: ${issuedAt}`
+      const message = `${domain} wants you to sign in with your Ethereum account:\n${address}\n\nSign in to Creator Vaults.\n\nURI: ${uri}\nVersion: 1\nChain ID: ${chainId}\nNonce: ${nonce}\nIssued At: ${issuedAt}`
 
       const signature = await signMessageAsync({ message })
 

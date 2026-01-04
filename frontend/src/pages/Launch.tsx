@@ -212,7 +212,7 @@ export function Launch() {
             <Loader2 className="w-8 h-8 text-brand-500 animate-spin" />
           </div>
           <h2 className="font-display text-2xl font-bold">Checking access</h2>
-          <p className="text-surface-400">CreatorVault launches are invite-only during early access.</p>
+          <p className="text-surface-400">Creator Vaults is invite-only during early access.</p>
         </motion.div>
       </div>
     )

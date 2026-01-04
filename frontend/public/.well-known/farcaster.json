@@ -6,7 +6,7 @@
   },
   "miniapp": {
     "version": "1",
-    "name": "CreatorVault",
+    "name": "Creator Vaults",
     "subtitle": "Creator coin vaults on Base",
     "description": "Deposit creator coins into vaults, track markets, and manage vault launches on Base.",
     "screenshotUrls": ["https://www.creatorvaults.fun/screenshot-portrait.svg"],
@@ -18,7 +18,7 @@
     "tags": ["creator-coins", "vaults", "base", "zora"],
     "heroImageUrl": "https://www.creatorvaults.fun/miniapp-hero.svg",
     "tagline": "Vaults for creator coins.",
-    "ogTitle": "CreatorVault",
+    "ogTitle": "Creator Vaults",
     "ogDescription": "Deposit creator coins into vaults. Earn from trading fees. Everyone earns together.",
     "ogImageUrl": "https://www.creatorvaults.fun/miniapp-hero.svg"
   }
