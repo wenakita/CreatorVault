@@ -18,6 +18,7 @@ import { useTokenMetadata } from '@/hooks/useTokenMetadata'
 import { useZoraCoin } from '@/lib/zora/hooks'
 import { LiquidGoldBorder } from '@/components/liquidGold/LiquidGoldBorder'
 import { LiquidGoldTokenOrb } from '@/components/liquidGold/LiquidGoldTokenOrb'
+import { SmartWalletSwitchNotice } from '@/components/SmartWalletSwitchNotice'
 
 // ABIs
 const WRAPPER_ABI = [
@@ -390,6 +391,7 @@ export function Vault() {
           <div className="grid lg:grid-cols-5 gap-8">
             {/* Main Form */}
             <div className="lg:col-span-3 space-y-10 sm:space-y-12">
+              <SmartWalletSwitchNotice context="vault" />
               {/* Mode Selector */}
               <div className="w-full inline-flex items-center gap-0.5 rounded-full border border-white/5 bg-black/30 p-0.5 backdrop-blur-sm">
                 {tabs.map((tab) => {
