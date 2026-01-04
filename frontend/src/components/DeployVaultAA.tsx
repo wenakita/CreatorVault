@@ -97,6 +97,25 @@ const CCA_VIEW_ABI = [
   { type: 'function', name: 'approvedLaunchers', stateMutability: 'view', inputs: [{ name: 'launcher', type: 'address' }], outputs: [{ type: 'bool' }] },
 ] as const
 
+const WRAPPER_DEPOSIT_ABI = [
+  { type: 'function', name: 'deposit', stateMutability: 'nonpayable', inputs: [{ name: 'amount', type: 'uint256' }], outputs: [{ type: 'uint256' }] },
+] as const
+
+const CCA_LAUNCH_ABI = [
+  {
+    type: 'function',
+    name: 'launchAuction',
+    stateMutability: 'nonpayable',
+    inputs: [
+      { name: 'amount', type: 'uint256' },
+      { name: 'floorPrice', type: 'uint256' },
+      { name: 'requiredRaise', type: 'uint128' },
+      { name: 'auctionSteps', type: 'bytes' },
+    ],
+    outputs: [{ name: 'auction', type: 'address' }],
+  },
+] as const
+
 const GAUGE_ORACLE_VIEW_ABI = [
   { type: 'function', name: 'oracle', stateMutability: 'view', inputs: [], outputs: [{ type: 'address' }] },
 ] as const
@@ -124,24 +143,6 @@ const OFT_BOOTSTRAP_ABI = [
 const ERC20_APPROVE_ABI = [
   { type: 'function', name: 'approve', stateMutability: 'nonpayable', inputs: [{ name: 'spender', type: 'address' }, { name: 'amount', type: 'uint256' }], outputs: [{ type: 'bool' }] },
   { type: 'function', name: 'balanceOf', stateMutability: 'view', inputs: [{ name: 'account', type: 'address' }], outputs: [{ type: 'uint256' }] },
-] as const
-
-const VAULT_ACTIVATION_BATCHER_ABI = [
-  {
-    type: 'function',
-    name: 'batchActivate',
-    stateMutability: 'nonpayable',
-    inputs: [
-      { name: 'creatorToken', type: 'address' },
-      { name: 'vault', type: 'address' },
-      { name: 'wrapper', type: 'address' },
-      { name: 'ccaStrategy', type: 'address' },
-      { name: 'depositAmount', type: 'uint256' },
-      { name: 'auctionPercent', type: 'uint8' },
-      { name: 'requiredRaise', type: 'uint128' },
-    ],
-    outputs: [{ name: 'auction', type: 'address' }],
-  },
 ] as const
 
 const CCA_STATUS_VIEW_ABI = [
@@ -186,6 +187,17 @@ const COINBASE_SMART_WALLET_ABI = [
     outputs: [],
   },
 ] as const
+
+const DEFAULT_CCA_FLOOR_PRICE_WEI = 1_000_000_000_000_000n // 1e15 (matches CCALaunchStrategy.defaultFloorPrice)
+const DEFAULT_CCA_DURATION_BLOCKS = 302_400n // matches CCALaunchStrategy.defaultDuration
+const DEFAULT_CCA_MPS = 10_000_000n
+
+function makeLinearAuctionSteps(durationBlocks: bigint): Hex {
+  // Solidity: bytes8(uint64(uint24(MPS / duration)) | (uint64(duration) << 24))
+  const mpsPerBlock = DEFAULT_CCA_MPS / durationBlocks
+  const packed = (durationBlocks << 24n) | mpsPerBlock
+  return encodePacked(['uint64'], [packed])
+}
 
 type DeploymentAddresses = {
   vault: Address
@@ -641,30 +653,50 @@ export function DeployVaultAA({
       }),
     })
 
-    // Launch CCA (required): deposit minimum liquidity, wrap to wsTokens, and start the auction.
-    // We use the shared VaultActivationBatcher so we don't need to predict the exact ERC-4626 share amount.
+    // Launch CCA (required): deposit minimum liquidity via Wrapper (mints wsToken 1:1),
+    // then start the auction directly on the CCA strategy.
+    //
+    // Why not VaultActivationBatcher.batchActivate()?
+    // Some deployed CCALaunchStrategy builds have a buggy launchAuctionSimple() path that self-calls
+    // the external launchAuction() entrypoint and fails auth (Unauthorized). Calling launchAuction()
+    // directly from the owner wallet avoids that failure mode.
+    const auctionAmount = (MIN_FIRST_DEPOSIT * BigInt(DEFAULT_AUCTION_PERCENT)) / 100n
+    const auctionSteps = makeLinearAuctionSteps(DEFAULT_CCA_DURATION_BLOCKS)
+
+    // 1) Approve Wrapper to pull creator tokens
     launchCalls.push({
       to: creatorToken,
       data: encodeFunctionData({
         abi: ERC20_APPROVE_ABI,
         functionName: 'approve',
-        args: [vaultActivationBatcher, MIN_FIRST_DEPOSIT],
+        args: [wrapperAddress, MIN_FIRST_DEPOSIT],
       }),
     })
+    // 2) Deposit to Wrapper (Wrapper -> Vault deposit + wrap; mints wsToken to owner)
     launchCalls.push({
-      to: vaultActivationBatcher,
+      to: wrapperAddress,
       data: encodeFunctionData({
-        abi: VAULT_ACTIVATION_BATCHER_ABI,
-        functionName: 'batchActivate',
-        args: [
-          creatorToken,
-          vaultAddress,
-          wrapperAddress,
-          ccaAddress,
-          MIN_FIRST_DEPOSIT,
-          DEFAULT_AUCTION_PERCENT,
-          DEFAULT_REQUIRED_RAISE_WEI,
-        ],
+        abi: WRAPPER_DEPOSIT_ABI,
+        functionName: 'deposit',
+        args: [MIN_FIRST_DEPOSIT],
+      }),
+    })
+    // 3) Approve CCA strategy to pull the auction tranche of wsToken
+    launchCalls.push({
+      to: shareOftAddress,
+      data: encodeFunctionData({
+        abi: ERC20_APPROVE_ABI,
+        functionName: 'approve',
+        args: [ccaAddress, auctionAmount],
+      }),
+    })
+    // 4) Launch auction
+    launchCalls.push({
+      to: ccaAddress,
+      data: encodeFunctionData({
+        abi: CCA_LAUNCH_ABI,
+        functionName: 'launchAuction',
+        args: [auctionAmount, DEFAULT_CCA_FLOOR_PRICE_WEI, DEFAULT_REQUIRED_RAISE_WEI, auctionSteps],
       }),
     })
 

@@ -261,6 +261,61 @@ contract CCALaunchStrategy is Ownable, ReentrancyGuard {
     // ================================
 
     /**
+     * @dev Internal shared implementation for launching an auction.
+     * IMPORTANT: Do NOT call the external entrypoint via `this.launchAuction(...)` from within the contract.
+     * That changes `msg.sender` (breaks auth) and also trips ReentrancyGuard (both entrypoints are nonReentrant).
+     */
+    function _launchAuctionInternal(
+        uint256 amount,
+        uint256 floorPrice,
+        uint128 requiredRaise,
+        bytes memory auctionSteps
+    ) internal returns (address auction) {
+        if (currentAuction != address(0)) {
+            // Check if previous auction is still active
+            if (!IContinuousClearingAuction(currentAuction).isGraduated()) {
+                revert AuctionAlreadyActive();
+            }
+            // Archive previous auction
+            pastAuctions.push(currentAuction);
+        }
+
+        if (amount == 0) revert ZeroAmount();
+
+        // Calculate blocks
+        uint64 startBlock = uint64(block.number + 100); // Start in ~100 blocks
+        uint64 endBlock = startBlock + defaultDuration;
+        uint64 claimBlock = endBlock + defaultClaimDelay;
+
+        // Build auction parameters
+        bytes memory configData = _encodeAuctionParams(
+            floorPrice,
+            requiredRaise,
+            startBlock,
+            endBlock,
+            claimBlock,
+            auctionSteps
+        );
+
+        // Transfer tokens to this contract for auction
+        auctionToken.safeTransferFrom(msg.sender, address(this), amount);
+
+        // Approve factory to pull tokens
+        auctionToken.forceApprove(CCA_FACTORY, amount);
+
+        // Create auction via factory
+        auction = IContinuousClearingAuctionFactory(CCA_FACTORY).initializeDistribution(
+            address(auctionToken),
+            amount,
+            configData
+        );
+
+        currentAuction = auction;
+
+        emit AuctionCreated(auction, address(auctionToken), amount, startBlock, endBlock);
+    }
+
+    /**
      * @notice Launch a new CCA auction for token distribution
      * @param amount Amount of tokens to auction
      * @param floorPrice Starting floor price (Q96 format)
@@ -273,48 +328,7 @@ contract CCALaunchStrategy is Ownable, ReentrancyGuard {
         uint128 requiredRaise,
         bytes calldata auctionSteps
     ) external onlyApprovedOrOwner nonReentrant returns (address auction) {
-        if (currentAuction != address(0)) {
-            // Check if previous auction is still active
-            if (!IContinuousClearingAuction(currentAuction).isGraduated()) {
-                revert AuctionAlreadyActive();
-            }
-            // Archive previous auction
-            pastAuctions.push(currentAuction);
-        }
-        
-        if (amount == 0) revert ZeroAmount();
-        
-        // Calculate blocks
-        uint64 startBlock = uint64(block.number + 100); // Start in ~100 blocks
-        uint64 endBlock = startBlock + defaultDuration;
-        uint64 claimBlock = endBlock + defaultClaimDelay;
-        
-        // Build auction parameters
-        bytes memory configData = _encodeAuctionParams(
-            floorPrice,
-            requiredRaise,
-            startBlock,
-            endBlock,
-            claimBlock,
-            auctionSteps
-        );
-        
-        // Transfer tokens to this contract for auction
-        auctionToken.safeTransferFrom(msg.sender, address(this), amount);
-        
-        // Approve factory to pull tokens
-        auctionToken.forceApprove(CCA_FACTORY, amount);
-        
-        // Create auction via factory
-        auction = IContinuousClearingAuctionFactory(CCA_FACTORY).initializeDistribution(
-            address(auctionToken),
-            amount,
-            configData
-        );
-        
-        currentAuction = auction;
-        
-        emit AuctionCreated(auction, address(auctionToken), amount, startBlock, endBlock);
+        return _launchAuctionInternal(amount, floorPrice, requiredRaise, auctionSteps);
     }
 
     /**
@@ -332,8 +346,8 @@ contract CCALaunchStrategy is Ownable, ReentrancyGuard {
         // Use default floor price
         uint256 floorPrice = defaultFloorPrice;
         
-        // Forward to main function
-        return this.launchAuction(amount, floorPrice, requiredRaise, auctionSteps);
+        // Forward to internal implementation (preserves msg.sender and nonReentrant semantics)
+        return _launchAuctionInternal(amount, floorPrice, requiredRaise, auctionSteps);
     }
 
     // ================================
