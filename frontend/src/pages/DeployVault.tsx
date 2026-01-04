@@ -1397,7 +1397,7 @@ export function DeployVault() {
               )}
 
               <div className="text-xs text-zinc-600 space-y-1">
-                <p>Deployment takes one wallet confirmation.</p>
+                <p>Designed for one wallet confirmation (some wallets may require multiple confirmations).</p>
                 <p>Requires a 50M token deposit to start the fair launch.</p>
                 <p>Recommended: Coinbase Smart Wallet.</p>
               </div>

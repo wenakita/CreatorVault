@@ -508,6 +508,9 @@ const FAQ_SECTIONS: FaqSection[] = [
               Some wallets don’t support call batching. If you see a <span className="mono">wallet_sendCalls</span> error, try Coinbase Smart Wallet or
               a wallet that supports EIP‑5792 style batching.
             </p>
+            <p className="text-zinc-600">
+              If your wallet blocks large transaction payloads (e.g. “oversized data”), Creator Vaults will fall back to multiple confirmations.
+            </p>
           </>
         ),
       },

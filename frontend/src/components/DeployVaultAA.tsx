@@ -1377,7 +1377,7 @@ export function DeployVaultAA({
                       <div className="label">{success ? 'Contracts deployed' : 'Deployment addresses'}</div>
                       <div className="text-[10px] text-zinc-600">
                         {success
-                          ? 'Deployed together in one confirmation.'
+                          ? 'Designed for one confirmation.'
                           : callBundleId
                             ? 'Deterministic addresses for this deployment.'
                             : 'Deterministic addresses (not deployed yet).'}

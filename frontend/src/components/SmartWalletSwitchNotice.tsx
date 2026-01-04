@@ -69,7 +69,7 @@ export function SmartWalletSwitchNotice({
       : context === 'market'
         ? 'Switch to Coinbase Smart Wallet to buy and sell on Base.'
         : context === 'deploy'
-          ? 'Switch to Coinbase Smart Wallet to deploy and start the fair launch in one confirmation.'
+          ? 'Switch to Coinbase Smart Wallet to deploy and start the fair launch (one confirmation when supported).'
         : 'Switch to Coinbase Smart Wallet to deposit and withdraw.'
 
   function handleSwitch() {
