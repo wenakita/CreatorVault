@@ -36,7 +36,8 @@ interface IContinuousClearingAuctionFactory {
     function initializeDistribution(
         address token,
         uint256 amount,
-        bytes calldata configData
+        bytes calldata configData,
+        bytes32 salt
     ) external returns (address);
 }
 
@@ -304,10 +305,14 @@ contract CCALaunchStrategy is Ownable, ReentrancyGuard {
         auctionToken.forceApprove(CCA_FACTORY, amount);
 
         // Create auction via factory
+        // NOTE: Uniswap's verified Base deployment expects a `bytes32 salt` parameter.
+        // We derive a deterministic salt from the config to avoid collisions.
+        bytes32 salt = keccak256(abi.encode(address(auctionToken), amount, configData));
         auction = IContinuousClearingAuctionFactory(CCA_FACTORY).initializeDistribution(
             address(auctionToken),
             amount,
-            configData
+            configData,
+            salt
         );
 
         currentAuction = auction;
