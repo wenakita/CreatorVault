@@ -90,8 +90,16 @@ contract CharmAlphaVaultDeploy is CharmAlphaVault {
         secondsAgo[0] = _twapDuration;
         secondsAgo[1] = 0;
 
-        (int56[] memory tickCumulatives, ) = pool.observe(secondsAgo);
-        return int24((tickCumulatives[1] - tickCumulatives[0]) / int56(uint56(_twapDuration)));
+        // Freshly created V3 pools have no historical observations yet; `observe()` will revert
+        // until at least one block has passed. During 1-click deployments we often create + initialize
+        // the pool and then immediately run the first rebalance in the same transaction.
+        //
+        // In that case, fall back to the current tick so deviation == 0 for the initial rebalance.
+        try pool.observe(secondsAgo) returns (int56[] memory tickCumulatives, uint160[] memory) {
+            return int24((tickCumulatives[1] - tickCumulatives[0]) / int56(uint56(_twapDuration)));
+        } catch {
+            return getTick();
+        }
     }
 
     function _rebalanceInternal() internal {
