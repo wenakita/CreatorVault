@@ -5,3 +5,4 @@ export { useVaultGaugeVoting, useTimeRemaining, formatVotingPower } from './useV
 export type { VaultVote, EpochInfo, VotingPowerInfo } from './useVaultGaugeVoting'
 export { useCreatorAllowlist } from './useCreatorAllowlist'
 export type { CreatorAllowlistMode, CreatorAllowlistStatus } from './useCreatorAllowlist'
+export { useMiniAppContext } from './useMiniAppContext'

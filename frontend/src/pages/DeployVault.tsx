@@ -14,6 +14,7 @@ import { DerivedTokenIcon } from '@/components/DerivedTokenIcon'
 import { RequestCreatorAccess } from '@/components/RequestCreatorAccess'
 import { useSiweAuth } from '@/hooks/useSiweAuth'
 import { useCreatorAllowlist } from '@/hooks'
+import { useMiniAppContext } from '@/hooks'
 import { useZoraCoin, useZoraProfile } from '@/lib/zora/hooks'
 import { fetchCoinMarketRewardsByCoinFromApi } from '@/lib/onchain/coinMarketRewardsByCoin'
 
@@ -106,6 +107,8 @@ export function DeployVault() {
   // Detect "your" creator coin + smart wallet from your Zora profile and prefill inputs once.
   const myProfileQuery = useZoraProfile(address)
   const myProfile = myProfileQuery.data
+  const miniApp = useMiniAppContext()
+  const farcasterProfileQuery = useZoraProfile(miniApp.username ?? undefined)
 
   const { isSignedIn, busy: authBusy, error: authError, signIn } = useSiweAuth()
   const adminAuthQuery = useQuery({
@@ -125,6 +128,11 @@ export function DeployVault() {
     const v = myProfile?.creatorCoin?.address ? String(myProfile.creatorCoin.address) : ''
     return isAddress(v) ? (v as Address) : null
   }, [myProfile?.creatorCoin?.address])
+
+  const detectedCreatorCoinFromFarcaster = useMemo(() => {
+    const v = farcasterProfileQuery.data?.creatorCoin?.address ? String(farcasterProfileQuery.data.creatorCoin.address) : ''
+    return isAddress(v) ? (v as Address) : null
+  }, [farcasterProfileQuery.data?.creatorCoin?.address])
 
   const detectedSmartWallet = useMemo(() => {
     const edges = myProfile?.linkedWallets?.edges ?? []
@@ -151,6 +159,19 @@ export function DeployVault() {
     setCreatorToken(detectedCreatorCoin)
     autofillRef.current.tokenFor = addressLc
   }, [isConnected, addressLc, prefillToken, creatorToken, detectedCreatorCoin])
+
+  // Mini App fallback: if we have Farcaster context but no connected wallet-based prefill,
+  // try prefilling from the Farcaster username → Zora profile lookup.
+  useEffect(() => {
+    if (prefillToken) return
+    if (creatorToken.trim().length > 0) return
+    if (!miniApp.username) return
+    if (!detectedCreatorCoinFromFarcaster) return
+    const key = `miniapp:${miniApp.username.toLowerCase()}`
+    if (autofillRef.current.tokenFor === key) return
+    setCreatorToken(detectedCreatorCoinFromFarcaster)
+    autofillRef.current.tokenFor = key
+  }, [prefillToken, creatorToken, miniApp.username, detectedCreatorCoinFromFarcaster])
 
   const tokenIsValid = isAddress(creatorToken)
   const deployAsTrim = deployAs.trim()

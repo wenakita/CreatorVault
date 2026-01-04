@@ -28,15 +28,38 @@ export function Web3Gate({ children }: { children: ReactNode }) {
   const location = useLocation()
   const [userEnabled, setUserEnabled] = useState(false)
   const [Providers, setProviders] = useState<Web3ProvidersComponent | null>(null)
+  const [isMiniApp, setIsMiniApp] = useState(false)
 
   const enable = useCallback(() => setUserEnabled(true), [])
-  const shouldUseWeb3 = userEnabled || routeNeedsWeb3(location.pathname)
+  const shouldUseWeb3 = isMiniApp || userEnabled || routeNeedsWeb3(location.pathname)
 
   const status: Web3Status = !shouldUseWeb3
     ? 'disabled'
     : Providers
       ? 'ready'
       : 'loading'
+
+  useEffect(() => {
+    let cancelled = false
+    // Base app / Farcaster Mini App: mark app as ready + enable Web3 from the start.
+    // We keep this lazy/dynamic so regular web loads stay lightweight.
+    ;(async () => {
+      try {
+        const { sdk } = await import('@farcaster/miniapp-sdk')
+        const inMini = await sdk.isInMiniApp().catch(() => false)
+        if (cancelled) return
+        setIsMiniApp(inMini)
+        if (inMini) {
+          await sdk.actions.ready().catch(() => null)
+        }
+      } catch {
+        // ignore
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [])
 
   useEffect(() => {
     if (!shouldUseWeb3 || Providers) return
