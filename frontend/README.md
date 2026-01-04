@@ -96,34 +96,23 @@ npm run build
 
 ## Environment Variables
 
-| Variable | Required | Description |
-|----------|----------|-------------|
-| `VITE_CDP_API_KEY` | Yes | Coinbase Developer Platform API key |
-| `VITE_BASE_RPC` | No | Custom Base RPC (default: public) |
+| Variable | Required | Scope | Description |
+|----------|----------|-------|-------------|
+| `VITE_CDP_API_KEY` | Yes | client | Coinbase Developer Platform API key (public key / key id) |
+| `VITE_ZORA_PUBLIC_API_KEY` | Recommended | client | Zora public key (restrict allowed origins) |
+| `ZORA_SERVER_API_KEY` | Recommended | server | Zora server key for Vercel Functions |
+| `VITE_BASE_RPC` | No | client | Base RPC used by the browser (default: public) |
+| `BASE_RPC_URL` | No | server | Base RPC used by Vercel Functions (defaults to `https://mainnet.base.org`) |
+| `DATABASE_URL` | Optional | server | Postgres connection string for local dev |
+| `AUTH_SESSION_SECRET` | Recommended | server | SIWE session secret (stable in production) |
+| `CREATOR_ACCESS_ADMIN_ADDRESSES` | Optional | server | Admin wallets allowed to approve/deny creator access |
+| `CREATOR_ALLOWLIST` | Optional | server | Legacy fallback allowlist (env-based, only used if DB is not configured) |
 
-## License
+## Admin: approve creator access
 
-MIT - AKITA, LLC
-
-|----------|----------|-------------|
-| `VITE_CDP_API_KEY` | Yes | Coinbase Developer Platform API key |
-| `VITE_BASE_RPC` | No | Custom Base RPC (default: public) |
-
-## License
-
-MIT - AKITA, LLC
-
-|----------|----------|-------------|
-| `VITE_CDP_API_KEY` | Yes | Coinbase Developer Platform API key |
-| `VITE_BASE_RPC` | No | Custom Base RPC (default: public) |
-
-## License
-
-MIT - AKITA, LLC
-
-|----------|----------|-------------|
-| `VITE_CDP_API_KEY` | Yes | Coinbase Developer Platform API key |
-| `VITE_BASE_RPC` | No | Custom Base RPC (default: public) |
+- Approvals are managed at `/admin/creator-access`.
+- Requests are submitted from `/deploy` (per coin) and `/launch` (wallet-only).
+- Admin access is controlled by `CREATOR_ACCESS_ADMIN_ADDRESSES` (comma/space separated).
 
 ## License
 

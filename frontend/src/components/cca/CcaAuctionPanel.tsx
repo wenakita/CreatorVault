@@ -493,6 +493,3 @@ export function CcaAuctionPanel({
     </div>
   )
 }
-
-
-

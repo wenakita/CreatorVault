@@ -22,6 +22,10 @@
     "./onchain/**/*.ts",
     "./auth/**/*.ts",
     "./status/**/*.ts",
+    "./creator-allowlist.ts",
+    "./creator-access/**/*.ts",
+    "./admin/**/*.ts",
+    "./_lib/**/*.ts",
     "../src/types/vercel-node.d.ts"
   ],
   "exclude": ["node_modules"]

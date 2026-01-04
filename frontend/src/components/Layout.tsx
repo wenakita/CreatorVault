@@ -73,5 +73,3 @@ export function Layout() {
     </div>
   )
 }
-
-

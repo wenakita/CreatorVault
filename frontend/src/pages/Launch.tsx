@@ -16,6 +16,7 @@ import {
 } from 'lucide-react'
 import { CONTRACTS } from '../config/contracts'
 import { ConnectButton } from '../components/ConnectButton'
+import { RequestCreatorAccess } from '../components/RequestCreatorAccess'
 import { useCreatorAllowlist } from '../hooks'
 
 // Step states
@@ -249,15 +250,9 @@ export function Launch() {
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="glass-card p-8 max-w-md text-center space-y-4"
+          className="max-w-md w-full px-4 space-y-4"
         >
-          <div className="w-16 h-16 rounded-2xl bg-brand-500/10 flex items-center justify-center mx-auto">
-            <Zap className="w-8 h-8 text-brand-500" />
-          </div>
-          <h2 className="font-display text-2xl font-bold">Invite-only</h2>
-          <p className="text-surface-400">
-            This wallet isn’t approved to launch a Creator Vault yet.
-          </p>
+          <RequestCreatorAccess />
           <button
             type="button"
             onClick={() => navigate('/dashboard')}

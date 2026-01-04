@@ -10,6 +10,7 @@ import { BarChart3, Layers, Lock, Rocket, RotateCw, ShieldCheck } from 'lucide-r
 import { ConnectButton } from '@/components/ConnectButton'
 import { DeployVaultAA } from '@/components/DeployVaultAA'
 import { DerivedTokenIcon } from '@/components/DerivedTokenIcon'
+import { RequestCreatorAccess } from '@/components/RequestCreatorAccess'
 import { useCreatorAllowlist } from '@/hooks'
 import { useZoraCoin, useZoraProfile } from '@/lib/zora/hooks'
 import { fetchCoinMarketRewardsByCoinFromApi } from '@/lib/onchain/coinMarketRewardsByCoin'
@@ -320,9 +321,7 @@ export function DeployVault() {
     !!address && !!payoutRecipient && address.toLowerCase() === payoutRecipient.toLowerCase()
   const isAuthorizedDeployer = isOriginalCreator || isPayoutRecipient
 
-  const creatorAllowlistQuery = useCreatorAllowlist(
-    tokenIsValid && !!creatorAddress && isAddress(creatorAddress) ? creatorAddress : null,
-  )
+  const creatorAllowlistQuery = useCreatorAllowlist(tokenIsValid ? { coin: creatorToken } : undefined)
   const allowlistMode = creatorAllowlistQuery.data?.mode
   const allowlistEnforced = allowlistMode === 'enforced'
   const isAllowlistedCreator = creatorAllowlistQuery.data?.allowed === true
@@ -1229,12 +1228,7 @@ export function DeployVault() {
                   Couldn’t verify creator access. Refresh and try again.
                 </button>
               ) : tokenIsValid && zoraCoin && allowlistEnforced && !isAllowlistedCreator ? (
-                <button
-                  disabled
-                  className="w-full py-4 bg-black/30 border border-zinc-900/60 rounded-lg text-zinc-600 text-sm cursor-not-allowed"
-                >
-                  Invite-only: this creator isn’t approved to deploy vaults
-                </button>
+                <RequestCreatorAccess coin={creatorToken} />
               ) : canDeploy ? (
                 <DeployVaultAA
                   creatorToken={creatorToken as `0x${string}`}

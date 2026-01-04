@@ -156,5 +156,3 @@ export const DerivedTokenIcon = memo(function DerivedTokenIcon({
     />
   )
 })
-
-
