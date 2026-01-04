@@ -554,7 +554,8 @@ export function DeployVaultAA({
     // To support that case, we keep the deployment initcode-heavy calls separate from the
     // owner-only wiring/launch calls so we can fall back to a multi-tx flow when needed.
     const deployCalls: { to: Address; data: Hex; value?: bigint }[] = []
-    const ownerCalls: { to: Address; data: Hex; value?: bigint }[] = []
+    const wiringCalls: { to: Address; data: Hex; value?: bigint }[] = []
+    const launchCalls: { to: Address; data: Hex; value?: bigint }[] = []
 
     // Deploy contracts
     deployCalls.push({
@@ -595,31 +596,31 @@ export function DeployVaultAA({
     })
 
     // Wiring / configuration
-    ownerCalls.push({ to: wrapperAddress, data: encodeFunctionData({ abi: WRAPPER_ADMIN_ABI, functionName: 'setShareOFT', args: [shareOftAddress] }) })
-    ownerCalls.push({ to: shareOftAddress, data: encodeFunctionData({ abi: SHAREOFT_ADMIN_ABI, functionName: 'setRegistry', args: [registry] }) })
-    ownerCalls.push({ to: shareOftAddress, data: encodeFunctionData({ abi: SHAREOFT_ADMIN_ABI, functionName: 'setVault', args: [vaultAddress] }) })
-    ownerCalls.push({ to: shareOftAddress, data: encodeFunctionData({ abi: SHAREOFT_ADMIN_ABI, functionName: 'setMinter', args: [wrapperAddress, true] }) })
-    ownerCalls.push({ to: shareOftAddress, data: encodeFunctionData({ abi: SHAREOFT_ADMIN_ABI, functionName: 'setGaugeController', args: [gaugeAddress] }) })
+    wiringCalls.push({ to: wrapperAddress, data: encodeFunctionData({ abi: WRAPPER_ADMIN_ABI, functionName: 'setShareOFT', args: [shareOftAddress] }) })
+    wiringCalls.push({ to: shareOftAddress, data: encodeFunctionData({ abi: SHAREOFT_ADMIN_ABI, functionName: 'setRegistry', args: [registry] }) })
+    wiringCalls.push({ to: shareOftAddress, data: encodeFunctionData({ abi: SHAREOFT_ADMIN_ABI, functionName: 'setVault', args: [vaultAddress] }) })
+    wiringCalls.push({ to: shareOftAddress, data: encodeFunctionData({ abi: SHAREOFT_ADMIN_ABI, functionName: 'setMinter', args: [wrapperAddress, true] }) })
+    wiringCalls.push({ to: shareOftAddress, data: encodeFunctionData({ abi: SHAREOFT_ADMIN_ABI, functionName: 'setGaugeController', args: [gaugeAddress] }) })
 
-    ownerCalls.push({ to: gaugeAddress, data: encodeFunctionData({ abi: GAUGE_ADMIN_ABI, functionName: 'setVault', args: [vaultAddress] }) })
-    ownerCalls.push({ to: gaugeAddress, data: encodeFunctionData({ abi: GAUGE_ADMIN_ABI, functionName: 'setWrapper', args: [wrapperAddress] }) })
-    ownerCalls.push({ to: gaugeAddress, data: encodeFunctionData({ abi: GAUGE_ADMIN_ABI, functionName: 'setCreatorCoin', args: [creatorToken] }) })
+    wiringCalls.push({ to: gaugeAddress, data: encodeFunctionData({ abi: GAUGE_ADMIN_ABI, functionName: 'setVault', args: [vaultAddress] }) })
+    wiringCalls.push({ to: gaugeAddress, data: encodeFunctionData({ abi: GAUGE_ADMIN_ABI, functionName: 'setWrapper', args: [wrapperAddress] }) })
+    wiringCalls.push({ to: gaugeAddress, data: encodeFunctionData({ abi: GAUGE_ADMIN_ABI, functionName: 'setCreatorCoin', args: [creatorToken] }) })
     if (lotteryManager !== '0x0000000000000000000000000000000000000000') {
-      ownerCalls.push({ to: gaugeAddress, data: encodeFunctionData({ abi: GAUGE_ADMIN_ABI, functionName: 'setLotteryManager', args: [lotteryManager] }) })
+      wiringCalls.push({ to: gaugeAddress, data: encodeFunctionData({ abi: GAUGE_ADMIN_ABI, functionName: 'setLotteryManager', args: [lotteryManager] }) })
     }
-    ownerCalls.push({ to: gaugeAddress, data: encodeFunctionData({ abi: GAUGE_ADMIN_ABI, functionName: 'setOracle', args: [oracleAddress] }) })
+    wiringCalls.push({ to: gaugeAddress, data: encodeFunctionData({ abi: GAUGE_ADMIN_ABI, functionName: 'setOracle', args: [oracleAddress] }) })
 
     // Vault wiring (owner-only)
-    ownerCalls.push({ to: vaultAddress, data: encodeFunctionData({ abi: VAULT_OWNER_ABI, functionName: 'setGaugeController', args: [gaugeAddress] }) })
-    ownerCalls.push({ to: vaultAddress, data: encodeFunctionData({ abi: VAULT_OWNER_ABI, functionName: 'setWhitelist', args: [wrapperAddress, true] }) })
+    wiringCalls.push({ to: vaultAddress, data: encodeFunctionData({ abi: VAULT_OWNER_ABI, functionName: 'setGaugeController', args: [gaugeAddress] }) })
+    wiringCalls.push({ to: vaultAddress, data: encodeFunctionData({ abi: VAULT_OWNER_ABI, functionName: 'setWhitelist', args: [wrapperAddress, true] }) })
     // Defensive: if whitelistEnabled is toggled on later, ensure the activation batcher can still launch (it calls vault.deposit).
-    ownerCalls.push({ to: vaultAddress, data: encodeFunctionData({ abi: VAULT_OWNER_ABI, functionName: 'setWhitelist', args: [vaultActivationBatcher, true] }) })
+    wiringCalls.push({ to: vaultAddress, data: encodeFunctionData({ abi: VAULT_OWNER_ABI, functionName: 'setWhitelist', args: [vaultActivationBatcher, true] }) })
 
     // CCA: allow VaultActivationBatcher to launch auctions (critical)
-    ownerCalls.push({ to: ccaAddress, data: encodeFunctionData({ abi: CCA_ADMIN_ABI, functionName: 'setApprovedLauncher', args: [vaultActivationBatcher, true] }) })
+    wiringCalls.push({ to: ccaAddress, data: encodeFunctionData({ abi: CCA_ADMIN_ABI, functionName: 'setApprovedLauncher', args: [vaultActivationBatcher, true] }) })
 
     // CCA: oracle config for V4 graduation path
-    ownerCalls.push({
+    wiringCalls.push({
       to: ccaAddress,
       data: encodeFunctionData({
         abi: CCA_ADMIN_ABI,
@@ -630,7 +631,7 @@ export function DeployVaultAA({
 
     // Launch CCA (required): deposit minimum liquidity, wrap to wsTokens, and start the auction.
     // We use the shared VaultActivationBatcher so we don't need to predict the exact ERC-4626 share amount.
-    ownerCalls.push({
+    launchCalls.push({
       to: creatorToken,
       data: encodeFunctionData({
         abi: ERC20_APPROVE_ABI,
@@ -638,7 +639,7 @@ export function DeployVaultAA({
         args: [vaultActivationBatcher, MIN_FIRST_DEPOSIT],
       }),
     })
-    ownerCalls.push({
+    launchCalls.push({
       to: vaultActivationBatcher,
       data: encodeFunctionData({
         abi: VAULT_ACTIVATION_BATCHER_ABI,
@@ -655,7 +656,7 @@ export function DeployVaultAA({
       }),
     })
 
-    const calls = [...deployCalls, ...ownerCalls]
+    const calls = [...deployCalls, ...wiringCalls, ...launchCalls]
 
       // Step 1: wallet confirmation
       setStep(1)
@@ -676,13 +677,22 @@ export function DeployVaultAA({
           })
         }
 
-        try {
+        const waitTx = async (hash: Hex) => {
+          const receipt = await publicClient.waitForTransactionReceipt({ hash: hash as any, timeout: 120_000 })
+          const status = (receipt as any)?.status
+          if (status === 'reverted' || status === 0 || status === '0x0') {
+            throw new Error('Smart Wallet transaction reverted.')
+          }
+          return receipt
+        }
+
         const runSplitFlow = async () => {
           // Compatibility fallback:
           // Some wallets refuse to submit the large executeBatch() payload (initcode-heavy).
           // We split the flow:
           // 1) Deploy contracts directly from the connected EOA (permissionless deployers)
-          // 2) Run owner-only wiring + launch via Smart Wallet executeBatch (small calldata)
+          // 2) Run owner-only wiring via Smart Wallet executeBatch (small calldata)
+          // 3) Launch via Smart Wallet executeBatch (small calldata)
           //
           // This requires multiple confirmations, but avoids wallet-side size ceilings.
           setCallBundleType('tx')
@@ -697,60 +707,50 @@ export function DeployVaultAA({
               value: c.value ?? 0n,
             })
             setCallBundleId(String(txHash))
-            await publicClient.waitForTransactionReceipt({ hash: txHash as any, timeout: 120_000 })
+            await waitTx(txHash as any)
           }
 
-          const ownerBatch = ownerCalls.map((c) => ({ target: c.to, value: 0n, data: c.data }))
-          const txHash2 = await tryExecuteBatch(ownerBatch)
-          setCallBundleId(String(txHash2))
+          // Wiring tx (do NOT include launch; if launch fails we still want wiring to persist)
+          const wiringBatch = wiringCalls.map((c) => ({ target: c.to, value: 0n, data: c.data }))
+          const wiringHash = await tryExecuteBatch(wiringBatch)
+          setCallBundleId(String(wiringHash))
           setStep(2)
-          await publicClient.waitForTransactionReceipt({ hash: txHash2 as any, timeout: 120_000 })
+          await waitTx(wiringHash as any)
+
+          // Launch tx (approve + batchActivate)
+          const launchBatch = launchCalls.map((c) => ({ target: c.to, value: 0n, data: c.data }))
+          const launchHash = await tryExecuteBatch(launchBatch)
+          setCallBundleId(String(launchHash))
+          setStep(2)
+          await waitTx(launchHash as any)
         }
 
-        const batchedCalls = calls.map((c) => ({ target: c.to, value: 0n, data: c.data }))
-        const encoded = encodeFunctionData({
-          abi: COINBASE_SMART_WALLET_ABI,
-          functionName: 'executeBatch',
-          args: [batchedCalls],
-        })
-        const approxBytes = Math.max(0, (encoded.length - 2) / 2)
-        // If the outer tx is very large, many wallets will fail to "create" it before it even hits the network.
-        if (approxBytes > 45_000) {
-          await runSplitFlow()
-        } else {
-          const txHash = await tryExecuteBatch(batchedCalls)
+        try {
+          const batchedCalls = calls.map((c) => ({ target: c.to, value: 0n, data: c.data }))
+          const encoded = encodeFunctionData({
+            abi: COINBASE_SMART_WALLET_ABI,
+            functionName: 'executeBatch',
+            args: [batchedCalls],
+          })
+          const approxBytes = Math.max(0, (encoded.length - 2) / 2)
+          // If the outer tx is very large, many wallets will fail to "create" it before it even hits the network.
+          if (approxBytes > 45_000) {
+            await runSplitFlow()
+          } else {
+            const txHash = await tryExecuteBatch(batchedCalls)
 
-          setCallBundleType('tx')
-          setCallBundleId(String(txHash))
-          setStep(2)
-          await publicClient.waitForTransactionReceipt({ hash: txHash as any, timeout: 120_000 })
-        }
+            setCallBundleType('tx')
+            setCallBundleId(String(txHash))
+            setStep(2)
+            await waitTx(txHash as any)
+          }
         } catch (e: any) {
           const msg = extractErrorText(e)
-        if (!OVERSIZED_DATA_RE.test(msg) && !FAILED_TO_CREATE_RE.test(msg)) {
+          if (!OVERSIZED_DATA_RE.test(msg) && !FAILED_TO_CREATE_RE.test(msg) && !/revert/i.test(msg)) {
             throw e
           }
-        // Retry using split flow.
-        setCallBundleType('tx')
-        setCallBundleId(null)
-
-        for (const c of deployCalls) {
-          const txHash = await walletClient.sendTransaction({
-            account: signer,
-            chain: base as any,
-            to: c.to,
-            data: c.data,
-            value: c.value ?? 0n,
-          })
-          setCallBundleId(String(txHash))
-          await publicClient.waitForTransactionReceipt({ hash: txHash as any, timeout: 120_000 })
-        }
-
-        const ownerBatch = ownerCalls.map((c) => ({ target: c.to, value: 0n, data: c.data }))
-        const txHash2 = await tryExecuteBatch(ownerBatch)
-        setCallBundleId(String(txHash2))
-        setStep(2)
-        await publicClient.waitForTransactionReceipt({ hash: txHash2 as any, timeout: 120_000 })
+          // Retry using split flow.
+          await runSplitFlow()
         }
       } else {
         const walletClient = createWalletClient({
@@ -801,8 +801,10 @@ export function DeployVaultAA({
           for (const c of deployCalls) {
             await sendBundle([c])
           }
-          // Step 1b: owner-only wiring/launch (small bundle)
-          await sendBundle(ownerCalls)
+          // Step 1b: wiring (small bundle)
+          await sendBundle(wiringCalls)
+          // Step 1c: launch (small bundle)
+          await sendBundle(launchCalls)
         }
       }
 
