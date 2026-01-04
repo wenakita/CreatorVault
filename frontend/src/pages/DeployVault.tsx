@@ -321,7 +321,7 @@ export function DeployVault() {
   const isAuthorizedDeployer = isOriginalCreator || isPayoutRecipient
 
   const creatorAllowlistQuery = useCreatorAllowlist(
-    tokenIsValid && isCreatorCoin && !!creatorAddress && isAddress(creatorAddress) ? creatorAddress : null,
+    tokenIsValid && !!creatorAddress && isAddress(creatorAddress) ? creatorAddress : null,
   )
   const allowlistMode = creatorAllowlistQuery.data?.mode
   const allowlistEnforced = allowlistMode === 'enforced'
