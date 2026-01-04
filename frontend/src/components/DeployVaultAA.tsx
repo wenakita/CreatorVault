@@ -16,7 +16,6 @@ import {
   concatHex,
   createWalletClient,
   custom,
-  decodeEventLog,
   encodeAbiParameters,
   encodeFunctionData,
   encodePacked,
@@ -28,11 +27,10 @@ import {
 } from 'viem'
 import { waitForCallsStatus } from 'viem/actions'
 import { motion, AnimatePresence } from 'framer-motion'
-import { BarChart3, CheckCircle, Copy, ExternalLink, Layers, Loader, Lock, Rocket, RotateCw, ShieldCheck } from 'lucide-react'
+import { BarChart3, CheckCircle, Copy, ExternalLink, Layers, Loader, Lock, Rocket, ShieldCheck } from 'lucide-react'
 import { CONTRACTS } from '@/config/contracts'
 import { DerivedTokenIcon } from '@/components/DerivedTokenIcon'
 import { DEPLOY_BYTECODE } from '@/deploy/bytecode.generated'
-import { DEPLOY_BYTECODE_FULLSTACK } from '@/deploy/bytecode.fullstack'
 
 const MIN_FIRST_DEPOSIT = 50_000_000n * 10n ** 18n
 const DEFAULT_AUCTION_PERCENT = 50 // 50%
@@ -48,62 +46,6 @@ const CREATE2_DEPLOYER_ABI = [
       { name: 'initCode', type: 'bytes' },
     ],
     outputs: [{ name: 'addr', type: 'address' }],
-  },
-] as const
-
-const VAULT_MANAGEMENT_ABI = [
-  { type: 'function', name: 'acceptManagement', stateMutability: 'nonpayable', inputs: [], outputs: [] },
-] as const
-
-const VAULT_YIELD_ABI = [
-  { type: 'function', name: 'deployToStrategies', stateMutability: 'nonpayable', inputs: [], outputs: [] },
-  { type: 'function', name: 'syncBalances', stateMutability: 'nonpayable', inputs: [], outputs: [] },
-] as const
-
-const BOOTSTRAPPER_ABI = [
-  {
-    type: 'function',
-    name: 'finalize',
-    stateMutability: 'nonpayable',
-    inputs: [
-      { name: 'vault', type: 'address' },
-      { name: 'wrapper', type: 'address' },
-      { name: 'gaugeController', type: 'address' },
-      { name: 'creatorToken', type: 'address' },
-      { name: 'usdc', type: 'address' },
-      { name: 'ajnaFactory', type: 'address' },
-      { name: 'v3FeeTier', type: 'uint24' },
-      { name: 'initialSqrtPriceX96', type: 'uint160' },
-      { name: 'charmVaultName', type: 'string' },
-      { name: 'charmVaultSymbol', type: 'string' },
-      { name: 'charmWeightBps', type: 'uint256' },
-      { name: 'ajnaWeightBps', type: 'uint256' },
-    ],
-    outputs: [],
-  },
-] as const
-
-const STRATEGY_BATCHER_EVENTS_ABI = [
-  {
-    type: 'event',
-    name: 'StrategiesDeployed',
-    inputs: [
-      { name: 'creator', type: 'address', indexed: true },
-      { name: 'underlyingToken', type: 'address', indexed: true },
-      {
-        name: 'result',
-        type: 'tuple',
-        indexed: false,
-        components: [
-          { name: 'charmVault', type: 'address' },
-          { name: 'charmStrategy', type: 'address' },
-          { name: 'creatorCharmStrategy', type: 'address' },
-          { name: 'ajnaStrategy', type: 'address' },
-          { name: 'v3Pool', type: 'address' },
-        ],
-      },
-    ],
-    anonymous: false,
   },
 ] as const
 
@@ -138,6 +80,11 @@ const WRAPPER_VIEW_ABI = [
 const VAULT_VIEW_ABI = [
   { type: 'function', name: 'gaugeController', stateMutability: 'view', inputs: [], outputs: [{ type: 'address' }] },
   { type: 'function', name: 'whitelist', stateMutability: 'view', inputs: [{ name: '_account', type: 'address' }], outputs: [{ type: 'bool' }] },
+] as const
+
+const VAULT_OWNER_ABI = [
+  { type: 'function', name: 'setGaugeController', stateMutability: 'nonpayable', inputs: [{ name: '_gaugeController', type: 'address' }], outputs: [] },
+  { type: 'function', name: 'setWhitelist', stateMutability: 'nonpayable', inputs: [{ name: '_account', type: 'address' }, { name: '_status', type: 'bool' }], outputs: [] },
 ] as const
 
 const SHAREOFT_VIEW_ABI = [
@@ -213,33 +160,6 @@ const CCA_STATUS_VIEW_ABI = [
   },
 ] as const
 
-const VAULT_STRATEGIES_VIEW_ABI = [
-  {
-    type: 'function',
-    name: 'getStrategies',
-    stateMutability: 'view',
-    inputs: [],
-    outputs: [
-      { name: 'strategies', type: 'address[]' },
-      { name: 'weights', type: 'uint256[]' },
-      { name: 'assets', type: 'uint256[]' },
-    ],
-  },
-] as const
-
-const STRATEGY_BASIC_VIEW_ABI = [
-  { type: 'function', name: 'isActive', stateMutability: 'view', inputs: [], outputs: [{ type: 'bool' }] },
-  { type: 'function', name: 'asset', stateMutability: 'view', inputs: [], outputs: [{ type: 'address' }] },
-] as const
-
-const CREATOR_CHARM_STRATEGY_VIEW_ABI = [
-  { type: 'function', name: 'charmVault', stateMutability: 'view', inputs: [], outputs: [{ type: 'address' }] },
-] as const
-
-const AJNA_STRATEGY_VIEW_ABI = [
-  { type: 'function', name: 'ajnaPool', stateMutability: 'view', inputs: [], outputs: [{ type: 'address' }] },
-] as const
-
 const COINBASE_SMART_WALLET_ABI = [
   {
     type: 'function',
@@ -274,15 +194,6 @@ type DeploymentAddresses = {
   gaugeController: Address
   ccaStrategy: Address
   oracle: Address
-}
-
-type YieldDeploymentAddresses = {
-  strategyBatcher: Address
-  v3Pool: Address
-  charmVault: Address
-  charmStrategy: Address
-  creatorCharmStrategy: Address
-  ajnaStrategy: Address
 }
 
 type DeploymentVersion = 'v1' | 'v2'
@@ -330,7 +241,6 @@ function deriveSalts(params: { creatorToken: Address; owner: Address; chainId: n
     gaugeSalt: saltFor('gauge'),
     ccaSalt: saltFor('cca'),
     oracleSalt: saltFor('oracle'),
-    bootstrapperSalt: saltFor('bootstrapper'),
   }
 }
 
@@ -374,7 +284,6 @@ export function DeployVaultAA({
   const [error, setError] = useState<string | null>(null)
   const [errorDetails, setErrorDetails] = useState<string | null>(null)
   const [addresses, setAddresses] = useState<DeploymentAddresses | null>(null)
-  const [yieldAddresses, setYieldAddresses] = useState<YieldDeploymentAddresses | null>(null)
   const [copiedAddress, setCopiedAddress] = useState<Address | null>(null)
   const [step, setStep] = useState(0)
   const [success, setSuccess] = useState(false)
@@ -390,7 +299,6 @@ export function DeployVaultAA({
     setCallBundleId(null)
     setCallBundleType(null)
     setAddresses(null)
-    setYieldAddresses(null)
     setSuccess(false)
     setShowDetails(false)
     setStep(0)
@@ -521,14 +429,6 @@ export function DeployVaultAA({
     // Salts
     const salts = deriveSalts({ creatorToken, owner, chainId: base.id, version })
 
-    // Full-stack bootstrapper (deployed via CREATE2; temporarily owns the vault to wire strategies + handoff)
-    const bootstrapperInitCode = makeInitCode(
-      DEPLOY_BYTECODE_FULLSTACK.VaultStrategyBootstrapper as Hex,
-      'address',
-      [owner],
-    )
-    const bootstrapperAddress = predictCreate2Address(create2Deployer, salts.bootstrapperSalt, bootstrapperInitCode)
-
     // Cross-chain deterministic ShareOFT:
     // - Deployed via the universal CREATE2 factory (0x4e59…)
     // - Salt does NOT include chainId or local creatorToken
@@ -544,7 +444,7 @@ export function DeployVaultAA({
     const vaultInitCode = makeInitCode(
       DEPLOY_BYTECODE.CreatorOVault as Hex,
       'address,address,string,string',
-      [creatorToken, bootstrapperAddress, vaultName, vaultSymbol],
+      [creatorToken, owner, vaultName, vaultSymbol],
     )
     const vaultAddress = predictCreate2Address(create2Deployer, salts.vaultSalt, vaultInitCode)
 
@@ -592,9 +492,6 @@ export function DeployVaultAA({
       oracle: oracleAddress,
     }
     setAddresses(predicted)
-
-    const bootstrapperCode = await publicClient.getBytecode({ address: bootstrapperAddress })
-    const bootstrapperExists = !!bootstrapperCode && bootstrapperCode !== '0x'
 
     // Pre-flight: ensure addresses are free
     if (!publicClient) {
@@ -645,16 +542,6 @@ export function DeployVaultAA({
     const ownerCalls: { to: Address; data: Hex; value?: bigint }[] = []
 
     // Deploy contracts
-    if (!bootstrapperExists) {
-      deployCalls.push({
-        to: create2Deployer,
-        data: encodeFunctionData({
-          abi: CREATE2_DEPLOYER_ABI,
-          functionName: 'deploy',
-          args: [salts.bootstrapperSalt, bootstrapperInitCode],
-        }),
-      })
-    }
     deployCalls.push({
       to: create2Deployer,
       data: encodeFunctionData({ abi: CREATE2_DEPLOYER_ABI, functionName: 'deploy', args: [salts.vaultSalt, vaultInitCode] }),
@@ -707,6 +594,12 @@ export function DeployVaultAA({
     }
     ownerCalls.push({ to: gaugeAddress, data: encodeFunctionData({ abi: GAUGE_ADMIN_ABI, functionName: 'setOracle', args: [oracleAddress] }) })
 
+    // Vault wiring (owner-only)
+    ownerCalls.push({ to: vaultAddress, data: encodeFunctionData({ abi: VAULT_OWNER_ABI, functionName: 'setGaugeController', args: [gaugeAddress] }) })
+    ownerCalls.push({ to: vaultAddress, data: encodeFunctionData({ abi: VAULT_OWNER_ABI, functionName: 'setWhitelist', args: [wrapperAddress, true] }) })
+    // Defensive: if whitelistEnabled is toggled on later, ensure the activation batcher can still launch (it calls vault.deposit).
+    ownerCalls.push({ to: vaultAddress, data: encodeFunctionData({ abi: VAULT_OWNER_ABI, functionName: 'setWhitelist', args: [vaultActivationBatcher, true] }) })
+
     // CCA: allow VaultActivationBatcher to launch auctions (critical)
     ownerCalls.push({ to: ccaAddress, data: encodeFunctionData({ abi: CCA_ADMIN_ABI, functionName: 'setApprovedLauncher', args: [vaultActivationBatcher, true] }) })
 
@@ -719,54 +612,6 @@ export function DeployVaultAA({
         args: [oracleAddress, poolManager, taxHook, gaugeAddress],
       }),
     })
-
-    // Yield strategies + vault handoff (single confirmation):
-    // - Deploy Charm + Ajna strategies
-    // - Add strategies to vault allocations
-    // - Wire vault (gauge controller + wrapper whitelist)
-    // - Transfer vault ownership + management to `owner`
-    const usdc = CONTRACTS.usdc as Address
-    const ajnaFactory = CONTRACTS.ajnaErc20Factory as Address
-    const v3FeeTier = 3000
-
-    // For AKITA/USDC at $0.0001: sqrtPriceX96 ≈ 250541448375047931186413801569 (token0=CREATOR, token1=USDC)
-    const BASE_SQRT_PRICE_X96_CREATOR0_USDC1 = 250541448375047931186413801569n
-    const Q192 = 2n ** 192n
-    const creatorIsToken0 = BigInt(creatorToken) < BigInt(usdc)
-    const initialSqrtPriceX96 = creatorIsToken0
-      ? BASE_SQRT_PRICE_X96_CREATOR0_USDC1
-      : (Q192 / BASE_SQRT_PRICE_X96_CREATOR0_USDC1)
-
-    const charmVaultName = `CreatorVault: ${underlyingSymbol.toUpperCase()}/USDC`
-    const charmVaultSymbol = `CV-${underlyingSymbol.toLowerCase()}-USDC`
-
-    const charmWeightBps = 6900n
-    const ajnaWeightBps = 2139n
-
-    ownerCalls.push({
-      to: bootstrapperAddress,
-      data: encodeFunctionData({
-        abi: BOOTSTRAPPER_ABI,
-        functionName: 'finalize',
-        args: [
-          vaultAddress,
-          wrapperAddress,
-          gaugeAddress,
-          creatorToken,
-          usdc,
-          ajnaFactory,
-          v3FeeTier,
-          initialSqrtPriceX96,
-          charmVaultName,
-          charmVaultSymbol,
-          charmWeightBps,
-          ajnaWeightBps,
-        ],
-      }),
-    })
-
-    // VaultStrategyBootstrapper sets pendingManagement to `owner` — accept it here so the bootstrapper cannot manage post-deploy.
-    ownerCalls.push({ to: vaultAddress, data: encodeFunctionData({ abi: VAULT_MANAGEMENT_ABI, functionName: 'acceptManagement' }) })
 
     // Launch CCA (required): deposit minimum liquidity, wrap to wsTokens, and start the auction.
     // We use the shared VaultActivationBatcher so we don't need to predict the exact ERC-4626 share amount.
@@ -795,16 +640,7 @@ export function DeployVaultAA({
       }),
     })
 
-    // Activate yield immediately (day 1):
-    // - Deploy idle Creator Coin into configured strategies (Charm will swap ~1% to USDC internally).
-    // - Then sync vault coinBalance to account for any unused tokens returned by strategies.
-    ownerCalls.push({ to: vaultAddress, data: encodeFunctionData({ abi: VAULT_YIELD_ABI, functionName: 'deployToStrategies' }) })
-    ownerCalls.push({ to: vaultAddress, data: encodeFunctionData({ abi: VAULT_YIELD_ABI, functionName: 'syncBalances' }) })
-
     const calls = [...deployCalls, ...ownerCalls]
-
-    // Best-effort: collect logs so we can show the exact strategy addresses after deployment.
-    const candidateLogs: Array<{ address: Address; topics: Hex[]; data: Hex }> = []
 
       // Step 1: wallet confirmation
       setStep(1)
@@ -825,12 +661,6 @@ export function DeployVaultAA({
           })
         }
 
-        const appendReceiptLogs = (receipt: any) => {
-          for (const l of receipt?.logs ?? []) {
-            candidateLogs.push({ address: l.address as Address, topics: l.topics as Hex[], data: l.data as Hex })
-          }
-        }
-
         try {
           const batchedCalls = calls.map((c) => ({ target: c.to, value: 0n, data: c.data }))
           const txHash = await tryExecuteBatch(batchedCalls)
@@ -838,8 +668,7 @@ export function DeployVaultAA({
           setCallBundleType('tx')
           setCallBundleId(String(txHash))
           setStep(2)
-          const receipt = await publicClient.waitForTransactionReceipt({ hash: txHash as any, timeout: 120_000 })
-          appendReceiptLogs(receipt as any)
+          await publicClient.waitForTransactionReceipt({ hash: txHash as any, timeout: 120_000 })
         } catch (e: any) {
           const msg = String(e?.shortMessage || e?.message || '')
           if (!/oversized data|data too large|payload too large|request too large|too large/i.test(msg)) {
@@ -866,8 +695,7 @@ export function DeployVaultAA({
               value: c.value ?? 0n,
             })
             setCallBundleId(String(txHash))
-            const receipt = await publicClient.waitForTransactionReceipt({ hash: txHash as any, timeout: 120_000 })
-            appendReceiptLogs(receipt as any)
+            await publicClient.waitForTransactionReceipt({ hash: txHash as any, timeout: 120_000 })
           }
 
           // Step 1b: owner-only wiring/launch via Smart Wallet (small payload)
@@ -875,8 +703,7 @@ export function DeployVaultAA({
           const txHash2 = await tryExecuteBatch(ownerBatch)
           setCallBundleId(String(txHash2))
           setStep(2)
-          const receipt2 = await publicClient.waitForTransactionReceipt({ hash: txHash2 as any, timeout: 120_000 })
-          appendReceiptLogs(receipt2 as any)
+          await publicClient.waitForTransactionReceipt({ hash: txHash2 as any, timeout: 120_000 })
         }
       } else {
         let result: any
@@ -910,12 +737,7 @@ export function DeployVaultAA({
 
         // Prefer EIP-5792 status (best signal). If unsupported, we fall back to bytecode polling below.
         try {
-          const status = await waitForCallsStatus(walletClient, { id: result.id, timeout: 120_000, throwOnFailure: true })
-          for (const r of (status as any)?.receipts ?? []) {
-            for (const l of (r as any)?.logs ?? []) {
-              candidateLogs.push({ address: l.address as Address, topics: l.topics as Hex[], data: l.data as Hex })
-            }
-          }
+          await waitForCallsStatus(walletClient, { id: result.id, timeout: 120_000, throwOnFailure: true })
         } catch {
           // ignore
         }
@@ -1009,45 +831,6 @@ export function DeployVaultAA({
           throw new Error('CCA auction is not active.')
         }
 
-        // Confirm Charm + Ajna strategies were deployed and added to the vault.
-        const stratTuple = (await publicClient.readContract({
-          address: vaultAddress,
-          abi: VAULT_STRATEGIES_VIEW_ABI,
-          functionName: 'getStrategies',
-        })) as unknown as readonly [Address[], bigint[], bigint[]]
-        const strategies = Array.isArray(stratTuple?.[0]) ? stratTuple[0] : []
-        if (strategies.length < 2) {
-          throw new Error('Charm and Ajna strategies were not configured on the vault.')
-        }
-
-        const stratCalls = strategies.flatMap((s) => [
-          { address: s, abi: STRATEGY_BASIC_VIEW_ABI, functionName: 'isActive' as const },
-          { address: s, abi: STRATEGY_BASIC_VIEW_ABI, functionName: 'asset' as const },
-          { address: s, abi: CREATOR_CHARM_STRATEGY_VIEW_ABI, functionName: 'charmVault' as const },
-          { address: s, abi: AJNA_STRATEGY_VIEW_ABI, functionName: 'ajnaPool' as const },
-        ])
-        const stratRes = await publicClient.multicall({ contracts: stratCalls, allowFailure: true })
-        let hasCharm = false
-        let hasAjna = false
-        for (let i = 0; i < strategies.length; i++) {
-          const base = i * 4
-          const activeOk = stratRes[base]?.status === 'success' ? Boolean((stratRes[base] as any).result) : null
-          const asset = stratRes[base + 1]?.status === 'success' ? ((stratRes[base + 1] as any).result as Address) : null
-          const charmVault =
-            stratRes[base + 2]?.status === 'success' ? ((stratRes[base + 2] as any).result as Address) : null
-          const ajnaPool =
-            stratRes[base + 3]?.status === 'success' ? ((stratRes[base + 3] as any).result as Address) : null
-
-          if (activeOk !== true) throw new Error('A configured yield strategy is not active.')
-          if (!asset || asset.toLowerCase() !== creatorToken.toLowerCase()) {
-            throw new Error('A configured yield strategy has the wrong asset.')
-          }
-          if (charmVault && charmVault.toLowerCase() !== ZERO) hasCharm = true
-          if (ajnaPool && ajnaPool.toLowerCase() !== ZERO) hasAjna = true
-        }
-        if (!hasCharm) throw new Error('Charm strategy was not deployed.')
-        if (!hasAjna) throw new Error('Ajna strategy was not deployed.')
-
         // Oracle wiring: gauge + CCA should both point to the deployed oracle, and CCA config should match protocol contracts.
         const gaugeOracle = (await publicClient.readContract({
           address: gaugeAddress,
@@ -1108,41 +891,6 @@ export function DeployVaultAA({
         )
       }
 
-      // Best-effort: parse the StrategiesDeployed event so we can display exact yield strategy addresses.
-      try {
-        const found = (() => {
-          for (const l of candidateLogs) {
-            try {
-              if (!l.topics?.length) continue
-              const decoded = decodeEventLog({
-                abi: STRATEGY_BATCHER_EVENTS_ABI,
-                data: l.data,
-                topics: l.topics as unknown as [Hex, ...Hex[]],
-              })
-              if (decoded.eventName !== 'StrategiesDeployed') continue
-              const args: any = decoded.args as any
-              const r: any = args?.result
-              if (!r) continue
-              const out: YieldDeploymentAddresses = {
-                strategyBatcher: l.address,
-                v3Pool: r.v3Pool,
-                charmVault: r.charmVault,
-                charmStrategy: r.charmStrategy,
-                creatorCharmStrategy: r.creatorCharmStrategy,
-                ajnaStrategy: r.ajnaStrategy,
-              }
-              if (Object.values(out).every((a) => typeof a === 'string' && isAddress(a))) return out
-            } catch {
-              // ignore
-            }
-          }
-          return null
-        })()
-        if (found) setYieldAddresses(found)
-      } catch {
-        // ignore
-      }
-
       setStep(4)
       setSuccess(true)
       // Make the “Contracts deployed” summary visible by default (better for demos / screen recordings).
@@ -1165,7 +913,6 @@ export function DeployVaultAA({
   const vaultSymbol = symbol.startsWith('ws') ? `s${symbol.slice(2)}` : `s${symbol}`
   const vaultName = symbol.startsWith('ws') ? `${symbol.slice(2)} Vault Share` : `${symbol} Vault Share`
   const underlyingSymbolUpper = (symbol.startsWith('ws') ? symbol.slice(2) : symbol).toUpperCase()
-  const charmPairLabel = `${underlyingSymbolUpper.toLowerCase()}/USDC`
 
   async function copyAddress(addr: Address) {
     try {
@@ -1545,76 +1292,10 @@ export function DeployVaultAA({
                         />
                       ) : null}
 
-                      {yieldAddresses ? (
-                        <>
-                          <div className="px-4 py-2 text-[10px] uppercase tracking-wide text-zinc-500 bg-white/[0.02]">
-                            Yield strategies
-                          </div>
-                          <ContractRow
-                            label="Yield strategy"
-                            title={`${charmPairLabel} Uniswap V3 LP (0.3%) — Charm Alpha Pro`}
-                            contractName="CreatorCharmStrategyV2"
-                            addr={yieldAddresses.creatorCharmStrategy}
-                            note={`Charm Alpha Pro Vault manages the Uniswap V3 LP position for ${charmPairLabel} (0.3% fee tier).`}
-                            icon={
-                              <div className="w-8 h-8 flex items-center justify-center text-zinc-600">
-                                <RotateCw className="w-4 h-4" />
-                              </div>
-                            }
-                            metaLine={
-                              <>
-                                <span className="inline-flex items-center gap-1.5 text-zinc-400">
-                                  <img
-                                    src="/protocols/charm.png"
-                                    alt=""
-                                    aria-hidden="true"
-                                    loading="lazy"
-                                    className="w-3.5 h-3.5 opacity-90"
-                                  />
-                                  Charm
-                                </span>
-                                {' · '}
-                                <span className="inline-flex items-center gap-1.5 text-zinc-400">
-                                  <img
-                                    src="/protocols/uniswap.png"
-                                    alt=""
-                                    aria-hidden="true"
-                                    loading="lazy"
-                                    className="w-3.5 h-3.5 opacity-90"
-                                  />
-                                  Uniswap V3
-                                </span>
-                              </>
-                            }
-                          />
-                          <ContractRow
-                            label="Yield strategy"
-                            title="Ajna lending"
-                            contractName="AjnaStrategy"
-                            addr={yieldAddresses.ajnaStrategy}
-                            note="Collateralized lending via Ajna: deposit collateral (e.g. USDC), borrow creator coin (can be sold for liquidity), repay to unlock collateral (liquidation risk)."
-                            icon={
-                              <div className="w-8 h-8 flex items-center justify-center text-zinc-600">
-                                <RotateCw className="w-4 h-4" />
-                              </div>
-                            }
-                            metaLine={
-                              <>
-                                <span className="inline-flex items-center gap-1.5 text-zinc-400">
-                                  <img
-                                    src="/protocols/ajna.svg"
-                                    alt=""
-                                    aria-hidden="true"
-                                    loading="lazy"
-                                    className="w-3.5 h-3.5 opacity-90"
-                                  />
-                                  Ajna
-                                </span>
-                              </>
-                            }
-                          />
-                        </>
-                      ) : null}
+                      <div className="px-4 py-3 text-[12px] text-zinc-500">
+                        Yield strategies are deployed after launch (post-auction) to keep the initial deployment deterministic and
+                        compatible with Smart Wallet simulation.
+                      </div>
                     </div>
                   </div>
                 ) : null}
