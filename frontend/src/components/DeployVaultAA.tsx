@@ -264,6 +264,20 @@ function predictCreate2Address(create2Deployer: Address, salt: Hex, initCode: He
   return getCreate2Address({ from: create2Deployer, salt, bytecodeHash })
 }
 
+const OVERSIZED_DATA_RE = /oversized data|data too large|payload too large|request too large|too large/i
+
+function extractErrorText(e: any): string {
+  const parts = [
+    e?.shortMessage,
+    e?.message,
+    e?.details,
+    e?.cause?.shortMessage,
+    e?.cause?.message,
+    e?.cause?.details,
+  ].filter(Boolean)
+  return parts.map(String).join(' ')
+}
+
 export function DeployVaultAA({
   creatorToken,
   symbol,
@@ -670,8 +684,8 @@ export function DeployVaultAA({
           setStep(2)
           await publicClient.waitForTransactionReceipt({ hash: txHash as any, timeout: 120_000 })
         } catch (e: any) {
-          const msg = String(e?.shortMessage || e?.message || '')
-          if (!/oversized data|data too large|payload too large|request too large|too large/i.test(msg)) {
+          const msg = extractErrorText(e)
+          if (!OVERSIZED_DATA_RE.test(msg)) {
             throw e
           }
 
@@ -706,40 +720,56 @@ export function DeployVaultAA({
           await publicClient.waitForTransactionReceipt({ hash: txHash2 as any, timeout: 120_000 })
         }
       } else {
-        let result: any
-        try {
-          result = await sendCallsAsync({
-            calls,
+        const walletClient = createWalletClient({
+          chain: base as any,
+          transport: custom(window.ethereum),
+        })
+
+        const sendBundle = async (bundleCalls: { to: Address; data: Hex; value?: bigint }[]) => {
+          const res = await sendCallsAsync({
+            calls: bundleCalls,
             account: owner,
             chainId: base.id,
             forceAtomic: true,
           })
+          setCallBundleType('bundle')
+          setCallBundleId(res.id)
+          setStep(2)
+          // Prefer EIP-5792 status (best signal). If unsupported, we fall back to bytecode polling below.
+          try {
+            await waitForCallsStatus(walletClient, { id: res.id, timeout: 120_000, throwOnFailure: true })
+          } catch {
+            // ignore
+          }
+          return res
+        }
+
+        try {
+          await sendBundle(calls)
         } catch (e: any) {
-          const msg = String(e?.shortMessage || e?.message || '')
+          const msg = extractErrorText(e)
           if (/wallet_sendCalls|sendCalls|5792|capabilit/i.test(msg)) {
             fail(
               'This wallet can’t 1-click deploy (EIP-5792 wallet_sendCalls not supported). Use Coinbase Smart Wallet (recommended) or deploy via script.',
               msg,
             )
           }
-          throw e
-        }
+          if (!OVERSIZED_DATA_RE.test(msg)) {
+            throw e
+          }
 
-        setCallBundleType('bundle')
-        setCallBundleId(result.id)
-        setStep(2)
+          // Compatibility fallback:
+          // Some wallets refuse to submit a single large `wallet_sendCalls` payload.
+          // We split into multiple smaller call bundles (multiple confirmations).
+          setCallBundleType('bundle')
+          setCallBundleId(null)
 
-        // Wait for wallet_getCallsStatus if supported
-        const walletClient = createWalletClient({
-          chain: base as any,
-          transport: custom(window.ethereum),
-        })
-
-        // Prefer EIP-5792 status (best signal). If unsupported, we fall back to bytecode polling below.
-        try {
-          await waitForCallsStatus(walletClient, { id: result.id, timeout: 120_000, throwOnFailure: true })
-        } catch {
-          // ignore
+          // Step 1a: deploy initcode-heavy calls in small bundles
+          for (const c of deployCalls) {
+            await sendBundle([c])
+          }
+          // Step 1b: owner-only wiring/launch (small bundle)
+          await sendBundle(ownerCalls)
         }
       }
 
