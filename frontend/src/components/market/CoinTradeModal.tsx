@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo } from 'react'
 import { X } from 'lucide-react'
 import { useReadContract } from 'wagmi'
 import { erc20Abi, isAddress, type Address } from 'viem'
@@ -10,8 +10,6 @@ import { Swap } from '@coinbase/onchainkit/swap'
 import type { ZoraCoin } from '@/lib/zora/types'
 import { CONTRACTS } from '@/config/contracts'
 import { SmartWalletSwitchNotice } from '@/components/SmartWalletSwitchNotice'
-
-type TradeMode = 'buy' | 'sell'
 
 function safeStr(v: unknown): string {
   return typeof v === 'string' ? v : ''
@@ -34,14 +32,6 @@ export function CoinTradeModal({
   open: boolean
   onClose: () => void
 }) {
-  const [mode, setMode] = useState<TradeMode>('buy')
-
-  // Reset mode when opening a new coin
-  useEffect(() => {
-    if (!open) return
-    setMode('buy')
-  }, [open, coin?.address])
-
   const tokenAddress = coin?.address && isAddress(String(coin.address)) ? (String(coin.address) as Address) : null
   const tokenSymbol = coin?.symbol ? String(coin.symbol) : 'COIN'
   const tokenName = coin?.name ? String(coin.name) : tokenSymbol
@@ -93,12 +83,15 @@ export function CoinTradeModal({
   )
 
   const [fromTokens, toTokens] = useMemo((): [Token[], Token[]] => {
-    if (!token) return [[eth, usdc], [eth, usdc]]
-    if (mode === 'buy') return [[eth, usdc], [token]]
-    return [[token], [eth, usdc]]
-  }, [eth, mode, token, usdc])
+    // Keep both sides flexible so the built-in OnchainKit toggle (↕) can flip direction.
+    if (!token) return [[usdc, eth], [usdc, eth]]
+    return [
+      [usdc, eth, token],
+      [token, usdc, eth],
+    ]
+  }, [eth, token, usdc])
 
-  const title = token ? `${mode === 'buy' ? 'Buy' : 'Sell'} ${token.symbol}` : 'Trade'
+  const title = token ? `Trade ${token.symbol}` : 'Trade'
 
   if (!open) return null
 
@@ -128,31 +121,8 @@ export function CoinTradeModal({
           </div>
 
           <div className="px-5 sm:px-6 py-4">
-            <div className="flex items-center justify-between gap-3">
-              <div className="inline-flex items-center gap-0.5 rounded-full border border-white/10 bg-black/30 p-0.5">
-                <button
-                  type="button"
-                  onClick={() => setMode('buy')}
-                  aria-pressed={mode === 'buy'}
-                  className={`h-9 px-4 rounded-full text-[10px] uppercase tracking-[0.18em] transition-colors ${
-                    mode === 'buy' ? 'bg-zinc-900 text-zinc-100' : 'text-zinc-500 hover:text-zinc-300'
-                  }`}
-                >
-                  Buy
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setMode('sell')}
-                  aria-pressed={mode === 'sell'}
-                  className={`h-9 px-4 rounded-full text-[10px] uppercase tracking-[0.18em] transition-colors ${
-                    mode === 'sell' ? 'bg-zinc-900 text-zinc-100' : 'text-zinc-500 hover:text-zinc-300'
-                  }`}
-                >
-                  Sell
-                </button>
-              </div>
-
-              {tokenAddress ? (
+            {tokenAddress ? (
+              <div className="flex items-center justify-end">
                 <a
                   href={`https://basescan.org/token/${tokenAddress}`}
                   target="_blank"
@@ -162,8 +132,8 @@ export function CoinTradeModal({
                 >
                   {safeStr(tokenAddress)}
                 </a>
-              ) : null}
-            </div>
+              </div>
+            ) : null}
 
             <div className="mt-4">
               <SmartWalletSwitchNotice context="market" />
@@ -172,7 +142,7 @@ export function CoinTradeModal({
             <div className="mt-4 flex justify-center">
               {/* OnchainKit swap UI */}
               <Swap
-                title={mode === 'buy' ? 'Buy' : 'Sell'}
+                title="Swap"
                 from={fromTokens}
                 to={toTokens}
                 // Keep it simple and predictable (Base only)
