@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 1200" fill="none">
+  <defs>
+    <radialGradient id="bg" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(420 360) rotate(55) scale(1400 1400)">
+      <stop stop-color="#151515"/>
+      <stop offset="0.55" stop-color="#070707"/>
+      <stop offset="1" stop-color="#000000"/>
+    </radialGradient>
+    <linearGradient id="gold" x1="320" y1="320" x2="920" y2="920" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#F7D680"/>
+      <stop offset="0.45" stop-color="#C7A24C"/>
+      <stop offset="1" stop-color="#7A5C1E"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="1200" height="1200" fill="url(#bg)"/>
+
+  <circle cx="600" cy="600" r="320" fill="url(#gold)" opacity="0.90"/>
+  <circle cx="600" cy="600" r="330" stroke="rgba(255,255,255,0.16)" stroke-width="2"/>
+  <circle cx="600" cy="600" r="280" stroke="rgba(0,0,0,0.40)" stroke-width="22" opacity="0.35"/>
+
+  <path d="M450 470c110-120 280-120 390 0" stroke="rgba(255,255,255,0.16)" stroke-width="14" stroke-linecap="round"/>
+
+  <text x="600" y="980" text-anchor="middle" fill="rgba(255,255,255,0.75)" font-family="Inter, ui-sans-serif, system-ui" font-size="40" font-weight="300">
+    CreatorVault
+  </text>
+</svg>
+
+
