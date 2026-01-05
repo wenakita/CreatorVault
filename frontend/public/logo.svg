@@ -1,74 +1,37 @@
-<svg width="120" height="120" viewBox="0 0 120 120" fill="none" xmlns="http://www.w3.org/2000/svg">
-  <!-- AKITA token top portion (orange/red gradient like a Shiba/Akita dog) -->
-  <circle cx="60" cy="40" r="35" fill="url(#akitaGradient)"/>
-  
-  <!-- Token shine -->
-  <circle cx="60" cy="40" r="35" fill="url(#shine)" opacity="0.3"/>
-  
-  <!-- Simplified dog silhouette/face -->
-  <g opacity="0.3">
-    <!-- Dog ears -->
-    <path d="M 40 30 L 35 20 L 42 28 Z" fill="#d97706"/>
-    <path d="M 80 30 L 85 20 L 78 28 Z" fill="#d97706"/>
-    <!-- Dog face outline -->
-    <circle cx="60" cy="42" r="18" fill="none" stroke="#d97706" stroke-width="2"/>
-    <!-- Eyes -->
-    <circle cx="54" cy="40" r="2" fill="#422006"/>
-    <circle cx="66" cy="40" r="2" fill="#422006"/>
-    <!-- Nose -->
-    <path d="M 60 46 L 58 48 L 62 48 Z" fill="#422006"/>
-  </g>
-  
-  <!-- Base Vault bottom portion -->
-  <g opacity="0.9">
-    <!-- Vault body -->
-    <rect x="15" y="55" width="90" height="50" rx="8" fill="#0000FF"/>
-    
-    <!-- Vault door details -->
-    <rect x="20" y="60" width="80" height="40" rx="6" fill="url(#vaultGradient)"/>
-    
-    <!-- Cross-hatch pattern -->
-    <line x1="30" y1="70" x2="90" y2="70" stroke="#0052FF" stroke-width="1" opacity="0.3"/>
-    <line x1="30" y1="80" x2="90" y2="80" stroke="#0052FF" stroke-width="1" opacity="0.3"/>
-    <line x1="30" y1="90" x2="90" y2="90" stroke="#0052FF" stroke-width="1" opacity="0.3"/>
-    
-    <!-- Circular lock dial in center -->
-    <circle cx="60" cy="80" r="12" fill="#1e40af"/>
-    <circle cx="60" cy="80" r="10" fill="url(#lockGradient)"/>
-    <circle cx="60" cy="80" r="3" fill="#0a1c4f"/>
-    
-    <!-- Lock shine -->
-    <circle cx="57" cy="77" r="4" fill="white" opacity="0.4"/>
-  </g>
-  
-  <!-- Blue glow ring -->
-  <circle cx="60" cy="60" r="55" stroke="#0000FF" stroke-width="2" fill="none" opacity="0.5"/>
-  <circle cx="60" cy="60" r="56" stroke="#0000FF" stroke-width="1" fill="none" opacity="0.3"/>
-  
-  <!-- Gradients -->
+<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256" fill="none">
   <defs>
-    <!-- AKITA orange/red gradient -->
-    <linearGradient id="akitaGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" style="stop-color:#fb923c;stop-opacity:1" />
-      <stop offset="50%" style="stop-color:#f97316;stop-opacity:1" />
-      <stop offset="100%" style="stop-color:#dc2626;stop-opacity:1" />
-    </linearGradient>
-    
-    <radialGradient id="shine">
-      <stop offset="0%" style="stop-color:white;stop-opacity:1" />
-      <stop offset="100%" style="stop-color:white;stop-opacity:0" />
+    <radialGradient id="bg" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(90 70) rotate(55) scale(230 230)">
+      <stop stop-color="#F5D37A"/>
+      <stop offset="0.45" stop-color="#C7A24C"/>
+      <stop offset="0.75" stop-color="#7A5C1E"/>
+      <stop offset="1" stop-color="#070707"/>
     </radialGradient>
-    
-    <linearGradient id="vaultGradient" x1="0%" y1="0%" x2="0%" y2="100%">
-      <stop offset="0%" style="stop-color:#0052FF;stop-opacity:1" />
-      <stop offset="100%" style="stop-color:#0000FF;stop-opacity:1" />
+    <linearGradient id="ring" x1="46" y1="46" x2="210" y2="210" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FFFFFF" stop-opacity="0.55"/>
+      <stop offset="0.5" stop-color="#FFFFFF" stop-opacity="0.12"/>
+      <stop offset="1" stop-color="#FFFFFF" stop-opacity="0.35"/>
     </linearGradient>
-    
-    <radialGradient id="lockGradient">
-      <stop offset="0%" style="stop-color:#3b82f6;stop-opacity:1" />
-      <stop offset="100%" style="stop-color:#1e40af;stop-opacity:1" />
-    </radialGradient>
+    <linearGradient id="mark" x1="78" y1="64" x2="176" y2="192" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FFFFFF" stop-opacity="0.92"/>
+      <stop offset="1" stop-color="#FFFFFF" stop-opacity="0.62"/>
+    </linearGradient>
   </defs>
+
+  <circle cx="128" cy="128" r="128" fill="url(#bg)"/>
+  <circle cx="128" cy="128" r="102" stroke="url(#ring)" stroke-width="10" opacity="0.9"/>
+
+  <!-- Minimal CV monogram -->
+  <path
+    d="M78 116c0-29 19-52 50-52 16 0 29 5 39 14 3 3 3 8 0 11l-8 8c-3 3-7 3-10 0-6-6-12-8-20-8-16 0-26 11-26 27v24c0 16 10 27 26 27 8 0 14-2 20-8 3-3 7-3 10 0l8 8c3 3 3 8 0 11-10 9-23 14-39 14-31 0-50-23-50-52v-22z"
+    fill="url(#mark)"
+  />
+  <path
+    d="M145 82h18c5 0 9 3 10 8l13 66c1 6-3 12-10 12h-14c-5 0-9-3-10-8l-7-36-7 36c-1 5-5 8-10 8h-14c-7 0-11-6-10-12l13-66c1-5 5-8 10-8h8z"
+    fill="url(#mark)"
+    opacity="0.95"
+  />
+
+  <circle cx="128" cy="128" r="124.5" stroke="#FFFFFF" stroke-opacity="0.06"/>
 </svg>
 
 
