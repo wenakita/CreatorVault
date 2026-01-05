@@ -801,37 +801,3 @@ contract CreatorCharmStrategyV2 is IStrategy, ReentrancyGuard, Ownable {
         }
     }
 }
-
-
-
-import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import { ReentrancyGuard } from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
-import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
-import { IUniswapV3Factory } from "../interfaces/v3/IUniswapV3Factory.sol";
-import { IUniswapV3Pool } from "../interfaces/v3/IUniswapV3Pool.sol";
-import "../interfaces/strategies/IStrategy.sol";
-
-/**
- * @title CreatorCharmStrategyV2
- * @notice Production-ready Charm vault strategy for CREATOR/USDC with 99/1 initial ratio
- * 
- * @dev IMPROVEMENTS:
- *      1. ✅ Uses POOL PRICE for swap calculations (not oracle) - prevents bad swap rates
- *      2. ✅ Slippage protection on all swaps (configurable, default 3%)
- *      3. ✅ Try/catch on Charm deposits (graceful failure, returns tokens)
- *      4. ✅ Pre-deposit range check (skips if Charm vault out of range)
- *      5. ✅ Single atomic deposit (no batching - simpler & cheaper)
- *      6. ✅ Max swap percentage limits (prevents excessive swaps)
- *      7. ✅ Configurable parameters without redeployment
- *      8. ✅ zRouter support for gas-efficient swaps (8-18% gas savings)
- *      9. ✅ Auto fee tier discovery (finds best liquidity pool)
- * 
- * @dev CREATOR/USDC SPECIFIC:
- *      - Initial ratio: 99% CREATOR / 1% USDC
- *      - Max swap: 5% CREATOR → USDC (configurable)
- *      - Handles single-sided CREATOR deposits gracefully
- *      - Auto-balances to maintain Charm vault ratio
- *      - Dollar-denominated for easy valuation
- *      - Lower impermanent loss vs volatile pairs
- */
