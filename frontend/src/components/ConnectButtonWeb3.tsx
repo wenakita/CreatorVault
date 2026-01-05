@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { Wallet, ChevronDown, AlertCircle } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { base } from 'wagmi/chains'
+import { useMiniAppContext } from '@/hooks'
 
 export function ConnectButtonWeb3({ autoConnect = false }: { autoConnect?: boolean }) {
   const { address, isConnected, chain } = useAccount()
@@ -10,26 +11,35 @@ export function ConnectButtonWeb3({ autoConnect = false }: { autoConnect?: boole
   const { disconnect } = useDisconnect()
   const { switchChain } = useSwitchChain()
   const { signMessageAsync } = useSignMessage()
+  const miniApp = useMiniAppContext()
   const [showMenu, setShowMenu] = useState(false)
   const [copied, setCopied] = useState(false)
   const [authAddress, setAuthAddress] = useState<string | null>(null)
   const [authBusy, setAuthBusy] = useState(false)
   const [authError, setAuthError] = useState<string | null>(null)
-  const hasAutoConnected = useRef(false)
+  const hasAutoConnected = useRef<string | null>(null)
 
+  const miniAppConnector = connectors.find((c) => {
+    const id = String(c.id ?? '').toLowerCase()
+    const name = String((c as any)?.name ?? '').toLowerCase()
+    return id.includes('miniapp') || name.includes('farcaster') || name.includes('mini app')
+  })
   const coinbaseConnector = connectors.find((c) => c.id === 'coinbaseWalletSDK' || c.name?.toLowerCase().includes('coinbase'))
   const injectedConnector = connectors.find((c) => c.id === 'injected')
 
-  const preferredConnector = coinbaseConnector ?? connectors[0]
+  // In the Base app / Farcaster Mini App, prefer the mini app connector (no wallet-brand UX).
+  // On the open web, prefer Coinbase Wallet when available.
+  const preferredConnector = (miniApp.isMiniApp ? miniAppConnector : null) ?? coinbaseConnector ?? connectors[0]
 
   // Best-effort: preserve a single "Connect Wallet" click when Web3 is lazily enabled.
   useEffect(() => {
     if (!autoConnect) return
-    if (hasAutoConnected.current) return
     if (isConnected) return
     if (!preferredConnector) return
 
-    hasAutoConnected.current = true
+    // Re-attempt if the preferred connector changes (e.g. once Mini App detection resolves).
+    if (hasAutoConnected.current === preferredConnector.id) return
+    hasAutoConnected.current = preferredConnector.id
     connect({ connector: preferredConnector })
   }, [autoConnect, connect, isConnected, preferredConnector])
 

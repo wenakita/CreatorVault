@@ -7,15 +7,13 @@
  */
 
 import { useMemo, useState, type ReactNode } from 'react'
-import { useAccount, usePublicClient } from 'wagmi'
+import { useAccount, usePublicClient, useWalletClient } from 'wagmi'
 import { useSendCalls } from 'wagmi/experimental'
 import { base } from 'wagmi/chains'
 import {
   type Address,
   type Hex,
   concatHex,
-  createWalletClient,
-  custom,
   encodeAbiParameters,
   encodeFunctionData,
   encodePacked,
@@ -325,6 +323,7 @@ export function DeployVaultAA({
 }: DeployVaultAAProps) {
   const { address } = useAccount()
   const publicClient = usePublicClient({ chainId: base.id })
+  const { data: walletClient } = useWalletClient({ chainId: base.id })
   const { sendCallsAsync } = useSendCalls()
 
   const [deploymentVersion, setDeploymentVersion] = useState<DeploymentVersion>(deploymentVersionProp ?? 'v1')
@@ -364,8 +363,8 @@ export function DeployVaultAA({
       setError('Network client not ready. Please try again.')
       return
     }
-    if (!window.ethereum) {
-      setError('No wallet detected. Please connect a wallet.')
+    if (!walletClient) {
+      setError('Wallet not ready. Please reconnect and try again.')
       return
     }
     if (!isAddress(creatorToken)) {
@@ -850,13 +849,10 @@ export function DeployVaultAA({
       // Step 1: wallet confirmation
       setStep(1)
       if (isDelegatedSmartWallet) {
-        const walletClient = createWalletClient({
-          chain: base as any,
-          transport: custom(window.ethereum),
-        })
+        const wc = walletClient
 
         const tryExecuteBatch = async (batch: { target: Address; value: bigint; data: Hex }[]) => {
-          return await walletClient.writeContract({
+          return await wc.writeContract({
             account: signer,
             chain: base as any,
             address: owner,
@@ -888,7 +884,7 @@ export function DeployVaultAA({
           setCallBundleId(null)
 
           for (const c of deployCalls) {
-            const txHash = await walletClient.sendTransaction({
+            const txHash = await wc.sendTransaction({
               account: signer,
               chain: base as any,
               to: c.to,
@@ -942,10 +938,7 @@ export function DeployVaultAA({
           await runSplitFlow()
         }
       } else {
-        const walletClient = createWalletClient({
-          chain: base as any,
-          transport: custom(window.ethereum),
-        })
+        const wc = walletClient
 
         const waitTx = async (hash: Hex) => {
           const receipt = await publicClient.waitForTransactionReceipt({ hash: hash as any, timeout: 120_000 })
@@ -957,7 +950,7 @@ export function DeployVaultAA({
         }
 
         const sendTx = async (c: { to: Address; data: Hex; value?: bigint }) => {
-          const txHash = await walletClient.sendTransaction({
+          const txHash = await wc.sendTransaction({
             account: owner,
             chain: base as any,
             to: c.to,
@@ -996,7 +989,7 @@ export function DeployVaultAA({
           setStep(2)
           // Prefer EIP-5792 status (best signal). If unsupported, we fall back to bytecode polling below.
           try {
-            await waitForCallsStatus(walletClient, { id: res.id, timeout: 120_000, throwOnFailure: true })
+            await waitForCallsStatus(wc, { id: res.id, timeout: 120_000, throwOnFailure: true })
           } catch {
             // ignore
           }
