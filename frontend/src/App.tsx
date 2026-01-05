@@ -68,6 +68,11 @@ const AdminCreatorAccess = lazy(async () => {
   return { default: m.AdminCreatorAccess }
 })
 
+const AdminMiniApp = lazy(async () => {
+  const m = await import('./pages/AdminMiniApp')
+  return { default: m.AdminMiniApp }
+})
+
 const GaugeVoting = lazy(async () => {
   const m = await import('./pages/GaugeVoting')
   return { default: m.default }
@@ -91,6 +96,7 @@ function App() {
           <Route path="/faq/how-it-works" element={<FaqHowItWorks />} />
           <Route path="/status" element={<Status />} />
           <Route path="/admin/creator-access" element={<AdminCreatorAccess />} />
+          <Route path="/admin/miniapp" element={<AdminMiniApp />} />
           <Route path="/vote" element={<GaugeVoting />} />
           <Route path="/activate-akita" element={<ActivateAkita />} />
           <Route path="/auction/bid/:address" element={<AuctionBid />} />
