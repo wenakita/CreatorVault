@@ -98,5 +98,3 @@ export function Web3Gate({ children }: { children: ReactNode }) {
     </Web3Context.Provider>
   )
 }
-
-

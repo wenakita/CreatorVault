@@ -57,5 +57,3 @@ export function Web3Providers({ children }: { children: ReactNode }) {
     </WagmiProvider>
   )
 }
-
-

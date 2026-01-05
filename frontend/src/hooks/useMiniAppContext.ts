@@ -43,5 +43,3 @@ export function useMiniAppContext() {
 
   return { isMiniApp, context, fid, username }
 }
-
-

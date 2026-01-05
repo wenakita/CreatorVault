@@ -32,11 +32,13 @@ export function AdminMiniApp() {
         const { sdk } = await import('@farcaster/miniapp-sdk')
         const caps = await sdk.getCapabilities().catch(() => null)
         if (cancelled) return
+
         if (!caps) {
           setCapabilities(null)
           setCapsError('Capabilities not available (not running inside a Mini App).')
           return
         }
+
         setCapabilities(Array.from(caps).map(String))
         setCapsError(null)
       } catch (e: unknown) {
@@ -45,6 +47,7 @@ export function AdminMiniApp() {
         setCapsError(e instanceof Error ? e.message : 'Failed to read capabilities')
       }
     })()
+
     return () => {
       cancelled = true
     }
@@ -69,9 +72,11 @@ export function AdminMiniApp() {
   const decodedHeader = useMemo(() => {
     const h = result?.header
     if (!h) return null
+    if (typeof window === 'undefined') return null
+
     // base64url decode
     const padded = h.replace(/-/g, '+').replace(/_/g, '/') + '==='.slice((h.length + 3) % 4)
-    const json = typeof window !== 'undefined' ? atob(padded) : ''
+    const json = atob(padded)
     return tryParseJson(json)
   }, [result?.header])
 
@@ -108,9 +113,7 @@ export function AdminMiniApp() {
             <div className="px-6 py-6 sm:px-8 sm:py-8 space-y-6">
               <div className="space-y-2">
                 <div className="label">Mini App</div>
-                <div className="text-xl sm:text-2xl text-zinc-100 font-medium tracking-tight">
-                  Manifest signing (developer)
-                </div>
+                <div className="text-xl sm:text-2xl text-zinc-100 font-medium tracking-tight">Manifest signing (developer)</div>
                 <div className="text-sm text-zinc-600 max-w-prose">
                   Use this page <span className="text-zinc-300">inside the Base app preview</span> to generate the{' '}
                   <span className="font-mono text-zinc-300">accountAssociation</span> block for{' '}
@@ -131,6 +134,7 @@ export function AdminMiniApp() {
                   </span>
                   <ExternalLink className="w-4 h-4 text-zinc-600" />
                 </a>
+
                 <a
                   href="https://www.base.dev/preview"
                   target="_blank"
@@ -174,7 +178,7 @@ export function AdminMiniApp() {
                 <button
                   type="button"
                   onClick={() => void sign()}
-                  disabled={busy || mini.isMiniApp === false}
+                  disabled={busy || mini.isMiniApp === false || canSignManifest === false}
                   className="w-full sm:w-auto btn-accent rounded-lg px-5 py-3 text-sm disabled:opacity-60"
                   title={mini.isMiniApp === false ? 'Open this page inside Base app preview to sign.' : undefined}
                 >
@@ -205,8 +209,7 @@ export function AdminMiniApp() {
 
                   {decodedHeader && typeof decodedHeader === 'object' ? (
                     <div className="text-[11px] text-zinc-600">
-                      Header (decoded):{' '}
-                      <span className="text-zinc-500">{JSON.stringify(decodedHeader)}</span>
+                      Header (decoded): <span className="text-zinc-500">{JSON.stringify(decodedHeader)}</span>
                     </div>
                   ) : null}
                 </div>
