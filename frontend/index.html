@@ -15,6 +15,12 @@
     <meta name="description" content="Deposit creator coins into vaults. Earn from trading fees. Everyone earns together." />
     <meta name="base:app_id" content="695a49dc4d3a403912ed8ca5" />
     <meta name="fc:miniapp" content='{"version":"next","imageUrl":"https://www.creatorvaults.fun/miniapp-hero.png","button":{"title":"Open","action":{"type":"launch_miniapp","name":"Creator Vaults","url":"https://www.creatorvaults.fun"}}}' />
+    <script type="module">
+      // Farcaster/Base Mini App: signal "ready" ASAP so Base Preview can validate it.
+      // Outside a Mini App this safely no-ops (promise rejects).
+      import { sdk } from '@farcaster/miniapp-sdk'
+      sdk.actions.ready().catch(() => {})
+    </script>
 
     <!-- Fonts (Liquid Gold UI uses Playfair for serif accents) -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />

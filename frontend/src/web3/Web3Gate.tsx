@@ -47,11 +47,16 @@ export function Web3Gate({ children }: { children: ReactNode }) {
       try {
         const { sdk } = await import('@farcaster/miniapp-sdk')
         const inMini = await sdk.isInMiniApp().catch(() => false)
+
+        // Base Preview sometimes fails `isInMiniApp()` but still expects a `ready()` call.
+        // Calling `ready()` outside a Mini App should safely reject; we ignore errors.
+        const readyOk = await sdk.actions.ready().then(
+          () => true,
+          () => false,
+        )
+
         if (cancelled) return
-        setIsMiniApp(inMini)
-        if (inMini) {
-          await sdk.actions.ready().catch(() => null)
-        }
+        setIsMiniApp(Boolean(inMini || readyOk))
       } catch {
         // ignore
       }
