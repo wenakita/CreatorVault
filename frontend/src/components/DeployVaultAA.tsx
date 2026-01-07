@@ -387,6 +387,7 @@ export function DeployVaultAA({
   const [wasGasSponsored, setWasGasSponsored] = useState(false)
   const [compatibilityNotice, setCompatibilityNotice] = useState<string | null>(null)
   const [sponsorshipDebug, setSponsorshipDebug] = useState<string | null>(null)
+  const [allowCompatibilityMode, setAllowCompatibilityMode] = useState(false)
 
   const steps = useMemo(() => {
     return ['Preparing', 'Confirm in wallet', 'Deploying', 'Verifying', 'Complete']
@@ -445,6 +446,16 @@ export function DeployVaultAA({
       const err: any = new Error('User rejected the request.')
       err.isUserFacing = true
       if (details) err.details = details
+      throw err
+    }
+
+    const failNeedsCompatibility = (details?: string): never => {
+      const err: any = new Error('Gas-free 1-click deployment is not available in this wallet session.')
+      err.isUserFacing = true
+      err.details =
+        details && details.trim().length > 0
+          ? `${details}\n\nTip: reconnect using Coinbase Smart Wallet, or enable “Compatibility mode” to allow multi-tx fallback.`
+          : 'Tip: reconnect using Coinbase Smart Wallet, or enable “Compatibility mode” to allow multi-tx fallback.'
       throw err
     }
 
@@ -1139,6 +1150,12 @@ export function DeployVaultAA({
             // Fall through to legacy direct executeBatch() path.
           }
 
+          // If the user hasn't opted in to legacy multi-tx, stop here.
+          if (!allowCompatibilityMode) {
+            setSponsorshipDebug(lastSponsoredError)
+            failNeedsCompatibility(lastSponsoredError ?? undefined)
+          }
+
           setCompatibilityNotice(
             'Your wallet could not complete the deployment via sponsored smart-wallet calls. Falling back to a legacy batch/multi-tx flow (may require multiple confirmations and may cost gas).',
           )
@@ -1208,6 +1225,11 @@ export function DeployVaultAA({
           } else {
             // If we couldn't do the single 1-click bundle, try a sponsored split flow next.
             // Only after that fails do we fall back to legacy executeBatch (gas-paid).
+            if (!allowCompatibilityMode) {
+              setSponsorshipDebug(lastSponsoredError)
+              failNeedsCompatibility(lastSponsoredError ?? undefined)
+            }
+
             setCompatibilityNotice(
               'Your wallet could not submit the full deployment as a sponsored 1-click bundle. Trying smaller sponsored bundles (may require multiple confirmations)…',
             )
@@ -1313,6 +1335,11 @@ export function DeployVaultAA({
           }
           const msg = extractErrorText(e)
           if (/wallet_sendCalls|sendCalls|5792|capabilit/i.test(msg)) {
+            if (!allowCompatibilityMode) {
+              setSponsorshipDebug(msg)
+              failNeedsCompatibility(msg)
+            }
+
             setCompatibilityNotice(
               'This wallet does not support EIP-5792 batching (wallet_sendCalls). Falling back to multiple transactions (multiple confirmations).',
             )
@@ -1320,6 +1347,11 @@ export function DeployVaultAA({
           } else if (!OVERSIZED_DATA_RE.test(msg)) {
             throw e
           } else {
+            if (!allowCompatibilityMode) {
+              setSponsorshipDebug(msg)
+              failNeedsCompatibility(msg)
+            }
+
             setCompatibilityNotice(
               'This wallet rejected the 1-click bundle as “too large”. Falling back to multiple smaller bundles (multiple confirmations).',
             )
@@ -1622,6 +1654,15 @@ export function DeployVaultAA({
           <span className="leading-relaxed">{compatibilityNotice}</span>
         </div>
       ) : null}
+
+      <label className="flex items-center gap-2 text-xs text-zinc-500 px-1">
+        <input
+          type="checkbox"
+          checked={allowCompatibilityMode}
+          onChange={(e) => setAllowCompatibilityMode(e.target.checked)}
+        />
+        <span>Compatibility mode (allow multi-tx fallback if gas-free 1-click isn’t available)</span>
+      </label>
 
       <motion.button
         onClick={() => deploy()}
