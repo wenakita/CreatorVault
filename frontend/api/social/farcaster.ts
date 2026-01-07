@@ -66,18 +66,19 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       })
     }
 
-    const data = await response.json()
+    const data = (await response.json()) as unknown
 
     // Neynar returns an object with address keys
     // Example: { "0x123": [{ fid, username, ... }] }
-    const addressKey = Object.keys(data)[0]
-    const users = data[addressKey]
+    const map = (data ?? {}) as Record<string, any>
+    const addressKey = Object.keys(map)[0]
+    const users = addressKey ? map[addressKey] : null
 
     if (!users || users.length === 0) {
       return res.status(200).json({ success: true, data: null })
     }
 
-    const user = users[0] // Get the first user
+    const user = (users as any[])[0] // Get the first user
 
     // Transform to our format
     const profile = {
@@ -105,6 +106,3 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     })
   }
 }
-
-
-

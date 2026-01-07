@@ -61,13 +61,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       })
     }
 
-    const data = await response.json()
+    const data = (await response.json()) as unknown
 
-    if (!data.data) {
+    const json = (data ?? {}) as any
+
+    if (!json.data) {
       return res.status(404).json({ success: false, error: 'User not found' })
     }
 
-    const user = data.data
+    const user = json.data
 
     // Transform to our format
     const profile = {
@@ -93,6 +95,3 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     })
   }
 }
-
-
-
