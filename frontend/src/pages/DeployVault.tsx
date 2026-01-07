@@ -166,6 +166,26 @@ export function DeployVault() {
     return detectedSmartWallet
   }, [detectedSmartWallet, smartWalletBytecodeQuery.data])
 
+  // Prefer onchain truth over indexer graphs:
+  // If the coin's payoutRecipient is a deployed contract, treat it as the canonical smart wallet.
+  // This matches how many creators deploy their Zora coin (Smart Wallet payout recipient).
+  const payoutRecipientBytecodeQuery = useQuery({
+    queryKey: ['bytecode', 'payoutRecipient', creatorToken, payoutRecipient],
+    enabled: !!publicClient && !!payoutRecipient,
+    queryFn: async () => {
+      return await publicClient!.getBytecode({ address: payoutRecipient as Address })
+    },
+    staleTime: 60_000,
+    retry: 0,
+  })
+
+  const payoutRecipientContract = useMemo(() => {
+    if (!payoutRecipient) return null
+    const code = payoutRecipientBytecodeQuery.data
+    if (!code || code === '0x') return null
+    return payoutRecipient
+  }, [payoutRecipient, payoutRecipientBytecodeQuery.data])
+
   const autofillRef = useRef<{ tokenFor?: string }>({})
   const addressLc = (address ?? '').toLowerCase()
 
@@ -347,12 +367,17 @@ export function DeployVault() {
   // Zora creators often deploy coins from a smart wallet (Privy-managed), then add EOAs later.
   // Treat the Smart Wallet address as canonical and allow the connected EOA to act if it is an onchain owner.
   const coinSmartWallet = useMemo(() => {
+    // Highest-confidence: the coin's payout recipient is already a deployed contract.
+    // (This is the common Coinbase Smart Wallet setup.)
+    if (payoutRecipientContract) return payoutRecipientContract
+
+    // Fallback: use Zora profile-linked wallet graphs if present (requires onchain bytecode).
     if (!detectedSmartWalletContract) return null
     const smartLc = detectedSmartWalletContract.toLowerCase()
     if (payoutRecipient && payoutRecipient.toLowerCase() === smartLc) return detectedSmartWalletContract
     if (creatorAddress && creatorAddress.toLowerCase() === smartLc) return detectedSmartWalletContract
     return null
-  }, [detectedSmartWalletContract, payoutRecipient, creatorAddress])
+  }, [payoutRecipientContract, detectedSmartWalletContract, payoutRecipient, creatorAddress])
 
   // If the coin was created from a smart wallet (Privy/Coinbase Smart Wallet), prefer using that
   // as the execution account for deployment + the 50M initial deposit.
