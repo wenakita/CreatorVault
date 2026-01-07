@@ -326,6 +326,7 @@ function encodeUniswapCcaLinearSteps(durationBlocks: bigint): Hex {
 
 const OVERSIZED_DATA_RE = /oversized data|data too large|payload too large|request too large|too large/i
 const FAILED_TO_CREATE_RE = /fail(?:ed)? to create|unknown error|internal error/i
+const USER_REJECTED_RE = /user rejected|rejected the request|action_rejected|denied|cancel(?:led)?/i
 
 function extractErrorText(e: any): string {
   if (!e) return ''
@@ -351,6 +352,10 @@ function extractErrorText(e: any): string {
   } catch {
     return String(e)
   }
+}
+
+function isUserRejectedError(e: any): boolean {
+  return USER_REJECTED_RE.test(extractErrorText(e))
 }
 
 export function DeployVaultAA({
@@ -431,6 +436,13 @@ export function DeployVaultAA({
 
     const fail = (message: string, details?: string): never => {
       const err: any = new Error(message)
+      err.isUserFacing = true
+      if (details) err.details = details
+      throw err
+    }
+
+    const failUserRejected = (details?: string): never => {
+      const err: any = new Error('User rejected the request.')
       err.isUserFacing = true
       if (details) err.details = details
       throw err
@@ -1053,13 +1065,19 @@ export function DeployVaultAA({
         // Preferred: true smart-wallet batching (wallet_sendCalls) so we can use paymaster sponsorship.
         // Fallback: direct EOA tx to Smart Wallet executeBatch (not sponsored).
         const sendBundle = async (bundleCalls: { to: Address; data: Hex; value?: bigint }[]) => {
-          const res = await sendCallsAsync({
+          let res
+          try {
+            res = await sendCallsAsync({
             calls: bundleCalls,
             account: owner,
             chainId: base.id,
             forceAtomic: true,
             capabilities: sponsoredCapabilities as any,
-          })
+            })
+          } catch (e: any) {
+            if (isUserRejectedError(e)) failUserRejected(extractErrorText(e))
+            throw e
+          }
           setCallBundleType('bundle')
           setCallBundleId(res.id)
           setStep(2)
@@ -1072,6 +1090,7 @@ export function DeployVaultAA({
             if (/wallet_getCallsStatus|method not found|unsupported/i.test(msg)) {
               // ignore
             } else {
+              if (isUserRejectedError(e)) failUserRejected(msg)
               throw e
             }
           }
@@ -1176,6 +1195,10 @@ export function DeployVaultAA({
           } catch (e: any) {
             usedSponsoredBatching = false
             lastSponsoredError = extractErrorText(e)
+            if (isUserRejectedError(e)) {
+              setSponsorshipDebug(lastSponsoredError)
+              failUserRejected(lastSponsoredError)
+            }
           }
 
           // If the sponsored path worked, skip the legacy direct executeBatch path entirely.
@@ -1192,6 +1215,11 @@ export function DeployVaultAA({
             await runSplitFlow()
           }
         } catch (e: any) {
+          if (isUserRejectedError(e)) {
+            const msg = extractErrorText(e)
+            setSponsorshipDebug(msg)
+            failUserRejected(msg)
+          }
           const msg = extractErrorText(e)
           if (!OVERSIZED_DATA_RE.test(msg) && !FAILED_TO_CREATE_RE.test(msg) && !/revert/i.test(msg)) {
             throw e
@@ -1244,13 +1272,19 @@ export function DeployVaultAA({
         }
 
         const sendBundle = async (bundleCalls: { to: Address; data: Hex; value?: bigint }[]) => {
-          const res = await sendCallsAsync({
+          let res
+          try {
+            res = await sendCallsAsync({
             calls: bundleCalls,
             account: owner,
             chainId: base.id,
             forceAtomic: true,
             capabilities: sponsoredCapabilities as any,
-          })
+            })
+          } catch (e: any) {
+            if (isUserRejectedError(e)) failUserRejected(extractErrorText(e))
+            throw e
+          }
           setCallBundleType('bundle')
           setCallBundleId(res.id)
           setStep(2)
@@ -1262,6 +1296,7 @@ export function DeployVaultAA({
             if (/wallet_getCallsStatus|method not found|unsupported/i.test(msg)) {
               // ignore
             } else {
+              if (isUserRejectedError(e)) failUserRejected(msg)
               throw e
             }
           }
@@ -1271,6 +1306,11 @@ export function DeployVaultAA({
         try {
           await sendBundle(calls)
         } catch (e: any) {
+          if (isUserRejectedError(e)) {
+            const msg = extractErrorText(e)
+            setSponsorshipDebug(msg)
+            failUserRejected(msg)
+          }
           const msg = extractErrorText(e)
           if (/wallet_sendCalls|sendCalls|5792|capabilit/i.test(msg)) {
             setCompatibilityNotice(
