@@ -365,15 +365,20 @@ export function DeployVaultAA({
   const [showDetails, setShowDetails] = useState(false)
   const [wasGasSponsored, setWasGasSponsored] = useState(false)
   const [compatibilityNotice, setCompatibilityNotice] = useState<string | null>(null)
+  const [sponsorshipDebug, setSponsorshipDebug] = useState<string | null>(null)
 
   const steps = useMemo(() => {
     return ['Preparing', 'Confirm in wallet', 'Deploying', 'Verifying', 'Complete']
   }, [])
 
-  const isPaymasterConfigured = useMemo(() => {
-    const paymasterUrl = onchainKitConfig?.paymaster ?? null
-    return !!paymasterUrl && typeof paymasterUrl === 'string'
+  const paymasterUrlForUi = useMemo(() => {
+    const v = onchainKitConfig?.paymaster ?? null
+    return typeof v === 'string' && v.trim().length > 0 ? v.trim() : null
   }, [onchainKitConfig])
+
+  const isPaymasterConfigured = useMemo(() => {
+    return !!paymasterUrlForUi
+  }, [paymasterUrlForUi])
 
   async function deploy(versionOverride?: DeploymentVersion) {
     setError(null)
@@ -386,6 +391,7 @@ export function DeployVaultAA({
     setStep(0)
     setWasGasSponsored(false)
     setCompatibilityNotice(null)
+    setSponsorshipDebug(null)
 
     const version = versionOverride ?? deploymentVersion
     if (versionOverride && versionOverride !== deploymentVersion) setDeploymentVersion(versionOverride)
@@ -433,10 +439,9 @@ export function DeployVaultAA({
 
     // Paymaster sponsorship (Coinbase CDP via OnchainKitProvider) when available.
     // Note: Only smart wallets support paymaster-backed batching. EOAs will ignore this.
-    const paymasterUrl = onchainKitConfig?.paymaster ?? null
     const sponsoredCapabilities =
-      paymasterUrl && typeof paymasterUrl === 'string'
-        ? ({ paymasterService: { url: paymasterUrl } } as const)
+      paymasterUrlForUi
+        ? ({ paymasterService: { url: paymasterUrlForUi } } as const)
         : undefined
 
     setIsSubmitting(true)
@@ -994,6 +999,7 @@ export function DeployVaultAA({
         const wc = walletClient
 
         let usedSponsoredBatching = false
+        let lastSponsoredError: string | null = null
 
         // Preferred: true smart-wallet batching (wallet_sendCalls) so we can use paymaster sponsorship.
         // Fallback: direct EOA tx to Smart Wallet executeBatch (not sponsored).
@@ -1053,13 +1059,17 @@ export function DeployVaultAA({
             // If we got here, we successfully executed via sponsored sendCalls.
             setWasGasSponsored(true)
             return
-          } catch {
+          } catch (e: any) {
+            lastSponsoredError = extractErrorText(e)
             // Fall through to legacy direct executeBatch() path.
           }
 
           setCompatibilityNotice(
             'Your wallet could not complete the deployment via sponsored smart-wallet calls. Falling back to a legacy batch/multi-tx flow (may require multiple confirmations and may cost gas).',
           )
+          if (lastSponsoredError) {
+            setSponsorshipDebug(lastSponsoredError)
+          }
 
           // Compatibility fallback:
           // Some wallets refuse to submit the large executeBatch() payload (initcode-heavy).
@@ -1107,8 +1117,9 @@ export function DeployVaultAA({
             await sendBundle(calls)
             usedSponsoredBatching = true
             setWasGasSponsored(true)
-          } catch {
+          } catch (e: any) {
             usedSponsoredBatching = false
+            lastSponsoredError = extractErrorText(e)
           }
 
           // If the sponsored path worked, skip the legacy direct executeBatch path entirely.
@@ -1121,6 +1132,7 @@ export function DeployVaultAA({
             setCompatibilityNotice(
               'Your wallet could not submit the full deployment as a sponsored 1-click bundle. Trying smaller sponsored bundles (may require multiple confirmations)…',
             )
+            if (lastSponsoredError) setSponsorshipDebug(lastSponsoredError)
             await runSplitFlow()
           }
         } catch (e: any) {
@@ -1132,6 +1144,7 @@ export function DeployVaultAA({
           setCompatibilityNotice(
             'Your wallet rejected the 1-click deployment payload (likely size or EIP-5792 support). Falling back to split execution (multiple confirmations).',
           )
+          setSponsorshipDebug(msg)
           await runSplitFlow()
         }
       } else {
@@ -1648,6 +1661,19 @@ export function DeployVaultAA({
                   <div className="space-y-1">
                     <div className="label">Error details</div>
                     <div className="font-mono text-xs text-zinc-400 break-words">{errorDetails}</div>
+                  </div>
+                ) : null}
+
+                {sponsorshipDebug ? (
+                  <div className="space-y-1">
+                    <div className="label">Sponsorship debug</div>
+                    <div className="text-[11px] text-zinc-500 leading-relaxed">
+                      Paymaster: <span className="font-mono text-zinc-400 break-all">{String(paymasterUrlForUi ?? 'none')}</span>
+                    </div>
+                    <div className="font-mono text-xs text-zinc-400 break-words">{sponsorshipDebug}</div>
+                    <div className="text-[11px] text-zinc-600 leading-relaxed">
+                      If this mentions <span className="font-mono">origin</span> or <span className="font-mono">unauthorized</span>, double-check the CDP key Domain allowlist.
+                    </div>
                   </div>
                 ) : null}
 
