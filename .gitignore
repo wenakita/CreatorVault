@@ -71,6 +71,13 @@ telegram-bot/prisma/data/*.db
 *.temp
 .tmp/
 .temp/
+/.tmp_*/
+.tmp_*/
+
+# Root-level media/scratch files (keep assets inside the appropriate app dirs, e.g. frontend/public)
+/ChatGPT Image*.png
+/CreatorVaults.png
+/*.mp4
 # Auto-generated documentation
 docs-generated/
 docs-export/
