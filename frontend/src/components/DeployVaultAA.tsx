@@ -367,7 +367,7 @@ export function DeployVaultAA({
   executeAs,
   onSuccess,
 }: DeployVaultAAProps) {
-  const { address } = useAccount()
+  const { address, connector } = useAccount()
   const publicClient = usePublicClient({ chainId: base.id })
   const { data: walletClient } = useWalletClient({ chainId: base.id })
   const { sendCallsAsync } = useSendCalls()
@@ -475,6 +475,21 @@ export function DeployVaultAA({
     const vaultActivationBatcher = CONTRACTS.vaultActivationBatcher as Address
 
     const isDelegatedSmartWallet = owner.toLowerCase() !== signer.toLowerCase()
+
+    // wagmi will route `useSendCalls()` through the active connector.
+    // If the connector doesn't know about the Smart Wallet account, it fails with:
+    // "Account <smartWallet> not found for connector <X>".
+    // We preflight this so we can give a clear action to the user.
+    const connectorId = String((connector as any)?.id ?? '')
+    const connectorName = String((connector as any)?.name ?? (connectorId || 'Unknown connector'))
+    const connectorSupportsSmartWalletAccount =
+      connectorId === 'coinbaseWalletSDK' || connectorId === 'farcaster'
+
+    if (isDelegatedSmartWallet && !connectorSupportsSmartWalletAccount) {
+      failNeedsCompatibility(
+        `Account "${owner}" not found for connector "${connectorName}".\n\nTo use gas-free 1-click, disconnect and reconnect using Coinbase Wallet (Smart Wallet).`,
+      )
+    }
 
     // Paymaster sponsorship (Coinbase CDP via OnchainKitProvider) when available.
     // Note: Only smart wallets support paymaster-backed batching. EOAs will ignore this.
