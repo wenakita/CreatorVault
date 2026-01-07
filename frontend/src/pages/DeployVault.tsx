@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { motion } from 'framer-motion'
-import { useAccount, usePublicClient, useReadContract } from 'wagmi'
+import { useAccount, useConnect, useDisconnect, usePublicClient, useReadContract } from 'wagmi'
 import { base } from 'wagmi/chains'
 import type { Address } from 'viem'
 import { erc20Abi, formatUnits, isAddress } from 'viem'
@@ -87,7 +87,9 @@ function ExplainerRow({
 }
 
 export function DeployVault() {
-  const { address, isConnected } = useAccount()
+  const { address, isConnected, connector } = useAccount()
+  const { connect, connectors } = useConnect()
+  const { disconnect } = useDisconnect()
   const [creatorToken, setCreatorToken] = useState('')
   const [showAdvanced, setShowAdvanced] = useState(false)
   const [deploymentVersion, setDeploymentVersion] = useState<'v1' | 'v2' | 'v3'>('v3')
@@ -379,6 +381,25 @@ export function DeployVault() {
     return null
   }, [payoutRecipientContract, detectedSmartWalletContract, payoutRecipient, creatorAddress])
 
+  // For gas-free 1-click, the connected account must *be* the smart wallet account.
+  // Otherwise wagmi will attempt to sendCalls via a connector that doesn't control that account.
+  const isConnectedAsSmartWallet = useMemo(() => {
+    if (!coinSmartWallet || !address) return false
+    return address.toLowerCase() === coinSmartWallet.toLowerCase()
+  }, [address, coinSmartWallet])
+
+  const coinbaseSmartWalletConnector = useMemo(() => {
+    return connectors.find((c) => String(c.id) === 'coinbaseSmartWallet')
+  }, [connectors])
+
+  const smartWalletConnectionHint = useMemo(() => {
+    if (!coinSmartWallet) return null
+    if (!isConnected) return null
+    if (isConnectedAsSmartWallet) return null
+    const connectorName = String((connector as any)?.name ?? (connector as any)?.id ?? 'Unknown connector')
+    return { connectorName }
+  }, [coinSmartWallet, connector, isConnected, isConnectedAsSmartWallet])
+
   // If the coin was created from a smart wallet (Privy/Coinbase Smart Wallet), prefer using that
   // as the execution account for deployment + the 50M initial deposit.
   //
@@ -522,6 +543,9 @@ export function DeployVault() {
     !!derivedShareSymbol &&
     !!derivedShareName &&
     confirmedSmartWallet && // User must confirm they've sent 50M to their smart wallet
+    // If the coin is owned by a Smart Wallet, we must be connected *as that account*
+    // to use EIP-5792 batching + paymaster sponsorship.
+    (!!coinSmartWallet ? isConnectedAsSmartWallet : true) &&
     !!selectedOwnerAddress &&
     selectedOwnerHasMinDeposit // Must have 50M tokens in the selected owner wallet
 
@@ -1121,6 +1145,34 @@ export function DeployVault() {
                 <div className="pt-3 border-t border-zinc-900/50 space-y-4">
                   <div>
                     <div className="label mb-2">Your Smart Wallet (Coinbase Wallet)</div>
+
+                    {smartWalletConnectionHint ? (
+                      <div className="p-4 bg-amber-500/10 border border-amber-500/20 rounded-lg space-y-2">
+                        <div className="text-amber-300/90 text-sm font-medium">Connect as Smart Wallet to deploy</div>
+                        <div className="text-amber-300/70 text-xs leading-relaxed">
+                          You’re currently connected via <span className="text-white font-mono">{smartWalletConnectionHint.connectorName}</span>.
+                          Gas-free 1-click requires connecting as the Smart Wallet account{' '}
+                          <span className="text-white font-mono">{short(coinSmartWallet as string)}</span>.
+                        </div>
+                        {coinbaseSmartWalletConnector ? (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              try {
+                                disconnect()
+                              } catch {
+                                // ignore
+                              }
+                              connect({ connector: coinbaseSmartWalletConnector })
+                            }}
+                            className="btn-accent w-full"
+                          >
+                            Connect Coinbase Smart Wallet
+                          </button>
+                        ) : null}
+                      </div>
+                    ) : null}
+
                     {/* Smart wallet address (read-only) */}
                     <input
                       value={String(selectedOwnerWallet ?? address ?? '')}

@@ -2,6 +2,7 @@ import { createConfig, http, fallback } from 'wagmi'
 import { base } from 'wagmi/chains'
 import { coinbaseWallet, injected } from 'wagmi/connectors'
 import { farcasterMiniApp } from '@farcaster/miniapp-wagmi-connector'
+import { coinbaseSmartWallet } from '@/web3/connectors/coinbaseSmartWallet'
 
 /**
  * Base RPC notes:
@@ -29,6 +30,9 @@ export const wagmiConfig = createConfig({
     // Base app / Farcaster Mini App connector (when available).
     farcasterMiniApp(),
     injected(),
+    // Coinbase Smart Wallet (SCW) connector: forces Smart Wallet accounts only.
+    // This is required for paymaster-backed `wallet_sendCalls`.
+    coinbaseSmartWallet({ appName: 'Creator Vaults' }),
     coinbaseWallet({
       appName: 'Creator Vaults',
       // Don’t force Smart Wallet UX; allow users to connect with whatever wallet they have access to.

@@ -24,12 +24,17 @@ export function ConnectButtonWeb3({ autoConnect = false }: { autoConnect?: boole
     const name = String((c as any)?.name ?? '').toLowerCase()
     return id.includes('miniapp') || name.includes('farcaster') || name.includes('mini app')
   })
+  const coinbaseSmartWalletConnector = connectors.find((c) => c.id === 'coinbaseSmartWallet')
   const coinbaseConnector = connectors.find((c) => c.id === 'coinbaseWalletSDK' || c.name?.toLowerCase().includes('coinbase'))
   const injectedConnector = connectors.find((c) => c.id === 'injected')
 
   // In the Base app / Farcaster Mini App, prefer the mini app connector (no wallet-brand UX).
-  // On the open web, prefer Coinbase Wallet when available.
-  const preferredConnector = (miniApp.isMiniApp ? miniAppConnector : null) ?? coinbaseConnector ?? connectors[0]
+  // On the open web, prefer Coinbase Smart Wallet when available (enables gas-free 1-click).
+  const preferredConnector =
+    (miniApp.isMiniApp ? miniAppConnector : null) ??
+    coinbaseSmartWalletConnector ??
+    coinbaseConnector ??
+    connectors[0]
 
   // Best-effort: preserve a single "Connect Wallet" click when Web3 is lazily enabled.
   useEffect(() => {
@@ -247,7 +252,7 @@ export function ConnectButtonWeb3({ autoConnect = false }: { autoConnect?: boole
     >
         <Wallet className="w-4 h-4" />
       <span className="label">{isPending ? 'Connecting...' : 'Connect Wallet'}</span>
-        {coinbaseConnector || injectedConnector ? <ChevronDown className="w-3 h-3 text-zinc-600" /> : null}
+        {coinbaseSmartWalletConnector || coinbaseConnector || injectedConnector ? <ChevronDown className="w-3 h-3 text-zinc-600" /> : null}
       </button>
 
       <AnimatePresence>
@@ -266,6 +271,19 @@ export function ConnectButtonWeb3({ autoConnect = false }: { autoConnect?: boole
               exit={{ opacity: 0, y: -10 }}
               className="absolute right-0 top-full mt-4 w-64 card p-3 z-50 space-y-2"
             >
+              {coinbaseSmartWalletConnector ? (
+                <button
+                  onClick={() => {
+                    connect({ connector: coinbaseSmartWalletConnector })
+                    setShowMenu(false)
+                  }}
+                  className="w-full text-left py-3 px-4 hover:bg-zinc-950 transition-colors"
+                >
+                  <span className="label block mb-1">Coinbase Smart Wallet</span>
+                  <span className="text-xs text-zinc-600">Gas-free 1-click (recommended)</span>
+                </button>
+              ) : null}
+
               {coinbaseConnector ? (
                 <button
                   onClick={() => {
@@ -310,5 +328,3 @@ export function ConnectButtonWeb3({ autoConnect = false }: { autoConnect?: boole
     </div>
   )
 }
-
-
