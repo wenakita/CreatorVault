@@ -78,6 +78,11 @@ const GaugeVoting = lazy(async () => {
   return { default: m.default }
 })
 
+const AuctionDemo = lazy(async () => {
+  const m = await import('./pages/AuctionDemo')
+  return { default: m.default }
+})
+
 function App() {
   return (
     <>
@@ -104,6 +109,7 @@ function App() {
           <Route path="/complete-auction/:strategy" element={<CompleteAuction />} />
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/vault/:address" element={<Vault />} />
+          <Route path="/auction-demo" element={<AuctionDemo />} />
         </Route>
       </Routes>
     </>

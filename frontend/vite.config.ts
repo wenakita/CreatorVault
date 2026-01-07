@@ -68,9 +68,9 @@ function localApiRoutesPlugin(): Plugin {
     configureServer(server) {
       // Load repo envs (secrets) into process.env for local /api handlers.
       // - Prefer repo root .env (BASE_RPC_URL, BASE_LOGS_RPC_URL, ZORA_SERVER_API_KEY, etc.)
-      // - Also load frontend/.env.local if present.
+      // - Also load frontend/.env if present.
       loadDotEnvFile(path.resolve(__dirname, '../.env'))
-      loadDotEnvFile(path.resolve(__dirname, './.env.local'))
+      loadDotEnvFile(path.resolve(__dirname, './.env'))
 
       // Keep this loosely typed: API handlers often return `VercelResponse`, and we don't want
       // Vite's config TS project to type-check every function signature.

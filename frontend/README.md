@@ -19,8 +19,8 @@ Launch vaults. Reward holders. Win jackpots. All onchain.
 npm install
 
 # Set up environment
-cp .env.example .env.local
-# Edit .env.local with your CDP API key
+cp .env.example .env
+# Edit .env with your CDP API key
 
 # Run development server
 npm run dev

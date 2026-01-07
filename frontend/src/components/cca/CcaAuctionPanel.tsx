@@ -1,8 +1,9 @@
-import { useMemo, useState } from 'react'
+import { useMemo, useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { useAccount, useReadContract, useWaitForTransactionReceipt, useWriteContract } from 'wagmi'
 import type { Address } from 'viem'
 import { formatUnits, isAddress, parseEther, parseEventLogs } from 'viem'
+import { motion, AnimatePresence } from 'framer-motion'
 
 import { ConnectButton } from '@/components/ConnectButton'
 import {
@@ -96,35 +97,54 @@ export function CcaAuctionPanel({
     address: ccaStrategy,
     abi: CCA_LAUNCH_STRATEGY_ABI,
     functionName: 'getAuctionStatus',
-    query: { refetchInterval: 12_000 },
+    query: { 
+      refetchInterval: 30_000, // Reduced from 12s to 30s (still feels real-time)
+      // Only refetch when tab is visible
+      refetchIntervalInBackground: false,
+    },
   })
 
   const { data: currencyAddress } = useReadContract({
     address: ccaStrategy,
     abi: CCA_LAUNCH_STRATEGY_ABI,
     functionName: 'currency',
-    query: { refetchInterval: 60_000 },
+    query: { 
+      // These are immutable contract values - cache indefinitely
+      staleTime: Infinity,
+      refetchOnWindowFocus: false,
+    },
   })
 
   const { data: auctionTokenAddress } = useReadContract({
     address: ccaStrategy,
     abi: CCA_LAUNCH_STRATEGY_ABI,
     functionName: 'auctionToken',
-    query: { refetchInterval: 60_000 },
+    query: { 
+      staleTime: Infinity,
+      refetchOnWindowFocus: false,
+    },
   })
 
   const { data: tokenDecimalsRaw } = useReadContract({
     address: (auctionTokenAddress && isAddress(auctionTokenAddress) ? auctionTokenAddress : ZERO_ADDRESS) as Address,
     abi: ERC20_VIEW_ABI,
     functionName: 'decimals',
-    query: { enabled: !!auctionTokenAddress && auctionTokenAddress !== ZERO_ADDRESS, refetchInterval: 60_000 },
+    query: { 
+      enabled: !!auctionTokenAddress && auctionTokenAddress !== ZERO_ADDRESS, 
+      staleTime: Infinity,
+      refetchOnWindowFocus: false,
+    },
   })
 
   const { data: tokenSymbolRaw } = useReadContract({
     address: (auctionTokenAddress && isAddress(auctionTokenAddress) ? auctionTokenAddress : ZERO_ADDRESS) as Address,
     abi: ERC20_VIEW_ABI,
     functionName: 'symbol',
-    query: { enabled: !!auctionTokenAddress && auctionTokenAddress !== ZERO_ADDRESS, refetchInterval: 60_000 },
+    query: { 
+      enabled: !!auctionTokenAddress && auctionTokenAddress !== ZERO_ADDRESS, 
+      staleTime: Infinity,
+      refetchOnWindowFocus: false,
+    },
   })
 
   const tokenDecimals = typeof tokenDecimalsRaw === 'number' ? tokenDecimalsRaw : Number(tokenDecimalsRaw ?? 18)
@@ -265,230 +285,637 @@ export function CcaAuctionPanel({
     })
   }
 
+  // Animation state for real-time updates
+  const [priceUpdating, setPriceUpdating] = useState(false)
+  useEffect(() => {
+    setPriceUpdating(true)
+    const timer = setTimeout(() => setPriceUpdating(false), 800)
+    return () => clearTimeout(timer)
+  }, [clearingPriceQ96])
+
   return (
-    <div className="card p-6 sm:p-8 space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
-        <div>
-          <span className="label block mb-2">Continuous Clearing Auction</span>
-          <h3 className="headline text-2xl sm:text-3xl">{tokenSymbol} Price Discovery</h3>
-          <p className="text-zinc-600 text-sm font-light mt-2 flex items-center gap-2">
-            <span>
-              Powered by{' '}
-              <a
-                href="https://cca.uniswap.org"
-                target="_blank"
-                rel="noreferrer"
-                className="text-cyan-400 hover:text-cyan-300 underline underline-offset-4 decoration-cyan-400/30 hover:decoration-cyan-300/40 transition-colors"
-              >
-                Uniswap Continuous Clearing Auction
-              </a>
-              . Clearing price updates as bids arrive; bids are spread over time.
-            </span>
-            <img
-              src="/protocols/uniswap.png"
-              alt="Uniswap"
-              width={16}
-              height={16}
-              className="w-4 h-4 object-contain"
-              loading="lazy"
+    <div className="card p-0 overflow-hidden">
+      {/* Hero Header */}
+      <div className="relative bg-gradient-to-br from-cyan-950/20 via-black/40 to-black/40 border-b border-white/5 p-6 sm:p-8">
+        {/* Animated background particles for live auctions */}
+        {isActive && (
+          <div className="absolute inset-0 overflow-hidden opacity-20">
+            <motion.div
+              className="absolute w-96 h-96 bg-cyan-500/10 rounded-full blur-3xl"
+              animate={{
+                x: [0, 100, 0],
+                y: [0, 50, 0],
+              }}
+              transition={{
+                duration: 20,
+                repeat: Infinity,
+                ease: "linear"
+              }}
             />
-          </p>
-        </div>
-        <div className="flex gap-2">
-          <Link to={`/auction/bid/${ccaStrategy}`} className="btn-secondary text-sm">
-            Open full auction
-          </Link>
-          {isGraduated && (
-            <Link to={`/complete-auction/${ccaStrategy}`} className="btn-primary text-sm">
-              Complete auction
+          </div>
+        )}
+
+        <div className="relative z-10 flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+          <div className="flex-1">
+            <div className="flex items-center gap-3 mb-2">
+              <span className="label">Continuous Clearing Auction</span>
+              {/* Live status badge */}
+              {isActive && (
+                <motion.div 
+                  className="flex items-center gap-1.5 bg-cyan-500/10 border border-cyan-500/20 rounded-full px-3 py-1"
+                  initial={{ scale: 0.8, opacity: 0 }}
+                  animate={{ scale: 1, opacity: 1 }}
+                  transition={{ duration: 0.3 }}
+                >
+                  <motion.div 
+                    className="w-1.5 h-1.5 rounded-full bg-cyan-400"
+                    animate={{ 
+                      boxShadow: [
+                        '0 0 4px rgba(34, 211, 238, 0.6)',
+                        '0 0 12px rgba(34, 211, 238, 0.8)',
+                        '0 0 4px rgba(34, 211, 238, 0.6)',
+                      ]
+                    }}
+                    transition={{ duration: 2, repeat: Infinity }}
+                  />
+                  <span className="text-[10px] uppercase tracking-wider text-cyan-400 font-medium">Live</span>
+                </motion.div>
+              )}
+              {isGraduated && (
+                <div className="flex items-center gap-1.5 bg-green-500/10 border border-green-500/20 rounded-full px-3 py-1">
+                  <div className="w-1.5 h-1.5 rounded-full bg-green-400" />
+                  <span className="text-[10px] uppercase tracking-wider text-green-400 font-medium">Graduated</span>
+                </div>
+              )}
+            </div>
+            
+            <h3 className="headline text-3xl sm:text-4xl mb-3">{tokenSymbol} Price Discovery</h3>
+            
+            <div className="flex items-center gap-2 text-zinc-600 text-sm font-light">
+              <img
+                src="/protocols/uniswap.png"
+                alt="Uniswap"
+                width={18}
+                height={18}
+                className="w-[18px] h-[18px] object-contain opacity-60"
+                loading="lazy"
+              />
+              <span>
+                Powered by{' '}
+                <a
+                  href="https://cca.uniswap.org"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="text-cyan-400 hover:text-cyan-300 underline underline-offset-4 decoration-cyan-400/30 hover:decoration-cyan-300/40 transition-colors"
+                >
+                  Uniswap CCA
+                </a>
+              </span>
+            </div>
+            
+            <p className="text-zinc-500 text-xs font-light mt-2 max-w-2xl">
+              Continuous price discovery mechanism. Clearing price updates in real-time as bids arrive. 
+              Bids are spread over time to reduce manipulation and ensure fair price discovery.
+            </p>
+          </div>
+
+          <div className="flex flex-wrap gap-2">
+            <Link 
+              to={`/auction/bid/${ccaStrategy}`} 
+              className="btn-primary text-sm whitespace-nowrap hover:scale-105 transition-transform"
+            >
+              View full auction
             </Link>
-          )}
+            {isGraduated && (
+              <Link 
+                to={`/complete-auction/${ccaStrategy}`} 
+                className="bg-green-500/10 border border-green-500/20 text-green-400 hover:bg-green-500/20 px-6 py-3 text-sm transition-all duration-300 font-light tracking-wide whitespace-nowrap hover:scale-105"
+              >
+                Complete auction
+              </Link>
+            )}
+          </div>
         </div>
       </div>
 
-      {/* Status + metrics */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-        <div className="bg-black/40 border border-white/5 rounded-xl p-4">
-          <div className="label mb-2">Status</div>
-          <div className="value">
+      {/* Metrics Dashboard */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-px bg-white/5">
+        {/* Status */}
+        <motion.div 
+          className="bg-black/60 p-6 group hover:bg-black/80 transition-colors"
+          whileHover={{ scale: 1.02 }}
+          transition={{ duration: 0.2 }}
+        >
+          <div className="label mb-3">Auction Status</div>
+          <div className="value text-2xl">
             {!hasAuction ? (
-              <span className="text-zinc-500">Not launched</span>
+              <span className="text-zinc-500">Not Launched</span>
             ) : isGraduated ? (
-              <span className="text-green-400">Graduated</span>
+              <span className="text-green-400">Graduated ✓</span>
             ) : isActive ? (
-              <span className="text-cyan-400">Live</span>
+              <span className="text-cyan-400 glow-cyan">Active</span>
             ) : (
               <span className="text-zinc-500">Inactive</span>
             )}
           </div>
-        </div>
+        </motion.div>
 
-        <div className="bg-black/40 border border-white/5 rounded-xl p-4">
-          <div className="label mb-2">Clearing price</div>
-          <div className="value mono text-lg sm:text-xl">
-            {clearingPriceText} ETH
-            <span className="text-zinc-600 text-xs font-light ml-2">per {wsSymbol}</span>
+        {/* Clearing Price */}
+        <motion.div 
+          className="bg-black/60 p-6 group hover:bg-black/80 transition-colors relative overflow-hidden"
+          whileHover={{ scale: 1.02 }}
+          transition={{ duration: 0.2 }}
+        >
+          {/* Price update indicator */}
+          <AnimatePresence>
+            {priceUpdating && (
+              <motion.div
+                className="absolute inset-0 bg-cyan-500/5"
+                initial={{ opacity: 0, x: '-100%' }}
+                animate={{ opacity: [0, 1, 0], x: ['0%', '100%'] }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.8 }}
+              />
+            )}
+          </AnimatePresence>
+          
+          <div className="label mb-3 flex items-center gap-2">
+            Clearing Price
+            {isActive && (
+              <motion.span 
+                className="text-[8px] text-cyan-400"
+                animate={{ opacity: [0.4, 1, 0.4] }}
+                transition={{ duration: 2, repeat: Infinity }}
+              >
+                LIVE
+              </motion.span>
+            )}
           </div>
-        </div>
+          <div className="value mono text-2xl sm:text-3xl relative z-10">
+            <motion.span
+              key={clearingPriceText}
+              initial={{ y: -10, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              transition={{ duration: 0.3 }}
+            >
+              {clearingPriceText}
+            </motion.span>
+            <span className="text-zinc-400 text-base ml-2">ETH</span>
+          </div>
+          <div className="text-zinc-600 text-xs font-light mt-1">per {wsSymbol}</div>
+        </motion.div>
 
-        <div className="bg-black/40 border border-white/5 rounded-xl p-4">
-          <div className="label mb-2">Raised</div>
-          <div className="value mono text-lg sm:text-xl">{formatEth(currencyRaised, 4)} ETH</div>
-        </div>
+        {/* Raised Amount */}
+        <motion.div 
+          className="bg-black/60 p-6 group hover:bg-black/80 transition-colors"
+          whileHover={{ scale: 1.02 }}
+          transition={{ duration: 0.2 }}
+        >
+          <div className="label mb-3">Total Raised</div>
+          <div className="value mono text-2xl sm:text-3xl">
+            <motion.span
+              key={currencyRaised.toString()}
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              transition={{ duration: 0.3 }}
+            >
+              {formatEth(currencyRaised, 3)}
+            </motion.span>
+            <span className="text-zinc-400 text-base ml-2">ETH</span>
+          </div>
+          {currencyRaised > 0n && (
+            <div className="text-zinc-600 text-xs font-light mt-1">
+              ≈ ${(Number(formatEth(currencyRaised, 2)) * 3500).toLocaleString('en-US', { maximumFractionDigits: 0 })} USD
+            </div>
+          )}
+        </motion.div>
       </div>
 
-      {/* Connection / bidding */}
-      {!isConnected ? (
-        <div className="bg-black/40 border border-white/5 rounded-xl p-5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-          <div>
-            <div className="label mb-1">Connect to bid</div>
-            <div className="text-zinc-600 text-sm">Connect your wallet to participate in this auction.</div>
-          </div>
-          <ConnectButton />
-        </div>
-      ) : (
-        <div className="space-y-4">
-          {!hasAuction && (
-            <div className="bg-black/40 border border-white/5 rounded-xl p-4 text-zinc-600 text-sm">
-              No active auction contract yet.
+      {/* Bidding Interface */}
+      <div className="p-6 sm:p-8">
+        {!isConnected ? (
+          <motion.div 
+            className="bg-gradient-to-br from-cyan-950/10 to-black/40 border border-cyan-500/20 rounded-xl p-8"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4 }}
+          >
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-6">
+              <div>
+                <h4 className="headline text-xl mb-2">Connect to Participate</h4>
+                <p className="text-zinc-500 text-sm">
+                  Connect your wallet to place bids and participate in price discovery.
+                </p>
+              </div>
+              <ConnectButton />
             </div>
-          )}
+          </motion.div>
+        ) : (
+          <div className="space-y-6">
+            {/* Pre-launch state */}
+            {!hasAuction && (
+              <motion.div 
+                className="bg-black/40 border border-zinc-800 rounded-xl p-6 text-center"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+              >
+                <div className="text-zinc-500 text-sm">
+                  <div className="w-12 h-12 border-2 border-zinc-800 rounded-full flex items-center justify-center mx-auto mb-3">
+                    <span className="text-2xl">⏳</span>
+                  </div>
+                  Auction not yet launched. Check back soon.
+                </div>
+              </motion.div>
+            )}
 
-          {hasAuction && !isEthAuction && (
-            <div className="bg-black/40 border border-amber-500/20 rounded-xl p-4 text-amber-200 text-sm">
-              This auction raises an ERC-20 currency. The embedded UI currently supports ETH auctions only.
-            </div>
-          )}
-
-          {hasAuction && isActive && isEthAuction && (
-            <div className="bg-black/40 border border-white/5 rounded-xl p-5 space-y-4">
-              <div className="flex items-center justify-between gap-3">
-                <div>
-                  <div className="label mb-1">Place a bid</div>
-                  <div className="text-zinc-600 text-sm">
-                    Simple mode sets your max price to <span className="mono">{maxPriceText} ETH</span> ({mode === 'simple' ? '120%' : 'custom'}).
+            {/* ERC20 currency warning */}
+            {hasAuction && !isEthAuction && (
+              <motion.div 
+                className="bg-amber-500/10 border border-amber-500/30 rounded-xl p-6"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+              >
+                <div className="flex items-start gap-3">
+                  <div className="text-2xl">⚠️</div>
+                  <div>
+                    <h4 className="text-amber-200 font-medium mb-1">ERC-20 Currency Auction</h4>
+                    <p className="text-amber-200/80 text-sm">
+                      This auction raises an ERC-20 currency. The embedded UI currently supports ETH auctions only.
+                      Please use the full auction interface.
+                    </p>
                   </div>
                 </div>
-                <div className="flex gap-2">
-                  <button
-                    className={mode === 'simple' ? 'btn-primary text-xs' : 'btn-secondary text-xs'}
-                    onClick={() => setMode('simple')}
-                    type="button"
-                  >
-                    Simple
-                  </button>
-                  <button
-                    className={mode === 'advanced' ? 'btn-primary text-xs' : 'btn-secondary text-xs'}
-                    onClick={() => setMode('advanced')}
-                    type="button"
-                  >
-                    Advanced
-                  </button>
-                </div>
-              </div>
+              </motion.div>
+            )}
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <div className="label">Spend (ETH)</div>
-                  <input
-                    value={spendEth}
-                    onChange={(e) => setSpendEth(e.target.value)}
-                    placeholder="0.05"
-                    className="input-field w-full"
-                    inputMode="decimal"
-                  />
-                  {spendParseError && <div className="text-xs text-red-300">{spendParseError}</div>}
+            {/* Active bidding interface */}
+            {hasAuction && isActive && isEthAuction && (
+              <motion.div 
+                className="bg-gradient-to-br from-black/60 to-black/40 border border-white/10 rounded-xl overflow-hidden"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.4 }}
+              >
+                {/* Mode selector */}
+                <div className="bg-black/40 border-b border-white/5 p-5 flex items-center justify-between gap-4">
+                  <div>
+                    <h4 className="label mb-1.5">Place Your Bid</h4>
+                    <p className="text-zinc-600 text-xs">
+                      {mode === 'simple' 
+                        ? 'Simple mode auto-sets max price to 120% of current clearing price'
+                        : 'Advanced mode lets you set a custom max price'
+                      }
+                    </p>
+                  </div>
+                  <div className="flex gap-2">
+                    <motion.button
+                      className={`px-4 py-2 text-xs font-medium tracking-wide transition-all ${
+                        mode === 'simple'
+                          ? 'bg-cyan-500/20 border border-cyan-500/40 text-cyan-300'
+                          : 'bg-transparent border border-zinc-800 text-zinc-500 hover:text-zinc-300'
+                      }`}
+                      onClick={() => setMode('simple')}
+                      type="button"
+                      whileHover={{ scale: 1.05 }}
+                      whileTap={{ scale: 0.95 }}
+                    >
+                      Simple
+                    </motion.button>
+                    <motion.button
+                      className={`px-4 py-2 text-xs font-medium tracking-wide transition-all ${
+                        mode === 'advanced'
+                          ? 'bg-purple-500/20 border border-purple-500/40 text-purple-300'
+                          : 'bg-transparent border border-zinc-800 text-zinc-500 hover:text-zinc-300'
+                      }`}
+                      onClick={() => setMode('advanced')}
+                      type="button"
+                      whileHover={{ scale: 1.05 }}
+                      whileTap={{ scale: 0.95 }}
+                    >
+                      Advanced
+                    </motion.button>
+                  </div>
                 </div>
 
-                <div className="space-y-2">
-                  <div className="label">Estimated {wsSymbol}</div>
-                  <div className="bg-black/60 border border-white/5 rounded-md px-4 py-3">
-                    <div className="value mono text-lg">{estTokensText ? `~${estTokensText}` : '—'}</div>
-                    <div className="text-zinc-600 text-xs font-light">
-                      Uses current clearing price ({clearingPriceText} ETH / {wsSymbol})
+                {/* Bid form */}
+                <div className="p-6 space-y-5">
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+                    {/* Amount input */}
+                    <div className="space-y-2">
+                      <label className="label flex items-center justify-between">
+                        <span>Amount to Spend</span>
+                        <span className="text-[9px] text-zinc-600">ETH</span>
+                      </label>
+                      <div className="relative">
+                        <input
+                          value={spendEth}
+                          onChange={(e) => {
+                            setSpendEth(e.target.value)
+                            setLocalError(null)
+                          }}
+                          placeholder="0.05"
+                          className="bg-black/60 border border-white/10 focus:border-cyan-500/50 text-white text-xl px-4 py-4 w-full transition-colors font-mono focus:outline-none"
+                          inputMode="decimal"
+                        />
+                        <div className="absolute right-4 top-1/2 -translate-y-1/2 text-zinc-600 text-sm">
+                          ETH
+                        </div>
+                      </div>
+                      <AnimatePresence mode="wait">
+                        {spendParseError && (
+                          <motion.div 
+                            className="text-xs text-red-400 flex items-center gap-1.5"
+                            initial={{ opacity: 0, y: -5 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0, y: -5 }}
+                          >
+                            <span>⚠</span>
+                            <span>{spendParseError}</span>
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
                     </div>
-                  </div>
-                </div>
-              </div>
 
-              {mode === 'advanced' && (
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <div className="label">Max price (ETH per {wsSymbol})</div>
-                    <input
-                      value={maxPriceEthPerToken}
-                      onChange={(e) => setMaxPriceEthPerToken(e.target.value)}
-                      placeholder={clearingPriceText}
-                      className="input-field w-full"
-                      inputMode="decimal"
-                    />
-                    {maxPriceParseError && <div className="text-xs text-amber-200">{maxPriceParseError}</div>}
-                    {!maxPriceOk && !!clearingPriceQ96 && !!maxPriceQ96 && (
-                      <div className="text-xs text-red-300">Max price must be above the clearing price.</div>
-                    )}
-                  </div>
-                  <div className="space-y-2">
-                    <div className="label">Max price (effective)</div>
-                    <div className="bg-black/60 border border-white/5 rounded-md px-4 py-3">
-                      <div className="value mono text-lg">{maxPriceText} ETH</div>
-                      <div className="text-zinc-600 text-xs font-light">
-                        Stored onchain as Q96 fixed-point (per Uniswap CCA).
+                    {/* Estimated tokens */}
+                    <div className="space-y-2">
+                      <label className="label flex items-center justify-between">
+                        <span>You'll Receive (Est.)</span>
+                        <span className="text-[9px] text-zinc-600">{wsSymbol}</span>
+                      </label>
+                      <div className="bg-black/80 border border-white/5 rounded-lg p-4 h-[72px] flex flex-col justify-center">
+                        <AnimatePresence mode="wait">
+                          {estTokensText ? (
+                            <motion.div
+                              key={estTokensText}
+                              initial={{ opacity: 0, scale: 0.9 }}
+                              animate={{ opacity: 1, scale: 1 }}
+                              exit={{ opacity: 0, scale: 0.9 }}
+                              className="value mono text-2xl text-cyan-400"
+                            >
+                              ≈ {estTokensText}
+                            </motion.div>
+                          ) : (
+                            <div className="value mono text-2xl text-zinc-700">—</div>
+                          )}
+                        </AnimatePresence>
+                        <div className="text-zinc-600 text-[10px] font-light mt-1">
+                          at {clearingPriceText} ETH per {wsSymbol}
+                        </div>
                       </div>
                     </div>
                   </div>
-                </div>
-              )}
 
-              <button
-                onClick={handleBid}
-                disabled={!canBid || isBidPending || isBidConfirming}
-                className="btn-primary w-full disabled:opacity-50 disabled:cursor-not-allowed"
-                type="button"
-              >
-                {isBidPending || isBidConfirming ? 'Submitting…' : 'Submit bid'}
-              </button>
+                  {/* Advanced mode: custom max price */}
+                  <AnimatePresence>
+                    {mode === 'advanced' && (
+                      <motion.div 
+                        className="grid grid-cols-1 lg:grid-cols-2 gap-5 pt-4 border-t border-white/5"
+                        initial={{ opacity: 0, height: 0 }}
+                        animate={{ opacity: 1, height: 'auto' }}
+                        exit={{ opacity: 0, height: 0 }}
+                        transition={{ duration: 0.3 }}
+                      >
+                        <div className="space-y-2">
+                          <label className="label flex items-center justify-between">
+                            <span>Max Price (ETH per {wsSymbol})</span>
+                            <span className="text-[9px] text-purple-400">CUSTOM</span>
+                          </label>
+                          <div className="relative">
+                            <input
+                              value={maxPriceEthPerToken}
+                              onChange={(e) => {
+                                setMaxPriceEthPerToken(e.target.value)
+                                setLocalError(null)
+                              }}
+                              placeholder={clearingPriceText}
+                              className="bg-black/60 border border-purple-500/20 focus:border-purple-500/50 text-white text-xl px-4 py-4 w-full transition-colors font-mono focus:outline-none"
+                              inputMode="decimal"
+                            />
+                          </div>
+                          <AnimatePresence mode="wait">
+                            {maxPriceParseError && (
+                              <motion.div 
+                                className="text-xs text-amber-300 flex items-center gap-1.5"
+                                initial={{ opacity: 0, y: -5 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                exit={{ opacity: 0, y: -5 }}
+                              >
+                                <span>⚠</span>
+                                <span>{maxPriceParseError}</span>
+                              </motion.div>
+                            )}
+                            {!maxPriceOk && !!clearingPriceQ96 && !!maxPriceQ96 && !maxPriceParseError && (
+                              <motion.div 
+                                className="text-xs text-red-400 flex items-center gap-1.5"
+                                initial={{ opacity: 0, y: -5 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                exit={{ opacity: 0, y: -5 }}
+                              >
+                                <span>✗</span>
+                                <span>Max price must exceed clearing price</span>
+                              </motion.div>
+                            )}
+                          </AnimatePresence>
+                        </div>
 
-              {(localError || bidError) && (
-                <div className="bg-red-500/10 border border-red-500/30 rounded-xl p-4 text-red-200 text-sm">
-                  {localError ?? bidError?.message}
-                </div>
-              )}
+                        <div className="space-y-2">
+                          <label className="label">Effective Max Price</label>
+                          <div className="bg-black/80 border border-white/5 rounded-lg p-4 h-[72px] flex flex-col justify-center">
+                            <div className="value mono text-2xl text-purple-400">
+                              {maxPriceText} ETH
+                            </div>
+                            <div className="text-zinc-600 text-[10px] font-light mt-1">
+                              Q96 fixed-point (Uniswap CCA standard)
+                            </div>
+                          </div>
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
 
-              {bidTxHash && (
-                <div className="text-xs text-zinc-500">
-                  Tx:{' '}
-                  <a
-                    href={`https://basescan.org/tx/${bidTxHash}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-cyan-400 hover:underline"
+                  {/* Submit button */}
+                  <motion.button
+                    onClick={handleBid}
+                    disabled={!canBid || isBidPending || isBidConfirming}
+                    className={`w-full py-4 text-lg font-light tracking-wide transition-all ${
+                      canBid && !isBidPending && !isBidConfirming
+                        ? 'bg-cyan-500/20 border-2 border-cyan-500/50 text-cyan-300 hover:bg-cyan-500/30 hover:border-cyan-400/60'
+                        : 'bg-zinc-900/50 border-2 border-zinc-800 text-zinc-600 cursor-not-allowed'
+                    }`}
+                    type="button"
+                    whileHover={canBid ? { scale: 1.02 } : {}}
+                    whileTap={canBid ? { scale: 0.98 } : {}}
                   >
-                    view on BaseScan
-                  </a>
-                  {bidSuccess && bidId ? <span className="ml-3">Bid ID: <span className="mono">{bidId}</span></span> : null}
+                    {isBidPending || isBidConfirming ? (
+                      <span className="flex items-center justify-center gap-2">
+                        <motion.span
+                          animate={{ rotate: 360 }}
+                          transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
+                        >
+                          ⟳
+                        </motion.span>
+                        Submitting bid...
+                      </span>
+                    ) : (
+                      'Submit Bid'
+                    )}
+                  </motion.button>
+
+                  {/* Error display */}
+                  <AnimatePresence mode="wait">
+                    {(localError || bidError) && (
+                      <motion.div 
+                        className="bg-red-500/10 border border-red-500/30 rounded-lg p-4"
+                        initial={{ opacity: 0, y: -10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -10 }}
+                      >
+                        <div className="flex items-start gap-3">
+                          <span className="text-red-400 text-lg">⚠</span>
+                          <div className="text-red-200 text-sm flex-1">
+                            {localError ?? bidError?.message}
+                          </div>
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+
+                  {/* Success feedback */}
+                  <AnimatePresence mode="wait">
+                    {bidTxHash && (
+                      <motion.div 
+                        className="bg-cyan-500/10 border border-cyan-500/20 rounded-lg p-4"
+                        initial={{ opacity: 0, y: -10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -10 }}
+                      >
+                        <div className="flex items-start gap-3">
+                          <span className="text-cyan-400 text-lg">{bidSuccess ? '✓' : '⟳'}</span>
+                          <div className="flex-1">
+                            <div className="text-cyan-200 text-sm mb-2">
+                              {bidSuccess ? 'Bid submitted successfully!' : 'Transaction pending...'}
+                            </div>
+                            <div className="text-xs text-cyan-400/60 font-mono">
+                              <a
+                                href={`https://basescan.org/tx/${bidTxHash}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="hover:text-cyan-400 transition-colors underline"
+                              >
+                                View on BaseScan ↗
+                              </a>
+                              {bidSuccess && bidId && (
+                                <span className="ml-4">Bid ID: {bidId}</span>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
                 </div>
-              )}
-            </div>
-          )}
+              </motion.div>
+            )}
 
-          {hasAuction && isGraduated && (
-            <div className="bg-green-500/10 border border-green-500/20 rounded-xl p-4 text-green-200 text-sm">
-              Auction has graduated. You can now sweep funds, configure fees, and complete launch.
-              <span className="ml-2">
-                <Link to={`/complete-auction/${ccaStrategy}`} className="text-green-200 underline">
-                  Complete auction →
-                </Link>
-              </span>
-            </div>
-          )}
-        </div>
-      )}
+            {/* Graduated state */}
+            {hasAuction && isGraduated && (
+              <motion.div 
+                className="bg-gradient-to-br from-green-950/20 to-black/40 border border-green-500/30 rounded-xl p-6"
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+              >
+                <div className="flex items-start gap-4">
+                  <div className="text-3xl">🎉</div>
+                  <div className="flex-1">
+                    <h4 className="text-green-300 font-medium text-lg mb-2">Auction Graduated!</h4>
+                    <p className="text-green-200/80 text-sm mb-4">
+                      This auction has successfully graduated. You can now sweep funds, configure fees, and complete the launch process.
+                    </p>
+                    <Link 
+                      to={`/complete-auction/${ccaStrategy}`} 
+                      className="inline-flex items-center gap-2 bg-green-500/20 border border-green-500/40 text-green-300 hover:bg-green-500/30 px-6 py-2.5 text-sm transition-all font-light tracking-wide"
+                    >
+                      Complete Auction
+                      <span>→</span>
+                    </Link>
+                  </div>
+                </div>
+              </motion.div>
+            )}
+          </div>
+        )}
+      </div>
 
-      {/* Footer details */}
-      <div className="text-[11px] text-zinc-600 font-mono">
-        Strategy: {ccaStrategy}
-        {vaultAddress ? <span className="ml-3">Vault: {vaultAddress}</span> : null}
-        {hasAuction ? <span className="ml-3">Auction: {auctionAddress}</span> : null}
+      {/* Technical Details Footer */}
+      <div className="border-t border-white/5 bg-black/20 px-6 py-4">
+        <details className="group">
+          <summary className="cursor-pointer text-[10px] uppercase tracking-wider text-zinc-600 hover:text-zinc-500 transition-colors flex items-center gap-2 select-none">
+            <motion.span
+              animate={{ rotate: 0 }}
+              className="group-open:rotate-90 transition-transform inline-block"
+            >
+              ▸
+            </motion.span>
+            Technical Details
+          </summary>
+          <motion.div 
+            className="mt-4 space-y-2 text-[11px] font-mono"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.3 }}
+          >
+            <div className="flex items-center justify-between py-1.5 border-b border-white/5">
+              <span className="text-zinc-600">Strategy Contract</span>
+              <a 
+                href={`https://basescan.org/address/${ccaStrategy}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-cyan-400 hover:text-cyan-300 transition-colors"
+              >
+                {ccaStrategy.slice(0, 6)}...{ccaStrategy.slice(-4)}
+              </a>
+            </div>
+            {vaultAddress && (
+              <div className="flex items-center justify-between py-1.5 border-b border-white/5">
+                <span className="text-zinc-600">Vault Address</span>
+                <a 
+                  href={`https://basescan.org/address/${vaultAddress}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-cyan-400 hover:text-cyan-300 transition-colors"
+                >
+                  {vaultAddress.slice(0, 6)}...{vaultAddress.slice(-4)}
+                </a>
+              </div>
+            )}
+            {hasAuction && auctionAddress !== ZERO_ADDRESS && (
+              <div className="flex items-center justify-between py-1.5 border-b border-white/5">
+                <span className="text-zinc-600">Auction Contract</span>
+                <a 
+                  href={`https://basescan.org/address/${auctionAddress}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-cyan-400 hover:text-cyan-300 transition-colors"
+                >
+                  {auctionAddress.slice(0, 6)}...{auctionAddress.slice(-4)}
+                </a>
+              </div>
+            )}
+            {auctionTokenAddress && auctionTokenAddress !== ZERO_ADDRESS && (
+              <div className="flex items-center justify-between py-1.5">
+                <span className="text-zinc-600">Token Address</span>
+                <a 
+                  href={`https://basescan.org/address/${auctionTokenAddress}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-cyan-400 hover:text-cyan-300 transition-colors"
+                >
+                  {auctionTokenAddress.slice(0, 6)}...{auctionTokenAddress.slice(-4)}
+                </a>
+              </div>
+            )}
+          </motion.div>
+        </details>
       </div>
     </div>
   )

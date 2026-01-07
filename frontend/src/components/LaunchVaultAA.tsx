@@ -7,14 +7,16 @@
 
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { useAccount, usePublicClient } from 'wagmi';
-import { encodeFunctionData, erc20Abi, parseEther } from 'viem';
+import { useAccount, usePublicClient, useWalletClient } from 'wagmi';
+import { useSendCalls } from 'wagmi/experimental';
+import { useOnchainKit } from '@coinbase/onchainkit';
+import { encodeFunctionData, erc20Abi, parseEther, type Address, type Hex } from 'viem';
 import { base } from 'wagmi/chains';
 import { motion } from 'framer-motion';
 import { Zap } from 'lucide-react';
 
 // ✅ Deployed VaultActivationBatcher address
-const VAULT_ACTIVATION_BATCHER = '0x6d796554698f5Ddd74Ff20d745304096aEf93CB6';
+const VAULT_ACTIVATION_BATCHER = '0x6d796554698f5Ddd74Ff20d745304096aEf93CB6' as Address;
 
 const VaultActivationBatcherABI = [
   {
@@ -35,10 +37,10 @@ const VaultActivationBatcherABI = [
 ] as const;
 
 interface LaunchVaultAAProps {
-  creatorToken: `0x${string}`;
-  vault: `0x${string}`;
-  wrapper: `0x${string}`;
-  ccaStrategy: `0x${string}`;
+  creatorToken: Address;
+  vault: Address;
+  wrapper: Address;
+  ccaStrategy: Address;
   depositAmount: string; // in human-readable format (e.g., "50000000")
   auctionPercent: number; // 0-100
   requiredRaise: string; // in ETH (e.g., "10")
@@ -55,6 +57,9 @@ export function LaunchVaultAA({
 }: LaunchVaultAAProps) {
   const { address } = useAccount();
   const publicClient = usePublicClient({ chainId: base.id });
+  const { data: walletClient } = useWalletClient({ chainId: base.id });
+  const { sendCallsAsync } = useSendCalls();
+  const { config: onchainKitConfig } = useOnchainKit();
   
   const [loading, setLoading] = useState(false);
   const [txHash, setTxHash] = useState<string | null>(null);
@@ -75,8 +80,15 @@ export function LaunchVaultAA({
       const depositAmountBigInt = parseEther(depositAmount);
       const requiredRaiseBigInt = parseEther(requiredRaise);
 
+      // Optional paymaster sponsorship (Coinbase CDP via OnchainKitProvider).
+      const paymasterUrl = onchainKitConfig?.paymaster ?? null;
+      const capabilities =
+        paymasterUrl && typeof paymasterUrl === 'string'
+          ? ({ paymasterService: { url: paymasterUrl } } as const)
+          : undefined;
+
       // Build batched transactions
-      const transactions = [
+      const transactions: { to: Address; data: Hex; value: bigint }[] = [
         // 1. Approve tokens to batcher
         {
           to: creatorToken,
@@ -107,65 +119,45 @@ export function LaunchVaultAA({
         }
       ];
 
-      // Check if using smart wallet with batching capability
-      // @ts-ignore - Smart wallet methods may not be typed
-      if (window.ethereum?.isCoinbaseWallet || window.ethereum?.isBiconomy) {
-        console.log('📱 Using smart wallet with native batching');
-        
-        // @ts-ignore
-        const userOpHash = await window.ethereum.sendBatchTransaction?.(transactions);
-        
-        if (userOpHash) {
-          console.log('✅ UserOp submitted:', userOpHash);
-          setTxHash(userOpHash);
-          
-          // Poll for transaction
-          // Note: Smart wallets return userOp hash, not tx hash
-          // You may need to use a bundler API to get the actual tx hash
-          
-          return;
-        }
+      // Preferred: wallet_sendCalls atomic batch (Smart Wallets + paymaster support).
+      try {
+        const res = await sendCallsAsync({
+          calls: transactions,
+          account: address as Address,
+          chainId: base.id,
+          forceAtomic: true,
+          capabilities: capabilities as any,
+        });
+        // NOTE: This is a call bundle id / userOp-ish identifier, not always a tx hash.
+        setTxHash(res.id);
+        return;
+      } catch (e) {
+        // fall back
+        console.warn('wallet_sendCalls failed, falling back to sequential txs:', e);
       }
 
-      // Fallback: Send transactions sequentially
-      console.log('⚠️ Smart wallet batching not detected, using sequential transactions');
-      
-      // Send approve transaction
-      const approveTxHash = await window.ethereum!.request({
-        method: 'eth_sendTransaction',
-        params: [{
-          from: address,
-          to: transactions[0].to,
-          data: transactions[0].data
-        }]
-      }) as string;
-      
-      console.log('✅ Approve tx:', approveTxHash);
-      
-      // Wait for approval
-      await publicClient?.waitForTransactionReceipt({ hash: approveTxHash as `0x${string}` });
-      
-      // Send launch transaction
-      const launchTxHash = await window.ethereum!.request({
-        method: 'eth_sendTransaction',
-        params: [{
-          from: address,
-          to: transactions[1].to,
-          data: transactions[1].data
-        }]
-      }) as string;
-      
-      console.log('✅ Launch tx:', launchTxHash);
-      setTxHash(launchTxHash);
-      
-      // Wait for launch
-      const receipt = await publicClient?.waitForTransactionReceipt({ 
-        hash: launchTxHash as `0x${string}` 
+      // Fallback: Send transactions sequentially (EOA-style).
+      if (!walletClient) throw new Error('Wallet not ready');
+      console.log('⚠️ Falling back to sequential transactions');
+
+      const approveTxHash = await walletClient.sendTransaction({
+        account: address as any,
+        chain: base as any,
+        to: transactions[0].to as any,
+        data: transactions[0].data as any,
+        value: 0n,
       });
-      
-      if (receipt?.status === 'success') {
-        console.log('🎉 CCA launched successfully!');
-      }
+      await publicClient?.waitForTransactionReceipt({ hash: approveTxHash as `0x${string}` });
+
+      const launchTxHash = await walletClient.sendTransaction({
+        account: address as any,
+        chain: base as any,
+        to: transactions[1].to as any,
+        data: transactions[1].data as any,
+        value: 0n,
+      });
+      setTxHash(launchTxHash);
+      await publicClient?.waitForTransactionReceipt({ hash: launchTxHash as `0x${string}` });
 
     } catch (err: any) {
       console.error('Launch failed:', err);

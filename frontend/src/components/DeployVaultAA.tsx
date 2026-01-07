@@ -10,6 +10,7 @@ import { useMemo, useState, type ReactNode } from 'react'
 import { useAccount, usePublicClient, useWalletClient } from 'wagmi'
 import { useSendCalls } from 'wagmi/experimental'
 import { base } from 'wagmi/chains'
+import { useOnchainKit } from '@coinbase/onchainkit'
 import {
   type Address,
   type Hex,
@@ -33,6 +34,15 @@ import { DEPLOY_BYTECODE } from '@/deploy/bytecode.generated'
 const MIN_FIRST_DEPOSIT = 50_000_000n * 10n ** 18n
 const DEFAULT_AUCTION_PERCENT = 50 // 50%
 const DEFAULT_REQUIRED_RAISE_WEI = 100_000_000_000_000_000n // 0.1 ETH
+// Uniswap CCA uses Q96 fixed-point prices for `floorPrice` and `tickSpacing`.
+const Q96 = 2n ** 96n
+const DEFAULT_FLOOR_PRICE_ETH_WEI_PER_TOKEN = 1_000_000_000_000_000n // 0.001 ETH / token (human-friendly)
+const DEFAULT_FLOOR_PRICE_Q96 = (DEFAULT_FLOOR_PRICE_ETH_WEI_PER_TOKEN * Q96) / 10n ** 18n
+// Use ~1% tick spacing, and snap floor price onto a tick boundary (floorPrice % tickSpacing == 0).
+const DEFAULT_TICK_SPACING_Q96_RAW = DEFAULT_FLOOR_PRICE_Q96 / 100n
+const DEFAULT_TICK_SPACING_Q96 = DEFAULT_TICK_SPACING_Q96_RAW > 1n ? DEFAULT_TICK_SPACING_Q96_RAW : 2n
+const DEFAULT_FLOOR_PRICE_Q96_ALIGNED = (DEFAULT_FLOOR_PRICE_Q96 / DEFAULT_TICK_SPACING_Q96) * DEFAULT_TICK_SPACING_Q96
+const DEFAULT_CCA_DURATION_BLOCKS = 302_400n // ~7 days on Base at ~2s blocks (must match CCALaunchStrategy defaultDuration)
 
 const CREATE2_DEPLOYER_ABI = [
   {
@@ -69,6 +79,7 @@ const GAUGE_ADMIN_ABI = [
 const CCA_ADMIN_ABI = [
   { type: 'function', name: 'setApprovedLauncher', stateMutability: 'nonpayable', inputs: [{ name: 'launcher', type: 'address' }, { name: 'approved', type: 'bool' }], outputs: [] },
   { type: 'function', name: 'setOracleConfig', stateMutability: 'nonpayable', inputs: [{ name: '_oracle', type: 'address' }, { name: '_poolManager', type: 'address' }, { name: '_taxHook', type: 'address' }, { name: '_feeRecipient', type: 'address' }], outputs: [] },
+  { type: 'function', name: 'setDefaultTickSpacing', stateMutability: 'nonpayable', inputs: [{ name: '_spacing', type: 'uint256' }], outputs: [] },
 ] as const
 
 const WRAPPER_VIEW_ABI = [
@@ -80,23 +91,14 @@ const VAULT_VIEW_ABI = [
   { type: 'function', name: 'whitelist', stateMutability: 'view', inputs: [{ name: '_account', type: 'address' }], outputs: [{ type: 'bool' }] },
 ] as const
 
-const VAULT_OWNER_ABI = [
-  { type: 'function', name: 'setGaugeController', stateMutability: 'nonpayable', inputs: [{ name: '_gaugeController', type: 'address' }], outputs: [] },
-  { type: 'function', name: 'setWhitelist', stateMutability: 'nonpayable', inputs: [{ name: '_account', type: 'address' }, { name: '_status', type: 'bool' }], outputs: [] },
-] as const
-
-const SHAREOFT_VIEW_ABI = [
-  { type: 'function', name: 'vault', stateMutability: 'view', inputs: [], outputs: [{ type: 'address' }] },
-  { type: 'function', name: 'gaugeController', stateMutability: 'view', inputs: [], outputs: [{ type: 'address' }] },
-  { type: 'function', name: 'isMinter', stateMutability: 'view', inputs: [{ name: 'minter', type: 'address' }], outputs: [{ type: 'bool' }] },
-] as const
-
-const CCA_VIEW_ABI = [
-  { type: 'function', name: 'approvedLaunchers', stateMutability: 'view', inputs: [{ name: 'launcher', type: 'address' }], outputs: [{ type: 'bool' }] },
-] as const
-
-const WRAPPER_DEPOSIT_ABI = [
-  { type: 'function', name: 'deposit', stateMutability: 'nonpayable', inputs: [{ name: 'amount', type: 'uint256' }], outputs: [{ type: 'uint256' }] },
+const WRAPPER_USER_ABI = [
+  {
+    type: 'function',
+    name: 'deposit',
+    stateMutability: 'nonpayable',
+    inputs: [{ name: 'amount', type: 'uint256' }],
+    outputs: [{ name: 'shareOFTOut', type: 'uint256' }],
+  },
 ] as const
 
 const CCA_LAUNCH_ABI = [
@@ -112,6 +114,21 @@ const CCA_LAUNCH_ABI = [
     ],
     outputs: [{ name: 'auction', type: 'address' }],
   },
+] as const
+
+const VAULT_OWNER_ABI = [
+  { type: 'function', name: 'setGaugeController', stateMutability: 'nonpayable', inputs: [{ name: '_gaugeController', type: 'address' }], outputs: [] },
+  { type: 'function', name: 'setWhitelist', stateMutability: 'nonpayable', inputs: [{ name: '_account', type: 'address' }, { name: '_status', type: 'bool' }], outputs: [] },
+] as const
+
+const SHAREOFT_VIEW_ABI = [
+  { type: 'function', name: 'vault', stateMutability: 'view', inputs: [], outputs: [{ type: 'address' }] },
+  { type: 'function', name: 'gaugeController', stateMutability: 'view', inputs: [], outputs: [{ type: 'address' }] },
+  { type: 'function', name: 'isMinter', stateMutability: 'view', inputs: [{ name: 'minter', type: 'address' }], outputs: [{ type: 'bool' }] },
+] as const
+
+const CCA_VIEW_ABI = [
+  { type: 'function', name: 'approvedLaunchers', stateMutability: 'view', inputs: [{ name: 'launcher', type: 'address' }], outputs: [{ type: 'bool' }] },
 ] as const
 
 const GAUGE_ORACLE_VIEW_ABI = [
@@ -209,17 +226,6 @@ const OWNABLE_ABI = [
   { type: 'function', name: 'transferOwnership', stateMutability: 'nonpayable', inputs: [{ name: 'newOwner', type: 'address' }], outputs: [] },
 ] as const
 
-const DEFAULT_CCA_FLOOR_PRICE_WEI = 1_000_000_000_000_000n // 1e15 (matches CCALaunchStrategy.defaultFloorPrice)
-const DEFAULT_CCA_DURATION_BLOCKS = 302_400n // matches CCALaunchStrategy.defaultDuration
-const DEFAULT_CCA_MPS = 10_000_000n
-
-function makeLinearAuctionSteps(durationBlocks: bigint): Hex {
-  // Solidity: bytes8(uint64(uint24(MPS / duration)) | (uint64(duration) << 24))
-  const mpsPerBlock = DEFAULT_CCA_MPS / durationBlocks
-  const packed = (durationBlocks << 24n) | mpsPerBlock
-  return encodePacked(['uint64'], [packed])
-}
-
 type DeploymentAddresses = {
   vault: Address
   wrapper: Address
@@ -251,11 +257,6 @@ interface DeployVaultAAProps {
    */
   executeAs?: Address
   onSuccess?: (addresses: DeploymentAddresses) => void
-}
-
-function makeInitCode(bytecode: Hex, types: string, values: readonly unknown[]): Hex {
-  const encoded = encodeAbiParameters(parseAbiParameters(types), values as any)
-  return concatHex([bytecode, encoded])
 }
 
 function deriveSalts(params: { creatorToken: Address; owner: Address; chainId: number; version: DeploymentVersion }) {
@@ -297,6 +298,29 @@ function predictCreate2Address(create2Deployer: Address, salt: Hex, initCode: He
   return getCreate2Address({ from: create2Deployer, salt, bytecodeHash })
 }
 
+function encodeUniswapCcaLinearSteps(durationBlocks: bigint): Hex {
+  // Uniswap CCA expects `auctionStepsData` as packed bytes8 steps:
+  // step = uint24(mps) || uint40(blockDelta)  (total: 8 bytes)
+  // and requires sum(mps * blockDelta) == 10_000_000 (1e7, "MPS" = 100%).
+  const MPS = 10_000_000n
+  if (durationBlocks <= 0n) return '0x'
+
+  const mpsLow = MPS / durationBlocks
+  const remainder = MPS - mpsLow * durationBlocks // number of blocks that need +1 mps to hit exactly 1e7
+  const mpsHigh = mpsLow + 1n
+
+  const highBlocks = remainder
+  const lowBlocks = durationBlocks - highBlocks
+
+  const packStep = (mps: bigint, blockDelta: bigint) =>
+    encodePacked(['uint24', 'uint40'], [Number(mps), Number(blockDelta)])
+
+  const steps: Hex[] = []
+  if (highBlocks > 0n) steps.push(packStep(mpsHigh, highBlocks))
+  if (lowBlocks > 0n) steps.push(packStep(mpsLow, lowBlocks))
+  return concatHex(steps)
+}
+
 const OVERSIZED_DATA_RE = /oversized data|data too large|payload too large|request too large|too large/i
 const FAILED_TO_CREATE_RE = /fail(?:ed)? to create|unknown error|internal error/i
 
@@ -325,6 +349,7 @@ export function DeployVaultAA({
   const publicClient = usePublicClient({ chainId: base.id })
   const { data: walletClient } = useWalletClient({ chainId: base.id })
   const { sendCallsAsync } = useSendCalls()
+  const { config: onchainKitConfig } = useOnchainKit()
 
   const [deploymentVersion, setDeploymentVersion] = useState<DeploymentVersion>(deploymentVersionProp ?? 'v1')
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -337,10 +362,17 @@ export function DeployVaultAA({
   const [step, setStep] = useState(0)
   const [success, setSuccess] = useState(false)
   const [showDetails, setShowDetails] = useState(false)
+  const [wasGasSponsored, setWasGasSponsored] = useState(false)
+  const [compatibilityNotice, setCompatibilityNotice] = useState<string | null>(null)
 
   const steps = useMemo(() => {
     return ['Preparing', 'Confirm in wallet', 'Deploying', 'Verifying', 'Complete']
   }, [])
+
+  const isPaymasterConfigured = useMemo(() => {
+    const paymasterUrl = onchainKitConfig?.paymaster ?? null
+    return !!paymasterUrl && typeof paymasterUrl === 'string'
+  }, [onchainKitConfig])
 
   async function deploy(versionOverride?: DeploymentVersion) {
     setError(null)
@@ -351,6 +383,8 @@ export function DeployVaultAA({
     setSuccess(false)
     setShowDetails(false)
     setStep(0)
+    setWasGasSponsored(false)
+    setCompatibilityNotice(null)
 
     const version = versionOverride ?? deploymentVersion
     if (versionOverride && versionOverride !== deploymentVersion) setDeploymentVersion(versionOverride)
@@ -395,6 +429,14 @@ export function DeployVaultAA({
     const vaultActivationBatcher = CONTRACTS.vaultActivationBatcher as Address
 
     const isDelegatedSmartWallet = owner.toLowerCase() !== signer.toLowerCase()
+
+    // Paymaster sponsorship (Coinbase CDP via OnchainKitProvider) when available.
+    // Note: Only smart wallets support paymaster-backed batching. EOAs will ignore this.
+    const paymasterUrl = onchainKitConfig?.paymaster ?? null
+    const sponsoredCapabilities =
+      paymasterUrl && typeof paymasterUrl === 'string'
+        ? ({ paymasterService: { url: paymasterUrl } } as const)
+        : undefined
 
     setIsSubmitting(true)
     try {
@@ -478,21 +520,6 @@ export function DeployVaultAA({
     // Salts
     const salts = deriveSalts({ creatorToken, owner, chainId: base.id, version })
 
-    // Init codes (constructor args appended)
-    const vaultInitCode = makeInitCode(
-      DEPLOY_BYTECODE.CreatorOVault as Hex,
-      'address,address,string,string',
-      [creatorToken, owner, vaultName, vaultSymbol],
-    )
-    const vaultAddress = predictCreate2Address(create2Deployer, salts.vaultSalt, vaultInitCode)
-
-    const wrapperInitCode = makeInitCode(
-      DEPLOY_BYTECODE.CreatorOVaultWrapper as Hex,
-      'address,address,address',
-      [creatorToken, vaultAddress, owner],
-    )
-    const wrapperAddress = predictCreate2Address(create2Deployer, salts.wrapperSalt, wrapperInitCode)
-
     // Cross-chain deterministic ShareOFT:
     // - v1: deployed via the universal CREATE2 factory (0x4e59…)
     // - v2+: prefer deploying via the universal bytecode store (small calldata; Smart Wallet friendly),
@@ -506,11 +533,20 @@ export function DeployVaultAA({
     const universalBytecodeStore = (CONTRACTS as any).universalBytecodeStore as Address | undefined
     const universalCreate2FromStore = (CONTRACTS as any).universalCreate2DeployerFromStore as Address | undefined
 
+    const ZERO = '0x0000000000000000000000000000000000000000'
     const bootstrapCodeId = keccak256(oftBootstrapInitCode)
     const shareOftCodeId = keccak256(DEPLOY_BYTECODE.CreatorShareOFT as Hex)
 
+    // Optional AA optimization: deploy *all* contracts from the universal bytecode store when available.
+    // This keeps `wallet_sendCalls` payloads small enough for true 1-click deployment.
+    const vaultCodeId = keccak256(DEPLOY_BYTECODE.CreatorOVault as Hex)
+    const wrapperCodeId = keccak256(DEPLOY_BYTECODE.CreatorOVaultWrapper as Hex)
+    const gaugeCodeId = keccak256(DEPLOY_BYTECODE.CreatorGaugeController as Hex)
+    const ccaCodeId = keccak256(DEPLOY_BYTECODE.CCALaunchStrategy as Hex)
+    const oracleCodeId = keccak256(DEPLOY_BYTECODE.CreatorOracle as Hex)
+
     let useUniversalOftStore = false
-    const ZERO = '0x0000000000000000000000000000000000000000'
+    let useUniversalFullStore = false
     if (version === 'v2' && universalBytecodeStore && universalCreate2FromStore) {
       try {
         const [storeCode, deployerCode] = await Promise.all([
@@ -518,28 +554,46 @@ export function DeployVaultAA({
           publicClient.getBytecode({ address: universalCreate2FromStore }),
         ])
         if (storeCode && storeCode !== '0x' && deployerCode && deployerCode !== '0x') {
-          const [bootPtr, oftPtr] = await Promise.all([
-            publicClient.readContract({
-              address: universalBytecodeStore,
-              abi: BYTECODE_STORE_VIEW_ABI,
-              functionName: 'pointers',
-              args: [bootstrapCodeId],
-            }),
-            publicClient.readContract({
-              address: universalBytecodeStore,
-              abi: BYTECODE_STORE_VIEW_ABI,
-              functionName: 'pointers',
-              args: [shareOftCodeId],
-            }),
-          ])
-          useUniversalOftStore =
-            (bootPtr as Address).toLowerCase() !== ZERO &&
-            (oftPtr as Address).toLowerCase() !== ZERO
+          const codeIds = [bootstrapCodeId, shareOftCodeId, vaultCodeId, wrapperCodeId, gaugeCodeId, ccaCodeId, oracleCodeId] as const
+          const ptrs = await Promise.all(
+            codeIds.map((codeId) =>
+              publicClient.readContract({
+                address: universalBytecodeStore,
+                abi: BYTECODE_STORE_VIEW_ABI,
+                functionName: 'pointers',
+                args: [codeId],
+              }),
+            ),
+          )
+          const has = (i: number) => (ptrs[i] as Address).toLowerCase() !== ZERO
+          useUniversalOftStore = has(0) && has(1)
+          useUniversalFullStore = useUniversalOftStore && has(2) && has(3) && has(4) && has(5) && has(6)
         }
       } catch {
         useUniversalOftStore = false
+        useUniversalFullStore = false
       }
     }
+
+    const localCreate2Deployer = useUniversalFullStore ? universalCreate2FromStore! : create2Deployer
+
+    // Init codes (constructor args appended)
+    const vaultConstructorArgs = encodeAbiParameters(parseAbiParameters('address,address,string,string'), [
+      creatorToken,
+      owner,
+      vaultName,
+      vaultSymbol,
+    ])
+    const vaultInitCode = concatHex([DEPLOY_BYTECODE.CreatorOVault as Hex, vaultConstructorArgs])
+    const vaultAddress = predictCreate2Address(localCreate2Deployer, salts.vaultSalt, vaultInitCode)
+
+    const wrapperConstructorArgs = encodeAbiParameters(parseAbiParameters('address,address,address'), [
+      creatorToken,
+      vaultAddress,
+      owner,
+    ])
+    const wrapperInitCode = concatHex([DEPLOY_BYTECODE.CreatorOVaultWrapper as Hex, wrapperConstructorArgs])
+    const wrapperAddress = predictCreate2Address(localCreate2Deployer, salts.wrapperSalt, wrapperInitCode)
 
     const oftBootstrapRegistry = predictCreate2Address(
       useUniversalOftStore ? universalCreate2FromStore! : create2Factory,
@@ -560,26 +614,33 @@ export function DeployVaultAA({
       shareOftInitCode,
     )
 
-    const gaugeInitCode = makeInitCode(
-      DEPLOY_BYTECODE.CreatorGaugeController as Hex,
-      'address,address,address,address',
-      [shareOftAddress, treasury, protocolTreasury, owner],
-    )
-    const gaugeAddress = predictCreate2Address(create2Deployer, salts.gaugeSalt, gaugeInitCode)
+    const gaugeConstructorArgs = encodeAbiParameters(parseAbiParameters('address,address,address,address'), [
+      shareOftAddress,
+      treasury,
+      protocolTreasury,
+      owner,
+    ])
+    const gaugeInitCode = concatHex([DEPLOY_BYTECODE.CreatorGaugeController as Hex, gaugeConstructorArgs])
+    const gaugeAddress = predictCreate2Address(localCreate2Deployer, salts.gaugeSalt, gaugeInitCode)
 
-    const ccaInitCode = makeInitCode(
-      DEPLOY_BYTECODE.CCALaunchStrategy as Hex,
-      'address,address,address,address,address',
-      [shareOftAddress, '0x0000000000000000000000000000000000000000', vaultAddress, vaultAddress, owner],
-    )
-    const ccaAddress = predictCreate2Address(create2Deployer, salts.ccaSalt, ccaInitCode)
+    const ccaConstructorArgs = encodeAbiParameters(parseAbiParameters('address,address,address,address,address'), [
+      shareOftAddress,
+      '0x0000000000000000000000000000000000000000',
+      vaultAddress,
+      vaultAddress,
+      owner,
+    ])
+    const ccaInitCode = concatHex([DEPLOY_BYTECODE.CCALaunchStrategy as Hex, ccaConstructorArgs])
+    const ccaAddress = predictCreate2Address(localCreate2Deployer, salts.ccaSalt, ccaInitCode)
 
-    const oracleInitCode = makeInitCode(
-      DEPLOY_BYTECODE.CreatorOracle as Hex,
-      'address,address,string,address',
-      [registry, chainlinkEthUsd, symbol, owner],
-    )
-    const oracleAddress = predictCreate2Address(create2Deployer, salts.oracleSalt, oracleInitCode)
+    const oracleConstructorArgs = encodeAbiParameters(parseAbiParameters('address,address,string,address'), [
+      registry,
+      chainlinkEthUsd,
+      symbol,
+      owner,
+    ])
+    const oracleInitCode = concatHex([DEPLOY_BYTECODE.CreatorOracle as Hex, oracleConstructorArgs])
+    const oracleAddress = predictCreate2Address(localCreate2Deployer, salts.oracleSalt, oracleInitCode)
 
     const predicted: DeploymentAddresses = {
       vault: vaultAddress,
@@ -642,16 +703,46 @@ export function DeployVaultAA({
 
     // Deploy contracts
     if (!vaultExists) {
-      deployCalls.push({
-        to: create2Deployer,
-        data: encodeFunctionData({ abi: CREATE2_DEPLOYER_ABI, functionName: 'deploy', args: [salts.vaultSalt, vaultInitCode] }),
-      })
+      deployCalls.push(
+        useUniversalFullStore
+          ? {
+              to: universalCreate2FromStore!,
+              data: encodeFunctionData({
+                abi: UNIVERSAL_CREATE2_FROM_STORE_ABI,
+                functionName: 'deploy',
+                args: [salts.vaultSalt, vaultCodeId, vaultConstructorArgs],
+              }),
+            }
+          : {
+              to: create2Deployer,
+              data: encodeFunctionData({
+                abi: CREATE2_DEPLOYER_ABI,
+                functionName: 'deploy',
+                args: [salts.vaultSalt, vaultInitCode],
+              }),
+            },
+      )
     }
     if (!wrapperExists) {
-      deployCalls.push({
-        to: create2Deployer,
-        data: encodeFunctionData({ abi: CREATE2_DEPLOYER_ABI, functionName: 'deploy', args: [salts.wrapperSalt, wrapperInitCode] }),
-      })
+      deployCalls.push(
+        useUniversalFullStore
+          ? {
+              to: universalCreate2FromStore!,
+              data: encodeFunctionData({
+                abi: UNIVERSAL_CREATE2_FROM_STORE_ABI,
+                functionName: 'deploy',
+                args: [salts.wrapperSalt, wrapperCodeId, wrapperConstructorArgs],
+              }),
+            }
+          : {
+              to: create2Deployer,
+              data: encodeFunctionData({
+                abi: CREATE2_DEPLOYER_ABI,
+                functionName: 'deploy',
+                args: [salts.wrapperSalt, wrapperInitCode],
+              }),
+            },
+      )
     }
 
     // Cross-chain ShareOFT bootstrap + deployment
@@ -696,22 +787,67 @@ export function DeployVaultAA({
       }
     }
     if (!gaugeExists) {
-      deployCalls.push({
-        to: create2Deployer,
-        data: encodeFunctionData({ abi: CREATE2_DEPLOYER_ABI, functionName: 'deploy', args: [salts.gaugeSalt, gaugeInitCode] }),
-      })
+      deployCalls.push(
+        useUniversalFullStore
+          ? {
+              to: universalCreate2FromStore!,
+              data: encodeFunctionData({
+                abi: UNIVERSAL_CREATE2_FROM_STORE_ABI,
+                functionName: 'deploy',
+                args: [salts.gaugeSalt, gaugeCodeId, gaugeConstructorArgs],
+              }),
+            }
+          : {
+              to: create2Deployer,
+              data: encodeFunctionData({
+                abi: CREATE2_DEPLOYER_ABI,
+                functionName: 'deploy',
+                args: [salts.gaugeSalt, gaugeInitCode],
+              }),
+            },
+      )
     }
     if (!ccaExists) {
-      deployCalls.push({
-        to: create2Deployer,
-        data: encodeFunctionData({ abi: CREATE2_DEPLOYER_ABI, functionName: 'deploy', args: [salts.ccaSalt, ccaInitCode] }),
-      })
+      deployCalls.push(
+        useUniversalFullStore
+          ? {
+              to: universalCreate2FromStore!,
+              data: encodeFunctionData({
+                abi: UNIVERSAL_CREATE2_FROM_STORE_ABI,
+                functionName: 'deploy',
+                args: [salts.ccaSalt, ccaCodeId, ccaConstructorArgs],
+              }),
+            }
+          : {
+              to: create2Deployer,
+              data: encodeFunctionData({
+                abi: CREATE2_DEPLOYER_ABI,
+                functionName: 'deploy',
+                args: [salts.ccaSalt, ccaInitCode],
+              }),
+            },
+      )
     }
     if (!oracleExists) {
-      deployCalls.push({
-        to: create2Deployer,
-        data: encodeFunctionData({ abi: CREATE2_DEPLOYER_ABI, functionName: 'deploy', args: [salts.oracleSalt, oracleInitCode] }),
-      })
+      deployCalls.push(
+        useUniversalFullStore
+          ? {
+              to: universalCreate2FromStore!,
+              data: encodeFunctionData({
+                abi: UNIVERSAL_CREATE2_FROM_STORE_ABI,
+                functionName: 'deploy',
+                args: [salts.oracleSalt, oracleCodeId, oracleConstructorArgs],
+              }),
+            }
+          : {
+              to: create2Deployer,
+              data: encodeFunctionData({
+                abi: CREATE2_DEPLOYER_ABI,
+                functionName: 'deploy',
+                args: [salts.oracleSalt, oracleInitCode],
+              }),
+            },
+      )
     }
 
     // Wiring / configuration
@@ -748,17 +884,25 @@ export function DeployVaultAA({
       }),
     })
 
-    // Launch CCA (required): deposit minimum liquidity via Wrapper (mints wsToken 1:1),
-    // then start the auction directly on the CCA strategy.
-    //
-    // Why not VaultActivationBatcher.batchActivate()?
-    // Some deployed CCALaunchStrategy builds have a buggy launchAuctionSimple() path that self-calls
-    // the external launchAuction() entrypoint and fails auth (Unauthorized). Calling launchAuction()
-    // directly from the owner wallet avoids that failure mode.
-    const auctionAmount = (MIN_FIRST_DEPOSIT * BigInt(DEFAULT_AUCTION_PERCENT)) / 100n
-    const auctionSteps = makeLinearAuctionSteps(DEFAULT_CCA_DURATION_BLOCKS)
+    // CCA config: Uniswap CCA enforces `floorPrice % tickSpacing == 0` and validates the step schedule.
+    // We set a sane tick spacing (~1% of floor) before launching.
+    wiringCalls.push({
+      to: ccaAddress,
+      data: encodeFunctionData({
+        abi: CCA_ADMIN_ABI,
+        functionName: 'setDefaultTickSpacing',
+        args: [DEFAULT_TICK_SPACING_Q96],
+      }),
+    })
 
-    // 1) Approve Wrapper to pull creator tokens
+    // Launch CCA (required) in one atomic bundle:
+    // 1) Approve Wrapper to pull 50M creator tokens
+    // 2) Wrapper.deposit(50M) -> mints wsTokens to the owner (normalized 1:1 UX)
+    // 3) Approve CCA strategy to pull the auction allocation (default: 50% = 25M)
+    // 4) CCA strategy launches auction with Uniswap-compatible step encoding
+    const auctionAmount = (MIN_FIRST_DEPOSIT * BigInt(DEFAULT_AUCTION_PERCENT)) / 100n
+    const auctionSteps = encodeUniswapCcaLinearSteps(DEFAULT_CCA_DURATION_BLOCKS)
+
     launchCalls.push({
       to: creatorToken,
       data: encodeFunctionData({
@@ -767,16 +911,14 @@ export function DeployVaultAA({
         args: [wrapperAddress, MIN_FIRST_DEPOSIT],
       }),
     })
-    // 2) Deposit to Wrapper (Wrapper -> Vault deposit + wrap; mints wsToken to owner)
     launchCalls.push({
       to: wrapperAddress,
       data: encodeFunctionData({
-        abi: WRAPPER_DEPOSIT_ABI,
+        abi: WRAPPER_USER_ABI,
         functionName: 'deposit',
         args: [MIN_FIRST_DEPOSIT],
       }),
     })
-    // 3) Approve CCA strategy to pull the auction tranche of wsToken
     launchCalls.push({
       to: shareOftAddress,
       data: encodeFunctionData({
@@ -785,13 +927,12 @@ export function DeployVaultAA({
         args: [ccaAddress, auctionAmount],
       }),
     })
-    // 4) Launch auction
     launchCalls.push({
       to: ccaAddress,
       data: encodeFunctionData({
         abi: CCA_LAUNCH_ABI,
         functionName: 'launchAuction',
-        args: [auctionAmount, DEFAULT_CCA_FLOOR_PRICE_WEI, DEFAULT_REQUIRED_RAISE_WEI, auctionSteps],
+        args: [auctionAmount, DEFAULT_FLOOR_PRICE_Q96_ALIGNED, DEFAULT_REQUIRED_RAISE_WEI, auctionSteps],
       }),
     })
 
@@ -851,6 +992,29 @@ export function DeployVaultAA({
       if (isDelegatedSmartWallet) {
         const wc = walletClient
 
+        let usedSponsoredBatching = false
+
+        // Preferred: true smart-wallet batching (wallet_sendCalls) so we can use paymaster sponsorship.
+        // Fallback: direct EOA tx to Smart Wallet executeBatch (not sponsored).
+        const sendBundle = async (bundleCalls: { to: Address; data: Hex; value?: bigint }[]) => {
+          const res = await sendCallsAsync({
+            calls: bundleCalls,
+            account: owner,
+            chainId: base.id,
+            forceAtomic: true,
+            capabilities: sponsoredCapabilities as any,
+          })
+          setCallBundleType('bundle')
+          setCallBundleId(res.id)
+          setStep(2)
+          try {
+            await waitForCallsStatus(wc, { id: res.id, timeout: 120_000, throwOnFailure: true })
+          } catch {
+            // ignore (we also do bytecode polling below)
+          }
+          return res
+        }
+
         const tryExecuteBatch = async (batch: { target: Address; value: bigint; data: Hex }[]) => {
           return await wc.writeContract({
             account: signer,
@@ -872,6 +1036,21 @@ export function DeployVaultAA({
         }
 
         const runSplitFlow = async () => {
+          // Try the sponsored smart-wallet path first (preferred).
+          try {
+            // Step 1a: deploy initcode-heavy calls in small bundles (keeps payload size sane)
+            for (const c of deployCalls) {
+              await sendBundle([c])
+            }
+            // Step 1b: wiring (small bundle)
+            await sendBundle(wiringCalls)
+            // Step 1c: launch + finalize ownership (small bundle)
+            await sendBundle([...launchCalls, ...finalizeCalls])
+            return
+          } catch {
+            // Fall through to legacy direct executeBatch() path.
+          }
+
           // Compatibility fallback:
           // Some wallets refuse to submit the large executeBatch() payload (initcode-heavy).
           // We split the flow:
@@ -911,6 +1090,25 @@ export function DeployVaultAA({
         }
 
         try {
+          // First attempt: sponsored smart-wallet batching for the full flow.
+          // If the wallet does not support wallet_sendCalls for `account: owner`,
+          // or if the payload is too large, we fall back to split execution.
+          try {
+            await sendBundle(calls)
+            usedSponsoredBatching = true
+            setWasGasSponsored(true)
+          } catch {
+            usedSponsoredBatching = false
+          }
+
+          // If the sponsored path worked, skip the legacy direct executeBatch path entirely.
+          if (usedSponsoredBatching) {
+            // bytecode polling + post-deploy checks will run below
+            // eslint-disable-next-line no-empty
+          } else {
+          setCompatibilityNotice(
+            'Your wallet could not submit the full deployment as a sponsored 1-click bundle. Falling back to a legacy batch/multi-tx flow (may require multiple confirmations and may cost gas).',
+          )
           const batchedCalls = calls.map((c) => ({ target: c.to, value: 0n, data: c.data }))
           const encoded = encodeFunctionData({
             abi: COINBASE_SMART_WALLET_ABI,
@@ -923,11 +1121,11 @@ export function DeployVaultAA({
             await runSplitFlow()
           } else {
             const txHash = await tryExecuteBatch(batchedCalls)
-
             setCallBundleType('tx')
             setCallBundleId(String(txHash))
             setStep(2)
             await waitTx(txHash as any)
+          }
           }
         } catch (e: any) {
           const msg = extractErrorText(e)
@@ -935,6 +1133,9 @@ export function DeployVaultAA({
             throw e
           }
           // Retry using split flow.
+          setCompatibilityNotice(
+            'Your wallet rejected the 1-click deployment payload (likely size or EIP-5792 support). Falling back to split execution (multiple confirmations).',
+          )
           await runSplitFlow()
         }
       } else {
@@ -983,6 +1184,7 @@ export function DeployVaultAA({
             account: owner,
             chainId: base.id,
             forceAtomic: true,
+            capabilities: sponsoredCapabilities as any,
           })
           setCallBundleType('bundle')
           setCallBundleId(res.id)
@@ -1001,10 +1203,16 @@ export function DeployVaultAA({
         } catch (e: any) {
           const msg = extractErrorText(e)
           if (/wallet_sendCalls|sendCalls|5792|capabilit/i.test(msg)) {
+            setCompatibilityNotice(
+              'This wallet does not support EIP-5792 batching (wallet_sendCalls). Falling back to multiple transactions (multiple confirmations).',
+            )
             await runMultiTxFlow()
           } else if (!OVERSIZED_DATA_RE.test(msg)) {
             throw e
           } else {
+            setCompatibilityNotice(
+              'This wallet rejected the 1-click bundle as “too large”. Falling back to multiple smaller bundles (multiple confirmations).',
+            )
             // Compatibility fallback:
             // Some wallets refuse to submit a single large `wallet_sendCalls` payload.
             // We split into multiple smaller call bundles (multiple confirmations).
@@ -1284,6 +1492,26 @@ export function DeployVaultAA({
 
   return (
     <div className="space-y-4">
+      {/* Gas sponsorship status notice */}
+      {isPaymasterConfigured ? (
+        <div className="flex items-center gap-2 text-xs text-zinc-500 px-3 py-2 bg-uniswap/5 border border-uniswap/10 rounded-lg">
+          <ShieldCheck className="w-3.5 h-3.5 text-uniswap" />
+          <span>Gas-free deployment enabled (sponsored by Coinbase CDP)</span>
+        </div>
+      ) : (
+        <div className="flex items-center gap-2 text-xs text-zinc-500 px-3 py-2 bg-zinc-900/50 border border-zinc-800 rounded-lg">
+          <ShieldCheck className="w-3.5 h-3.5 text-zinc-600" />
+          <span>Standard gas fees apply (paymaster not configured)</span>
+        </div>
+      )}
+
+      {compatibilityNotice ? (
+        <div className="flex items-start gap-2 text-xs text-amber-300/80 px-3 py-2 bg-amber-500/10 border border-amber-500/20 rounded-lg">
+          <ShieldCheck className="w-3.5 h-3.5 text-amber-300 mt-0.5" />
+          <span className="leading-relaxed">{compatibilityNotice}</span>
+        </div>
+      ) : null}
+
       <motion.button
         onClick={() => deploy()}
         disabled={disabled}
@@ -1294,6 +1522,11 @@ export function DeployVaultAA({
         <div className="relative flex items-center justify-center gap-2">
           <Rocket className="w-4 h-4" />
           <span className="text-sm">{isSubmitting ? 'Deploying & launching…' : 'Deploy + Launch'}</span>
+          {isPaymasterConfigured && !disabled && (
+            <span className="absolute -top-1 -right-1 px-1.5 py-0.5 bg-uniswap rounded-full text-[9px] text-white font-medium uppercase tracking-wide">
+              Gas-Free
+            </span>
+          )}
         </div>
       </motion.button>
 
@@ -1323,8 +1556,21 @@ export function DeployVaultAA({
       </AnimatePresence>
 
       {success && !isSubmitting && (
-        <div className="p-4 bg-emerald-500/10 border border-emerald-500/20 rounded-lg text-emerald-200 text-sm">
-          Vault deployed and fair launch started successfully.
+        <div className="p-4 bg-emerald-500/10 border border-emerald-500/20 rounded-lg space-y-2">
+          <div className="flex items-start gap-3">
+            <CheckCircle className="w-5 h-5 text-emerald-400 flex-shrink-0 mt-0.5" />
+            <div className="flex-1 min-w-0">
+              <div className="text-emerald-200 text-sm font-medium">
+                Vault deployed and fair launch started successfully!
+              </div>
+              {wasGasSponsored && (
+                <div className="text-emerald-300/70 text-xs mt-1 flex items-center gap-1.5">
+                  <ShieldCheck className="w-3.5 h-3.5" />
+                  Gas-free deployment powered by Coinbase CDP paymaster
+                </div>
+              )}
+            </div>
+          </div>
         </div>
       )}
 

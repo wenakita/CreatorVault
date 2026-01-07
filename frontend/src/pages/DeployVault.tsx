@@ -1,13 +1,12 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { motion } from 'framer-motion'
-import { useAccount, useReadContract, useWaitForTransactionReceipt, useWriteContract } from 'wagmi'
+import { useAccount, useReadContract } from 'wagmi'
 import type { Address } from 'viem'
 import { erc20Abi, formatUnits, isAddress } from 'viem'
 import { Link, useSearchParams } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { coinABI } from '@zoralabs/protocol-deployments'
 import { BarChart3, Layers, Lock, Rocket, ShieldCheck } from 'lucide-react'
-import { base } from 'wagmi/chains'
 import { ConnectButton } from '@/components/ConnectButton'
 import { DeployVaultAA } from '@/components/DeployVaultAA'
 import { DerivedTokenIcon } from '@/components/DerivedTokenIcon'
@@ -89,11 +88,10 @@ function ExplainerRow({
 export function DeployVault() {
   const { address, isConnected } = useAccount()
   const [creatorToken, setCreatorToken] = useState('')
-  const [deployAs, setDeployAs] = useState('')
   const [showAdvanced, setShowAdvanced] = useState(false)
-  const [showFundingDetails, setShowFundingDetails] = useState(false)
   const [deploymentVersion, setDeploymentVersion] = useState<'v1' | 'v2'>('v2')
   const [lastDeployedVault, setLastDeployedVault] = useState<Address | null>(null)
+  const [confirmedSmartWallet, setConfirmedSmartWallet] = useState(false)
 
   const [searchParams] = useSearchParams()
   const prefillToken = useMemo(() => searchParams.get('token') ?? '', [searchParams])
@@ -146,7 +144,7 @@ export function DeployVault() {
     return null
   }, [myProfile?.linkedWallets?.edges])
 
-  const autofillRef = useRef<{ tokenFor?: string; deployAsFor?: string }>({})
+  const autofillRef = useRef<{ tokenFor?: string }>({})
   const addressLc = (address ?? '').toLowerCase()
 
   useEffect(() => {
@@ -174,20 +172,6 @@ export function DeployVault() {
   }, [prefillToken, creatorToken, miniApp.username, detectedCreatorCoinFromFarcaster])
 
   const tokenIsValid = isAddress(creatorToken)
-  const deployAsTrim = deployAs.trim()
-  const deployAsAddress = useMemo(() => {
-    if (!deployAsTrim) return null
-    return isAddress(deployAsTrim) ? (deployAsTrim as Address) : null
-  }, [deployAsTrim])
-  const deployAsIsValid = deployAsTrim.length === 0 || !!deployAsAddress
-  const executeAsIsSupported = useMemo(() => {
-    // Blank means "use connected wallet".
-    if (!deployAsAddress) return true
-    // Today we only support deploying "as" the detected smart wallet contract.
-    // (Other EOAs or contract wallets would require different batching/permission checks.)
-    if (detectedSmartWallet && deployAsAddress.toLowerCase() === detectedSmartWallet.toLowerCase()) return true
-    return false
-  }, [deployAsAddress, detectedSmartWallet])
 
   const connectedWalletAddress = useMemo(() => {
     const a = address ? String(address) : ''
@@ -210,36 +194,8 @@ export function DeployVault() {
     query: { enabled: tokenIsValid && !!detectedSmartWallet },
   })
 
-  const connectedHasMinDeposit =
-    typeof connectedTokenBalance === 'bigint' && connectedTokenBalance >= MIN_FIRST_DEPOSIT
   const smartWalletHasMinDeposit =
     typeof smartWalletTokenBalance === 'bigint' && smartWalletTokenBalance >= MIN_FIRST_DEPOSIT
-
-  useEffect(() => {
-    if (!isConnected || !addressLc) return
-    if (deployAs.trim().length > 0) return
-    if (!detectedSmartWallet) return
-    if (!tokenIsValid) return
-
-    const key = `${addressLc}:${String(creatorToken).toLowerCase()}:funding`
-    if (autofillRef.current.deployAsFor === key) return
-
-    // Avoid surprising creators: only auto-pick the smart wallet when it's the only obvious choice.
-    // (If both wallets have >=50M, we leave it to the user.)
-    if (smartWalletHasMinDeposit && !connectedHasMinDeposit) {
-      setDeployAs(String(detectedSmartWallet))
-      autofillRef.current.deployAsFor = key
-    }
-  }, [
-    isConnected,
-    addressLc,
-    deployAs,
-    detectedSmartWallet,
-    tokenIsValid,
-    creatorToken,
-    smartWalletHasMinDeposit,
-    connectedHasMinDeposit,
-  ])
 
   const {
     data: zoraCoin,
@@ -369,8 +325,7 @@ export function DeployVault() {
     query: { enabled: tokenIsValid && !!payoutRecipient },
   })
 
-  const payoutRecipientHasMinDeposit =
-    typeof payoutRecipientTokenBalance === 'bigint' && payoutRecipientTokenBalance >= MIN_FIRST_DEPOSIT
+  void payoutRecipientTokenBalance // reserved for future UX
 
   const isPayoutRecipient =
     !!address && !!payoutRecipient && address.toLowerCase() === payoutRecipient.toLowerCase()
@@ -401,109 +356,26 @@ export function DeployVault() {
 
   const isAuthorizedDeployer = isOriginalCreator || isPayoutRecipient || isAuthorizedViaSmartWallet
 
-  // If the coin is controlled by a linked owner wallet, default to deploying owned by that wallet.
-  // This is done silently (no wallet-brand UX): we just pick the correct onchain owner when possible.
-  useEffect(() => {
-    if (!isConnected || !addressLc) return
-    if (!tokenIsValid) return
-    if (!coinSmartWallet) return
-    if (!isAuthorizedViaSmartWallet) return
-    if (deployAs.trim().length > 0) return
-    if (!connectedWalletAddress) return
-    if (connectedWalletAddress.toLowerCase() === coinSmartWallet.toLowerCase()) return
-
-    const key = `${addressLc}:${String(creatorToken).toLowerCase()}:owner`
-    if (autofillRef.current.deployAsFor === key) return
-
-    setDeployAs(String(coinSmartWallet))
-    autofillRef.current.deployAsFor = key
-  }, [isConnected, addressLc, tokenIsValid, coinSmartWallet, isAuthorizedViaSmartWallet, deployAs, connectedWalletAddress, creatorToken])
-
   const creatorAllowlistQuery = useCreatorAllowlist(tokenIsValid ? { coin: creatorToken } : undefined)
   const allowlistMode = creatorAllowlistQuery.data?.mode
   const allowlistEnforced = allowlistMode === 'enforced'
   const isAllowlistedCreator = creatorAllowlistQuery.data?.allowed === true
   const passesCreatorAllowlist = allowlistMode === 'disabled' ? true : isAllowlistedCreator
 
-  const selectedOwnerAddress = useMemo(() => {
-    if (deployAsAddress) return deployAsAddress
-    return connectedWalletAddress
-  }, [deployAsAddress, connectedWalletAddress])
+  // Always use the connected wallet (smart wallet)
+  const selectedOwnerAddress = connectedWalletAddress
 
-  const selectedOwnerTokenBalance = useMemo(() => {
-    if (!selectedOwnerAddress) return undefined
-    const selectedLc = selectedOwnerAddress.toLowerCase()
-    if (connectedWalletAddress && selectedLc === connectedWalletAddress.toLowerCase()) {
-      return typeof connectedTokenBalance === 'bigint' ? connectedTokenBalance : undefined
-    }
-    if (detectedSmartWallet && selectedLc === detectedSmartWallet.toLowerCase()) {
-      return typeof smartWalletTokenBalance === 'bigint' ? smartWalletTokenBalance : undefined
-    }
-    if (payoutRecipient && selectedLc === payoutRecipient.toLowerCase()) {
-      return typeof payoutRecipientTokenBalance === 'bigint' ? payoutRecipientTokenBalance : undefined
-    }
-    return undefined
-  }, [
-    selectedOwnerAddress,
-    connectedWalletAddress,
-    connectedTokenBalance,
-    detectedSmartWallet,
-    smartWalletTokenBalance,
-    payoutRecipient,
-    payoutRecipientTokenBalance,
-  ])
+  // Always use the connected smart wallet's balance
+  const selectedOwnerTokenBalance = connectedTokenBalance
 
-  const selectedOwnerHasMinDeposit =
-    typeof selectedOwnerTokenBalance === 'bigint' && selectedOwnerTokenBalance >= MIN_FIRST_DEPOSIT
+  const selectedOwnerHasMinDeposit = smartWalletHasMinDeposit
 
-  const missingToMinDeposit = useMemo(() => {
-    if (typeof selectedOwnerTokenBalance !== 'bigint') return null
-    if (selectedOwnerTokenBalance >= MIN_FIRST_DEPOSIT) return 0n
-    return MIN_FIRST_DEPOSIT - selectedOwnerTokenBalance
-  }, [selectedOwnerTokenBalance])
+  void selectedOwnerAddress // reserved for future “deploy as smart wallet” UX
+  void selectedOwnerTokenBalance // reserved for future funding UX
 
-  const selectedOwnerIsSmartWallet = useMemo(() => {
-    if (!selectedOwnerAddress) return false
-    const sel = selectedOwnerAddress.toLowerCase()
-    if (detectedSmartWallet && sel === detectedSmartWallet.toLowerCase()) return true
-    if (coinSmartWallet && sel === coinSmartWallet.toLowerCase()) return true
-    return false
-  }, [selectedOwnerAddress, detectedSmartWallet, coinSmartWallet])
 
-  const canFundOwnerFromConnected =
-    tokenIsValid &&
-    !!connectedWalletAddress &&
-    !!selectedOwnerAddress &&
-    selectedOwnerIsSmartWallet &&
-    !selectedOwnerHasMinDeposit &&
-    connectedHasMinDeposit &&
-    connectedWalletAddress.toLowerCase() !== selectedOwnerAddress.toLowerCase() &&
-    typeof missingToMinDeposit === 'bigint' &&
-    missingToMinDeposit > 0n
-
-  const { writeContractAsync: writeFundingTx, data: fundingTxHash, isPending: isFundingPending } = useWriteContract()
-  const { isLoading: isFundingConfirming, isSuccess: isFundingSuccess } = useWaitForTransactionReceipt({
-    hash: fundingTxHash,
-    chainId: base.id,
-    query: { enabled: !!fundingTxHash },
-  })
-
-  async function fundOwnerWallet() {
-    if (!canFundOwnerFromConnected) return
-    if (!selectedOwnerAddress || !connectedWalletAddress) return
-    if (typeof missingToMinDeposit !== 'bigint' || missingToMinDeposit <= 0n) return
-    await writeFundingTx({
-      address: creatorToken as `0x${string}`,
-      abi: erc20Abi,
-      functionName: 'transfer',
-      args: [selectedOwnerAddress as `0x${string}`, missingToMinDeposit],
-    })
-  }
-  const ownerFundingDetailsAreForced =
-    tokenIsValid && typeof selectedOwnerTokenBalance === 'bigint' && !selectedOwnerHasMinDeposit
-  const showOwnerFundingDetails =
-    showFundingDetails ||
-    (tokenIsValid && typeof selectedOwnerTokenBalance === 'bigint' && !selectedOwnerHasMinDeposit)
+  // NOTE: We previously supported an optional “fund owner wallet” helper flow, but it’s not wired into
+  // the current UX. Keeping the deploy path deterministic + minimal for now.
 
   const poolCurrencyAddress = useMemo(() => {
     const c = zoraCoin?.poolCurrencyToken?.address ? String(zoraCoin.poolCurrencyToken.address) : ''
@@ -596,8 +468,9 @@ export function DeployVault() {
     passesCreatorAllowlist &&
     !!derivedShareSymbol &&
     !!derivedShareName &&
-    deployAsIsValid &&
-    executeAsIsSupported
+    confirmedSmartWallet && // User must confirm they've sent 50M to their smart wallet
+    !!selectedOwnerAddress &&
+    smartWalletHasMinDeposit // Must have 50M tokens in the connected smart wallet
 
   return (
     <div className="relative">
@@ -613,6 +486,40 @@ export function DeployVault() {
                 early launch.
               </p>
             </div>
+
+            {/* Feature Callout: 1-Click Gas-Free Deployment */}
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="rounded-xl bg-gradient-to-br from-uniswap/5 to-purple-500/5 border border-uniswap/10 p-6"
+            >
+              <div className="flex items-start gap-4">
+                <div className="flex-shrink-0 w-10 h-10 rounded-full bg-uniswap/10 flex items-center justify-center">
+                  <Rocket className="w-5 h-5 text-uniswap" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <h3 className="text-white text-sm font-medium mb-1">1-Click, Gas-Free Deployment</h3>
+                  <p className="text-zinc-500 text-xs leading-relaxed mb-3">
+                    Powered by <span className="text-white">EIP-4337</span> account abstraction and <span className="text-white">Coinbase CDP</span>{' '}
+                    paymaster. Sign once to deploy your entire vault stack—no gas fees, no multiple confirmations.
+                  </p>
+                  <div className="flex flex-wrap gap-2">
+                    <span className="inline-flex items-center gap-1.5 text-[10px] text-zinc-400 bg-black/40 border border-white/5 rounded-full px-2.5 py-1">
+                      <ShieldCheck className="w-3 h-3 text-uniswap" />
+                      Gas sponsored by Coinbase
+                    </span>
+                    <span className="inline-flex items-center gap-1.5 text-[10px] text-zinc-400 bg-black/40 border border-white/5 rounded-full px-2.5 py-1">
+                      <BarChart3 className="w-3 h-3 text-uniswap" />
+                      Atomic batch execution
+                    </span>
+                    <span className="inline-flex items-center gap-1.5 text-[10px] text-zinc-400 bg-black/40 border border-white/5 rounded-full px-2.5 py-1">
+                      <Lock className="w-3 h-3 text-uniswap" />
+                      EIP-5792 smart wallet batching
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </motion.div>
 
             {/* Review */}
             {tokenIsValid && (
@@ -1142,220 +1049,74 @@ export function DeployVault() {
                 </div>
               ) : null}
 
-              {/* Vault owner wallet */}
+              {/* Smart Wallet Requirement */}
               {isConnected ? (
-                <div className="pt-3 border-t border-zinc-900/50 space-y-2">
-                  <div className="flex items-center justify-between gap-3">
-                    <div className="label">Vault owner wallet</div>
-                    {!showAdvanced ? (
-                      deployAsAddress ? (
-                        detectedSmartWallet &&
-                        deployAsAddress.toLowerCase() === detectedSmartWallet.toLowerCase() ? (
-                          <div className="text-[10px] text-zinc-700">{coinSmartWallet ? 'Coin owner wallet' : 'Linked wallet'}</div>
-                        ) : (
-                          <div className="text-[10px] text-zinc-700">Custom</div>
-                        )
-                      ) : address ? (
-                        <div className="text-[10px] text-zinc-700">Connected wallet</div>
-                      ) : null
-                    ) : (
-                      <div className="flex items-center gap-3">
-                        {address ? (
-                          <button
-                            type="button"
-                            onClick={() => setDeployAs('')}
-                            className="text-[10px] text-zinc-600 hover:text-zinc-300 transition-colors"
-                            title="Use the connected wallet as the vault owner"
-                          >
-                            Use connected wallet
-                          </button>
-                        ) : null}
-                        {detectedSmartWallet ? (
-                          <button
-                            type="button"
-                            onClick={() => setDeployAs(String(detectedSmartWallet))}
-                            className="text-[10px] text-zinc-600 hover:text-zinc-300 transition-colors"
-                            title={coinSmartWallet ? 'Use the coin owner wallet address' : 'Use your linked wallet address'}
-                          >
-                            {coinSmartWallet ? 'Use coin owner wallet' : 'Use linked wallet'}
-                          </button>
-                        ) : null}
-                        {payoutRecipient && address && payoutRecipient.toLowerCase() !== address.toLowerCase() ? (
-                          <div
-                            className="text-[10px] text-zinc-700"
-                            title="To deploy owned by a different EOA, connect that wallet (owner must sign the deploy batch)."
-                          >
-                            Payout recipient differs
-                          </div>
-                        ) : null}
-                      </div>
-                    )}
-                  </div>
-
-                  {!showAdvanced ? (
+                <div className="pt-3 border-t border-zinc-900/50 space-y-4">
+                  <div>
+                    <div className="label mb-2">Your Smart Wallet (Coinbase Wallet)</div>
+                    {/* Smart wallet address (read-only) */}
                     <input
-                      value={String(deployAsAddress ?? address ?? '')}
+                      value={String(address ?? '')}
                       disabled
-                      className="w-full bg-black border border-zinc-800 rounded-lg px-4 py-3 text-sm text-zinc-500 placeholder:text-zinc-700 outline-none font-mono opacity-70 cursor-not-allowed"
+                      className="w-full bg-black border border-zinc-800 rounded-lg px-4 py-3 text-sm text-zinc-400 placeholder:text-zinc-700 outline-none font-mono opacity-90 cursor-not-allowed"
                     />
-                  ) : (
-                    <input
-                      value={deployAs}
-                      onChange={(e) => setDeployAs(e.target.value)}
-                      placeholder="0x… (leave blank to use connected wallet)"
-                      className="w-full bg-black border border-zinc-800 rounded-lg px-4 py-3 text-sm text-zinc-200 placeholder:text-zinc-700 outline-none focus:border-cyan-500/50 transition-colors font-mono"
-                    />
-                  )}
 
-                  {!deployAsIsValid ? (
-                    <div className="text-xs text-red-400/80">Invalid wallet address.</div>
-                  ) : !executeAsIsSupported ? (
-                    <div className="text-xs text-amber-300/90">
-                      Unsupported owner wallet. Leave this blank to deploy from your connected wallet.
-                    </div>
-                  ) : (
-                    <div className="text-xs text-zinc-600 space-y-2">
-                      <div>This wallet signs deployment and funds the first 50M deposit.</div>
-                      <div className="text-[11px] text-zinc-700">
-                        After launch, ownership is transferred to the protocol multisig to lock fee routing.
+                    <div className="text-xs text-zinc-600 space-y-3">
+                      <div>
+                        This is your <span className="text-white">Coinbase Smart Wallet</span>. It will sign the deployment and fund the first 50M token deposit.
                       </div>
 
                       {tokenIsValid ? (
-                        <div className="space-y-2">
-                          <div className="text-[11px] text-zinc-700">
-                            We’ll deposit{' '}
-                            <span className="text-zinc-300 font-medium">50,000,000</span>{' '}
-                            <span className="text-zinc-300 font-medium">{underlyingSymbolUpper || 'TOKENS'}</span> from
-                            the owner wallet during deployment (same transaction).
-                          </div>
-
-                          <div className="flex items-center justify-between text-[11px]">
-                            <span className="text-zinc-600">Owner balance</span>
-                            <span className={selectedOwnerHasMinDeposit ? 'text-emerald-400' : 'text-amber-300/90'}>
-                              {formatToken18(typeof selectedOwnerTokenBalance === 'bigint' ? selectedOwnerTokenBalance : undefined)}{' '}
-                              {underlyingSymbolUpper || ''}
+                        <>
+                          {/* Balance display */}
+                          <div className="flex items-center justify-between text-sm p-3 bg-black/40 border border-zinc-800 rounded-lg">
+                            <span className="text-zinc-500">Current balance:</span>
+                            <span className={smartWalletHasMinDeposit ? 'text-emerald-400 font-medium' : 'text-amber-300/90 font-medium'}>
+                              {formatToken18(typeof smartWalletTokenBalance === 'bigint' ? smartWalletTokenBalance : undefined)}{' '}
+                              {underlyingSymbolUpper || 'TOKENS'}
                             </span>
                           </div>
 
-                          {!selectedOwnerHasMinDeposit ? (
-                            <div className="text-[11px] text-amber-300/90">
-                              Pick a wallet with 50M (or transfer tokens to the owner wallet) to deploy & launch.
+                          {/* Warning if insufficient balance */}
+                          {!smartWalletHasMinDeposit ? (
+                            <div className="p-4 bg-amber-500/10 border border-amber-500/20 rounded-lg space-y-2">
+                              <div className="text-amber-300/90 text-sm font-medium">⚠️ Insufficient Balance</div>
+                              <div className="text-amber-300/70 text-xs">
+                                You need <span className="text-white font-medium">50,000,000 {underlyingSymbolUpper || 'TOKENS'}</span> in this smart wallet to deploy.
+                              </div>
+                              <div className="text-amber-300/70 text-xs">
+                                Please send tokens to: <span className="text-white font-mono">{String(address ?? '')}</span>
+                              </div>
                             </div>
-                          ) : null}
-
-                          {canFundOwnerFromConnected ? (
-                            <div className="pt-1">
-                              <button
-                                type="button"
-                                onClick={() => void fundOwnerWallet()}
-                                disabled={isFundingPending || isFundingConfirming || isFundingSuccess}
-                                className="text-[11px] text-cyan-200 hover:text-cyan-100 transition-colors text-left disabled:opacity-60"
-                                title="Transfers the missing amount from your connected wallet to the owner wallet so it can fund the 50M deposit during deployment."
-                              >
-                                {isFundingPending || isFundingConfirming
-                                  ? 'Transferring to owner wallet…'
-                                  : isFundingSuccess
-                                    ? 'Transferred — refresh balances'
-                                    : `Transfer ${Number(formatUnits(missingToMinDeposit ?? 0n, 18)).toLocaleString(undefined, { maximumFractionDigits: 2 })} ${underlyingSymbolUpper || 'TOKENS'} to owner wallet`}
-                              </button>
-                              {fundingTxHash ? (
-                                <div className="text-[10px] text-zinc-700 mt-1">
-                                  <a
-                                    href={`https://basescan.org/tx/${fundingTxHash}`}
-                                    target="_blank"
-                                    rel="noreferrer"
-                                    className="text-zinc-500 hover:text-zinc-200 underline underline-offset-2"
-                                  >
-                                    View transfer on Basescan
-                                  </a>
+                          ) : (
+                            <>
+                              {/* Confirmation checkbox */}
+                              <label className="flex items-start gap-3 p-4 bg-uniswap/5 border border-uniswap/10 rounded-lg cursor-pointer hover:bg-uniswap/8 transition-colors">
+                                <input
+                                  type="checkbox"
+                                  checked={confirmedSmartWallet}
+                                  onChange={(e) => setConfirmedSmartWallet(e.target.checked)}
+                                  className="mt-0.5 w-4 h-4 rounded border-uniswap/30 bg-black/40 checked:bg-uniswap checked:border-uniswap transition-colors"
+                                />
+                                <div className="flex-1 min-w-0 text-xs">
+                                  <div className="text-white font-medium mb-1">I confirm this is my smart wallet</div>
+                                  <div className="text-zinc-500">
+                                    I have verified that <span className="text-white font-mono">{String(address ?? '').slice(0, 10)}...{String(address ?? '').slice(-8)}</span> is my Coinbase Smart Wallet and contains at least 50M {underlyingSymbolUpper || 'TOKENS'}.
+                                  </div>
                                 </div>
-                              ) : null}
-                            </div>
-                          ) : null}
+                              </label>
+                            </>
+                          )}
 
-                          {!selectedOwnerHasMinDeposit && detectedSmartWallet && smartWalletHasMinDeposit ? (
-                            <button
-                              type="button"
-                              onClick={() => setDeployAs(String(detectedSmartWallet))}
-                              className="text-[11px] text-cyan-200 hover:text-cyan-100 transition-colors text-left"
-                            >
-                              {coinSmartWallet ? 'Use coin owner wallet (has 50M)' : 'Use linked wallet (has 50M)'}
-                            </button>
-                          ) : null}
-
-                          {!selectedOwnerHasMinDeposit && connectedWalletAddress && connectedHasMinDeposit && !!deployAsAddress ? (
-                            <button
-                              type="button"
-                              onClick={() => setDeployAs('')}
-                              className="text-[11px] text-cyan-200 hover:text-cyan-100 transition-colors text-left"
-                            >
-                              Use connected wallet (has 50M)
-                            </button>
-                          ) : null}
-
-                          {!selectedOwnerHasMinDeposit &&
-                          payoutRecipient &&
-                          payoutRecipientHasMinDeposit &&
-                          connectedWalletAddress &&
-                          payoutRecipient.toLowerCase() !== connectedWalletAddress.toLowerCase() ? (
-                            <div className="text-[11px] text-amber-300/90">
-                              Your payout recipient wallet appears to have 50M. Connect that wallet to deploy (owner
-                              must sign).
-                            </div>
-                          ) : null}
-
-                          {!ownerFundingDetailsAreForced ? (
-                            <button
-                              type="button"
-                              onClick={() => setShowFundingDetails((v) => !v)}
-                              className="text-[10px] text-zinc-600 hover:text-zinc-200 transition-colors text-left"
-                            >
-                              {showOwnerFundingDetails ? 'Hide balances' : 'Show balances'}
-                            </button>
-                          ) : null}
-
-                          {showOwnerFundingDetails ? (
-                            <div className="grid grid-cols-1 gap-1 text-[11px]">
-                              {connectedWalletAddress ? (
-                                <div className="flex items-center justify-between">
-                                  <span className="text-zinc-600">Connected wallet</span>
-                                  <span className={connectedHasMinDeposit ? 'text-emerald-400' : 'text-zinc-500'}>
-                                    {formatToken18(typeof connectedTokenBalance === 'bigint' ? connectedTokenBalance : undefined)}{' '}
-                                    {underlyingSymbolUpper || ''}
-                                  </span>
-                                </div>
-                              ) : null}
-
-                              {detectedSmartWallet ? (
-                                <div className="flex items-center justify-between">
-                                  <span className="text-zinc-600">{coinSmartWallet ? 'Coin owner wallet' : 'Linked wallet'}</span>
-                                  <span className={smartWalletHasMinDeposit ? 'text-emerald-400' : 'text-zinc-500'}>
-                                    {formatToken18(typeof smartWalletTokenBalance === 'bigint' ? smartWalletTokenBalance : undefined)}{' '}
-                                    {underlyingSymbolUpper || ''}
-                                  </span>
-                                </div>
-                              ) : null}
-
-                              {payoutRecipient ? (
-                                <div className="flex items-center justify-between">
-                                  <span className="text-zinc-600">Payout recipient</span>
-                                  <span className={payoutRecipientHasMinDeposit ? 'text-emerald-400' : 'text-zinc-500'}>
-                                    {formatToken18(
-                                      typeof payoutRecipientTokenBalance === 'bigint' ? payoutRecipientTokenBalance : undefined,
-                                    )}{' '}
-                                    {underlyingSymbolUpper || ''}
-                                  </span>
-                                </div>
-                              ) : null}
-                            </div>
-                          ) : null}
-                        </div>
+                          <div className="text-[11px] text-zinc-700 pt-2">
+                            After launch, ownership is transferred to the protocol multisig to lock fee routing.
+                          </div>
+                        </>
                       ) : null}
                     </div>
-                  )}
+                  </div>
                 </div>
               ) : null}
-            </div>
 
             {/* Deploy */}
             <div className="card rounded-xl p-8 space-y-4">
@@ -1426,10 +1187,8 @@ export function DeployVault() {
                   symbol={derivedShareSymbol}
                   name={derivedShareName}
                   deploymentVersion={deploymentVersion}
-                  // Keep revenue flowing to the coin’s payout recipient by default,
-                  // even if you choose to deploy the vault *owned by* a different smart wallet.
+                  // Keep revenue flowing to the coin's payout recipient by default
                   creatorTreasury={((payoutRecipient ?? (address as Address)) as Address) as `0x${string}`}
-                  executeAs={deployAsAddress ?? undefined}
                   onSuccess={(a) => setLastDeployedVault(a.vault)}
                 />
               ) : (
@@ -1500,6 +1259,7 @@ export function DeployVault() {
             </div>
           </div>
         </div>
+      </div>
       </section>
     </div>
   )

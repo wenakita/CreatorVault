@@ -8,6 +8,9 @@ export default {
   theme: {
     extend: {
       colors: {
+        // Uniswap Pink (single accent)
+        // Uses <alpha-value> so classes like `bg-uniswap/10` work.
+        uniswap: 'rgb(255 0 122 / <alpha-value>)',
         // Liquid Gold palette (from inspo UI)
         gold: {
           50: '#FBF8F1',
@@ -159,6 +162,7 @@ export default {
         'void': '0 20px 50px rgba(0,0,0,0.8)',
         'glow-cyan': '0 0 20px rgba(0, 242, 255, 0.4)',
         'glow-mint': '0 0 20px rgba(0, 255, 163, 0.4)',
+        'glow-uniswap': '0 0 20px rgba(255, 0, 122, 0.35)',
       },
     },
   },
