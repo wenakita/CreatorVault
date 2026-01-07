@@ -71,6 +71,15 @@ export function Web3Providers({ children }: { children: ReactNode }) {
   const cdpApiKey = import.meta.env.VITE_CDP_API_KEY as string | undefined
   const cdpPaymasterUrl = import.meta.env.VITE_CDP_PAYMASTER_URL as string | undefined
 
+  // Debug hint: if both are set but the URL does not contain the key, it's likely the wrong value was pasted
+  // (CDP has multiple identifiers). We still respect the explicit URL override, but warn in dev.
+  if (import.meta.env.DEV && cdpApiKey && cdpPaymasterUrl && !cdpPaymasterUrl.includes(cdpApiKey)) {
+    // eslint-disable-next-line no-console
+    console.warn(
+      '[Web3Providers] VITE_CDP_PAYMASTER_URL does not include VITE_CDP_API_KEY. This may indicate a mismatched CDP key vs paymaster URL.',
+    )
+  }
+
   return (
     <WagmiProvider config={wagmiConfig}>
       <OnchainKitProvider
