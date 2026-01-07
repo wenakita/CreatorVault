@@ -1,8 +1,8 @@
 # CreatorVault
 
-**Omnichain Vault Platform for Creator Coins** — One-click deployment of cross-chain yield vaults with gamified incentives powered by **Uniswap CCA**, **LayerZero V2**, and **Chainlink VRF**.
+**Omnichain Vault Platform for Creator Coins** - One-click deployment of cross-chain yield vaults with gamified incentives powered by **Uniswap CCA**, **LayerZero V2**, and **Chainlink VRF**.
 
-CreatorVault enables any creator to deploy institutional-grade **ERC-4626 vault** infrastructure for their Coinbase Creator Coin. Each vault includes cross-chain **LayerZero OFT** shares, pluggable **yield strategies**, and a **6.9% trading-fee lottery** (on all DEX trades) for community engagement — all deployed in a single gas-free transaction via **EIP-4337** account abstraction.
+CreatorVault enables any creator to deploy institutional-grade **ERC-4626 vault** infrastructure for their Coinbase Creator Coin. Each vault includes cross-chain **LayerZero OFT** shares, pluggable **yield strategies**, and a **6.9% trading-fee lottery** (on all DEX trades) for community engagement - all deployed in a single gas-free transaction via **EIP-4337** account abstraction.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Solidity](https://img.shields.io/badge/Solidity-0.8.20-363636)](https://docs.soliditylang.org/)
@@ -11,7 +11,7 @@ CreatorVault enables any creator to deploy institutional-grade **ERC-4626 vault*
 
 ---
 
-## 📊 Project Metadata (AI-Friendly)
+## Project Metadata (AI-Friendly)
 
 ```json
 {
@@ -31,7 +31,7 @@ CreatorVault enables any creator to deploy institutional-grade **ERC-4626 vault*
     "buy_fee": "6.9%",
     "sell_fee": "6.9%",
     "fee_mechanism": "6.9% fee collected on all DEX trades (buys and sells)",
-    "fee_allocation": "100% to GaugeController → Lottery prize pool",
+    "fee_allocation": "100% to GaugeController -> Lottery prize pool",
     "lottery": "Percentage-based entries: $1 traded = 0.0004% chance to win, Chainlink VRF for fairness"
   },
   "tech_stack": [
@@ -50,35 +50,35 @@ CreatorVault enables any creator to deploy institutional-grade **ERC-4626 vault*
 
 ---
 
-## 🎯 Features
+## Features
 
 **CreatorVault provides a complete vault-as-a-service platform for Creator Coins. Each feature is designed to maximize creator revenue and community engagement:**
 
 ### Core Features
 
-- **🏭 One-Click Deployment**: Deploy vault + wrapper + OFT + oracle + CCA strategy in a single gas-free transaction via **EIP-4337** account abstraction and **Coinbase CDP** paymaster.
-- **🌐 Omnichain Shares**: **LayerZero V2 OFT** enables share tokens to move across 8+ chains with unified liquidity and cross-chain yield.
-- **📈 Pluggable Yield Strategies**: **ERC-4626** vault supports multiple strategies (e.g., Uniswap V4 LP, lending protocols, RWA yield) with configurable allocations.
-- **💰 Fair Launch via CCA**: **Uniswap Continuous Clearing Auction** provides transparent, DeFi-native price discovery with no front-running.
-- **🎰 Gamified Lottery**: 6.9% fee on ALL DEX trades (buys + sells) funds **Chainlink VRF lottery** — percentage-based entries where **$1 traded = 0.0004% chance to win** (e.g., $10k trade = 4% chance).
-- **🔒 Battle-Tested Security**: Virtual shares offset, flash loan protection, anti-whale guards, minimum deposits, and queued large withdrawals.
-- **🎨 Creator-First**: Each creator owns their vault ecosystem — fees flow to lottery prize pool, full branding control.
+- **One-Click Deployment**: Deploy vault + wrapper + OFT + oracle + CCA strategy in a single gas-free transaction via **EIP-4337** account abstraction and **Coinbase CDP** paymaster.
+- **Omnichain Shares**: **LayerZero V2 OFT** enables share tokens to move across 8+ chains with unified liquidity and cross-chain yield.
+- **Pluggable Yield Strategies**: **ERC-4626** vault supports multiple strategies (e.g., Uniswap V4 LP, lending protocols, RWA yield) with configurable allocations.
+- **Fair Launch via CCA**: **Uniswap Continuous Clearing Auction** provides transparent, DeFi-native price discovery with no front-running.
+- **Gamified Lottery**: 6.9% fee on all DEX trades (buys + sells) funds **Chainlink VRF lottery** - percentage-based entries where **$1 traded = 0.0004% chance to win** (e.g., $10k trade = 4% chance).
+- **Security**: Virtual shares offset, flash loan protection, anti-whale guards, minimum deposits, and queued large withdrawals.
+- **Creator-first**: Each creator owns their vault ecosystem - fees flow to lottery prize pool, full branding control.
 
 ### Tokenomics (6.9% Trading Fee Explained)
 
 **The 6.9% fee applies to ALL DEX trades (buys and sells) and is the core incentive mechanism. Here's the exact flow:**
 
-1. **Trade Event** → User buys or sells share tokens (wsAKITA, wsBRET, etc.) on a DEX (Uniswap V4 pool).
-2. **Fee Collection** → 6.9% of the trade amount is automatically deducted and sent to the **GaugeController** contract.
-3. **GaugeController Routing** → 100% of collected fees are routed to the **CreatorLotteryManager** prize pool.
-4. **Lottery Entry** → Trader automatically receives lottery entries proportional to their trading volume. Entry percentage scales linearly: **$1 traded = 0.0004% chance**, $100 = 0.04%, $1,000 = 0.4%, $10,000 = 4% (works for both buys and sells).
-5. **Prize Drawing** → **Chainlink VRF 2.5** provides provably fair randomness for weekly/monthly prize draws.
-6. **Winner Payout** → Winner receives accumulated prize pool in ETH (or wrapped vault shares at their choice).
+1. **Trade Event** -> User buys or sells share tokens (wsAKITA, wsBRET, etc.) on a DEX (Uniswap V4 pool).
+2. **Fee Collection** -> 6.9% of the trade amount is automatically deducted and sent to the **GaugeController** contract.
+3. **GaugeController Routing** -> 100% of collected fees are routed to the **CreatorLotteryManager** prize pool.
+4. **Lottery Entry** -> Trader automatically receives lottery entries proportional to their trading volume. Entry percentage scales linearly: **$1 traded = 0.0004% chance**, $100 = 0.04%, $1,000 = 0.4%, $10,000 = 4% (works for both buys and sells).
+5. **Prize Drawing** -> **Chainlink VRF 2.5** provides provably fair randomness for weekly/monthly prize draws.
+6. **Winner Payout** -> Winner receives accumulated prize pool in ETH (or wrapped vault shares at their choice).
 
 **Key Details:**
-- **6.9% on buys AND sells** → Consistent fee on all trading activity funds the lottery prize pool.
-- **Fee only on DEX trades** → Deposits, withdrawals, and cross-chain transfers are NOT taxed.
-- **6.9% choice** → Playful nod to meme culture while maintaining sustainability (lower than typical 10–15% meme coin fees).
+- **6.9% on buys AND sells** -> Consistent fee on all trading activity funds the lottery prize pool.
+- **Fee only on DEX trades** -> Deposits, withdrawals, and cross-chain transfers are NOT taxed.
+- **6.9% choice** -> Playful nod to meme culture while maintaining sustainability (lower than typical 10-15% meme coin fees).
 
 ### Security Features
 
@@ -89,7 +89,7 @@ CreatorVault enables any creator to deploy institutional-grade **ERC-4626 vault*
 
 ---
 
-## 🏗️ Architecture
+## Architecture
 
 **CreatorVault consists of modular contracts deployed atomically in a single transaction:**
 
@@ -107,9 +107,9 @@ CreatorVault enables any creator to deploy institutional-grade **ERC-4626 vault*
    - 1:1 wrapping ratio (no dilution).
 
 3. **CreatorShareOFT** (LayerZero V2 OFT)
-   - **Omnichain fungible token** — same token on all chains.
+   - **Omnichain fungible token** - same token on all chains.
    - Collects **6.9% fee on all DEX trades** (buys and sells) via `setAddressType` for DEX pools.
-   - Routes fees to **GaugeController** → **CreatorLotteryManager**.
+   - Routes fees to **GaugeController** -> **CreatorLotteryManager**.
    - Triggers automatic lottery entries for all traders.
 
 4. **CreatorGaugeController**
@@ -133,7 +133,7 @@ CreatorVault enables any creator to deploy institutional-grade **ERC-4626 vault*
 
 8. **CreatorRegistry**
    - Central registry for all platform contracts.
-   - Maps Creator Coins → (Vault, Wrapper, OFT, GaugeController, Lottery).
+   - Maps Creator Coins -> (Vault, Wrapper, OFT, GaugeController, Lottery).
    - Stores chain configurations (LayerZero endpoints, DEX infrastructure).
 
 ### Deployment Flow (One Transaction)
@@ -141,7 +141,7 @@ CreatorVault enables any creator to deploy institutional-grade **ERC-4626 vault*
 **Via EIP-4337 smart wallet + EIP-5792 batching:**
 
 ```
-User clicks "Deploy" → Single signature request
+User clicks "Deploy" -> Single signature request
 
 Backend batches these calls:
 1. Deploy CreatorOVault (vault)
@@ -155,53 +155,53 @@ Backend batches these calls:
 9. Register in CreatorRegistry
 10. Deposit initial 50M tokens + launch CCA
 
-→ All contracts deployed + auction live
-→ Gas fees sponsored by Coinbase CDP paymaster (zero cost to creator)
+-> All contracts deployed + auction live
+-> Gas fees sponsored by Coinbase CDP paymaster (zero cost to creator)
 ```
 
 ### Token Flow Diagram (Text)
 
 ```
 Creator Coin (akita)
-   ↓ Deposit
+   v Deposit
 CreatorOVault (sAKITA shares)
-   ↓ Wrap
+   v Wrap
 CreatorOVaultWrapper
-   ↓ Mint
+   v Mint
 CreatorShareOFT (wsAKITA)
-   ↓ Bridge
-LayerZero V2 Messaging → Arbitrum, Ethereum, BSC, etc.
-   ↓ Unwrap on destination chain
-sAKITA → Redeem → akita (if available on that chain)
+   v Bridge
+LayerZero V2 Messaging -> Arbitrum, Ethereum, BSC, etc.
+   v Unwrap on destination chain
+sAKITA -> Redeem -> akita (if available on that chain)
 ```
 
 **Trading Fee Flow:**
 
 ```
 User trades wsAKITA on Uniswap V4 (buy or sell)
-   ↓ 6.9% fee deducted
+   v 6.9% fee deducted
 CreatorShareOFT.transfer hook
-   ↓ Send fee
+   v Send fee
 CreatorGaugeController
-   ↓ Route 100% to lottery
+   v Route 100% to lottery
 CreatorLotteryManager (prize pool)
-   ↓ Calculate percentage-based chances ($1 = 0.0004%)
-User accumulates chances → Weekly VRF draw → Winner receives prize pool
+   v Calculate percentage-based chances ($1 = 0.0004%)
+User accumulates chances -> Weekly VRF draw -> Winner receives prize pool
 ```
 
 ---
 
-## 💰 Tokenomics & Incentives (Detailed)
+## Tokenomics & Incentives (Detailed)
 
 ### Fee Structure
 
 | Action | Fee | Recipient | Notes |
 |--------|-----|-----------|-------|
-| **DEX Buy** (e.g., Uniswap V4) | **6.9%** | GaugeController → Lottery | Applies to all token purchases on DEX pools |
-| **DEX Sell** (e.g., Uniswap V4) | **6.9%** | GaugeController → Lottery | Applies to all token sales on DEX pools |
-| **Vault Deposit** (akita → sAKITA) | **0%** | N/A | Direct deposits are free |
-| **Vault Withdrawal** (sAKITA → akita) | **0%** | N/A | Withdrawals are free |
-| **Cross-Chain Bridge** (via LayerZero) | **0%** + gas | LayerZero relayers | Only pay LayerZero messaging fees (~ $1–5 depending on chain) |
+| **DEX Buy** (e.g., Uniswap V4) | **6.9%** | GaugeController -> Lottery | Applies to all token purchases on DEX pools |
+| **DEX Sell** (e.g., Uniswap V4) | **6.9%** | GaugeController -> Lottery | Applies to all token sales on DEX pools |
+| **Vault Deposit** (akita -> sAKITA) | **0%** | N/A | Direct deposits are free |
+| **Vault Withdrawal** (sAKITA -> akita) | **0%** | N/A | Withdrawals are free |
+| **Cross-Chain Bridge** (via LayerZero) | **0%** + gas | LayerZero relayers | Only pay LayerZero messaging fees (~ $1-5 depending on chain) |
 
 ### Lottery Mechanics (Provably Fair)
 
@@ -217,8 +217,8 @@ User accumulates chances → Weekly VRF draw → Winner receives prize pool
    - Chances accumulate across multiple trades until the next draw.
 
 2. **Prize Pool Growth**:
-   - 100% of 6.9% trading fees → Lottery prize pool.
-   - Example: $1M daily volume (buys + sells) → $69,000 in fees → Prize pool.
+   - 100% of 6.9% trading fees -> Lottery prize pool.
+   - Example: $1M daily volume (buys + sells) -> $69,000 in fees -> Prize pool.
 
 3. **Drawing Process**:
    - Weekly or monthly cadence (governance-configurable).
@@ -230,27 +230,27 @@ User accumulates chances → Weekly VRF draw → Winner receives prize pool
 4. **Transparency**:
    - All trade volumes, percentage chances, draws, and payouts are onchain and auditable.
    - VRF randomness is cryptographically verifiable.
-   - Anyone can verify the math: (Trader's USD volume) × 0.0004% = Win chance.
+   - Anyone can verify the math: (Trader's USD volume) x 0.0004% = Win chance.
 
 ### Incentive Alignment
 
-- **Creators**: Lottery drives trading volume → more liquidity → higher token price → more fees collected → larger prize pools.
-- **Traders**: Every trade earns percentage-based lottery chances (larger trades = higher win probability) → FOMO + gamification → more trading activity.
-- **Whales**: $10,000 trade = 4% chance to win → Incentivizes large trades while keeping small traders competitive.
-- **Holders**: Prize pool grows with trading volume → incentive to participate in ecosystem → can trade to accumulate chances.
-- **Platform**: Sustainable revenue via 6.9% trading fees → 100% allocated to lottery prize pool (no platform take in v1).
+- **Creators**: Lottery drives trading volume -> more liquidity -> higher token price -> more fees collected -> larger prize pools.
+- **Traders**: Every trade earns percentage-based lottery chances (larger trades = higher win probability) -> FOMO + gamification -> more trading activity.
+- **Whales**: $10,000 trade = 4% chance to win -> Incentivizes large trades while keeping small traders competitive.
+- **Holders**: Prize pool grows with trading volume -> incentive to participate in ecosystem -> can trade to accumulate chances.
+- **Platform**: Sustainable revenue via 6.9% trading fees -> 100% allocated to lottery prize pool (no platform take in v1).
 
 ---
 
-## 🚀 One-Click Gas-Free Deployment (EIP-4337)
+## One-Click Gas-Free Deployment (EIP-4337)
 
 **CreatorVault supports 1-click, gas-free deployment via account abstraction:**
 
 ### Powered By
 
-- **EIP-5792**: Batch transaction execution (`wallet_sendCalls`) — all 10 deployment steps in one signature.
+- **EIP-5792**: Batch transaction execution (`wallet_sendCalls`) - all 10 deployment steps in one signature.
 - **EIP-4337**: Account abstraction for smart wallet support (Coinbase Smart Wallet, Safe, etc.).
-- **Coinbase CDP**: Paymaster service sponsors gas fees (~$50–100 saved per deployment).
+- **Coinbase CDP**: Paymaster service sponsors gas fees (~$50-100 saved per deployment).
 
 ### Setup (Optional but Recommended)
 
@@ -275,42 +275,42 @@ pnpm dev
 ### How It Works
 
 1. **User connects** with Coinbase Smart Wallet (or any EIP-5792 compatible wallet).
-2. **Deploy button clicked** → Frontend prepares batch call.
-3. **Single signature request** → User signs once to authorize entire deployment.
+2. **Deploy button clicked** -> Frontend prepares batch call.
+3. **Single signature request** -> User signs once to authorize entire deployment.
 4. **Backend batches** all deployment transactions atomically (vault, wrapper, OFT, oracle, CCA, lottery).
-5. **Paymaster sponsors gas** → Coinbase CDP covers gas fees.
-6. **Atomic execution** → All contracts deployed + auction launched in one bundle.
-7. **Fallbacks** → If paymaster unavailable, user pays gas. If batching unsupported, falls back to multi-tx flow.
+5. **Paymaster sponsors gas** -> Coinbase CDP covers gas fees.
+6. **Atomic execution** -> All contracts deployed + auction launched in one bundle.
+7. **Fallbacks** -> If paymaster unavailable, user pays gas. If batching unsupported, falls back to multi-tx flow.
 
 ### Benefits
 
-- ✅ **Zero gas fees** for creators (when paymaster configured).
-- ✅ **One signature** for entire deployment stack.
-- ✅ **Atomic execution** (all-or-nothing — no partial deploys).
-- ✅ **Better UX** (no 10 separate wallet confirmations).
+- **Zero gas fees** for creators (when paymaster configured).
+- **One signature** for entire deployment stack.
+- **Atomic execution** (all-or-nothing - no partial deploys).
+- **Better UX** (no 10 separate wallet confirmations).
 
 ---
 
-## 🌐 Supported Chains
+## Supported Chains
 
 **CreatorVault uses LayerZero V2 for omnichain share tokens. All chains share the same OFT token:**
 
 | Network | Chain ID | LZ Endpoint ID | Status | Explorer |
 |---------|----------|----------------|--------|----------|
-| **Base** | 8453 | 30184 | 🟢 **Hub Chain** | [BaseScan](https://basescan.org) |
-| **Ethereum** | 1 | 30101 | 🔄 Configured | [Etherscan](https://etherscan.io) |
-| **Arbitrum** | 42161 | 30110 | 🔄 Configured | [Arbiscan](https://arbiscan.io) |
-| **BSC** | 56 | 30102 | 🔄 Configured | [BscScan](https://bscscan.com) |
-| **Avalanche** | 43114 | 30106 | 🔄 Configured | [SnowTrace](https://snowtrace.io) |
-| **Monad** | 10143 | 30390 | 🔄 Configured | [MonadExplorer](https://monadexplorer.com) |
-| **Sonic** | 146 | 30332 | 🔄 Configured | [SonicScan](https://sonicscan.org) |
-| **HyperEVM** | 999 | 30275 | 🔄 Configured | [Hyperliquid](https://hyperliquid.xyz) |
+| **Base** | 8453 | 30184 | Hub chain | [BaseScan](https://basescan.org) |
+| **Ethereum** | 1 | 30101 | Configured | [Etherscan](https://etherscan.io) |
+| **Arbitrum** | 42161 | 30110 | Configured | [Arbiscan](https://arbiscan.io) |
+| **BSC** | 56 | 30102 | Configured | [BscScan](https://bscscan.com) |
+| **Avalanche** | 43114 | 30106 | Configured | [SnowTrace](https://snowtrace.io) |
+| **Monad** | 10143 | 30390 | Configured | [MonadExplorer](https://monadexplorer.com) |
+| **Sonic** | 146 | 30332 | Configured | [SonicScan](https://sonicscan.org) |
+| **HyperEVM** | 999 | 30275 | Configured | [Hyperliquid](https://hyperliquid.xyz) |
 
-**Base is the hub chain** — all deployments start on Base, then OFT can be bridged to other chains.
+**Base is the hub chain** - all deployments start on Base, then OFT can be bridged to other chains.
 
 ---
 
-## 🛠️ Quick Start
+## Quick Start
 
 ### Prerequisites
 
@@ -343,56 +343,56 @@ forge test -vvv
 4. Send 50,000,000 tokens to your smart wallet (for initial CCA deposit)
 5. Confirm smart wallet address
 6. Click **"Deploy + Launch"**
-7. Sign once → All contracts deployed + CCA live
+7. Sign once -> All contracts deployed + CCA live
 
 **Result**: Vault + OFT + Lottery + CCA live in ~30 seconds with zero gas fees.
 
 ---
 
-## 📂 Project Structure
+## Project Structure
 
 ```
 CreatorVault/
-├── contracts/                      # Solidity contracts
-│   ├── core/                       # Platform core
-│   │   └── CreatorRegistry.sol
-│   ├── vault/                      # ERC-4626 vaults
-│   │   ├── CreatorOVault.sol
-│   │   └── CreatorOVaultWrapper.sol
-│   ├── layerzero/                  # LayerZero V2 OFT
-│   │   └── CreatorShareOFT.sol
-│   ├── governance/                 # Tokenomics
-│   │   ├── CreatorGaugeController.sol
-│   │   └── veAKITA.sol
-│   ├── lottery/                    # Lottery system
-│   │   └── CreatorLotteryManager.sol
-│   ├── vrf/                        # Chainlink VRF
-│   │   └── CreatorVRFConsumerV2_5.sol
-│   ├── oracles/                    # Price oracles
-│   │   └── CreatorOracle.sol
-│   ├── strategies/                 # Yield strategies
-│   │   ├── BaseCreatorStrategy.sol
-│   │   └── CreatorCCAStrategy.sol
-│   ├── factories/                  # Deployment factories
-│   │   └── CreatorOVaultFactory.sol
-│   ├── hooks/                      # Uniswap V4 hooks
-│   ├── lp/                         # LP management
-│   └── interfaces/                 # All interfaces
-├── frontend/                       # React frontend (Vite)
-│   ├── src/
-│   │   ├── components/             # UI components
-│   │   ├── pages/                  # Page routes
-│   │   ├── lib/                    # Web3 utils
-│   │   └── config/                 # Contract addresses
-│   └── public/                     # Brand assets (logo, icons)
-├── deployments/                    # Deployed contract addresses
-├── script/                         # Foundry deploy scripts
-└── README.md
+  contracts/                      # Solidity contracts
+    core/                         # Platform core
+      CreatorRegistry.sol
+    vault/                        # ERC-4626 vaults
+      CreatorOVault.sol
+      CreatorOVaultWrapper.sol
+    layerzero/                    # LayerZero V2 OFT
+      CreatorShareOFT.sol
+    governance/                   # Tokenomics
+      CreatorGaugeController.sol
+      veAKITA.sol
+    lottery/                      # Lottery system
+      CreatorLotteryManager.sol
+    vrf/                          # Chainlink VRF
+      CreatorVRFConsumerV2_5.sol
+    oracles/                      # Price oracles
+      CreatorOracle.sol
+    strategies/                   # Yield strategies
+      BaseCreatorStrategy.sol
+      CreatorCCAStrategy.sol
+    factories/                    # Deployment factories
+      CreatorOVaultFactory.sol
+    hooks/                        # Uniswap V4 hooks
+    lp/                           # LP management
+    interfaces/                   # All interfaces
+  frontend/                       # React frontend (Vite)
+    src/
+      components/                 # UI components
+      pages/                      # Page routes
+      lib/                        # Web3 utils
+      config/                     # Contract addresses
+    public/                       # Brand assets (logo, icons)
+  deployments/                    # Deployed contract addresses
+  script/                         # Foundry deploy scripts
+  README.md
 ```
 
 ---
 
-## 🎨 First Deployment: akita
+## First Deployment: akita
 
 **akita is the first Creator Coin to launch with CreatorVault:**
 
@@ -408,7 +408,7 @@ CreatorVault/
 
 ---
 
-## 🔐 Security
+## Security
 
 **CreatorVault inherits Yearn V3's battle-tested security model with additional safeguards:**
 
@@ -421,7 +421,7 @@ CreatorVault/
 ### Flash Loan Protection
 
 - **Block delay** between deposit/withdraw (same-block attacks prevented).
-- **Large withdrawal queue** (100k+ tokens) → queued with unlock period.
+- **Large withdrawal queue** (100k+ tokens) -> queued with unlock period.
 - **Profit unlocking** (Yearn V3 mechanism) smooths out sudden PnL spikes.
 
 ### Access Control
@@ -443,7 +443,7 @@ CreatorVault/
 
 ---
 
-## 📖 Usage Examples
+## Usage Examples
 
 ### For Creators
 
@@ -487,7 +487,7 @@ vault.deposit(1000e18, msg.sender); // Receive sAKITA shares
 **Wrap for cross-chain:**
 
 ```solidity
-wrapper.wrap(shareAmount); // Convert sAKITA → wsAKITA
+wrapper.wrap(shareAmount); // Convert sAKITA -> wsAKITA
 ```
 
 **Bridge to another chain:**
@@ -508,7 +508,7 @@ shareOFT.send{value: fee}(sendParams, fee, msg.sender);
 
 ---
 
-## 🤝 Contributing
+## Contributing
 
 **We welcome contributions from the community:**
 
@@ -543,13 +543,13 @@ cd frontend && pnpm dev
 
 ---
 
-## 📜 License
+## License
 
-**MIT License** — see [LICENSE](LICENSE) file for details.
+**MIT License** - see [LICENSE](LICENSE) file for details.
 
 ---
 
-## 🔗 Links
+## Links
 
 - **Website**: [creatorvault.fun](https://creatorvault.fun)
 - **GitHub**: [github.com/wenakita/CreatorVault](https://github.com/wenakita/CreatorVault)
@@ -561,7 +561,7 @@ cd frontend && pnpm dev
 
 ---
 
-## 🎨 Brand Assets
+## Brand Assets
 
 **Logos, icons, and brand guidelines are available in `/frontend/public/`:**
 
@@ -573,6 +573,6 @@ cd frontend && pnpm dev
 
 ---
 
-**🎨 CreatorVault | 🌐 Omnichain Vaults for Creator Coins | ⚡ Powered by LayerZero V2 + Uniswap CCA**
+**CreatorVault | Omnichain Vaults for Creator Coins | Powered by LayerZero V2 + Uniswap CCA**
 
-*Enabling any creator to launch institutional-grade vault infrastructure with zero gas fees, fair launch price discovery, and gamified community incentives — all in one click.*
+*Enabling any creator to launch institutional-grade vault infrastructure with zero gas fees, fair launch price discovery, and gamified community incentives - all in one click.*

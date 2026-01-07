@@ -39,16 +39,16 @@ npm run dev
 
 ```
 frontend/
-├── public/
-│   └── manifest.json    # Base Mini App manifest
-├── src/
-│   ├── components/      # UI components
-│   ├── config/          # Contract addresses, wagmi config
-│   ├── hooks/           # Custom React hooks
-│   ├── pages/           # Route pages
-│   └── main.tsx         # Entry point
-├── abis/                # Contract ABIs
-└── api/                 # Vercel API routes
+  public/
+    manifest.json        # Base Mini App manifest
+  src/
+    components/          # UI components
+    config/              # Contract addresses, wagmi config
+    hooks/               # Custom React hooks
+    pages/               # Route pages
+    main.tsx             # Entry point
+  abis/                  # Contract ABIs
+  api/                   # Vercel API routes
 ```
 
 ## Pages
