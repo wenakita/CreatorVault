@@ -1038,6 +1038,8 @@ export function DeployVaultAA({
 
         const runSplitFlow = async () => {
           // Try the sponsored smart-wallet path first (preferred).
+          // NOTE: This may still require multiple confirmations, but should remain gas-sponsored
+          // as long as the paymaster is configured.
           try {
             // Step 1a: deploy initcode-heavy calls in small bundles (keeps payload size sane)
             for (const c of deployCalls) {
@@ -1047,10 +1049,17 @@ export function DeployVaultAA({
             await sendBundle(wiringCalls)
             // Step 1c: launch + finalize ownership (small bundle)
             await sendBundle([...launchCalls, ...finalizeCalls])
+
+            // If we got here, we successfully executed via sponsored sendCalls.
+            setWasGasSponsored(true)
             return
           } catch {
             // Fall through to legacy direct executeBatch() path.
           }
+
+          setCompatibilityNotice(
+            'Your wallet could not complete the deployment via sponsored smart-wallet calls. Falling back to a legacy batch/multi-tx flow (may require multiple confirmations and may cost gas).',
+          )
 
           // Compatibility fallback:
           // Some wallets refuse to submit the large executeBatch() payload (initcode-heavy).
@@ -1107,26 +1116,12 @@ export function DeployVaultAA({
             // bytecode polling + post-deploy checks will run below
             // eslint-disable-next-line no-empty
           } else {
-          setCompatibilityNotice(
-            'Your wallet could not submit the full deployment as a sponsored 1-click bundle. Falling back to a legacy batch/multi-tx flow (may require multiple confirmations and may cost gas).',
-          )
-          const batchedCalls = calls.map((c) => ({ target: c.to, value: 0n, data: c.data }))
-          const encoded = encodeFunctionData({
-            abi: COINBASE_SMART_WALLET_ABI,
-            functionName: 'executeBatch',
-            args: [batchedCalls],
-          })
-          const approxBytes = Math.max(0, (encoded.length - 2) / 2)
-          // If the outer tx is very large, many wallets will fail to "create" it before it even hits the network.
-          if (approxBytes > 45_000) {
+            // If we couldn't do the single 1-click bundle, try a sponsored split flow next.
+            // Only after that fails do we fall back to legacy executeBatch (gas-paid).
+            setCompatibilityNotice(
+              'Your wallet could not submit the full deployment as a sponsored 1-click bundle. Trying smaller sponsored bundles (may require multiple confirmations)…',
+            )
             await runSplitFlow()
-          } else {
-            const txHash = await tryExecuteBatch(batchedCalls)
-            setCallBundleType('tx')
-            setCallBundleId(String(txHash))
-            setStep(2)
-            await waitTx(txHash as any)
-          }
           }
         } catch (e: any) {
           const msg = extractErrorText(e)
