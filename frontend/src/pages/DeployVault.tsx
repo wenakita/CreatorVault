@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { motion } from 'framer-motion'
-import { useAccount, useReadContract } from 'wagmi'
+import { useAccount, usePublicClient, useReadContract } from 'wagmi'
+import { base } from 'wagmi/chains'
 import type { Address } from 'viem'
 import { erc20Abi, formatUnits, isAddress } from 'viem'
 import { Link, useSearchParams } from 'react-router-dom'
@@ -144,6 +145,26 @@ export function DeployVault() {
     return null
   }, [myProfile?.linkedWallets?.edges])
 
+  // Defensive: some indexers/wallet graphs can incorrectly label an EOA as a "SMART_WALLET".
+  // Coinbase Smart Wallet is a contract account onchain, so require bytecode to treat it as a smart wallet.
+  const publicClient = usePublicClient({ chainId: base.id })
+  const smartWalletBytecodeQuery = useQuery({
+    queryKey: ['bytecode', 'smartWallet', detectedSmartWallet],
+    enabled: !!publicClient && !!detectedSmartWallet,
+    queryFn: async () => {
+      return await publicClient!.getBytecode({ address: detectedSmartWallet as Address })
+    },
+    staleTime: 60_000,
+    retry: 0,
+  })
+
+  const detectedSmartWalletContract = useMemo(() => {
+    const code = smartWalletBytecodeQuery.data
+    if (!detectedSmartWallet) return null
+    if (!code || code === '0x') return null
+    return detectedSmartWallet
+  }, [detectedSmartWallet, smartWalletBytecodeQuery.data])
+
   const autofillRef = useRef<{ tokenFor?: string }>({})
   const addressLc = (address ?? '').toLowerCase()
 
@@ -186,16 +207,8 @@ export function DeployVault() {
     query: { enabled: tokenIsValid && !!connectedWalletAddress },
   })
 
-  const { data: smartWalletTokenBalance } = useReadContract({
-    address: tokenIsValid ? (creatorToken as `0x${string}`) : undefined,
-    abi: erc20Abi,
-    functionName: 'balanceOf',
-    args: [((detectedSmartWallet ?? ZERO_ADDRESS) as Address) as `0x${string}`],
-    query: { enabled: tokenIsValid && !!detectedSmartWallet },
-  })
-
-  const smartWalletHasMinDeposit =
-    typeof smartWalletTokenBalance === 'bigint' && smartWalletTokenBalance >= MIN_FIRST_DEPOSIT
+  // NOTE: selectedOwnerWallet (smart wallet vs connected wallet) is computed further down once we know
+  // payoutRecipient/creatorAddress.
 
   const {
     data: zoraCoin,
@@ -333,12 +346,32 @@ export function DeployVault() {
   // Zora creators often deploy coins from a smart wallet (Privy-managed), then add EOAs later.
   // Treat the Smart Wallet address as canonical and allow the connected EOA to act if it is an onchain owner.
   const coinSmartWallet = useMemo(() => {
-    if (!detectedSmartWallet) return null
-    const smartLc = detectedSmartWallet.toLowerCase()
-    if (payoutRecipient && payoutRecipient.toLowerCase() === smartLc) return detectedSmartWallet
-    if (creatorAddress && creatorAddress.toLowerCase() === smartLc) return detectedSmartWallet
+    if (!detectedSmartWalletContract) return null
+    const smartLc = detectedSmartWalletContract.toLowerCase()
+    if (payoutRecipient && payoutRecipient.toLowerCase() === smartLc) return detectedSmartWalletContract
+    if (creatorAddress && creatorAddress.toLowerCase() === smartLc) return detectedSmartWalletContract
     return null
-  }, [detectedSmartWallet, payoutRecipient, creatorAddress])
+  }, [detectedSmartWalletContract, payoutRecipient, creatorAddress])
+
+  // If the coin was created from a smart wallet (Privy/Coinbase Smart Wallet), prefer using that
+  // as the execution account for deployment + the 50M initial deposit.
+  //
+  // - `coinSmartWallet`: smart wallet address that matches the coin's creator or payoutRecipient.
+  // - Fallback to the connected wallet when we cannot confidently identify a smart wallet.
+  const selectedOwnerWallet = useMemo(() => {
+    return (coinSmartWallet ?? connectedWalletAddress) as Address | null
+  }, [coinSmartWallet, connectedWalletAddress])
+
+  const { data: selectedOwnerTokenBalance } = useReadContract({
+    address: tokenIsValid ? (creatorToken as `0x${string}`) : undefined,
+    abi: erc20Abi,
+    functionName: 'balanceOf',
+    args: [((selectedOwnerWallet ?? ZERO_ADDRESS) as Address) as `0x${string}`],
+    query: { enabled: tokenIsValid && !!selectedOwnerWallet },
+  })
+
+  const selectedOwnerHasMinDeposit =
+    typeof selectedOwnerTokenBalance === 'bigint' && selectedOwnerTokenBalance >= MIN_FIRST_DEPOSIT
 
   const smartWalletOwnerQuery = useReadContract({
     address: coinSmartWallet ? (coinSmartWallet as `0x${string}`) : undefined,
@@ -362,13 +395,7 @@ export function DeployVault() {
   const isAllowlistedCreator = creatorAllowlistQuery.data?.allowed === true
   const passesCreatorAllowlist = allowlistMode === 'disabled' ? true : isAllowlistedCreator
 
-  // Always use the connected wallet (smart wallet)
-  const selectedOwnerAddress = connectedWalletAddress
-
-  // Always use the connected smart wallet's balance
-  const selectedOwnerTokenBalance = connectedTokenBalance
-
-  const selectedOwnerHasMinDeposit = smartWalletHasMinDeposit
+  const selectedOwnerAddress = selectedOwnerWallet
 
   void selectedOwnerAddress // reserved for future “deploy as smart wallet” UX
   void selectedOwnerTokenBalance // reserved for future funding UX
@@ -470,7 +497,7 @@ export function DeployVault() {
     !!derivedShareName &&
     confirmedSmartWallet && // User must confirm they've sent 50M to their smart wallet
     !!selectedOwnerAddress &&
-    smartWalletHasMinDeposit // Must have 50M tokens in the connected smart wallet
+    selectedOwnerHasMinDeposit // Must have 50M tokens in the selected owner wallet
 
   return (
     <div className="relative">
@@ -1056,7 +1083,7 @@ export function DeployVault() {
                     <div className="label mb-2">Your Smart Wallet (Coinbase Wallet)</div>
                     {/* Smart wallet address (read-only) */}
                     <input
-                      value={String(address ?? '')}
+                      value={String(selectedOwnerWallet ?? address ?? '')}
                       disabled
                       className="w-full bg-black border border-zinc-800 rounded-lg px-4 py-3 text-sm text-zinc-400 placeholder:text-zinc-700 outline-none font-mono opacity-90 cursor-not-allowed"
                     />
@@ -1071,21 +1098,21 @@ export function DeployVault() {
                           {/* Balance display */}
                           <div className="flex items-center justify-between text-sm p-3 bg-black/40 border border-zinc-800 rounded-lg">
                             <span className="text-zinc-500">Current balance:</span>
-                            <span className={smartWalletHasMinDeposit ? 'text-emerald-400 font-medium' : 'text-amber-300/90 font-medium'}>
-                              {formatToken18(typeof smartWalletTokenBalance === 'bigint' ? smartWalletTokenBalance : undefined)}{' '}
+                            <span className={selectedOwnerHasMinDeposit ? 'text-emerald-400 font-medium' : 'text-amber-300/90 font-medium'}>
+                              {formatToken18(typeof selectedOwnerTokenBalance === 'bigint' ? selectedOwnerTokenBalance : undefined)}{' '}
                               {underlyingSymbolUpper || 'TOKENS'}
                             </span>
                           </div>
 
                           {/* Warning if insufficient balance */}
-                          {!smartWalletHasMinDeposit ? (
+                          {!selectedOwnerHasMinDeposit ? (
                             <div className="p-4 bg-amber-500/10 border border-amber-500/20 rounded-lg space-y-2">
                               <div className="text-amber-300/90 text-sm font-medium">⚠️ Insufficient Balance</div>
                               <div className="text-amber-300/70 text-xs">
                                 You need <span className="text-white font-medium">50,000,000 {underlyingSymbolUpper || 'TOKENS'}</span> in this smart wallet to deploy.
                               </div>
                               <div className="text-amber-300/70 text-xs">
-                                Please send tokens to: <span className="text-white font-mono">{String(address ?? '')}</span>
+                                Please send tokens to: <span className="text-white font-mono">{String(selectedOwnerWallet ?? address ?? '')}</span>
                               </div>
                             </div>
                           ) : (
@@ -1101,7 +1128,11 @@ export function DeployVault() {
                                 <div className="flex-1 min-w-0 text-xs">
                                   <div className="text-white font-medium mb-1">I confirm this is my smart wallet</div>
                                   <div className="text-zinc-500">
-                                    I have verified that <span className="text-white font-mono">{String(address ?? '').slice(0, 10)}...{String(address ?? '').slice(-8)}</span> is my Coinbase Smart Wallet and contains at least 50M {underlyingSymbolUpper || 'TOKENS'}.
+                                    I have verified that{' '}
+                                    <span className="text-white font-mono">
+                                      {String(selectedOwnerWallet ?? address ?? '').slice(0, 10)}...{String(selectedOwnerWallet ?? address ?? '').slice(-8)}
+                                    </span>{' '}
+                                    is my Coinbase Smart Wallet and contains at least 50M {underlyingSymbolUpper || 'TOKENS'}.
                                   </div>
                                 </div>
                               </label>
@@ -1189,6 +1220,8 @@ export function DeployVault() {
                   deploymentVersion={deploymentVersion}
                   // Keep revenue flowing to the coin's payout recipient by default
                   creatorTreasury={((payoutRecipient ?? (address as Address)) as Address) as `0x${string}`}
+                  // If the coin is owned by a smart wallet, execute deployment as that account.
+                  executeAs={coinSmartWallet ?? undefined}
                   onSuccess={(a) => setLastDeployedVault(a.vault)}
                 />
               ) : (
