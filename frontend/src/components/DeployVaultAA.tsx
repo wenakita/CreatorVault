@@ -235,7 +235,7 @@ type DeploymentAddresses = {
   oracle: Address
 }
 
-type DeploymentVersion = 'v1' | 'v2'
+type DeploymentVersion = 'v1' | 'v2' | 'v3'
 
 interface DeployVaultAAProps {
   creatorToken: Address
@@ -245,8 +245,9 @@ interface DeployVaultAAProps {
   name: string
   /**
    * Optional: deploy a "fresh" stack for the same coin + owner by changing the CREATE2 salts.
-   * - v1: default (original deterministic addresses)
-   * - v2: one-time upgrade path (new deterministic addresses)
+   * - v1: legacy deterministic addresses
+   * - v2: upgrade path (new deterministic addresses)
+   * - v3: latest deterministic addresses (fresh namespace; avoids collisions with earlier test deploys)
    */
   deploymentVersion?: DeploymentVersion
   /** Creator treasury for GaugeController (defaults to connected address) */
@@ -351,7 +352,7 @@ export function DeployVaultAA({
   const { sendCallsAsync } = useSendCalls()
   const { config: onchainKitConfig } = useOnchainKit()
 
-  const [deploymentVersion, setDeploymentVersion] = useState<DeploymentVersion>(deploymentVersionProp ?? 'v1')
+  const [deploymentVersion, setDeploymentVersion] = useState<DeploymentVersion>(deploymentVersionProp ?? 'v3')
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [callBundleId, setCallBundleId] = useState<string | null>(null)
   const [callBundleType, setCallBundleType] = useState<'tx' | 'bundle' | null>(null)
@@ -547,7 +548,7 @@ export function DeployVaultAA({
 
     let useUniversalOftStore = false
     let useUniversalFullStore = false
-    if (version === 'v2' && universalBytecodeStore && universalCreate2FromStore) {
+  if ((version === 'v2' || version === 'v3') && universalBytecodeStore && universalCreate2FromStore) {
       try {
         const [storeCode, deployerCode] = await Promise.all([
           publicClient.getBytecode({ address: universalBytecodeStore }),
@@ -1395,6 +1396,7 @@ export function DeployVaultAA({
 
   const disabled = isSubmitting || !address
   const canOfferV2 = !!error && /already exists/i.test(error) && deploymentVersion === 'v1'
+  const canOfferV3 = !!error && /already exists/i.test(error) && deploymentVersion === 'v2'
 
   const short = (addr: string) => `${addr.slice(0, 6)}…${addr.slice(-4)}`
   const basescanAddressHref = (addr: string) => `https://basescan.org/address/${addr}`
@@ -1585,6 +1587,16 @@ export function DeployVaultAA({
               title="Deploys a one-time v2 stack using new CREATE2 salts (new addresses)"
             >
               Deploy v2 instead
+            </button>
+          ) : null}
+          {canOfferV3 ? (
+            <button
+              type="button"
+              onClick={() => void deploy('v3')}
+              className="text-xs text-red-200/90 hover:text-red-100 underline underline-offset-2"
+              title="Deploys a fresh v3 stack using a new CREATE2 salt namespace (new addresses)"
+            >
+              Deploy v3 instead
             </button>
           ) : null}
           {errorDetails ? (

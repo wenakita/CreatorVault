@@ -90,7 +90,7 @@ export function DeployVault() {
   const { address, isConnected } = useAccount()
   const [creatorToken, setCreatorToken] = useState('')
   const [showAdvanced, setShowAdvanced] = useState(false)
-  const [deploymentVersion, setDeploymentVersion] = useState<'v1' | 'v2'>('v2')
+  const [deploymentVersion, setDeploymentVersion] = useState<'v1' | 'v2' | 'v3'>('v3')
   const [lastDeployedVault, setLastDeployedVault] = useState<Address | null>(null)
   const [confirmedSmartWallet, setConfirmedSmartWallet] = useState(false)
 
@@ -120,7 +120,8 @@ export function DeployVault() {
   const isAdmin = Boolean(adminAuthQuery.data?.isAdmin)
 
   useEffect(() => {
-    if (!isAdmin && deploymentVersion === 'v1') setDeploymentVersion('v2')
+    // v1 is legacy/admin-only; never allow non-admins to select it.
+    if (!isAdmin && deploymentVersion === 'v1') setDeploymentVersion('v3')
   }, [isAdmin, deploymentVersion])
 
   const detectedCreatorCoin = useMemo(() => {
@@ -1020,11 +1021,25 @@ export function DeployVault() {
                 <div className="pt-3 border-t border-zinc-900/50 space-y-2">
                   <div className="flex items-center justify-between gap-3">
                     <div className="label">Deployment</div>
-                    <div className="text-[10px] text-zinc-700">{deploymentVersion === 'v2' ? 'Default (v2)' : 'Legacy (v1)'}</div>
+                    <div className="text-[10px] text-zinc-700">
+                      {deploymentVersion === 'v3' ? 'Default (v3)' : deploymentVersion === 'v2' ? 'Alt (v2)' : 'Legacy (v1)'}
+                    </div>
                   </div>
 
                   {isAdmin ? (
                     <div className="inline-flex rounded-lg border border-zinc-900/60 bg-black/30 p-1 gap-1">
+                      <button
+                        type="button"
+                        onClick={() => setDeploymentVersion('v3')}
+                        className={`px-3 py-1.5 text-[11px] rounded-md transition-colors ${
+                          deploymentVersion === 'v3'
+                            ? 'bg-white/[0.06] text-zinc-100'
+                            : 'text-zinc-500 hover:text-zinc-200 hover:bg-white/[0.03]'
+                        }`}
+                        title="Default deterministic addresses (v3). Fresh namespace to avoid collisions with earlier deploy attempts."
+                      >
+                        v3
+                      </button>
                       <button
                         type="button"
                         onClick={() => setDeploymentVersion('v2')}
@@ -1033,7 +1048,7 @@ export function DeployVault() {
                             ? 'bg-white/[0.06] text-zinc-100'
                             : 'text-zinc-500 hover:text-zinc-200 hover:bg-white/[0.03]'
                         }`}
-                        title="Default deterministic addresses (v2). Optimized for 1-click deploys (smaller calldata) when universal bytecode store is available."
+                        title="Alternative deterministic addresses (v2)."
                       >
                         v2
                       </button>
@@ -1051,12 +1066,12 @@ export function DeployVault() {
                       </button>
                     </div>
                   ) : (
-                    <div className="text-xs text-zinc-600">Using v2 (default). Legacy v1 is admin-only.</div>
+                    <div className="text-xs text-zinc-600">Using v3 (default). Legacy v1 is admin-only.</div>
                   )}
 
                   <div className="text-xs text-zinc-600">
-                    v2 uses new deterministic addresses and is optimized for 1-click deploys (smaller calldata) when the universal bytecode store is
-                    deployed. v1 is kept as an admin-only fallback.
+                    v3 uses a fresh deterministic address namespace to avoid collisions with earlier deployments. v2 is kept as an alternative.
+                    v1 is a legacy fallback and is admin-only.
                   </div>
 
                   {!isSignedIn ? (
@@ -1236,7 +1251,7 @@ export function DeployVault() {
               <div className="text-xs text-zinc-600 space-y-1">
                 <p>Designed for one wallet confirmation (some wallets may require multiple confirmations).</p>
                 <p>Requires a 50M token deposit to start the fair launch.</p>
-                <p>Advanced: v2 is the default. v1 is admin-only.</p>
+                <p>Advanced: v3 is the default. v1 is admin-only.</p>
               </div>
             </div>
 
