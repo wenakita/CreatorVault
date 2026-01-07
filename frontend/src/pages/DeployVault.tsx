@@ -166,26 +166,6 @@ export function DeployVault() {
     return detectedSmartWallet
   }, [detectedSmartWallet, smartWalletBytecodeQuery.data])
 
-  // Prefer onchain truth over indexer graphs:
-  // If the coin's payoutRecipient is a deployed contract, treat it as the canonical smart wallet.
-  // This matches how many creators deploy their Zora coin (Smart Wallet payout recipient).
-  const payoutRecipientBytecodeQuery = useQuery({
-    queryKey: ['bytecode', 'payoutRecipient', creatorToken, payoutRecipient],
-    enabled: !!publicClient && !!payoutRecipient,
-    queryFn: async () => {
-      return await publicClient!.getBytecode({ address: payoutRecipient as Address })
-    },
-    staleTime: 60_000,
-    retry: 0,
-  })
-
-  const payoutRecipientContract = useMemo(() => {
-    if (!payoutRecipient) return null
-    const code = payoutRecipientBytecodeQuery.data
-    if (!code || code === '0x') return null
-    return payoutRecipient
-  }, [payoutRecipient, payoutRecipientBytecodeQuery.data])
-
   const autofillRef = useRef<{ tokenFor?: string }>({})
   const addressLc = (address ?? '').toLowerCase()
 
@@ -350,6 +330,26 @@ export function DeployVault() {
     const r = zoraCoin?.payoutRecipientAddress ? String(zoraCoin.payoutRecipientAddress) : ''
     return isAddress(r) ? (r as Address) : null
   }, [onchainPayoutRecipient, zoraCoin?.payoutRecipientAddress])
+
+  // Prefer onchain truth over indexer graphs:
+  // If the coin's payoutRecipient is a deployed contract, treat it as the canonical smart wallet.
+  // This matches how many creators deploy their Zora coin (Smart Wallet payout recipient).
+  const payoutRecipientBytecodeQuery = useQuery({
+    queryKey: ['bytecode', 'payoutRecipient', creatorToken, payoutRecipient],
+    enabled: !!publicClient && !!payoutRecipient,
+    queryFn: async () => {
+      return await publicClient!.getBytecode({ address: payoutRecipient as Address })
+    },
+    staleTime: 60_000,
+    retry: 0,
+  })
+
+  const payoutRecipientContract = useMemo(() => {
+    if (!payoutRecipient) return null
+    const code = payoutRecipientBytecodeQuery.data
+    if (!code || code === '0x') return null
+    return payoutRecipient
+  }, [payoutRecipient, payoutRecipientBytecodeQuery.data])
 
   const { data: payoutRecipientTokenBalance } = useReadContract({
     address: tokenIsValid ? (creatorToken as `0x${string}`) : undefined,
