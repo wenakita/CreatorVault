@@ -326,6 +326,10 @@ const OVERSIZED_DATA_RE = /oversized data|data too large|payload too large|reque
 const FAILED_TO_CREATE_RE = /fail(?:ed)? to create|unknown error|internal error/i
 
 function extractErrorText(e: any): string {
+  if (!e) return ''
+  if (typeof e === 'string') return e
+  if (typeof e === 'number' || typeof e === 'boolean') return String(e)
+
   const parts = [
     e?.shortMessage,
     e?.message,
@@ -334,7 +338,17 @@ function extractErrorText(e: any): string {
     e?.cause?.message,
     e?.cause?.details,
   ].filter(Boolean)
-  return parts.map(String).join(' ')
+
+  const joined = parts.map(String).join(' ')
+  if (joined.trim().length > 0) return joined
+
+  // Last resort: try to serialize unknown error shapes.
+  try {
+    const s = JSON.stringify(e)
+    return s === '{}' ? String(e) : s
+  } catch {
+    return String(e)
+  }
 }
 
 export function DeployVaultAA({
@@ -1016,8 +1030,15 @@ export function DeployVaultAA({
           setStep(2)
           try {
             await waitForCallsStatus(wc, { id: res.id, timeout: 120_000, throwOnFailure: true })
-          } catch {
-            // ignore (we also do bytecode polling below)
+          } catch (e: any) {
+            // If the wallet doesn't support status polling, don't treat it as a failure.
+            // Otherwise, surface the real failure reason and trigger fallback.
+            const msg = extractErrorText(e)
+            if (/wallet_getCallsStatus|method not found|unsupported/i.test(msg)) {
+              // ignore
+            } else {
+              throw e
+            }
           }
           return res
         }
@@ -1201,8 +1222,13 @@ export function DeployVaultAA({
           // Prefer EIP-5792 status (best signal). If unsupported, we fall back to bytecode polling below.
           try {
             await waitForCallsStatus(wc, { id: res.id, timeout: 120_000, throwOnFailure: true })
-          } catch {
-            // ignore
+          } catch (e: any) {
+            const msg = extractErrorText(e)
+            if (/wallet_getCallsStatus|method not found|unsupported/i.test(msg)) {
+              // ignore
+            } else {
+              throw e
+            }
           }
           return res
         }
@@ -1664,12 +1690,18 @@ export function DeployVaultAA({
                   </div>
                 ) : null}
 
-                {sponsorshipDebug ? (
+                {isPaymasterConfigured ? (
                   <div className="space-y-1">
-                    <div className="label">Sponsorship debug</div>
+                    <div className="label">Sponsorship</div>
                     <div className="text-[11px] text-zinc-500 leading-relaxed">
                       Paymaster: <span className="font-mono text-zinc-400 break-all">{String(paymasterUrlForUi ?? 'none')}</span>
                     </div>
+                  </div>
+                ) : null}
+
+                {sponsorshipDebug ? (
+                  <div className="space-y-1">
+                    <div className="label">Sponsorship debug</div>
                     <div className="font-mono text-xs text-zinc-400 break-words">{sponsorshipDebug}</div>
                     <div className="text-[11px] text-zinc-600 leading-relaxed">
                       If this mentions <span className="font-mono">origin</span> or <span className="font-mono">unauthorized</span>, double-check the CDP key Domain allowlist.
