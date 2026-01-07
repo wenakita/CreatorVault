@@ -483,12 +483,18 @@ export function DeployVaultAA({
     const connectorId = String((connector as any)?.id ?? '')
     const connectorName = String((connector as any)?.name ?? (connectorId || 'Unknown connector'))
     const connectorSupportsSmartWalletAccount =
-      connectorId === 'coinbaseWalletSDK' || connectorId === 'farcaster'
+      connectorId === 'coinbaseWalletSDK' ||
+      connectorId === 'farcaster' ||
+      connectorId === 'privy' ||
+      connectorName.toLowerCase().includes('privy')
+    const forceCompatibilityMode = isDelegatedSmartWallet && !connectorSupportsSmartWalletAccount
+    const compatibilityEnabled = allowCompatibilityMode || forceCompatibilityMode
 
-    if (isDelegatedSmartWallet && !connectorSupportsSmartWalletAccount) {
-      failNeedsCompatibility(
-        `Account "${owner}" not found for connector "${connectorName}".\n\nTo use gas-free 1-click, disconnect and reconnect using Coinbase Wallet (Smart Wallet).`,
+    if (forceCompatibilityMode) {
+      setCompatibilityNotice(
+        `Connected via ${connectorName}. Using your EOA to execute Smart Wallet batch (gas fees apply). Connect Coinbase Smart Wallet for gas-free 1-click.`,
       )
+      setAllowCompatibilityMode(true)
     }
 
     // Paymaster sponsorship (Coinbase CDP via OnchainKitProvider) when available.
@@ -1143,30 +1149,35 @@ export function DeployVaultAA({
           return receipt
         }
 
-        const runSplitFlow = async () => {
+        const runSplitFlow = async (options?: { skipSponsored?: boolean }) => {
+          const skipSponsored = options?.skipSponsored === true
           // Try the sponsored smart-wallet path first (preferred).
           // NOTE: This may still require multiple confirmations, but should remain gas-sponsored
           // as long as the paymaster is configured.
-          try {
-            // Step 1a: deploy initcode-heavy calls in small bundles (keeps payload size sane)
-            for (const c of deployCalls) {
-              await sendBundle([c])
-            }
-            // Step 1b: wiring (small bundle)
-            await sendBundle(wiringCalls)
-            // Step 1c: launch + finalize ownership (small bundle)
-            await sendBundle([...launchCalls, ...finalizeCalls])
+          if (!skipSponsored) {
+            try {
+              // Step 1a: deploy initcode-heavy calls in small bundles (keeps payload size sane)
+              for (const c of deployCalls) {
+                await sendBundle([c])
+              }
+              // Step 1b: wiring (small bundle)
+              await sendBundle(wiringCalls)
+              // Step 1c: launch + finalize ownership (small bundle)
+              await sendBundle([...launchCalls, ...finalizeCalls])
 
-            // If we got here, we successfully executed via sponsored sendCalls.
-            setWasGasSponsored(true)
-            return
-          } catch (e: any) {
-            lastSponsoredError = extractErrorText(e)
-            // Fall through to legacy direct executeBatch() path.
+              // If we got here, we successfully executed via sponsored sendCalls.
+              setWasGasSponsored(true)
+              return
+            } catch (e: any) {
+              lastSponsoredError = extractErrorText(e)
+              // Fall through to legacy direct executeBatch() path.
+            }
+          } else {
+            lastSponsoredError = `Connector "${connectorName}" does not support Smart Wallet batching.`
           }
 
           // If the user hasn't opted in to legacy multi-tx, stop here.
-          if (!allowCompatibilityMode) {
+          if (!compatibilityEnabled) {
             setSponsorshipDebug(lastSponsoredError)
             failNeedsCompatibility(lastSponsoredError ?? undefined)
           }
@@ -1220,17 +1231,22 @@ export function DeployVaultAA({
           // First attempt: sponsored smart-wallet batching for the full flow.
           // If the wallet does not support wallet_sendCalls for `account: owner`,
           // or if the payload is too large, we fall back to split execution.
-          try {
-            await sendBundle(calls)
-            usedSponsoredBatching = true
-            setWasGasSponsored(true)
-          } catch (e: any) {
-            usedSponsoredBatching = false
-            lastSponsoredError = extractErrorText(e)
-            if (isUserRejectedError(e)) {
-              setSponsorshipDebug(lastSponsoredError)
-              failUserRejected(lastSponsoredError)
+          if (!forceCompatibilityMode) {
+            try {
+              await sendBundle(calls)
+              usedSponsoredBatching = true
+              setWasGasSponsored(true)
+            } catch (e: any) {
+              usedSponsoredBatching = false
+              lastSponsoredError = extractErrorText(e)
+              if (isUserRejectedError(e)) {
+                setSponsorshipDebug(lastSponsoredError)
+                failUserRejected(lastSponsoredError)
+              }
             }
+          } else {
+            usedSponsoredBatching = false
+            lastSponsoredError = `Connector "${connectorName}" does not support Smart Wallet batching.`
           }
 
           // If the sponsored path worked, skip the legacy direct executeBatch path entirely.
@@ -1240,7 +1256,7 @@ export function DeployVaultAA({
           } else {
             // If we couldn't do the single 1-click bundle, try a sponsored split flow next.
             // Only after that fails do we fall back to legacy executeBatch (gas-paid).
-            if (!allowCompatibilityMode) {
+            if (!compatibilityEnabled) {
               setSponsorshipDebug(lastSponsoredError)
               failNeedsCompatibility(lastSponsoredError ?? undefined)
             }
@@ -1249,7 +1265,7 @@ export function DeployVaultAA({
               'Your wallet could not submit the full deployment as a sponsored 1-click bundle. Trying smaller sponsored bundles (may require multiple confirmations)…',
             )
             if (lastSponsoredError) setSponsorshipDebug(lastSponsoredError)
-            await runSplitFlow()
+            await runSplitFlow({ skipSponsored: forceCompatibilityMode })
           }
         } catch (e: any) {
           if (isUserRejectedError(e)) {
@@ -1266,7 +1282,7 @@ export function DeployVaultAA({
             'Your wallet rejected the 1-click deployment payload (likely size or EIP-5792 support). Falling back to split execution (multiple confirmations).',
           )
           setSponsorshipDebug(msg)
-          await runSplitFlow()
+          await runSplitFlow({ skipSponsored: forceCompatibilityMode })
         }
       } else {
         const wc = walletClient

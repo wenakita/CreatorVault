@@ -24,6 +24,11 @@ export function ConnectButtonWeb3({ autoConnect = false }: { autoConnect?: boole
     const name = String((c as any)?.name ?? '').toLowerCase()
     return id.includes('miniapp') || name.includes('farcaster') || name.includes('mini app')
   })
+  const privyConnector = connectors.find((c) => {
+    const id = String(c.id ?? '').toLowerCase()
+    const name = String((c as any)?.name ?? '').toLowerCase()
+    return id.includes('privy') || name.includes('privy')
+  })
   const coinbaseSmartWalletConnector = connectors.find((c) => c.id === 'coinbaseSmartWallet')
   const coinbaseConnector = connectors.find((c) => c.id === 'coinbaseWalletSDK' || c.name?.toLowerCase().includes('coinbase'))
   const injectedConnector = connectors.find((c) => c.id === 'injected')
@@ -32,6 +37,7 @@ export function ConnectButtonWeb3({ autoConnect = false }: { autoConnect?: boole
   // On the open web, prefer Coinbase Smart Wallet when available (enables gas-free 1-click).
   const preferredConnector =
     (miniApp.isMiniApp ? miniAppConnector : null) ??
+    privyConnector ??
     coinbaseSmartWalletConnector ??
     coinbaseConnector ??
     connectors[0]

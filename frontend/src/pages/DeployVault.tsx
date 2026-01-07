@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { motion } from 'framer-motion'
-import { useAccount, useConnect, useDisconnect, usePublicClient, useReadContract } from 'wagmi'
+import { useAccount, useConnect, useDisconnect, usePublicClient, useReadContract, useWalletClient } from 'wagmi'
 import { base } from 'wagmi/chains'
 import type { Address } from 'viem'
 import { erc20Abi, formatUnits, isAddress } from 'viem'
@@ -8,8 +8,9 @@ import { Link, useSearchParams } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { coinABI } from '@zoralabs/protocol-deployments'
 import { BarChart3, Layers, Lock, Rocket, ShieldCheck } from 'lucide-react'
+import { usePrivy, useWallets } from '@privy-io/react-auth'
+import { useSetActiveWallet } from '@privy-io/wagmi'
 import { ConnectButton } from '@/components/ConnectButton'
-import { DeployVaultAA } from '@/components/DeployVaultAA'
 import { DerivedTokenIcon } from '@/components/DerivedTokenIcon'
 import { RequestCreatorAccess } from '@/components/RequestCreatorAccess'
 import { useSiweAuth } from '@/hooks/useSiweAuth'
@@ -23,6 +24,17 @@ const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000' as const
 
 type ApiEnvelope<T> = { success: boolean; data?: T; error?: string }
 type AdminAuthResponse = { address: string; isAdmin: boolean } | null
+type ServerDeployResponse = {
+  userOpHash: string
+  addresses: {
+    vault: Address
+    wrapper: Address
+    shareOFT: Address
+    gaugeController: Address
+    ccaStrategy: Address
+    oracle: Address
+  }
+}
 
 async function fetchAdminAuth(): Promise<AdminAuthResponse> {
   const res = await fetch('/api/auth/admin', { method: 'GET', headers: { Accept: 'application/json' } })
@@ -86,6 +98,179 @@ function ExplainerRow({
   )
 }
 
+function PrivySmartWalletConnect({ target }: { target: Address }) {
+  const { ready, authenticated, login } = usePrivy()
+  const { wallets } = useWallets()
+  const { setActiveWallet } = useSetActiveWallet()
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  const targetLc = target.toLowerCase()
+  const matchingWallet = useMemo(() => {
+    return wallets.find((w) => String((w as any)?.address ?? '').toLowerCase() === targetLc)
+  }, [targetLc, wallets])
+
+  useEffect(() => {
+    if (!matchingWallet) return
+    let cancelled = false
+    ;(async () => {
+      try {
+        await setActiveWallet(matchingWallet as any)
+        if (!cancelled) {
+          setBusy(false)
+          setError(null)
+        }
+      } catch {
+        if (!cancelled) {
+          setBusy(false)
+          setError('Failed to activate Privy smart wallet. Please try again.')
+        }
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [matchingWallet, setActiveWallet])
+
+  const onConnect = () => {
+    setError(null)
+    setBusy(true)
+    login()
+  }
+
+  const statusLine = matchingWallet
+    ? 'Privy smart wallet connected.'
+    : authenticated
+      ? `Signed in to Privy, but no wallet matches ${short(target)}.`
+      : 'Sign in to Privy to use the smart wallet.'
+
+  return (
+    <div className="space-y-2">
+      <button type="button" onClick={onConnect} disabled={!ready || busy} className="btn-accent w-full">
+        {busy ? 'Opening Privy…' : 'Connect Privy Smart Wallet'}
+      </button>
+      <div className="text-xs text-zinc-500">{statusLine}</div>
+      {error ? <div className="text-[11px] text-red-400/90">{error}</div> : null}
+    </div>
+  )
+}
+
+function DeployVaultServer({
+  creatorToken,
+  shareSymbol,
+  shareName,
+  deploymentVersion,
+  ownerAddress,
+  deploymentWallet,
+  onSuccess,
+}: {
+  creatorToken: Address
+  shareSymbol: string
+  shareName: string
+  deploymentVersion: 'v1' | 'v2' | 'v3'
+  ownerAddress: Address
+  deploymentWallet: Address | null
+  onSuccess: (addresses: ServerDeployResponse['addresses']) => void
+}) {
+  const publicClient = usePublicClient({ chainId: base.id })
+  const { data: walletClient } = useWalletClient({ chainId: base.id })
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [result, setResult] = useState<ServerDeployResponse | null>(null)
+  const [phase, setPhase] = useState<'idle' | 'transfer' | 'deploy' | 'complete'>('idle')
+
+  const submit = async () => {
+    setBusy(true)
+    setError(null)
+    setPhase('transfer')
+    try {
+      if (!deploymentWallet) {
+        throw new Error('Deployment wallet not ready.')
+      }
+
+      if (!walletClient || !publicClient) {
+        throw new Error('Wallet not ready. Please reconnect.')
+      }
+
+      // Step 1: move 50M tokens to the deployment wallet (single user signature).
+      const txHash = await walletClient.writeContract({
+        account: walletClient.account,
+        chain: base as any,
+        address: creatorToken,
+        abi: erc20Abi,
+        functionName: 'transfer',
+        args: [deploymentWallet, MIN_FIRST_DEPOSIT],
+      })
+
+      await publicClient.waitForTransactionReceipt({ hash: txHash })
+
+      // Step 2: server deploy + launch.
+      setPhase('deploy')
+      const res = await fetch('/api/cdp/deployVault', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+        body: JSON.stringify({
+          creatorToken,
+          shareSymbol,
+          shareName,
+          deploymentVersion,
+          ownerAddress,
+        }),
+      })
+      const json = (await res.json().catch(() => null)) as { success?: boolean; data?: ServerDeployResponse; error?: string } | null
+      if (!res.ok || !json?.success || !json.data) {
+        throw new Error(json?.error || 'Deployment failed')
+      }
+      setResult(json.data)
+      setPhase('complete')
+      onSuccess(json.data.addresses)
+    } catch (e: any) {
+      setError(e?.message || 'Deployment failed')
+      setPhase('idle')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <div className="space-y-3">
+      <div className="grid grid-cols-3 gap-2 text-[11px] text-zinc-500">
+        <div className={`px-2 py-1 rounded border ${phase === 'transfer' || phase === 'deploy' || phase === 'complete' ? 'border-emerald-500/40 text-emerald-300' : 'border-zinc-800'}`}>
+          1. Transfer
+        </div>
+        <div className={`px-2 py-1 rounded border ${phase === 'deploy' || phase === 'complete' ? 'border-emerald-500/40 text-emerald-300' : 'border-zinc-800'}`}>
+          2. Deploy
+        </div>
+        <div className={`px-2 py-1 rounded border ${phase === 'complete' ? 'border-emerald-500/40 text-emerald-300' : 'border-zinc-800'}`}>
+          3. Complete
+        </div>
+      </div>
+      <button
+        type="button"
+        onClick={() => void submit()}
+        disabled={busy}
+        className="btn-accent w-full rounded-lg disabled:opacity-60 disabled:cursor-not-allowed"
+      >
+        {phase === 'transfer'
+          ? 'Transferring tokens…'
+          : phase === 'deploy'
+            ? 'Deploying…'
+            : phase === 'complete'
+              ? 'Deployed'
+              : busy
+                ? 'Funding + deploying…'
+                : '1‑Click Deploy'}
+      </button>
+      {error ? <div className="text-[11px] text-red-400/90">{error}</div> : null}
+      {result ? (
+        <div className="text-[11px] text-zinc-500">
+          Deployment submitted. UserOp: <span className="font-mono text-zinc-300">{result.userOpHash}</span>
+        </div>
+      ) : null}
+    </div>
+  )
+}
+
 export function DeployVault() {
   const { address, isConnected, connector } = useAccount()
   const { connect, connectors } = useConnect()
@@ -95,6 +280,14 @@ export function DeployVault() {
   const [deploymentVersion, setDeploymentVersion] = useState<'v1' | 'v2' | 'v3'>('v3')
   const [lastDeployedVault, setLastDeployedVault] = useState<Address | null>(null)
   const [confirmedSmartWallet, setConfirmedSmartWallet] = useState(false)
+  const privyEnabled = Boolean((import.meta.env.VITE_PRIVY_APP_ID as string | undefined)?.trim())
+
+  type ExpectedGaugeResponse = {
+    expectedGaugeController: Address
+    payoutRecipient: Address
+    matches: boolean
+    smartAccountAddress: Address
+  }
 
   const [searchParams] = useSearchParams()
   const prefillToken = useMemo(() => searchParams.get('token') ?? '', [searchParams])
@@ -381,24 +574,17 @@ export function DeployVault() {
     return null
   }, [payoutRecipientContract, detectedSmartWalletContract, payoutRecipient, creatorAddress])
 
-  // For gas-free 1-click, the connected account must *be* the smart wallet account.
-  // Otherwise wagmi will attempt to sendCalls via a connector that doesn't control that account.
-  const isConnectedAsSmartWallet = useMemo(() => {
-    if (!coinSmartWallet || !address) return false
-    return address.toLowerCase() === coinSmartWallet.toLowerCase()
-  }, [address, coinSmartWallet])
-
   const coinbaseSmartWalletConnector = useMemo(() => {
     return connectors.find((c) => String(c.id) === 'coinbaseSmartWallet')
   }, [connectors])
 
   const smartWalletConnectionHint = useMemo(() => {
+    // Only show the hint when the coin is owned by a smart wallet.
     if (!coinSmartWallet) return null
     if (!isConnected) return null
-    if (isConnectedAsSmartWallet) return null
     const connectorName = String((connector as any)?.name ?? (connector as any)?.id ?? 'Unknown connector')
     return { connectorName }
-  }, [coinSmartWallet, connector, isConnected, isConnectedAsSmartWallet])
+  }, [coinSmartWallet, connector, isConnected])
 
   // If the coin was created from a smart wallet (Privy/Coinbase Smart Wallet), prefer using that
   // as the execution account for deployment + the 50M initial deposit.
@@ -409,6 +595,53 @@ export function DeployVault() {
     return (coinSmartWallet ?? connectedWalletAddress) as Address | null
   }, [coinSmartWallet, connectedWalletAddress])
 
+  const expectedGaugeQuery = useQuery({
+    queryKey: [
+      'cdpExpectedGauge',
+      creatorToken,
+      derivedShareSymbol,
+      derivedShareName,
+      deploymentVersion,
+      selectedOwnerWallet,
+    ],
+    enabled: isSignedIn && tokenIsValid && !!derivedShareSymbol && !!derivedShareName && !!selectedOwnerWallet,
+    queryFn: async () => {
+      const res = await fetch('/api/cdp/expectedGauge', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+        body: JSON.stringify({
+          creatorToken,
+          shareSymbol: derivedShareSymbol,
+          shareName: derivedShareName,
+          deploymentVersion,
+          ownerAddress: selectedOwnerWallet,
+        }),
+      })
+      const json = (await res.json().catch(() => null)) as { success?: boolean; data?: ExpectedGaugeResponse; error?: string } | null
+      if (!res.ok || !json?.success || !json.data) {
+        throw new Error(json?.error || 'Failed to compute expected gauge controller')
+      }
+      return json.data
+    },
+    staleTime: 30_000,
+    retry: 1,
+  })
+
+  const payoutRecipientMatchesGauge = expectedGaugeQuery.data?.matches === true
+  const expectedGaugeController = expectedGaugeQuery.data?.expectedGaugeController ?? null
+  const deploymentWallet = expectedGaugeQuery.data?.smartAccountAddress ?? null
+
+  const { data: deploymentWalletBalance } = useReadContract({
+    address: tokenIsValid ? (creatorToken as `0x${string}`) : undefined,
+    abi: erc20Abi,
+    functionName: 'balanceOf',
+    args: [((deploymentWallet ?? ZERO_ADDRESS) as Address) as `0x${string}`],
+    query: { enabled: tokenIsValid && !!deploymentWallet },
+  })
+
+  const deploymentWalletHasMinDeposit =
+    typeof deploymentWalletBalance === 'bigint' && deploymentWalletBalance >= MIN_FIRST_DEPOSIT
+
   const { data: selectedOwnerTokenBalance } = useReadContract({
     address: tokenIsValid ? (creatorToken as `0x${string}`) : undefined,
     abi: erc20Abi,
@@ -417,7 +650,7 @@ export function DeployVault() {
     query: { enabled: tokenIsValid && !!selectedOwnerWallet },
   })
 
-  const selectedOwnerHasMinDeposit =
+  const userWalletHasMinDeposit =
     typeof selectedOwnerTokenBalance === 'bigint' && selectedOwnerTokenBalance >= MIN_FIRST_DEPOSIT
 
   const smartWalletOwnerQuery = useReadContract({
@@ -543,11 +776,10 @@ export function DeployVault() {
     !!derivedShareSymbol &&
     !!derivedShareName &&
     confirmedSmartWallet && // User must confirm they've sent 50M to their smart wallet
-    // If the coin is owned by a Smart Wallet, we must be connected *as that account*
-    // to use EIP-5792 batching + paymaster sponsorship.
-    (!!coinSmartWallet ? isConnectedAsSmartWallet : true) &&
     !!selectedOwnerAddress &&
-    selectedOwnerHasMinDeposit // Must have 50M tokens in the selected owner wallet
+    userWalletHasMinDeposit && // Must have 50M tokens in the user wallet to fund deployment
+    isSignedIn && // Custodial deploys require a server session
+    payoutRecipientMatchesGauge // Payout recipient must already match the expected GaugeController
 
   return (
     <div className="relative">
@@ -1144,15 +1376,23 @@ export function DeployVault() {
               {isConnected ? (
                 <div className="pt-3 border-t border-zinc-900/50 space-y-4">
                   <div>
-                    <div className="label mb-2">Your Smart Wallet (Coinbase Wallet)</div>
+                    <div className="label mb-2">Your Smart Wallet</div>
 
-                    {smartWalletConnectionHint ? (
+                    {smartWalletConnectionHint && coinSmartWallet ? (
                       <div className="p-4 bg-amber-500/10 border border-amber-500/20 rounded-lg space-y-2">
-                        <div className="text-amber-300/90 text-sm font-medium">Connect as Smart Wallet to deploy</div>
-                        <div className="text-amber-300/70 text-xs leading-relaxed">
-                          You’re currently connected via <span className="text-white font-mono">{smartWalletConnectionHint.connectorName}</span>.
-                          Gas-free 1-click requires connecting as the Smart Wallet account{' '}
-                          <span className="text-white font-mono">{short(coinSmartWallet as string)}</span>.
+                        <div className="text-amber-300/90 text-sm font-medium">Coin is owned by a Smart Wallet</div>
+                        <div className="text-amber-300/70 text-xs leading-relaxed space-y-2">
+                          <div>
+                            Coin owner (smart wallet): <span className="text-white font-mono">{short(coinSmartWallet as string)}</span>
+                          </div>
+                          <div>
+                            You’re connected via <span className="text-white font-mono">{smartWalletConnectionHint.connectorName}</span> as{' '}
+                            <span className="text-white font-mono">{short(String(address ?? ''))}</span>.
+                          </div>
+                          <div>
+                            To deploy, you must connect with an <span className="text-white">onchain owner</span> of the coin owner wallet.
+                            Connecting “Coinbase Smart Wallet” may show a different smart wallet address if you’re in a different Coinbase account.
+                          </div>
                         </div>
                         {coinbaseSmartWalletConnector ? (
                           <button
@@ -1167,22 +1407,23 @@ export function DeployVault() {
                             }}
                             className="btn-accent w-full"
                           >
-                            Connect Coinbase Smart Wallet
+                            Connect Coinbase Smart Wallet (recommended)
                           </button>
                         ) : null}
+                        {privyEnabled && coinSmartWallet ? <PrivySmartWalletConnect target={coinSmartWallet} /> : null}
                       </div>
                     ) : null}
 
-                    {/* Smart wallet address (read-only) */}
+                    {/* Deployment wallet address (read-only) */}
                     <input
-                      value={String(selectedOwnerWallet ?? address ?? '')}
+                      value={String(deploymentWallet ?? selectedOwnerWallet ?? address ?? '')}
                       disabled
                       className="w-full bg-black border border-zinc-800 rounded-lg px-4 py-3 text-sm text-zinc-400 placeholder:text-zinc-700 outline-none font-mono opacity-90 cursor-not-allowed"
                     />
 
                     <div className="text-xs text-zinc-600 space-y-3">
                       <div>
-                        This is your <span className="text-white">Coinbase Smart Wallet</span>. It will sign the deployment and fund the first 50M token deposit.
+                        This is the <span className="text-white">deployment wallet</span> used by CreatorVault. It must hold the first 50M token deposit.
                       </div>
 
                       {tokenIsValid ? (
@@ -1190,21 +1431,21 @@ export function DeployVault() {
                           {/* Balance display */}
                           <div className="flex items-center justify-between text-sm p-3 bg-black/40 border border-zinc-800 rounded-lg">
                             <span className="text-zinc-500">Current balance:</span>
-                            <span className={selectedOwnerHasMinDeposit ? 'text-emerald-400 font-medium' : 'text-amber-300/90 font-medium'}>
-                              {formatToken18(typeof selectedOwnerTokenBalance === 'bigint' ? selectedOwnerTokenBalance : undefined)}{' '}
+                            <span className={deploymentWalletHasMinDeposit ? 'text-emerald-400 font-medium' : 'text-amber-300/90 font-medium'}>
+                              {formatToken18(typeof deploymentWalletBalance === 'bigint' ? deploymentWalletBalance : undefined)}{' '}
                               {underlyingSymbolUpper || 'TOKENS'}
                             </span>
                           </div>
 
                           {/* Warning if insufficient balance */}
-                          {!selectedOwnerHasMinDeposit ? (
+                          {!deploymentWalletHasMinDeposit ? (
                             <div className="p-4 bg-amber-500/10 border border-amber-500/20 rounded-lg space-y-2">
                               <div className="text-amber-300/90 text-sm font-medium">⚠️ Insufficient Balance</div>
                               <div className="text-amber-300/70 text-xs">
-                                You need <span className="text-white font-medium">50,000,000 {underlyingSymbolUpper || 'TOKENS'}</span> in this smart wallet to deploy.
+                                You need <span className="text-white font-medium">50,000,000 {underlyingSymbolUpper || 'TOKENS'}</span> in your wallet to deploy.
                               </div>
                               <div className="text-amber-300/70 text-xs">
-                                Please send tokens to: <span className="text-white font-mono">{String(selectedOwnerWallet ?? address ?? '')}</span>
+                                This will be transferred to the deployment wallet during Step 2.
                               </div>
                             </div>
                           ) : (
@@ -1218,13 +1459,13 @@ export function DeployVault() {
                                   className="mt-0.5 w-4 h-4 rounded border-uniswap/30 bg-black/40 checked:bg-uniswap checked:border-uniswap transition-colors"
                                 />
                                 <div className="flex-1 min-w-0 text-xs">
-                                  <div className="text-white font-medium mb-1">I confirm this is my smart wallet</div>
+                                  <div className="text-white font-medium mb-1">I confirm this is the deployment wallet</div>
                                   <div className="text-zinc-500">
                                     I have verified that{' '}
                                     <span className="text-white font-mono">
-                                      {String(selectedOwnerWallet ?? address ?? '').slice(0, 10)}...{String(selectedOwnerWallet ?? address ?? '').slice(-8)}
+                                      {String(deploymentWallet ?? selectedOwnerWallet ?? address ?? '').slice(0, 10)}...{String(deploymentWallet ?? selectedOwnerWallet ?? address ?? '').slice(-8)}
                                     </span>{' '}
-                                    is my Coinbase Smart Wallet and contains at least 50M {underlyingSymbolUpper || 'TOKENS'}.
+                                    is the CreatorVault deployment wallet and contains at least 50M {underlyingSymbolUpper || 'TOKENS'}.
                                   </div>
                                 </div>
                               </label>
@@ -1244,6 +1485,64 @@ export function DeployVault() {
             {/* Deploy */}
             <div className="card rounded-xl p-8 space-y-4">
               <div className="label">Deploy</div>
+
+              {isConnected && !isSignedIn ? (
+                <div className="p-4 bg-amber-500/10 border border-amber-500/20 rounded-lg space-y-2">
+                  <div className="text-amber-300/90 text-sm font-medium">Sign-in required</div>
+                  <div className="text-amber-300/70 text-xs leading-relaxed">
+                    Deployments are executed by the CreatorVault server. Please sign in to authorize deployments for this session.
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => void signIn()}
+                    disabled={authBusy}
+                    className="btn-accent w-full"
+                  >
+                    {authBusy ? 'Signing in…' : 'Sign in to deploy'}
+                  </button>
+                </div>
+              ) : null}
+
+              {isSignedIn && expectedGaugeQuery.isLoading ? (
+                <div className="p-4 bg-black/40 border border-zinc-800 rounded-lg text-xs text-zinc-500">
+                  Checking payout recipient for GaugeController…
+                </div>
+              ) : null}
+
+              {isSignedIn && expectedGaugeQuery.isError ? (
+                <div className="p-4 bg-red-500/10 border border-red-500/20 rounded-lg text-xs text-red-300/90">
+                  Could not verify payout recipient. Refresh and try again.
+                </div>
+              ) : null}
+
+              {isSignedIn && expectedGaugeController && !payoutRecipientMatchesGauge ? (
+                <div className="p-4 bg-amber-500/10 border border-amber-500/20 rounded-lg space-y-2">
+                  <div className="text-amber-300/90 text-sm font-medium">Step 1: Assign payoutRecipient → GaugeController</div>
+                  <div className="text-amber-300/70 text-xs leading-relaxed">
+                    The creator coin payout recipient must be set to the GaugeController before deployment.
+                  </div>
+                  <div className="text-amber-300/70 text-xs leading-relaxed">
+                    Early phase: rewards accumulate in each creator’s GaugeController and stream to vault holders weekly (Thu 00:00 UTC) over 7 days.
+                  </div>
+                  <div className="text-[11px] text-amber-300/80">
+                    Expected: <span className="font-mono text-white">{short(expectedGaugeController)}</span>
+                  </div>
+                  {tokenIsValid ? (
+                    <Link
+                      to={`/coin/${creatorToken}/manage?recipient=${encodeURIComponent(String(expectedGaugeController))}`}
+                      className="inline-flex items-center justify-center gap-2 w-full rounded-lg bg-black/30 border border-amber-500/30 px-4 py-2 text-xs text-amber-200 hover:text-white hover:border-amber-400/60 transition-colors"
+                    >
+                      Open payout recipient settings
+                    </Link>
+                  ) : null}
+                </div>
+              ) : null}
+
+              {isSignedIn && expectedGaugeController && payoutRecipientMatchesGauge ? (
+                <div className="text-xs text-emerald-300/80 px-3 py-2 bg-emerald-500/10 border border-emerald-500/20 rounded-lg">
+                  Step 2: One‑click deploy (transfer + deploy)
+                </div>
+              ) : null}
 
               {!isConnected ? (
                 <button
@@ -1297,23 +1596,42 @@ export function DeployVault() {
                 </button>
               ) : tokenIsValid && zoraCoin && allowlistEnforced && !isAllowlistedCreator ? (
                 <RequestCreatorAccess coin={creatorToken} />
-              ) : canDeploy && typeof selectedOwnerTokenBalance === 'bigint' && !selectedOwnerHasMinDeposit ? (
+              ) : tokenIsValid && zoraCoin && !isSignedIn ? (
                 <button
                   disabled
                   className="w-full py-4 bg-black/30 border border-zinc-900/60 rounded-lg text-zinc-600 text-sm cursor-not-allowed"
                 >
-                  Owner wallet needs 50,000,000 {underlyingSymbolUpper || 'TOKENS'} to deploy & launch
+                  Sign in to deploy
+                </button>
+              ) : tokenIsValid && zoraCoin && isSignedIn && expectedGaugeQuery.isLoading ? (
+                <button
+                  disabled
+                  className="w-full py-4 bg-black/30 border border-zinc-900/60 rounded-lg text-zinc-600 text-sm cursor-not-allowed"
+                >
+                  Checking payout recipient…
+                </button>
+              ) : tokenIsValid && zoraCoin && isSignedIn && expectedGaugeController && !payoutRecipientMatchesGauge ? (
+                <button
+                  disabled
+                  className="w-full py-4 bg-black/30 border border-zinc-900/60 rounded-lg text-zinc-600 text-sm cursor-not-allowed"
+                >
+                  Update payout recipient to continue
+                </button>
+              ) : canDeploy && typeof selectedOwnerTokenBalance === 'bigint' && !userWalletHasMinDeposit ? (
+                <button
+                  disabled
+                  className="w-full py-4 bg-black/30 border border-zinc-900/60 rounded-lg text-zinc-600 text-sm cursor-not-allowed"
+                >
+                  Your wallet needs 50,000,000 {underlyingSymbolUpper || 'TOKENS'} to deploy & launch
                 </button>
               ) : canDeploy ? (
-                <DeployVaultAA
+                <DeployVaultServer
                   creatorToken={creatorToken as `0x${string}`}
-                  symbol={derivedShareSymbol}
-                  name={derivedShareName}
+                  shareSymbol={derivedShareSymbol}
+                  shareName={derivedShareName}
                   deploymentVersion={deploymentVersion}
-                  // Keep revenue flowing to the coin's payout recipient by default
-                  creatorTreasury={((payoutRecipient ?? (address as Address)) as Address) as `0x${string}`}
-                  // If the coin is owned by a smart wallet, execute deployment as that account.
-                  executeAs={coinSmartWallet ?? undefined}
+                  ownerAddress={selectedOwnerWallet as Address}
+                  deploymentWallet={deploymentWallet}
                   onSuccess={(a) => setLastDeployedVault(a.vault)}
                 />
               ) : (
@@ -1329,6 +1647,7 @@ export function DeployVault() {
                 <p>Designed for one wallet confirmation (some wallets may require multiple confirmations).</p>
                 <p>Requires a 50M token deposit to start the fair launch.</p>
                 <p>Advanced: v3 is the default. v1 is admin-only.</p>
+                <p>For full gasless 1-click, connect Coinbase Smart Wallet and set `VITE_CDP_API_KEY` or `VITE_CDP_PAYMASTER_URL`.</p>
               </div>
             </div>
 

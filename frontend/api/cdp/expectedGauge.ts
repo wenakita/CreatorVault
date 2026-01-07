@@ -1,0 +1,250 @@
+import type { VercelRequest, VercelResponse } from '@vercel/node'
+import {
+  handleOptions,
+  readJsonBody,
+  setCors,
+  setNoStore,
+  type ApiEnvelope,
+} from '../auth/_shared.js'
+import { getSessionAddress } from '../_lib/session.js'
+import { getCdpClient, makeOwnerAccountName, makeSmartAccountName } from '../_lib/cdp.js'
+import { CONTRACTS } from '@/config/contracts'
+import { DEPLOY_BYTECODE } from '@/deploy/bytecode.generated'
+
+import {
+  concatHex,
+  createPublicClient,
+  encodeAbiParameters,
+  encodePacked,
+  getCreate2Address,
+  http,
+  isAddress,
+  keccak256,
+  parseAbiParameters,
+  type Address,
+  type Hex,
+} from 'viem'
+import { base } from 'viem/chains'
+import { coinABI } from '@zoralabs/protocol-deployments'
+
+declare const process: { env: Record<string, string | undefined> }
+
+type RequestBody = {
+  creatorToken?: string
+  shareSymbol?: string
+  shareName?: string
+  deploymentVersion?: 'v1' | 'v2' | 'v3'
+  ownerAddress?: string
+}
+
+type ResponseBody = {
+  sessionAddress: Address
+  ownerAddress: Address
+  smartAccountAddress: Address
+  deployerAddress: Address
+  expectedGaugeController: Address
+  payoutRecipient: Address
+  matches: boolean
+}
+
+const BYTECODE_STORE_VIEW_ABI = [
+  { type: 'function', name: 'pointers', stateMutability: 'view', inputs: [{ name: 'codeId', type: 'bytes32' }], outputs: [{ type: 'address' }] },
+] as const
+
+function getBaseRpcUrl(): string {
+  const rpc = (process.env.BASE_RPC_URL ?? '').trim()
+  return rpc.length > 0 ? rpc : 'https://mainnet.base.org'
+}
+
+function isAddressLike(value: string): value is `0x${string}` {
+  return /^0x[a-fA-F0-9]{40}$/.test(value)
+}
+
+function deriveSalts(params: { creatorToken: Address; owner: Address; chainId: number; version: string }) {
+  const { creatorToken, owner, chainId, version } = params
+  const baseSalt = keccak256(
+    encodePacked(
+      ['address', 'address', 'uint256', 'string'],
+      [creatorToken, owner, BigInt(chainId), `CreatorVault:deploy:${version}`],
+    ),
+  )
+  const saltFor = (label: string) => keccak256(encodePacked(['bytes32', 'string'], [baseSalt, label]))
+  return {
+    baseSalt,
+    gaugeSalt: saltFor('gauge'),
+  }
+}
+
+function deriveShareOftUniversalSalt(params: { owner: Address; shareSymbol: string; version: string }) {
+  const base = keccak256(encodePacked(['address', 'string'], [params.owner, params.shareSymbol.toLowerCase()]))
+  return keccak256(encodePacked(['bytes32', 'string'], [base, `CreatorShareOFT:${params.version}`]))
+}
+
+function deriveOftBootstrapSalt() {
+  return keccak256(encodePacked(['string'], ['CreatorVault:OFTBootstrapRegistry:v1']))
+}
+
+function predictCreate2Address(create2Deployer: Address, salt: Hex, initCode: Hex): Address {
+  const bytecodeHash = keccak256(initCode)
+  return getCreate2Address({ from: create2Deployer, salt, bytecodeHash })
+}
+
+export default async function handler(req: VercelRequest, res: VercelResponse) {
+  setCors(res)
+  setNoStore(res)
+  if (handleOptions(req, res)) return
+
+  if (req.method !== 'POST') {
+    return res.status(405).json({ success: false, error: 'Method not allowed' } satisfies ApiEnvelope<never>)
+  }
+
+  const sessionAddress = getSessionAddress(req)
+  if (!sessionAddress) {
+    return res.status(401).json({ success: false, error: 'Sign in required' } satisfies ApiEnvelope<never>)
+  }
+
+  const body = (await readJsonBody<RequestBody>(req)) ?? {}
+  const creatorToken = typeof body.creatorToken === 'string' ? body.creatorToken : ''
+  const shareSymbol = typeof body.shareSymbol === 'string' ? body.shareSymbol : ''
+  const shareName = typeof body.shareName === 'string' ? body.shareName : ''
+  const version = body.deploymentVersion ?? 'v3'
+  const ownerOverride = typeof body.ownerAddress === 'string' ? body.ownerAddress : ''
+
+  if (!isAddressLike(creatorToken) || !shareSymbol || !shareName) {
+    return res.status(400).json({ success: false, error: 'Missing creator token or share metadata' } satisfies ApiEnvelope<never>)
+  }
+
+  const client = createPublicClient({
+    chain: base,
+    transport: http(getBaseRpcUrl(), { timeout: 12_000, retryCount: 2, retryDelay: 300 }),
+  })
+
+  const cdp = getCdpClient()
+  const owner = await cdp.evm.getOrCreateAccount({
+    name: makeOwnerAccountName(sessionAddress),
+  })
+  const smartAccount = await cdp.evm.getOrCreateSmartAccount({
+    owner,
+    name: makeSmartAccountName(sessionAddress),
+  })
+
+  const ownerAddress = owner.address as Address
+  const smartAccountAddress = smartAccount.address as Address
+  const deployerAddress = isAddressLike(ownerOverride) ? (ownerOverride as Address) : smartAccountAddress
+
+  const create2Factory = CONTRACTS.create2Factory as Address
+  const create2Deployer = CONTRACTS.create2Deployer as Address
+  const universalBytecodeStore = (CONTRACTS as any).universalBytecodeStore as Address | undefined
+  const universalCreate2FromStore = (CONTRACTS as any).universalCreate2DeployerFromStore as Address | undefined
+  const protocolTreasury = CONTRACTS.protocolTreasury as Address
+
+  const bootstrapCodeId = keccak256(DEPLOY_BYTECODE.OFTBootstrapRegistry as Hex)
+  const shareOftCodeId = keccak256(DEPLOY_BYTECODE.CreatorShareOFT as Hex)
+  const vaultCodeId = keccak256(DEPLOY_BYTECODE.CreatorOVault as Hex)
+  const wrapperCodeId = keccak256(DEPLOY_BYTECODE.CreatorOVaultWrapper as Hex)
+  const gaugeCodeId = keccak256(DEPLOY_BYTECODE.CreatorGaugeController as Hex)
+  const ccaCodeId = keccak256(DEPLOY_BYTECODE.CCALaunchStrategy as Hex)
+  const oracleCodeId = keccak256(DEPLOY_BYTECODE.CreatorOracle as Hex)
+
+  let useUniversalOftStore = false
+  let useUniversalFullStore = false
+
+  if ((version === 'v2' || version === 'v3') && universalBytecodeStore && universalCreate2FromStore) {
+    try {
+      const [storeCode, deployerCode] = await Promise.all([
+        client.getBytecode({ address: universalBytecodeStore }),
+        client.getBytecode({ address: universalCreate2FromStore }),
+      ])
+      if (storeCode && storeCode !== '0x' && deployerCode && deployerCode !== '0x') {
+        const codeIds = [bootstrapCodeId, shareOftCodeId, vaultCodeId, wrapperCodeId, gaugeCodeId, ccaCodeId, oracleCodeId] as const
+        const ptrs = await Promise.all(
+          codeIds.map((codeId) =>
+            client.readContract({
+              address: universalBytecodeStore,
+              abi: BYTECODE_STORE_VIEW_ABI,
+              functionName: 'pointers',
+              args: [codeId],
+            }),
+          ),
+        )
+        const has = (i: number) => (ptrs[i] as Address).toLowerCase() !== '0x0000000000000000000000000000000000000000'
+        useUniversalOftStore = has(0) && has(1)
+        useUniversalFullStore = useUniversalOftStore && has(2) && has(3) && has(4) && has(5) && has(6)
+      }
+    } catch {
+      useUniversalOftStore = false
+      useUniversalFullStore = false
+    }
+  }
+
+  const localCreate2Deployer = useUniversalFullStore ? (universalCreate2FromStore as Address) : create2Deployer
+
+  const salts = deriveSalts({
+    creatorToken: creatorToken as Address,
+    owner: deployerAddress,
+    chainId: base.id,
+    version,
+  })
+
+  const oftBootstrapSalt = deriveOftBootstrapSalt()
+  const oftBootstrapInitCode = DEPLOY_BYTECODE.OFTBootstrapRegistry as Hex
+  const shareOftSalt = deriveShareOftUniversalSalt({
+    owner: deployerAddress,
+    shareSymbol,
+    version,
+  })
+
+  const oftBootstrapRegistry = predictCreate2Address(
+    useUniversalOftStore ? (universalCreate2FromStore as Address) : create2Factory,
+    oftBootstrapSalt,
+    oftBootstrapInitCode,
+  )
+
+  const shareOftConstructorArgs = encodeAbiParameters(parseAbiParameters('string,string,address,address'), [
+    shareName,
+    shareSymbol,
+    oftBootstrapRegistry,
+    deployerAddress,
+  ])
+  const shareOftInitCode = concatHex([DEPLOY_BYTECODE.CreatorShareOFT as Hex, shareOftConstructorArgs])
+  const shareOftAddress = predictCreate2Address(
+    useUniversalOftStore ? (universalCreate2FromStore as Address) : create2Factory,
+    shareOftSalt,
+    shareOftInitCode,
+  )
+
+  const gaugeConstructorArgs = encodeAbiParameters(parseAbiParameters('address,address,address,address'), [
+    shareOftAddress,
+    protocolTreasury,
+    protocolTreasury,
+    deployerAddress,
+  ])
+  const gaugeInitCode = concatHex([DEPLOY_BYTECODE.CreatorGaugeController as Hex, gaugeConstructorArgs])
+  const gaugeAddress = predictCreate2Address(localCreate2Deployer, salts.gaugeSalt, gaugeInitCode)
+
+  const payoutRecipient = (await client.readContract({
+    address: creatorToken as Address,
+    abi: coinABI,
+    functionName: 'payoutRecipient',
+  })) as Address
+
+  const payoutRecipientLc = String(payoutRecipient ?? '').toLowerCase()
+  const expectedLc = gaugeAddress.toLowerCase()
+
+  if (!isAddress(payoutRecipient)) {
+    return res.status(500).json({ success: false, error: 'Invalid payout recipient returned from coin' } satisfies ApiEnvelope<never>)
+  }
+
+  return res.status(200).json({
+    success: true,
+    data: {
+      sessionAddress,
+      ownerAddress,
+      smartAccountAddress,
+      deployerAddress,
+      expectedGaugeController: gaugeAddress,
+      payoutRecipient: payoutRecipient as Address,
+      matches: payoutRecipientLc === expectedLc,
+    } satisfies ResponseBody,
+  } satisfies ApiEnvelope<ResponseBody>)
+}

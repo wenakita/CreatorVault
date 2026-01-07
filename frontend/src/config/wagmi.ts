@@ -1,7 +1,8 @@
-import { createConfig, http, fallback } from 'wagmi'
+import { http, fallback } from 'wagmi'
 import { base } from 'wagmi/chains'
 import { coinbaseWallet, injected } from 'wagmi/connectors'
 import { farcasterMiniApp } from '@farcaster/miniapp-wagmi-connector'
+import { createConfig } from '@privy-io/wagmi'
 import { coinbaseSmartWallet } from '@/web3/connectors/coinbaseSmartWallet'
 
 /**

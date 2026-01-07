@@ -1,5 +1,5 @@
-import { useMemo, useState } from 'react'
-import { Link, useParams } from 'react-router-dom'
+import { useEffect, useMemo, useState } from 'react'
+import { Link, useParams, useSearchParams } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { useAccount, usePublicClient, useReadContract, useWalletClient } from 'wagmi'
 import { isAddress, type Address } from 'viem'
@@ -26,6 +26,7 @@ function shortAddress(addr: string): string {
 
 export function CoinManage() {
   const params = useParams()
+  const [searchParams] = useSearchParams()
   const { address: connectedAddress, isConnected } = useAccount()
   const { data: walletClient } = useWalletClient()
   const publicClient = usePublicClient({ chainId: base.id })
@@ -42,6 +43,14 @@ export function CoinManage() {
 
   const [newPayoutRecipient, setNewPayoutRecipient] = useState('')
   const newPayoutIsValid = useMemo(() => isAddress(newPayoutRecipient), [newPayoutRecipient])
+
+  useEffect(() => {
+    const fromQuery = searchParams.get('recipient')
+    if (!fromQuery) return
+    if (newPayoutRecipient.trim().length > 0) return
+    if (!isAddress(fromQuery)) return
+    setNewPayoutRecipient(fromQuery)
+  }, [newPayoutRecipient, searchParams])
 
   const [newUri, setNewUri] = useState('')
   const uriLooksValid = useMemo(() => newUri.trim().startsWith('ipfs://') || newUri.trim().startsWith('https://'), [newUri])
@@ -395,4 +404,3 @@ export function CoinManage() {
     </div>
   )
 }
-
