@@ -12,6 +12,7 @@ import { useSendCalls } from 'wagmi/experimental'
 import { base } from 'wagmi/chains'
 import { useOnchainKit } from '@coinbase/onchainkit'
 import {
+  createPublicClient,
   type Address,
   type Hex,
   concatHex,
@@ -21,6 +22,7 @@ import {
   formatUnits,
   getCreate2Address,
   isAddress,
+  http,
   keccak256,
   parseAbiParameters,
 } from 'viem'
@@ -516,13 +518,46 @@ export function DeployVaultAA({
       // Require creator to have the minimum deposit up-front (we will deposit+launch at the end of this flow).
       // This prevents "deploy without launch" states that confuse users and creates a consistent minimum liquidity baseline.
       try {
-        const bal = (await publicClient.readContract({
+        let bal = (await publicClient.readContract({
           address: creatorToken,
           abi: ERC20_APPROVE_ABI,
           functionName: 'balanceOf',
           args: [owner],
         })) as unknown as bigint
         if (typeof bal !== 'bigint') fail('Failed to check your token balance.')
+
+        // Reliability: wagmi's fallback transport can sometimes route to lagging public RPCs.
+        // If we *think* the user is below the minimum, do a second opinion read against a
+        // deterministic RPC (VITE_BASE_RPC -> mainnet.base.org) before blocking the deploy.
+        if (bal < MIN_FIRST_DEPOSIT) {
+          const candidateUrls = [
+            (import.meta.env.VITE_BASE_RPC as string | undefined)?.trim(),
+            'https://mainnet.base.org',
+          ].filter((u): u is string => !!u && u.length > 0)
+
+          const seen = new Set<string>()
+          for (const url of candidateUrls) {
+            if (seen.has(url)) continue
+            seen.add(url)
+            try {
+              const strictClient = createPublicClient({
+                chain: base,
+                transport: http(url, { timeout: 10_000, retryCount: 1, retryDelay: 250 }),
+              })
+              const alt = (await strictClient.readContract({
+                address: creatorToken,
+                abi: ERC20_APPROVE_ABI,
+                functionName: 'balanceOf',
+                args: [owner],
+              })) as unknown as bigint
+              if (typeof alt === 'bigint' && alt > bal) bal = alt
+              if (bal >= MIN_FIRST_DEPOSIT) break
+            } catch {
+              // ignore and try next
+            }
+          }
+        }
+
         if (bal < MIN_FIRST_DEPOSIT) {
           const human = Number(formatUnits(bal, 18)).toLocaleString(undefined, { maximumFractionDigits: 2 })
           fail(
