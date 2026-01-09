@@ -93,6 +93,7 @@ function localApiRoutesPlugin(): Plugin {
         '/api/auth/logout': () => import('./api/auth/logout'),
         '/api/onchain/protocolRewardsClaimable': () => import('./api/onchain/protocolRewardsClaimable'),
         '/api/onchain/protocolRewardsWithdrawn': () => import('./api/onchain/protocolRewardsWithdrawn'),
+        '/api/agent/invokeSkill': () => import('./api/agent/invokeSkill'),
       }
 
       server.middlewares.use(async (req, res, next) => {
