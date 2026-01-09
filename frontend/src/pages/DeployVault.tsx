@@ -779,8 +779,7 @@ export function DeployVault() {
     confirmedSmartWallet && // User must confirm they've sent 50M to their smart wallet
     !!selectedOwnerAddress &&
     userWalletHasMinDeposit && // Must have 50M tokens in the user wallet to fund deployment
-    isSignedIn && // Custodial deploys require a server session
-    payoutRecipientMatchesGauge // Payout recipient must already match the expected GaugeController
+    isSignedIn // Custodial deploys require a server session
 
   return (
     <div className="relative">
@@ -1504,47 +1503,6 @@ export function DeployVault() {
                 </div>
               ) : null}
 
-              {isSignedIn && expectedGaugeQuery.isLoading ? (
-                <div className="p-4 bg-black/40 border border-zinc-800 rounded-lg text-xs text-zinc-500">
-                  Checking payout recipient for GaugeController…
-                </div>
-              ) : null}
-
-              {isSignedIn && expectedGaugeQuery.isError ? (
-                <div className="p-4 bg-red-500/10 border border-red-500/20 rounded-lg text-xs text-red-300/90">
-                  Could not verify payout recipient. Refresh and try again.
-                </div>
-              ) : null}
-
-              {isSignedIn && expectedGaugeController && !payoutRecipientMatchesGauge ? (
-                <div className="p-4 bg-amber-500/10 border border-amber-500/20 rounded-lg space-y-2">
-                  <div className="text-amber-300/90 text-sm font-medium">Step 1: Assign payoutRecipient → GaugeController</div>
-                  <div className="text-amber-300/70 text-xs leading-relaxed">
-                    The creator coin payout recipient must be set to the GaugeController before deployment.
-                  </div>
-                  <div className="text-amber-300/70 text-xs leading-relaxed">
-                    Early phase: rewards accumulate in each creator’s GaugeController and stream to vault holders weekly (Thu 00:00 UTC) over 7 days.
-                  </div>
-                  <div className="text-[11px] text-amber-300/80">
-                    Expected: <span className="font-mono text-white">{short(expectedGaugeController)}</span>
-                  </div>
-                  {tokenIsValid ? (
-                    <Link
-                      to={`/coin/${creatorToken}/manage?recipient=${encodeURIComponent(String(expectedGaugeController))}`}
-                      className="inline-flex items-center justify-center gap-2 w-full rounded-lg bg-black/30 border border-amber-500/30 px-4 py-2 text-xs text-amber-200 hover:text-white hover:border-amber-400/60 transition-colors"
-                    >
-                      Open payout recipient settings
-                    </Link>
-                  ) : null}
-                </div>
-              ) : null}
-
-              {isSignedIn && expectedGaugeController && payoutRecipientMatchesGauge ? (
-                <div className="text-xs text-emerald-300/80 px-3 py-2 bg-emerald-500/10 border border-emerald-500/20 rounded-lg">
-                  Step 2: One‑click deploy (transfer + deploy)
-                </div>
-              ) : null}
-
               {!isConnected ? (
                 <button
                   disabled
@@ -1589,12 +1547,7 @@ export function DeployVault() {
                   Checking creator access…
                 </button>
               ) : tokenIsValid && zoraCoin && creatorAllowlistQuery.isError ? (
-                <button
-                  disabled
-                  className="w-full py-4 bg-black/30 border border-zinc-900/60 rounded-lg text-zinc-600 text-sm cursor-not-allowed"
-                >
-                  Couldn’t verify creator access. Refresh and try again.
-                </button>
+                <RequestCreatorAccess coin={creatorToken} />
               ) : tokenIsValid && zoraCoin && allowlistEnforced && !isAllowlistedCreator ? (
                 <RequestCreatorAccess coin={creatorToken} />
               ) : tokenIsValid && zoraCoin && !isSignedIn ? (
@@ -1603,20 +1556,6 @@ export function DeployVault() {
                   className="w-full py-4 bg-black/30 border border-zinc-900/60 rounded-lg text-zinc-600 text-sm cursor-not-allowed"
                 >
                   Sign in to deploy
-                </button>
-              ) : tokenIsValid && zoraCoin && isSignedIn && expectedGaugeQuery.isLoading ? (
-                <button
-                  disabled
-                  className="w-full py-4 bg-black/30 border border-zinc-900/60 rounded-lg text-zinc-600 text-sm cursor-not-allowed"
-                >
-                  Checking payout recipient…
-                </button>
-              ) : tokenIsValid && zoraCoin && isSignedIn && expectedGaugeController && !payoutRecipientMatchesGauge ? (
-                <button
-                  disabled
-                  className="w-full py-4 bg-black/30 border border-zinc-900/60 rounded-lg text-zinc-600 text-sm cursor-not-allowed"
-                >
-                  Update payout recipient to continue
                 </button>
               ) : canDeploy && typeof selectedOwnerTokenBalance === 'bigint' && !userWalletHasMinDeposit ? (
                 <button
