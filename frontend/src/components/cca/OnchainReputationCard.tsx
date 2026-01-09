@@ -10,6 +10,7 @@ import {
   Users, 
   CheckCircle, 
   ExternalLink,
+  Sparkles,
   Target,
   Activity,
 } from 'lucide-react'
@@ -60,6 +61,7 @@ export function OnchainReputationCard({
   if (!reputation) return null
 
   const { aggregated, talent, guild, basename } = reputation
+  const skillsScore = talent.passport?.skills_score ?? 0
 
   // Professional monochrome color scheme
   const levelColors = {
@@ -124,7 +126,7 @@ export function OnchainReputationCard({
       <div className="p-6 space-y-6">
 
       {/* Key Metrics Grid */}
-      <div className="grid grid-cols-3 gap-3">
+      <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
         {/* Trust Score */}
         <motion.div
           initial={{ opacity: 0, scale: 0.95 }}
@@ -188,6 +190,26 @@ export function OnchainReputationCard({
               {aggregated.socialReach >= 1000
                 ? `${Math.round(aggregated.socialReach / 1000)}k`
                 : aggregated.socialReach}
+            </div>
+          </motion.div>
+        )}
+
+        {/* Skills Score */}
+        {skillsScore > 0 && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ delay: 0.4 }}
+            className="bg-gradient-to-br from-zinc-900/80 to-zinc-900/40 rounded-xl p-4 border border-zinc-800/30 hover:border-cyan-500/20 transition-colors"
+          >
+            <div className="flex items-center gap-2 mb-2">
+              <div className="p-1.5 bg-cyan-500/10 rounded-lg">
+                <Sparkles className="w-4 h-4 text-cyan-400" />
+              </div>
+              <span className="text-xs font-medium text-zinc-400 uppercase tracking-wider">Skills</span>
+            </div>
+            <div className="text-2xl font-bold text-white">
+              {skillsScore}
             </div>
           </motion.div>
         )}

@@ -13,6 +13,13 @@ export interface SocialAccount {
   verified?: boolean
 }
 
+export interface SkillSignal {
+  name: string
+  score?: number
+  value?: number
+  level?: string
+}
+
 export interface TalentPassport {
   passport_id: number
   passport_profile: {
@@ -28,6 +35,10 @@ export interface TalentPassport {
   activity_score: number
   identity_score: number
   skills_score: number
+  skills?: {
+    score?: number
+    signals?: SkillSignal[]
+  }
   rank?: number // Builder rank (e.g., #317)
   followers?: number // Follower count
   socials?: {
@@ -140,6 +151,8 @@ function mapProfileData(profile: any): TalentPassport | null {
         profile.scores.find((s: any) => s?.slug === 'builder_score' || s?.scorer_slug === 'builder_score')?.score)
       : undefined) ??
     0
+
+  const skillsDetails = extractSkills(profile)
   
   return {
     passport_id: profile.id,
@@ -155,12 +168,118 @@ function mapProfileData(profile: any): TalentPassport | null {
     main_wallet: profile.main_wallet || '',
     activity_score: 0,
     identity_score: 0,
-    skills_score: 0,
+    skills_score: skillsDetails.score,
+    skills: skillsDetails.signals.length > 0 ? { score: skillsDetails.score || undefined, signals: skillsDetails.signals } : undefined,
     socials: extractSocials(profile),
     social_accounts: extractSocialAccounts(profile),
     credentials: profile.credentials || [],
     rank: typeof profile.builder_rank === 'number' ? profile.builder_rank : undefined,
     followers: typeof profile.followers_count === 'number' ? profile.followers_count : undefined,
+  }
+}
+
+function parseNumber(value: unknown): number | undefined {
+  if (typeof value === 'number' && Number.isFinite(value)) return value
+  if (typeof value === 'string') {
+    const parsed = Number(value)
+    return Number.isFinite(parsed) ? parsed : undefined
+  }
+  return undefined
+}
+
+function extractSkills(profile: any): { score: number; signals: SkillSignal[] } {
+  const signals: SkillSignal[] = []
+
+  const skillsPayload = profile?.skills ?? profile?.skill_signals ?? profile?.skillSignals
+  if (Array.isArray(skillsPayload)) {
+    for (const skill of skillsPayload) {
+      if (typeof skill === 'string') {
+        signals.push({ name: skill })
+        continue
+      }
+      if (skill && typeof skill === 'object') {
+        const name = skill.name || skill.skill || skill.title || skill.slug
+        if (!name) continue
+        signals.push({
+          name,
+          score: parseNumber(skill.score ?? skill.points ?? skill.value),
+          value: parseNumber(skill.value ?? skill.points ?? skill.score),
+          level: skill.level || skill.tier,
+        })
+      }
+    }
+  } else if (skillsPayload && typeof skillsPayload === 'object') {
+    const nestedSkills = skillsPayload.skills || skillsPayload.signals
+    if (Array.isArray(nestedSkills)) {
+      for (const skill of nestedSkills) {
+        if (typeof skill === 'string') {
+          signals.push({ name: skill })
+          continue
+        }
+        if (skill && typeof skill === 'object') {
+          const name = skill.name || skill.skill || skill.title || skill.slug
+          if (!name) continue
+          signals.push({
+            name,
+            score: parseNumber(skill.score ?? skill.points ?? skill.value),
+            value: parseNumber(skill.value ?? skill.points ?? skill.score),
+            level: skill.level || skill.tier,
+          })
+        }
+      }
+    }
+  }
+
+  const scoreCandidates = [
+    parseNumber(profile?.skills_score),
+    parseNumber(profile?.skill_score),
+    parseNumber(profile?.skills?.score),
+    parseNumber(profile?.skills?.points),
+    parseNumber(profile?.skills?.total),
+    parseNumber(profile?.skills?.value),
+    parseNumber(profile?.skills?.total_score),
+    parseNumber(profile?.skills?.skills_score),
+    Array.isArray(profile?.scores)
+      ? parseNumber(
+          profile.scores.find(
+            (s: any) =>
+              s?.slug === 'skills_score' ||
+              s?.slug === 'skills' ||
+              s?.slug === 'skill_score' ||
+              s?.scorer_slug === 'skills_score' ||
+              s?.scorer_slug === 'skills' ||
+              s?.scorer_slug === 'skill_score'
+          )?.points ??
+            profile.scores.find(
+              (s: any) =>
+                s?.slug === 'skills_score' ||
+                s?.slug === 'skills' ||
+                s?.slug === 'skill_score' ||
+                s?.scorer_slug === 'skills_score' ||
+                s?.scorer_slug === 'skills' ||
+                s?.scorer_slug === 'skill_score'
+            )?.score
+        )
+      : undefined,
+  ].filter((value): value is number => typeof value === 'number')
+
+  let score = scoreCandidates[0] ?? 0
+
+  if (!score && signals.length > 0) {
+    const numericSignals = signals
+      .map((signal) => parseNumber(signal.score ?? signal.value))
+      .filter((value): value is number => typeof value === 'number')
+
+    if (numericSignals.length > 0) {
+      score = Math.round(numericSignals.reduce((sum, value) => sum + value, 0) / numericSignals.length)
+    } else {
+      score = signals.length
+    }
+  }
+
+  return {
+    score,
+    signals,
   }
 }
 
