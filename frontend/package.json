@@ -12,15 +12,19 @@
   },
   "dependencies": {
     "@coinbase/onchainkit": "^0.38.10",
+    "@coinbase/wallet-sdk": "^4.3.7",
     "@coinbase/cdp-sdk": "^1.40.1",
+    "@farcaster/miniapp-sdk": "^0.2.1",
+    "@farcaster/miniapp-wagmi-connector": "^1.1.0",
     "@privy-io/react-auth": "^1.83.1",
     "@privy-io/wagmi": "^0.1.0",
+    "@supabase/supabase-js": "^2.49.1",
     "@tanstack/react-query": "^5.62.0",
     "@types/d3": "^7.4.3",
     "@vitejs/plugin-react": "^4.3.4",
     "@vercel/postgres": "^0.10.0",
-    "@supabase/supabase-js": "^2.49.1",
     "@zoralabs/coins-sdk": "0.2.1",
+    "@zoralabs/protocol-deployments": "^0.6.4",
     "autoprefixer": "^10.4.20",
     "buffer": "^6.0.3",
     "d3": "^7.9.0",
@@ -29,12 +33,13 @@
     "postcss": "^8.4.49",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
-    "react-router-dom": "^7.12.0",
+    "react-router-dom": "^7.1.0",
     "recharts": "^3.6.0",
     "tailwindcss": "^3.4.16",
     "viem": "^2.21.54",
     "vite": "^6.0.3",
     "wagmi": "^2.14.1",
+    "@wagmi/core": "^2.14.1",
     "which-typed-array": "^1.1.19",
     "xtend": "^4.0.2"
   },
@@ -48,11 +53,5 @@
     "eslint-plugin-react-hooks": "^5.1.0",
     "eslint-plugin-react-refresh": "^0.4.16",
     "typescript": "^5.7.2"
-  },
-  "pnpm": {
-    "overrides": {
-      "@coinbase/wallet-sdk": "4.3.6",
-      "cbw-sdk": "npm:@coinbase/wallet-sdk@4.3.6"
-    }
   }
 }
