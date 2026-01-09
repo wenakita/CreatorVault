@@ -624,7 +624,8 @@ export function DeployVault() {
       return json.data
     },
     staleTime: 30_000,
-    retry: 1,
+    retry: 0,
+    refetchOnWindowFocus: false,
   })
 
   const payoutRecipientMatchesGauge = expectedGaugeQuery.data?.matches === true

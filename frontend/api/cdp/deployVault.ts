@@ -8,8 +8,8 @@ import {
 } from '../auth/_shared.js'
 import { getSessionAddress } from '../_lib/session.js'
 import { getCdpClient, makeOwnerAccountName, makeSmartAccountName } from '../_lib/cdp.js'
-import { CONTRACTS } from '@/config/contracts'
-import { DEPLOY_BYTECODE } from '@/deploy/bytecode.generated'
+import { getApiContracts } from '../_lib/contracts.js'
+import { DEPLOY_BYTECODE } from '../../src/deploy/bytecode.generated'
 
 import {
   concatHex,
@@ -17,6 +17,7 @@ import {
   encodeAbiParameters,
   encodeFunctionData,
   encodePacked,
+  fallback,
   getCreate2Address,
   http,
   isAddress,
@@ -174,9 +175,20 @@ const DEFAULT_AUCTION_PERCENT = 50n
 const MIN_FIRST_DEPOSIT = 50_000_000n * 10n ** 18n
 const DEFAULT_CCA_DURATION_BLOCKS = 302_400n
 
-function getBaseRpcUrl(): string {
-  const rpc = (process.env.BASE_RPC_URL ?? '').trim()
-  return rpc.length > 0 ? rpc : 'https://mainnet.base.org'
+function getBaseRpcUrls(): string[] {
+  const candidates = [
+    process.env.BASE_READ_RPC_URL,
+    process.env.BASE_RPC_URL,
+    process.env.VITE_BASE_RPC,
+    'https://mainnet.base.org',
+  ]
+  const out: string[] = []
+  for (const raw of candidates) {
+    const v = (raw ?? '').trim()
+    if (!v) continue
+    if (!out.includes(v)) out.push(v)
+  }
+  return out.length ? out : ['https://mainnet.base.org']
 }
 
 function isAddressLike(value: string): value is `0x${string}` {
@@ -265,9 +277,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(400).json({ success: false, error: 'Missing creator token or share metadata' } satisfies ApiEnvelope<never>)
   }
 
+  const rpcUrls = getBaseRpcUrls()
   const client = createPublicClient({
     chain: base,
-    transport: http(getBaseRpcUrl(), { timeout: 12_000, retryCount: 2, retryDelay: 300 }),
+    transport: fallback(rpcUrls.map((url) => http(url, { timeout: 12_000, retryCount: 2, retryDelay: 300 }))),
   })
 
   const cdp = getCdpClient()
@@ -282,6 +295,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const smartAccountAddress = smartAccount.address as Address
   const deployerAddress = isAddressLike(ownerOverride) ? (ownerOverride as Address) : smartAccountAddress
 
+  const CONTRACTS = getApiContracts()
   const create2Factory = CONTRACTS.create2Factory as Address
   const create2Deployer = CONTRACTS.create2Deployer as Address
   const registry = CONTRACTS.registry as Address
@@ -291,8 +305,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const lotteryManager = (CONTRACTS.lotteryManager ?? '0x0000000000000000000000000000000000000000') as Address
   const vaultActivationBatcher = CONTRACTS.vaultActivationBatcher as Address
 
-  const universalBytecodeStore = (CONTRACTS as any).universalBytecodeStore as Address | undefined
-  const universalCreate2FromStore = (CONTRACTS as any).universalCreate2DeployerFromStore as Address | undefined
+  const universalBytecodeStore = CONTRACTS.universalBytecodeStore as Address | undefined
+  const universalCreate2FromStore = CONTRACTS.universalCreate2DeployerFromStore as Address | undefined
 
   const bootstrapCodeId = keccak256(DEPLOY_BYTECODE.OFTBootstrapRegistry as Hex)
   const shareOftCodeId = keccak256(DEPLOY_BYTECODE.CreatorShareOFT as Hex)

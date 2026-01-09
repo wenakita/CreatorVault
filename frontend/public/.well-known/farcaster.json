@@ -1,30 +1,42 @@
 {
   "accountAssociation": {
-    "header": "eyJmaWQiOi0xLCJ0eXBlIjoiYXV0aCIsImtleSI6IjB4ODcxOWZhN0JlMTA1MzNmZDY5ODg1YjEyNGE4Yzg0ZjlDNTEwNzFBRiJ9",
-    "payload": "eyJkb21haW4iOiJ3d3cuY3JlYXRvcnZhdWx0cy5mdW4ifQ",
-    "signature": "AAAAAAAAAAAAAAAAyhG94Fl3s2MRZwKIYr4qFzl2yhEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAYAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAALgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAkSCrVbLAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAgAAAAAAAAAAAAAAAAul7REO_bo9AFv8iC11NYrLu4WEIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAVQ_-6NvAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAoAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABAGlwANc3MmDgbVoduBN_6pvY2hHtyzg2N9H0srMRyKF2LPLasze8Pm_DMH7XBjIqwbExFfwuQi3niRfP6xAkk9wAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAgAAAAAAAAAAAAAAAA-FIQshzFAwL0d7pWaG0gGdybZ63hWwqMROytRWUz0BEOrSzgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAKAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAADAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAASAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAFwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABMmrd6_lHZIjU8kTOnZwdWeepJGF_a8v1tPUGBXugOD404958kT6QsssUO8OD5MssYLkE4G7likNke0VXNHKFDgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAl8ZgIay2xclZzG8RWZzuWvO8j9R0fus3XxDee9lRlVy8FAAAAGQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACKeyJ0eXBlIjoid2ViYXV0aG4uZ2V0IiwiY2hhbGxlbmdlIjoiY1NCUDJZSFp0U3VUQzlMUW1nUEdlQzA1SlVpNjJkXzlNS3N2Tk52MXIyayIsIm9yaWdpbiI6Imh0dHBzOi8va2V5cy5jb2luYmFzZS5jb20iLCJjcm9zc09yaWdpbiI6ZmFsc2V9AAAAAAAAAAAAAAAAAAAAAAAAAAAAAGSSZJJkkmSSZJJkkmSSZJJkkmSSZJJkkmSSZJJkkmSSZJJkkmSS"
+    "header": "eyJmaWQiOjIxODIzMjUsInR5cGUiOiJjdXN0b2R5Iiwia2V5IjoiMHg2NTRkZkMxNEY0QjczN2M4NjM5OWY1MTcyMGJjNTlCNTdCM2VEQjc5In0",
+    "payload": "eyJkb21haW4iOiJlcmM0NjI2LmZ1biJ9",
+    "signature": "lhS8ZW/t66E5BaOI+nq0tsoZp9Vf2cD1HUcb8SEI5w47VSSBG6P+yq33wTXDGD1j6HNgRYv8OR7xc9ZGdCvemRs="
   },
   "miniapp": {
     "version": "1",
     "name": "Creator Vaults",
     "subtitle": "Creator coin vaults on Base",
-    "description": "Deposit creator coins into vaults, track markets, and manage vault launches on Base.",
-    "screenshotUrls": ["https://www.creatorvaults.fun/screenshot-portrait.png"],
-    "iconUrl": "https://www.creatorvaults.fun/miniapp-icon.png",
-    "splashImageUrl": "https://www.creatorvaults.fun/miniapp-splash.png",
+    "description": "Deposit creator coins into vaults, track markets, and manage creator vault launches on Base.",
+    "screenshotUrls": [
+      "https://erc4626.fun/screenshot-portrait.png"
+    ],
+    "iconUrl": "https://erc4626.fun/miniapp-icon.png",
+    "splashImageUrl": "https://erc4626.fun/miniapp-splash.png",
     "splashBackgroundColor": "#000000",
-    "homeUrl": "https://www.creatorvaults.fun",
-    "webhookUrl": "https://www.creatorvaults.fun/api/webhook",
-    "canonicalDomain": "www.creatorvaults.fun",
-    "requiredChains": ["eip155:8453"],
-    "requiredCapabilities": ["actions.ready", "wallet.getEthereumProvider"],
+    "homeUrl": "https://erc4626.fun",
+    "webhookUrl": "https://erc4626.fun/api/webhook",
+    "canonicalDomain": "erc4626.fun",
+    "requiredChains": [
+      "eip155:8453"
+    ],
+    "requiredCapabilities": [
+      "actions.ready",
+      "wallet.getEthereumProvider"
+    ],
     "primaryCategory": "finance",
-    "tags": ["creator-coins", "vaults", "base", "zora"],
-    "heroImageUrl": "https://www.creatorvaults.fun/miniapp-hero.png",
+    "tags": [
+      "creator-coins",
+      "vaults",
+      "base",
+      "zora"
+    ],
+    "heroImageUrl": "https://erc4626.fun/miniapp-hero.png",
     "tagline": "Vaults for creator coins.",
     "ogTitle": "Creator Vaults",
     "ogDescription": "Deposit creator coins into vaults. Earn from trading fees. Everyone earns together.",
-    "ogImageUrl": "https://www.creatorvaults.fun/miniapp-hero.png",
+    "ogImageUrl": "https://erc4626.fun/miniapp-hero.png",
     "noindex": false
   }
 }

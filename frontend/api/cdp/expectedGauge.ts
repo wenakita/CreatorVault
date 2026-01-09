@@ -6,16 +6,15 @@ import {
   setNoStore,
   type ApiEnvelope,
 } from '../auth/_shared.js'
-import { getSessionAddress } from '../_lib/session.js'
-import { getCdpClient, makeOwnerAccountName, makeSmartAccountName } from '../_lib/cdp.js'
-import { CONTRACTS } from '@/config/contracts'
-import { DEPLOY_BYTECODE } from '@/deploy/bytecode.generated'
+import { getApiContracts } from '../_lib/contracts.js'
+import { DEPLOY_BYTECODE } from '../../src/deploy/bytecode.generated'
 
 import {
   concatHex,
   createPublicClient,
   encodeAbiParameters,
   encodePacked,
+  fallback,
   getCreate2Address,
   http,
   isAddress,
@@ -51,9 +50,31 @@ const BYTECODE_STORE_VIEW_ABI = [
   { type: 'function', name: 'pointers', stateMutability: 'view', inputs: [{ name: 'codeId', type: 'bytes32' }], outputs: [{ type: 'address' }] },
 ] as const
 
-function getBaseRpcUrl(): string {
-  const rpc = (process.env.BASE_RPC_URL ?? '').trim()
-  return rpc.length > 0 ? rpc : 'https://mainnet.base.org'
+function getBaseRpcUrls(): string[] {
+  const candidates = [
+    process.env.BASE_READ_RPC_URL,
+    process.env.BASE_RPC_URL,
+    process.env.VITE_BASE_RPC,
+    'https://mainnet.base.org',
+  ]
+  const out: string[] = []
+  for (const raw of candidates) {
+    const v = (raw ?? '').trim()
+    if (!v) continue
+    if (!out.includes(v)) out.push(v)
+  }
+  return out.length ? out : ['https://mainnet.base.org']
+}
+
+function formatRpcError(err: unknown): string {
+  const msg = err instanceof Error ? err.message : String(err ?? '')
+  if (/429|rate limit|too many requests/i.test(msg)) {
+    return 'RPC rate limit reached. Try again shortly or configure BASE_READ_RPC_URL.'
+  }
+  if (/execution reverted|missing revert data|function selector was not recognized/i.test(msg)) {
+    return 'Creator token does not expose payoutRecipient (not a Zora coin).'
+  }
+  return msg || 'Failed to fetch onchain data.'
 }
 
 function isAddressLike(value: string): value is `0x${string}` {
@@ -98,11 +119,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(405).json({ success: false, error: 'Method not allowed' } satisfies ApiEnvelope<never>)
   }
 
-  const sessionAddress = getSessionAddress(req)
-  if (!sessionAddress) {
-    return res.status(401).json({ success: false, error: 'Sign in required' } satisfies ApiEnvelope<never>)
-  }
-
   const body = (await readJsonBody<RequestBody>(req)) ?? {}
   const creatorToken = typeof body.creatorToken === 'string' ? body.creatorToken : ''
   const shareSymbol = typeof body.shareSymbol === 'string' ? body.shareSymbol : ''
@@ -110,32 +126,26 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const version = body.deploymentVersion ?? 'v3'
   const ownerOverride = typeof body.ownerAddress === 'string' ? body.ownerAddress : ''
 
-  if (!isAddressLike(creatorToken) || !shareSymbol || !shareName) {
-    return res.status(400).json({ success: false, error: 'Missing creator token or share metadata' } satisfies ApiEnvelope<never>)
+  if (!isAddressLike(creatorToken) || !shareSymbol || !shareName || !isAddressLike(ownerOverride)) {
+    return res.status(400).json({ success: false, error: 'Missing creator token, share metadata, or owner address' } satisfies ApiEnvelope<never>)
   }
 
+  const rpcUrls = getBaseRpcUrls()
   const client = createPublicClient({
     chain: base,
-    transport: http(getBaseRpcUrl(), { timeout: 12_000, retryCount: 2, retryDelay: 300 }),
+    transport: fallback(rpcUrls.map((url) => http(url, { timeout: 12_000, retryCount: 2, retryDelay: 300 }))),
   })
 
-  const cdp = getCdpClient()
-  const owner = await cdp.evm.getOrCreateAccount({
-    name: makeOwnerAccountName(sessionAddress),
-  })
-  const smartAccount = await cdp.evm.getOrCreateSmartAccount({
-    owner,
-    name: makeSmartAccountName(sessionAddress),
-  })
+  const ownerAddress = ownerOverride as Address
+  const smartAccountAddress = ownerAddress
+  const deployerAddress = ownerAddress
+  const sessionAddress = ownerAddress
 
-  const ownerAddress = owner.address as Address
-  const smartAccountAddress = smartAccount.address as Address
-  const deployerAddress = isAddressLike(ownerOverride) ? (ownerOverride as Address) : smartAccountAddress
-
+  const CONTRACTS = getApiContracts()
   const create2Factory = CONTRACTS.create2Factory as Address
   const create2Deployer = CONTRACTS.create2Deployer as Address
-  const universalBytecodeStore = (CONTRACTS as any).universalBytecodeStore as Address | undefined
-  const universalCreate2FromStore = (CONTRACTS as any).universalCreate2DeployerFromStore as Address | undefined
+  const universalBytecodeStore = CONTRACTS.universalBytecodeStore as Address | undefined
+  const universalCreate2FromStore = CONTRACTS.universalCreate2DeployerFromStore as Address | undefined
   const protocolTreasury = CONTRACTS.protocolTreasury as Address
 
   const bootstrapCodeId = keccak256(DEPLOY_BYTECODE.OFTBootstrapRegistry as Hex)
@@ -222,11 +232,16 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const gaugeInitCode = concatHex([DEPLOY_BYTECODE.CreatorGaugeController as Hex, gaugeConstructorArgs])
   const gaugeAddress = predictCreate2Address(localCreate2Deployer, salts.gaugeSalt, gaugeInitCode)
 
-  const payoutRecipient = (await client.readContract({
-    address: creatorToken as Address,
-    abi: coinABI,
-    functionName: 'payoutRecipient',
-  })) as Address
+  let payoutRecipient: Address
+  try {
+    payoutRecipient = (await client.readContract({
+      address: creatorToken as Address,
+      abi: coinABI,
+      functionName: 'payoutRecipient',
+    })) as Address
+  } catch (err) {
+    return res.status(503).json({ success: false, error: formatRpcError(err) } satisfies ApiEnvelope<never>)
+  }
 
   const payoutRecipientLc = String(payoutRecipient ?? '').toLowerCase()
   const expectedLc = gaugeAddress.toLowerCase()
