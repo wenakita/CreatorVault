@@ -261,7 +261,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           toBlock: r.toBlock,
         })
 
-        for (const l of hookLogs as any[]) {
+        for (const raw of hookLogs as any[]) {
+          const l = raw as any
           const txHash = String(l.transactionHash ?? '')
           if (!txHash || !txSet.has(txHash)) continue
 
@@ -323,4 +324,3 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(500).json({ success: false, error: e?.message || 'Failed to compute per-coin rewards' })
   }
 }
-
