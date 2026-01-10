@@ -13,16 +13,16 @@
 
 We have included a dedicated context file for AI Agents (ChatGPT, Claude, etc.) to understand our brand identity when generating new code or assets.
 
-👉 **[View AI Brand Guidelines](./BRAND_GUIDELINES.md)**
+👉 **[View AI Brand Guidelines](./brand-guidelines.md)**
 
 You can paste the contents of this file into an LLM to ensure it generates UI and Copy that matches the **ERCreator4626** aesthetic (Colors, Typography, Tone of Voice).
 
 ## 🛠 Tech Stack
 
-- **Frontend**: React 19 (ESM), Tailwind CSS
+- **Frontend**: React 18 + Vite + Tailwind CSS
 - **AI**: Google GenAI SDK (`@google/genai`)
 - **Typography**: Inter, JetBrains Mono, Doto
-- **Architecture**: Browser-native ES Modules (No bundler required for dev)
+- **Architecture**: Vite build pipeline with Tailwind
 
 ## 🚀 Getting Started
 
@@ -33,8 +33,8 @@ You need a Google Gemini API Key. Get one at [aistudio.google.com](https://aistu
 
 1. **Clone the repository**
    ```bash
-   git clone https://github.com/yourusername/creator-vaults.git
-   cd creator-vaults
+   git clone https://github.com/wenakita/CreatorVault.git
+   cd CreatorVault
    ```
 
 2. **Environment Setup**
@@ -48,12 +48,11 @@ You need a Google Gemini API Key. Get one at [aistudio.google.com](https://aistu
 
    If running in a cloud IDE or specific container (like StackBlitz/Replit), set the `API_KEY` secret in your environment settings.
 
-3. **Serve the App**
-   Since this project uses ES Modules directly, you can serve it with any static file server.
+3. **Run the Frontend**
    ```bash
-   npx serve .
-   # OR
-   python3 -m http.server
+   cd frontend
+   pnpm install
+   pnpm dev
    ```
 
 ## 🎨 Design System

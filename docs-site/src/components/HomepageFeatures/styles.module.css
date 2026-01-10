@@ -1,0 +1,60 @@
+.features {
+  position: relative;
+  z-index: 1;
+  padding: 2rem 1.5rem 3rem;
+}
+
+.featuresInner {
+  max-width: 1200px;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 1.5rem;
+}
+
+.card {
+  background: rgba(10, 10, 10, 0.85);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 16px;
+  padding: 1.5rem 1.6rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.8rem;
+  text-decoration: none;
+  transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.card:hover {
+  transform: translateY(-4px);
+  border-color: rgba(0, 82, 255, 0.45);
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.35);
+}
+
+.cardLabel {
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 0.3em;
+  font-family: 'JetBrains Mono', monospace;
+  color: rgba(237, 237, 237, 0.5);
+}
+
+.cardTitle {
+  margin: 0;
+  font-size: 1.1rem;
+  color: #fff;
+}
+
+.cardDescription {
+  color: rgba(237, 237, 237, 0.7);
+  font-size: 0.95rem;
+  line-height: 1.6;
+}
+
+.cardAction {
+  margin-top: auto;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.25em;
+  color: #0052ff;
+  font-family: 'JetBrains Mono', monospace;
+}

@@ -22,11 +22,11 @@
       sdk.actions.ready().catch(() => {})
     </script>
 
-    <!-- Fonts (Liquid Gold UI uses Playfair for serif accents) -->
+    <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
-      href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=Playfair+Display:ital,wght@0,400;0,600;1,400;1,600&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Doto:wght@400;700;900&family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap"
       rel="stylesheet"
     />
     
@@ -46,24 +46,15 @@
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-    <meta name="theme-color" content="#3B82F6" />
+    <meta name="theme-color" content="#0052FF" />
     <link rel="manifest" href="/manifest.json?v=2" />
     
     <style>
       html, body {
-        background-color: #020617; /* Default to dark slate to prevent white flash */
+        background-color: #020202; /* Vault background */
         margin: 0;
         padding: 0;
         height: 100%;
-      }
-      @media (prefers-color-scheme: light) {
-        html, body {
-          background-color: #f8fafc; /* Cool light for light mode */
-        }
-      }
-      /* Override if class is present */
-      html.dark body {
-        background-color: #020617;
       }
     </style>
 

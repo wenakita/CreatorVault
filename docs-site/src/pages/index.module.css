@@ -1,0 +1,182 @@
+.page {
+  position: relative;
+  padding: 3.5rem 0 4.5rem;
+  overflow: hidden;
+}
+
+.page::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(circle at 20% 0%, rgba(0, 82, 255, 0.2), transparent 45%),
+    radial-gradient(circle at 85% 20%, rgba(0, 82, 255, 0.12), transparent 40%);
+  opacity: 0.6;
+  pointer-events: none;
+}
+
+.page::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.04) 1px, transparent 1px);
+  background-size: 120px 120px;
+  opacity: 0.15;
+  pointer-events: none;
+}
+
+.hero {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(0, 0.9fr);
+  gap: 3rem;
+  align-items: center;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 1rem 1.5rem 3rem;
+}
+
+.heroContent {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.kicker {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.35em;
+  font-family: 'JetBrains Mono', monospace;
+  color: rgba(237, 237, 237, 0.6);
+}
+
+.title {
+  font-family: 'Doto', 'Inter', system-ui, sans-serif;
+  font-size: clamp(2.8rem, 6vw, 4.8rem);
+  font-weight: 300;
+  letter-spacing: -0.03em;
+  margin: 0;
+}
+
+.subtitle {
+  font-size: 1.1rem;
+  line-height: 1.7;
+  color: rgba(237, 237, 237, 0.7);
+  max-width: 36rem;
+}
+
+.actions {
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.primaryButton {
+  padding: 0.9rem 1.8rem;
+  background: #0052ff;
+  color: #fff;
+  text-transform: uppercase;
+  letter-spacing: 0.2em;
+  font-size: 11px;
+  font-weight: 600;
+  border-radius: 10px;
+  border: 1px solid transparent;
+  box-shadow: 0 0 20px rgba(0, 82, 255, 0.35);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  text-decoration: none;
+}
+
+.primaryButton:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 0 28px rgba(0, 82, 255, 0.5);
+  color: #fff;
+}
+
+.ghostButton {
+  padding: 0.9rem 1.8rem;
+  background: transparent;
+  color: rgba(237, 237, 237, 0.8);
+  text-transform: uppercase;
+  letter-spacing: 0.2em;
+  font-size: 11px;
+  font-weight: 600;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  transition: border-color 0.2s ease, color 0.2s ease;
+  text-decoration: none;
+}
+
+.ghostButton:hover {
+  border-color: rgba(0, 82, 255, 0.6);
+  color: #fff;
+}
+
+.heroPanel {
+  background: rgba(10, 10, 10, 0.85);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 18px;
+  padding: 1.5rem 1.75rem;
+  backdrop-filter: blur(14px);
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.45);
+}
+
+.panelHeader {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  text-transform: uppercase;
+  letter-spacing: 0.3em;
+  font-size: 9px;
+  font-family: 'JetBrains Mono', monospace;
+  color: rgba(237, 237, 237, 0.6);
+  margin-bottom: 1.2rem;
+}
+
+.panelDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #0052ff;
+  box-shadow: 0 0 10px rgba(0, 82, 255, 0.8);
+}
+
+.panelBody {
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.18em;
+}
+
+.panelRow {
+  display: flex;
+  justify-content: space-between;
+  color: rgba(237, 237, 237, 0.6);
+}
+
+.panelValue {
+  color: #fff;
+}
+
+.panelFoot {
+  display: flex;
+  justify-content: space-between;
+  padding-top: 0.8rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  color: rgba(237, 237, 237, 0.6);
+}
+
+@media screen and (max-width: 996px) {
+  .hero {
+    grid-template-columns: 1fr;
+  }
+
+  .heroPanel {
+    margin-top: 1.5rem;
+  }
+}

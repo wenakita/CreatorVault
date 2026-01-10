@@ -25,9 +25,22 @@ export default {
           900: '#261C05', // Deep Bronze
           950: '#140E02',
         },
+        // Glass & Steel tokens (brand-kit UI)
+        vault: {
+          bg: '#020202',
+          card: '#0A0A0A',
+          border: '#1F1F1F',
+          text: '#EDEDED',
+          subtext: '#666666',
+        },
+        glass: 'rgb(255 255 255 / <alpha-value>)',
         // Base brand colors - using 'brand' to avoid Tailwind's 'base' directive conflict
         // Brighter scale for dark mode visibility
         brand: {
+          primary: '#0052FF',
+          hover: '#004AD9',
+          accent: '#3B82F6',
+          glow: 'rgba(0, 82, 255, 0.15)',
           50: '#eff6ff',
           100: '#dbeafe',
           200: '#bfdbfe',
@@ -85,6 +98,7 @@ export default {
         sans: ['Inter', 'system-ui', 'sans-serif'],
         display: ['Space Grotesk', 'Inter', 'system-ui', 'sans-serif'],
         mono: ['JetBrains Mono', 'Space Mono', 'monospace'],
+        doto: ['Doto', 'system-ui', 'sans-serif'],
         serif: ['Playfair Display', 'ui-serif', 'Georgia', 'serif'],
       },
       animation: {
@@ -100,11 +114,14 @@ export default {
         'sift-down': 'siftDown 3s infinite linear',
         'flow': 'flow 10s infinite linear',
         'pulse-ring': 'pulseRing 2s infinite',
+        'scan': 'scan 4s linear infinite',
+        'wipe-in': 'wipeIn 0.8s cubic-bezier(0.25, 1, 0.5, 1) forwards',
+        'wipe-out': 'wipeOut 0.8s cubic-bezier(0.25, 1, 0.5, 1) forwards',
       },
       keyframes: {
         fadeIn: {
-          '0%': { opacity: '0' },
-          '100%': { opacity: '1' },
+          '0%': { opacity: '0', transform: 'translateY(10px)' },
+          '100%': { opacity: '1', transform: 'translateY(0)' },
         },
         slideUp: {
           '0%': { opacity: '0', transform: 'translateY(20px)' },
@@ -148,10 +165,25 @@ export default {
           '0%': { transform: 'scale(0.8)', opacity: '0.5' },
           '100%': { transform: 'scale(2.4)', opacity: '0' },
         },
+        scan: {
+          '0%': { transform: 'translateY(-100%)' },
+          '100%': { transform: 'translateY(100%)' },
+        },
+        wipeIn: {
+          '0%': { transform: 'translateX(-100%)' },
+          '100%': { transform: 'translateX(0%)' },
+        },
+        wipeOut: {
+          '0%': { transform: 'translateX(0%)' },
+          '100%': { transform: 'translateX(100%)' },
+        },
       },
       backgroundImage: {
         'gradient-radial': 'radial-gradient(var(--tw-gradient-stops))',
         'gradient-brand': 'linear-gradient(135deg, var(--tw-gradient-stops))',
+        'radial-gradient': 'radial-gradient(var(--tw-gradient-stops))',
+        'blue-gradient': 'linear-gradient(135deg, #0052FF 0%, #0033CC 100%)',
+        'subtle-glow': 'radial-gradient(circle at 50% 0%, rgba(0, 82, 255, 0.05) 0%, transparent 70%)',
         'grain': 'url("data:image/svg+xml,%3Csvg viewBox=\'0 0 200 200\' xmlns=\'http://www.w3.org/2000/svg\'%3E%3Cfilter id=\'filter\'%3E%3CfeTurbulence type=\'fractalNoise\' baseFrequency=\'0.65\' numOctaves=\'3\' stitchTiles=\'stitch\'/%3E%3C/filter%3E%3Crect width=\'100%25\' height=\'100%25\' filter=\'url(%23filter)\'/%3E%3C/svg%3E")',
         'wire-grid': 'linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px)',
       },

@@ -1,0 +1,428 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tectonic Span | Solana Bridge Adapter</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --obsidian-base: #0a0a0b;
+            --obsidian-surface: #121214;
+            --obsidian-edge: #1f1f23;
+            --obsidian-brushed: #252529;
+            --base-accent: #00d1ff;
+            --solana-accent: #9945FF;
+            --bridge-gradient: linear-gradient(90deg, var(--base-accent), var(--solana-accent));
+            --text-primary: #f0f0f2;
+            --text-dim: #8a8a91;
+            --tectonic-shadow: 0 20px 50px rgba(0,0,0,0.8);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background-color: var(--obsidian-base);
+            color: var(--text-primary);
+            font-family: 'Space Grotesk', sans-serif;
+            overflow-x: hidden;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        /* Brushed Metal Texture Overlay */
+        body::before {
+            content: "";
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: 
+                repeating-linear-gradient(45deg, transparent 0, transparent 1px, rgba(255,255,255,0.01) 1px, rgba(255,255,255,0.01) 2px),
+                radial-gradient(circle at 50% 50%, rgba(20, 20, 25, 0.4) 0%, transparent 100%);
+            pointer-events: none;
+            z-index: 100;
+        }
+
+        .viewport-wrapper {
+            position: relative;
+            width: 100%;
+            max-width: 1200px;
+            padding: 40px;
+            display: grid;
+            grid-template-columns: 1fr 40px 1fr;
+            gap: 20px;
+            perspective: 1200px;
+        }
+
+        /* The Tectonic Plates */
+        .tectonic-plate {
+            background: var(--obsidian-surface);
+            border: 1px solid var(--obsidian-edge);
+            position: relative;
+            padding: 32px;
+            box-shadow: var(--tectonic-shadow);
+            transition: transform 0.6s cubic-bezier(0.23, 1, 0.32, 1);
+            overflow: hidden;
+        }
+
+        .plate-left {
+            transform: rotateY(15deg) translateZ(0);
+            border-right: 4px solid var(--base-accent);
+            clip-path: polygon(0% 0%, 100% 0%, 100% 90%, 95% 100%, 0% 100%);
+        }
+
+        .plate-right {
+            transform: rotateY(-15deg) translateZ(0);
+            border-left: 4px solid var(--solana-accent);
+            clip-path: polygon(0% 0%, 100% 0%, 100% 100%, 5% 100%, 0% 90%);
+        }
+
+        .plate-left:hover {
+            transform: rotateY(5deg) translateZ(20px);
+        }
+
+        .plate-right:hover {
+            transform: rotateY(-5deg) translateZ(20px);
+        }
+
+        /* Central Span */
+        .tectonic-span {
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 10;
+        }
+
+        .bridge-conduit {
+            width: 2px;
+            height: 80%;
+            background: var(--bridge-gradient);
+            box-shadow: 0 0 20px var(--base-accent);
+            position: relative;
+        }
+
+        .conduit-node {
+            width: 12px;
+            height: 12px;
+            background: #fff;
+            border-radius: 50%;
+            position: absolute;
+            left: -5px;
+            animation: flow 3s infinite linear;
+            box-shadow: 0 0 15px #fff;
+        }
+
+        @keyframes flow {
+            0% { top: 0%; opacity: 0; }
+            20% { opacity: 1; }
+            80% { opacity: 1; }
+            100% { top: 100%; opacity: 0; }
+        }
+
+        /* Header UI */
+        .plate-header {
+            margin-bottom: 30px;
+        }
+
+        .plate-header h2 {
+            font-size: 0.8rem;
+            text-transform: uppercase;
+            letter-spacing: 4px;
+            color: var(--text-dim);
+            margin-bottom: 8px;
+        }
+
+        .plate-header h1 {
+            font-size: 2.2rem;
+            font-weight: 700;
+            background: linear-gradient(to bottom, #fff, #999);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        /* Action Controls */
+        .control-group {
+            margin-bottom: 24px;
+        }
+
+        .control-label {
+            display: block;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.7rem;
+            color: var(--text-dim);
+            margin-bottom: 10px;
+            text-transform: uppercase;
+        }
+
+        .input-field {
+            width: 100%;
+            background: var(--obsidian-base);
+            border: 1px solid var(--obsidian-brushed);
+            padding: 14px 18px;
+            color: var(--text-primary);
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.9rem;
+            transition: border-color 0.3s ease;
+        }
+
+        .input-field:focus {
+            outline: none;
+            border-color: var(--base-accent);
+        }
+
+        /* Buttons */
+        .action-btn {
+            width: 100%;
+            padding: 16px;
+            border: none;
+            cursor: pointer;
+            font-family: 'Space Grotesk', sans-serif;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            position: relative;
+            overflow: hidden;
+            background: var(--obsidian-brushed);
+            color: #fff;
+            transition: all 0.3s ease;
+        }
+
+        .action-btn::after {
+            content: "";
+            position: absolute;
+            top: 0; left: -100%;
+            width: 100%; height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.1), transparent);
+            transition: 0.5s;
+        }
+
+        .action-btn:hover::after {
+            left: 100%;
+        }
+
+        .btn-base { border-bottom: 4px solid var(--base-accent); }
+        .btn-base:hover { background: var(--base-accent); color: var(--obsidian-base); }
+
+        .btn-sol { border-bottom: 4px solid var(--solana-accent); }
+        .btn-sol:hover { background: var(--solana-accent); color: var(--obsidian-base); }
+
+        /* Ledger / Status */
+        .ledger {
+            margin-top: 40px;
+            border-top: 1px solid var(--obsidian-brushed);
+            padding-top: 20px;
+        }
+
+        .ledger-entry {
+            display: flex;
+            justify-content: space-between;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.75rem;
+            padding: 8px 0;
+            border-bottom: 1px solid rgba(255,255,255,0.03);
+        }
+
+        .status-pill {
+            padding: 2px 8px;
+            border-radius: 2px;
+            font-size: 0.65rem;
+            background: rgba(74, 222, 128, 0.1);
+            color: #4ade80;
+        }
+
+        /* Visual Accents */
+        .tectonic-grid {
+            position: absolute;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            background-image: radial-gradient(var(--obsidian-brushed) 1px, transparent 1px);
+            background-size: 20px 20px;
+            opacity: 0.1;
+            pointer-events: none;
+        }
+
+        .scanline {
+            position: absolute;
+            top: 0; left: 0;
+            width: 100%; height: 2px;
+            background: rgba(255,255,255,0.05);
+            animation: scan 8s linear infinite;
+        }
+
+        @keyframes scan {
+            0% { top: -10%; }
+            100% { top: 110%; }
+        }
+
+        /* Mobile */
+        @media (max-width: 900px) {
+            .viewport-wrapper {
+                grid-template-columns: 1fr;
+            }
+            .plate-left, .plate-right {
+                transform: none !important;
+                clip-path: none !important;
+            }
+            .tectonic-span {
+                display: none;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="viewport-wrapper">
+        <!-- BASE SIDE -->
+        <div class="tectonic-plate plate-left">
+            <div class="tectonic-grid"></div>
+            <div class="scanline"></div>
+            
+            <div class="plate-header">
+                <h2>Network Protocol</h2>
+                <h1>BASE_MAINNET</h1>
+            </div>
+
+            <div class="control-group">
+                <label class="control-label">Bridge Asset (wsToken)</label>
+                <input type="text" class="input-field" placeholder="0x311935...2139cf82" value="0x311935Cd80B76769bF2ecC9D8Ab7635b2139cf82">
+            </div>
+
+            <div class="control-group">
+                <label class="control-label">Destination (Solana Pubkey)</label>
+                <input type="text" class="input-field" placeholder="Enter bytes32 target address">
+            </div>
+
+            <div class="control-group" style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                <div>
+                    <label class="control-label">Amount</label>
+                    <input type="number" class="input-field" placeholder="0.00">
+                </div>
+                <div style="display: flex; align-items: flex-end;">
+                    <button class="action-btn btn-base">Initiate Bridge</button>
+                </div>
+            </div>
+
+            <div class="ledger">
+                <div class="control-label" style="margin-bottom: 15px;">Twin Contract Mapping</div>
+                <div class="ledger-entry">
+                    <span>SOL_ADDR(8x2...f9)</span>
+                    <span style="color: var(--base-accent);">0x82f...a12b</span>
+                </div>
+                <div class="ledger-entry">
+                    <span>SOL_ADDR(K9j...3m)</span>
+                    <span style="color: var(--base-accent);">0x3ff...e81c</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- SPAN -->
+        <div class="tectonic-span">
+            <div class="bridge-conduit">
+                <div class="conduit-node"></div>
+                <div class="conduit-node" style="animation-delay: 1s;"></div>
+                <div class="conduit-node" style="animation-delay: 2s;"></div>
+            </div>
+        </div>
+
+        <!-- SOLANA SIDE ACTIONS -->
+        <div class="tectonic-plate plate-right">
+            <div class="tectonic-grid"></div>
+            <div class="scanline"></div>
+
+            <div class="plate-header">
+                <h2>Cross-Chain Execution</h2>
+                <h1>SOLANA_V_ACTION</h1>
+            </div>
+
+            <div class="control-group">
+                <label class="control-label">CCA Auction Module</label>
+                <select class="input-field" style="appearance: none; cursor: pointer;">
+                    <option>Continuous Clearing Auction v1</option>
+                    <option>Creator Lottery Jackpot</option>
+                    <option>Vault Deposit Adapter</option>
+                </select>
+            </div>
+
+            <div class="control-group" style="background: rgba(255,255,255,0.02); padding: 20px; border: 1px dashed var(--obsidian-brushed);">
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 15px;">
+                    <div>
+                        <label class="control-label">Max Price (Q96)</label>
+                        <input type="text" class="input-field" value="79228162514">
+                    </div>
+                    <div>
+                        <label class="control-label">Bid Amount</label>
+                        <input type="text" class="input-field" placeholder="100.00">
+                    </div>
+                </div>
+                <button class="action-btn btn-sol">Submit Bid From Solana</button>
+            </div>
+
+            <div class="ledger">
+                <div class="control-label" style="margin-bottom: 15px;">Active CCA Positions</div>
+                <div class="ledger-entry">
+                    <span>BID_ID: 9928</span>
+                    <span class="status-pill">GRADUATED</span>
+                </div>
+                <div class="ledger-entry">
+                    <span>BID_ID: 10041</span>
+                    <span class="status-pill" style="color: var(--base-accent); background: rgba(0,209,255,0.1);">ACTIVE</span>
+                </div>
+                <div style="margin-top: 20px;">
+                    <button class="action-btn" style="background: #111; border: 1px solid #333; font-size: 0.7rem; padding: 10px;">Claim Graduated Tokens</button>
+                </div>
+            </div>
+
+            <div style="position: absolute; bottom: -10px; right: 20px; font-family: 'JetBrains Mono', monospace; font-size: 3rem; font-weight: 900; opacity: 0.03; pointer-events: none;">
+                0xAKITA
+            </div>
+        </div>
+    </div>
+
+    <!-- Background Noise Overlay -->
+    <svg style="display:none">
+        <filter id="noise">
+            <feTurbulence baseFrequency="0.7" numOctaves="3" stitchTiles="stitch" />
+            <feColorMatrix type="saturate" values="0" />
+        </filter>
+    </svg>
+
+    <script>
+        // Subtle tilt interaction for plates
+        const plates = document.querySelectorAll('.tectonic-plate');
+        
+        document.addEventListener('mousemove', (e) => {
+            const xAxis = (window.innerWidth / 2 - e.pageX) / 50;
+            const yAxis = (window.innerHeight / 2 - e.pageY) / 50;
+            
+            // Subtle global adjustment
+            plates.forEach((plate, index) => {
+                const modifier = index === 0 ? 1 : -1;
+                const baseRotation = index === 0 ? 15 : -15;
+                plate.style.transform = `rotateY(${baseRotation + (xAxis * modifier)}deg) rotateX(${-yAxis}deg)`;
+            });
+        });
+
+        // Trigger logic for buttons
+        document.querySelectorAll('.action-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                btn.style.transform = 'scale(0.98)';
+                setTimeout(() => {
+                    btn.style.transform = 'scale(1)';
+                }, 100);
+            });
+        });
+    </script>
+</body>
+</html>

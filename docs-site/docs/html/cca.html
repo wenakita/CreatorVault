@@ -1,0 +1,358 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;500;700&family=JetBrains+Mono:wght@300;400&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --obsidian: #050506;
+            --tension-cyan: #00f2ff;
+            --tension-blue: #0044ff;
+            --wire-grey: rgba(255, 255, 255, 0.08);
+            --wire-bright: rgba(255, 255, 255, 0.4);
+        }
+
+        body {
+            background-color: var(--obsidian);
+            color: white;
+            font-family: 'Space Grotesk', sans-serif;
+            overflow-x: hidden;
+            background-image: 
+                radial-gradient(circle at 2px 2px, var(--wire-grey) 1px, transparent 0);
+            background-size: 40px 40px;
+        }
+
+        .manifold-container {
+            position: relative;
+            padding: 40px;
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .wire-frame {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 0;
+            opacity: 0.5;
+        }
+
+        .mono { font-family: 'JetBrains Mono', monospace; }
+
+        .glass-panel {
+            background: rgba(10, 10, 12, 0.8);
+            backdrop-filter: blur(12px);
+            border: 0.5px solid var(--wire-grey);
+            position: relative;
+            transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        .glass-panel:hover {
+            border-color: var(--wire-bright);
+            transform: translateY(-2px);
+        }
+
+        .tension-line {
+            height: 1px;
+            background: linear-gradient(90deg, transparent, var(--tension-cyan), transparent);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .tension-line::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, #fff, transparent);
+            animation: slide 3s infinite linear;
+        }
+
+        @keyframes slide {
+            0% { left: -100%; }
+            100% { left: 100%; }
+        }
+
+        .metric-value {
+            font-size: 2.5rem;
+            font-weight: 300;
+            letter-spacing: -0.05em;
+        }
+
+        .bracket-label {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            color: var(--tension-cyan);
+            letter-spacing: 0.2em;
+        }
+
+        .bracket-label::before, .bracket-label::after {
+            content: '';
+            height: 1px;
+            width: 20px;
+            background: currentColor;
+        }
+
+        .orb {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--tension-cyan);
+            box-shadow: 0 0 15px var(--tension-cyan);
+            display: inline-block;
+        }
+
+        .btn-launch {
+            background: transparent;
+            border: 1px solid var(--tension-cyan);
+            color: var(--tension-cyan);
+            padding: 12px 32px;
+            text-transform: uppercase;
+            font-weight: bold;
+            letter-spacing: 0.1em;
+            position: relative;
+            overflow: hidden;
+            transition: 0.3s;
+        }
+
+        .btn-launch:hover {
+            background: var(--tension-cyan);
+            color: var(--obsidian);
+            box-shadow: 0 0 30px rgba(0, 242, 255, 0.4);
+        }
+
+        .manifold-svg {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 120%;
+            height: 120%;
+            z-index: -1;
+            opacity: 0.15;
+        }
+
+        .grid-layout {
+            display: grid;
+            grid-template-columns: repeat(12, 1fr);
+            gap: 24px;
+        }
+
+        input {
+            background: transparent;
+            border-bottom: 1px solid var(--wire-grey);
+            padding: 8px 0;
+            color: white;
+            outline: none;
+            width: 100%;
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        input:focus {
+            border-bottom-color: var(--tension-cyan);
+        }
+
+        .status-tag {
+            padding: 4px 12px;
+            font-size: 0.75rem;
+            border: 1px solid currentColor;
+            border-radius: 2px;
+        }
+
+        .node-connector {
+            position: absolute;
+            width: 1px;
+            background: var(--wire-grey);
+        }
+    </style>
+</head>
+<body>
+
+    <div class="manifold-container">
+        <!-- SVG Manifold Background -->
+        <svg class="manifold-svg" viewBox="0 0 1000 1000">
+            <defs>
+                <linearGradient id="grad" x1="0%" y1="0%" x2="100%" y2="100%">
+                    <stop offset="0%" style="stop-color:var(--tension-cyan);stop-opacity:1" />
+                    <stop offset="100%" style="stop-color:var(--tension-blue);stop-opacity:1" />
+                </linearGradient>
+            </defs>
+            <path d="M100,500 Q250,100 500,500 T900,500" fill="none" stroke="url(#grad)" stroke-width="0.5" />
+            <path d="M100,550 Q250,150 500,550 T900,550" fill="none" stroke="url(#grad)" stroke-width="0.5" />
+            <path d="M100,450 Q250,50 500,450 T900,450" fill="none" stroke="url(#grad)" stroke-width="0.5" />
+            <line x1="100" y1="100" x2="900" y2="900" stroke="var(--wire-grey)" stroke-width="0.5" />
+            <line x1="900" y1="100" x2="100" y2="900" stroke="var(--wire-grey)" stroke-width="0.5" />
+        </svg>
+
+        <!-- Header -->
+        <header class="mb-12 flex justify-between items-end border-b border-white/5 pb-8">
+            <div>
+                <div class="bracket-label">Launch Protocol</div>
+                <h1 class="text-6xl font-bold tracking-tighter mt-2">CCA_STRATEGY_V4</h1>
+            </div>
+            <div class="text-right">
+                <div class="mono text-xs opacity-40 mb-1">CONTRACT_UPTIME</div>
+                <div class="mono text-lg text-white/80">0x0000...AA77C6FA1D</div>
+            </div>
+        </header>
+
+        <div class="grid-layout">
+            <!-- Main Price Discovery Display -->
+            <div class="col-span-8 glass-panel p-8">
+                <div class="flex justify-between items-start mb-12">
+                    <div>
+                        <span class="status-tag text-cyan-400">ACTIVE_AUCTION</span>
+                        <div class="text-4xl font-light mt-4 mono">0.00148 ETH</div>
+                        <div class="bracket-label mt-2">Current Clearing Price</div>
+                    </div>
+                    <div class="text-right">
+                        <div class="text-2xl font-light mono">842.5 ETH</div>
+                        <div class="bracket-label mt-2 justify-end">Currency Raised</div>
+                    </div>
+                </div>
+
+                <div class="relative h-64 w-full flex items-end gap-1 mb-8">
+                    <!-- Fake Auction Discovery visualization -->
+                    <div class="flex-1 bg-white/5 hover:bg-cyan-500/20 transition-all cursor-pointer" style="height: 30%"></div>
+                    <div class="flex-1 bg-white/5 hover:bg-cyan-500/20 transition-all cursor-pointer" style="height: 35%"></div>
+                    <div class="flex-1 bg-white/5 hover:bg-cyan-500/20 transition-all cursor-pointer" style="height: 42%"></div>
+                    <div class="flex-1 bg-white/10 hover:bg-cyan-500/20 transition-all cursor-pointer" style="height: 55%"></div>
+                    <div class="flex-1 bg-white/20 hover:bg-cyan-500/20 transition-all cursor-pointer" style="height: 68%"></div>
+                    <div class="flex-1 bg-cyan-400 hover:bg-cyan-300 transition-all cursor-pointer" style="height: 85%"></div>
+                    <div class="flex-1 bg-white/10 hover:bg-cyan-500/20 transition-all cursor-pointer" style="height: 70%"></div>
+                    <div class="flex-1 bg-white/5 hover:bg-cyan-500/20 transition-all cursor-pointer" style="height: 50%"></div>
+                    <div class="flex-1 bg-white/5 hover:bg-cyan-500/20 transition-all cursor-pointer" style="height: 40%"></div>
+                    <div class="flex-1 bg-white/5 hover:bg-cyan-500/20 transition-all cursor-pointer" style="height: 30%"></div>
+                    <div class="absolute bottom-0 left-0 w-full h-px bg-cyan-400/50"></div>
+                </div>
+
+                <div class="grid grid-cols-3 gap-8">
+                    <div>
+                        <div class="mono text-xs opacity-50 mb-1">TOTAL_SUPPLY</div>
+                        <div class="text-xl mono">10,000,000 <span class="text-sm opacity-50">STKMA</span></div>
+                    </div>
+                    <div>
+                        <div class="mono text-xs opacity-50 mb-1">BLOCKS_REMAINING</div>
+                        <div class="text-xl mono">142,301 <span class="text-sm opacity-50">~3.2d</span></div>
+                    </div>
+                    <div>
+                        <div class="mono text-xs opacity-50 mb-1">TICK_SPACING</div>
+                        <div class="text-xl mono">0.01 <span class="text-sm opacity-50">ETH</span></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Side Controls / Configuration -->
+            <div class="col-span-4 glass-panel p-8 flex flex-col justify-between border-l-2 border-cyan-400/30">
+                <div>
+                    <h3 class="bracket-label mb-8">Auction Parameters</h3>
+                    
+                    <div class="space-y-6">
+                        <div>
+                            <label class="mono text-[10px] opacity-40 uppercase">Amount to Distribute</label>
+                            <input type="text" placeholder="1000000.00" value="1,000,000">
+                        </div>
+                        <div>
+                            <label class="mono text-[10px] opacity-40 uppercase">Floor Price (ETH)</label>
+                            <input type="text" placeholder="0.001" value="0.001">
+                        </div>
+                        <div>
+                            <label class="mono text-[10px] opacity-40 uppercase">Minimum Raise (ETH)</label>
+                            <input type="text" placeholder="100" value="500">
+                        </div>
+                        <div>
+                            <label class="mono text-[10px] opacity-40 uppercase">Distribution Type</label>
+                            <div class="flex gap-4 mt-4">
+                                <button class="mono text-[10px] px-3 py-1 border border-cyan-400 bg-cyan-400/10">LINEAR</button>
+                                <button class="mono text-[10px] px-3 py-1 border border-white/10 hover:border-white/40">ACCELERATING</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="pt-8">
+                    <div class="tension-line mb-8"></div>
+                    <button class="btn-launch w-full">Initialize Strategy</button>
+                    <div class="mono text-[9px] text-center mt-4 opacity-30">TX_FEE: ~0.0042 ETH | NONCE: 142</div>
+                </div>
+            </div>
+
+            <!-- Hook Configuration -->
+            <div class="col-span-12 glass-panel p-8 grid grid-cols-4 gap-12">
+                <div class="flex gap-6 items-center">
+                    <div class="orb"></div>
+                    <div>
+                        <div class="bracket-label">Oracle V4</div>
+                        <div class="mono text-xs opacity-60">GRADUATION_SYNC: ENABLED</div>
+                    </div>
+                </div>
+                <div class="flex gap-6 items-center">
+                    <div class="orb bg-purple-500 shadow-purple-500"></div>
+                    <div>
+                        <div class="bracket-label" style="color:#a855f7">Tax Hook</div>
+                        <div class="mono text-xs opacity-60">RATE: 6.9% BPS</div>
+                    </div>
+                </div>
+                <div class="flex gap-6 items-center">
+                    <div class="orb bg-green-500 shadow-green-500"></div>
+                    <div>
+                        <div class="bracket-label" style="color:#22c55e">Liquidity</div>
+                        <div class="mono text-xs opacity-60">TIER: 0.3% FEE</div>
+                    </div>
+                </div>
+                <div class="flex gap-6 items-center justify-end">
+                    <button class="mono text-xs border border-white/20 px-4 py-2 hover:bg-white/5">MANAGE_HOOKS</button>
+                </div>
+            </div>
+
+            <!-- Footer Stats -->
+            <div class="col-span-6 p-4">
+                <div class="mono text-[10px] opacity-20">SYSTEM_MANIFEST</div>
+                <div class="mono text-xs opacity-40 mt-2">
+                    [0x1] CCA_FACTORY: BASE_DEPLOYED<br>
+                    [0x2] TICK_SIZE: 1.000000000000000000<br>
+                    [0x3] MPS_CONSTANT: 1e7<br>
+                    [0x4] SAFETY_REENTRANCY: GUARDED
+                </div>
+            </div>
+            
+            <div class="col-span-6 text-right p-4">
+                <div class="mono text-[10px] opacity-20">STRATEGY_AUTH</div>
+                <div class="mono text-xs opacity-40 mt-2">
+                    0xAKITA.ETH // CCALaunchStrategy.sol<br>
+                    UNISWAP_V4_CORE_V1.0.0<br>
+                    MIT_LICENSE_OPENSOURCE
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Motion Overlay -->
+    <script>
+        document.addEventListener('mousemove', (e) => {
+            const manifold = document.querySelector('.manifold-svg');
+            const moveX = (e.clientX - window.innerWidth / 2) * 0.01;
+            const moveY = (e.clientY - window.innerHeight / 2) * 0.01;
+            manifold.style.transform = `translate(calc(-50% + ${moveX}px), calc(-50% + ${moveY}px)) scale(1.1)`;
+        });
+
+        // Pulse effect for nodes
+        setInterval(() => {
+            const orbs = document.querySelectorAll('.orb');
+            orbs.forEach(orb => {
+                orb.style.opacity = (Math.random() * 0.5 + 0.5).toString();
+            });
+        }, 1000);
+    </script>
+</body>
+</html>

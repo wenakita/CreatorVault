@@ -4,6 +4,8 @@ Turn creator coins into earnings. Built on Base.
 
 Launch vaults. Reward holders. Win jackpots. All onchain.
 
+> UI Note: The brand-kit UI is now the default frontend (`frontend/src/brand-kit`). The previous gold UI is archived at `archive/gold-ui/frontend/src`.
+
 ## What It Does
 
 - **Launch Vaults** - One transaction deploys your vault
@@ -42,10 +44,8 @@ frontend/
   public/
     manifest.json        # Base Mini App manifest
   src/
-    components/          # UI components
-    config/              # Contract addresses, wagmi config
-    hooks/               # Custom React hooks
-    pages/               # Route pages
+    brand-kit/           # Brand-kit UI (default)
+    App.tsx              # App entry (wraps brand-kit UI)
     main.tsx             # Entry point
   abis/                  # Contract ABIs
   api/                   # Vercel API routes
@@ -53,12 +53,7 @@ frontend/
 
 ## Pages
 
-| Route | Description |
-|-------|-------------|
-| `/` | Landing page with features |
-| `/launch` | One-click vault launcher |
-| `/dashboard` | Browse all creator vaults |
-| `/vault/:address` | Deposit/withdraw from vault |
+Legacy routes are archived with the gold UI in `archive/gold-ui/frontend/src`.
 
 ## Deployed Contracts (Base)
 

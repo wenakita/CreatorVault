@@ -1,0 +1,551 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CreatorVRF Hub | Conductive Braided Signalry</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg: #070708;
+            --copper-dull: #4a3321;
+            --copper-bright: #f59e0b;
+            --signal-cyan: #06b6d4;
+            --signal-pulse: #22d3ee;
+            --glass: rgba(15, 15, 18, 0.85);
+            --border: rgba(245, 158, 11, 0.15);
+            --mono: 'JetBrains Mono', monospace;
+            --sans: 'Inter', sans-serif;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        body {
+            background-color: var(--bg);
+            color: #e2e8f0;
+            font-family: var(--sans);
+            overflow-x: hidden;
+            background-image: 
+                radial-gradient(circle at 50% 50%, #1a1510 0%, transparent 80%),
+                linear-gradient(rgba(245, 158, 11, 0.03) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(245, 158, 11, 0.03) 1px, transparent 1px);
+            background-size: 100% 100%, 40px 40px, 40px 40px;
+        }
+
+        /* Conductive Braid Animation */
+        .braid-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+            opacity: 0.4;
+            pointer-events: none;
+        }
+
+        .signal-path {
+            fill: none;
+            stroke: var(--copper-dull);
+            stroke-width: 1.5;
+            stroke-dasharray: 1000;
+            stroke-dashoffset: 1000;
+            animation: flow 10s linear infinite;
+        }
+
+        .signal-pulse-line {
+            fill: none;
+            stroke: var(--copper-bright);
+            stroke-width: 2;
+            stroke-linecap: round;
+            stroke-dasharray: 40 200;
+            animation: pulse-flow 4s linear infinite;
+        }
+
+        @keyframes flow {
+            to { stroke-dashoffset: 0; }
+        }
+
+        @keyframes pulse-flow {
+            0% { stroke-dashoffset: 480; }
+            100% { stroke-dashoffset: 0; }
+        }
+
+        /* Layout */
+        main {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 4rem 2rem;
+            display: grid;
+            grid-template-columns: 350px 1fr 300px;
+            gap: 2rem;
+        }
+
+        header {
+            grid-column: 1 / -1;
+            margin-bottom: 3rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+            border-bottom: 1px solid var(--border);
+            padding-bottom: 1.5rem;
+        }
+
+        .brand h1 {
+            font-weight: 800;
+            font-size: 2.5rem;
+            letter-spacing: -0.04em;
+            text-transform: uppercase;
+            background: linear-gradient(to bottom, #fff, #a1a1aa);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .brand span {
+            font-family: var(--mono);
+            color: var(--copper-bright);
+            font-size: 0.75rem;
+            letter-spacing: 0.2em;
+            display: block;
+        }
+
+        /* Components */
+        .panel {
+            background: var(--glass);
+            backdrop-filter: blur(12px);
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            padding: 1.5rem;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .panel::before {
+            content: "";
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, var(--copper-bright), transparent);
+            opacity: 0.3;
+        }
+
+        .panel-label {
+            font-family: var(--mono);
+            font-size: 0.65rem;
+            color: var(--copper-bright);
+            text-transform: uppercase;
+            margin-bottom: 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .panel-label::after {
+            content: "";
+            height: 1px;
+            flex-grow: 1;
+            background: var(--border);
+        }
+
+        /* Price Aggregator Node */
+        .price-node {
+            text-align: center;
+            padding: 2rem 0;
+        }
+
+        .aggregated-value {
+            font-family: var(--mono);
+            font-size: 3.5rem;
+            font-weight: 500;
+            color: var(--signal-cyan);
+            text-shadow: 0 0 20px rgba(6, 182, 212, 0.4);
+            margin-bottom: 0.5rem;
+        }
+
+        .price-meta {
+            font-size: 0.8rem;
+            color: #71717a;
+            display: flex;
+            justify-content: center;
+            gap: 1.5rem;
+        }
+
+        .price-meta span b {
+            color: #d4d4d8;
+        }
+
+        /* Chain Grid */
+        .chain-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 1rem;
+        }
+
+        .chain-card {
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            background: rgba(255, 255, 255, 0.02);
+            padding: 1rem;
+            border-radius: 2px;
+            transition: all 0.3s ease;
+        }
+
+        .chain-card:hover {
+            border-color: var(--copper-bright);
+            background: rgba(245, 158, 11, 0.05);
+        }
+
+        .chain-id {
+            font-family: var(--mono);
+            font-size: 0.7rem;
+            color: #52525b;
+        }
+
+        .chain-name {
+            font-weight: 600;
+            margin: 0.25rem 0;
+        }
+
+        .chain-status {
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+            font-size: 0.7rem;
+        }
+
+        .status-dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: var(--signal-cyan);
+            box-shadow: 0 0 8px var(--signal-cyan);
+        }
+
+        /* Live Feed */
+        .request-feed {
+            font-family: var(--mono);
+            font-size: 0.75rem;
+            height: 400px;
+            overflow-y: auto;
+            padding-right: 0.5rem;
+        }
+
+        .feed-item {
+            padding: 0.75rem 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            display: flex;
+            flex-direction: column;
+            gap: 0.25rem;
+        }
+
+        .feed-item:last-child { border: none; }
+
+        .tag {
+            font-size: 0.6rem;
+            padding: 1px 4px;
+            border-radius: 2px;
+            width: fit-content;
+        }
+
+        .tag.local { background: rgba(6, 182, 212, 0.15); color: var(--signal-cyan); border: 1px solid var(--signal-cyan); }
+        .tag.remote { background: rgba(245, 158, 11, 0.15); color: var(--copper-bright); border: 1px solid var(--copper-bright); }
+
+        .hash { color: #71717a; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+        /* Controls */
+        .control-group {
+            margin-bottom: 1.5rem;
+        }
+
+        .control-group label {
+            display: block;
+            font-size: 0.7rem;
+            color: #71717a;
+            margin-bottom: 0.5rem;
+            text-transform: uppercase;
+        }
+
+        .input-signal {
+            width: 100%;
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid var(--border);
+            padding: 0.75rem;
+            color: #fff;
+            font-family: var(--mono);
+            font-size: 0.85rem;
+            outline: none;
+            transition: border-color 0.3s ease;
+        }
+
+        .input-signal:focus {
+            border-color: var(--copper-bright);
+        }
+
+        .btn-conduct {
+            width: 100%;
+            background: var(--copper-bright);
+            color: #000;
+            border: none;
+            padding: 1rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            font-family: var(--sans);
+            cursor: pointer;
+            transition: transform 0.1s, filter 0.2s;
+            margin-top: 1rem;
+        }
+
+        .btn-conduct:hover {
+            filter: brightness(1.1);
+            transform: translateY(-1px);
+        }
+
+        .btn-conduct:active {
+            transform: translateY(0);
+        }
+
+        /* Stats Bar */
+        .system-stats {
+            display: flex;
+            gap: 2rem;
+            font-family: var(--mono);
+            font-size: 0.75rem;
+        }
+
+        .stat-bit b {
+            color: var(--copper-bright);
+        }
+
+        /* Scrollbar */
+        ::-webkit-scrollbar { width: 4px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: var(--copper-dull); border-radius: 10px; }
+
+        @media (max-width: 1100px) {
+            main { grid-template-columns: 1fr 1fr; }
+            .side-panel { grid-column: span 1; }
+            .main-content { grid-column: span 2; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="braid-container">
+        <svg width="100%" height="100%" viewBox="0 0 1440 900" preserveAspectRatio="none">
+            <!-- Intertwined paths representing cross-chain signals -->
+            <path class="signal-path" d="M-50,100 C200,100 300,400 600,400 S1000,100 1500,100" />
+            <path class="signal-path" d="M-50,200 C300,200 400,600 700,600 S1100,200 1500,200" style="animation-delay: -2s;"/>
+            <path class="signal-path" d="M-50,300 C400,300 500,800 800,800 S1200,300 1500,300" style="animation-delay: -5s;"/>
+            
+            <path class="signal-pulse-line" d="M-50,100 C200,100 300,400 600,400 S1000,100 1500,100" />
+            <path class="signal-pulse-line" d="M-50,200 C300,200 400,600 700,600 S1100,200 1500,200" style="animation-delay: -2s;"/>
+            <path class="signal-pulse-line" d="M-50,300 C400,300 500,800 800,800 S1200,300 1500,300" style="animation-delay: -5s;"/>
+        </svg>
+    </div>
+
+    <main>
+        <header>
+            <div class="brand">
+                <span>Multi-Chain VRF Hub</span>
+                <h1>CreatorVRF <small style="font-size: 0.4em; opacity: 0.5; vertical-align: middle;">V2.5</small></h1>
+            </div>
+            <div class="system-stats">
+                <div class="stat-bit">NETWORK: <b>BASE_MAINNET</b></div>
+                <div class="stat-bit">EID: <b>30184</b></div>
+                <div class="stat-bit">STATUS: <b style="color: var(--signal-cyan)">ACTIVE_CONDUCTOR</b></div>
+            </div>
+        </header>
+
+        <!-- Left Column: Registry & Configuration -->
+        <section class="side-panel">
+            <div class="panel" style="margin-bottom: 2rem;">
+                <div class="panel-label">Authorized Chains</div>
+                <div class="chain-grid">
+                    <div class="chain-card">
+                        <div class="chain-id">EID: 30101</div>
+                        <div class="chain-name">Ethereum</div>
+                        <div class="chain-status"><div class="status-dot"></div> Connected</div>
+                    </div>
+                    <div class="chain-card">
+                        <div class="chain-id">EID: 30102</div>
+                        <div class="chain-name">Arbitrum</div>
+                        <div class="chain-status"><div class="status-dot"></div> Connected</div>
+                    </div>
+                    <div class="chain-card">
+                        <div class="chain-id">EID: 30109</div>
+                        <div class="chain-name">Polygon</div>
+                        <div class="chain-status"><div class="status-dot"></div> Connected</div>
+                    </div>
+                    <div class="chain-card">
+                        <div class="chain-id">EID: 30110</div>
+                        <div class="chain-name">Optimism</div>
+                        <div class="chain-status"><div class="status-dot"></div> Connected</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="panel">
+                <div class="panel-label">VRF Parameters</div>
+                <div class="control-group">
+                    <label>Subscription ID</label>
+                    <input type="text" class="input-signal" value="4820192847551029..." readonly>
+                </div>
+                <div class="control-group">
+                    <label>Key Hash</label>
+                    <input type="text" class="input-signal" value="0x787d74caea10b2b35..." readonly>
+                </div>
+                <div class="control-group" style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                    <div>
+                        <label>Confirmations</label>
+                        <input type="text" class="input-signal" value="3" readonly>
+                    </div>
+                    <div>
+                        <label>Gas Limit</label>
+                        <input type="text" class="input-signal" value="2.5M" readonly>
+                    </div>
+                </div>
+                <button class="btn-conduct">Request Local VRF</button>
+            </div>
+        </section>
+
+        <!-- Middle Column: Aggregator Logic -->
+        <section class="main-content">
+            <div class="panel" style="margin-bottom: 2rem;">
+                <div class="panel-label">Global Price Aggregator</div>
+                <div class="price-node">
+                    <div class="aggregated-value" id="price-display">$0.8422</div>
+                    <div class="price-meta">
+                        <span>CHAINS REPORTING: <b>05</b></span>
+                        <span>STALENESS: <b>&lt; 120s</b></span>
+                        <span>TWAP: <b>300s</b></span>
+                    </div>
+                </div>
+                <div id="price-chart" style="height: 120px; margin-top: 1rem; display: flex; align-items: flex-end; gap: 4px;">
+                    <!-- Procedural chart bars -->
+                    <div style="flex:1; background: var(--copper-dull); height: 40%; opacity: 0.3;"></div>
+                    <div style="flex:1; background: var(--copper-dull); height: 55%; opacity: 0.4;"></div>
+                    <div style="flex:1; background: var(--copper-dull); height: 45%; opacity: 0.5;"></div>
+                    <div style="flex:1; background: var(--copper-bright); height: 70%; opacity: 0.6;"></div>
+                    <div style="flex:1; background: var(--signal-cyan); height: 85%; box-shadow: 0 0 15px var(--signal-cyan);"></div>
+                    <div style="flex:1; background: var(--copper-bright); height: 75%; opacity: 0.6;"></div>
+                    <div style="flex:1; background: var(--copper-dull); height: 60%; opacity: 0.5;"></div>
+                    <div style="flex:1; background: var(--copper-dull); height: 50%; opacity: 0.4;"></div>
+                    <div style="flex:1; background: var(--copper-dull); height: 40%; opacity: 0.3;"></div>
+                </div>
+            </div>
+
+            <div class="panel">
+                <div class="panel-label">Contract Resonance</div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1rem; margin-top: 1rem;">
+                    <div style="border-left: 2px solid var(--copper-bright); padding-left: 1rem;">
+                        <div style="font-size: 0.6rem; color: #71717a;">ESCROW BALANCE</div>
+                        <div style="font-family: var(--mono); font-size: 1.2rem;">4.228 ETH</div>
+                    </div>
+                    <div style="border-left: 2px solid var(--signal-cyan); padding-left: 1rem;">
+                        <div style="font-size: 0.6rem; color: #71717a;">AVG LATENCY</div>
+                        <div style="font-family: var(--mono); font-size: 1.2rem;">14.2s</div>
+                    </div>
+                    <div style="border-left: 2px solid #52525b; padding-left: 1rem;">
+                        <div style="font-size: 0.6rem; color: #71717a;">TOTAL REQUESTS</div>
+                        <div style="font-family: var(--mono); font-size: 1.2rem;">12,842</div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Right Column: Live Feed -->
+        <section class="side-panel">
+            <div class="panel">
+                <div class="panel-label">Signal Pulse Stream</div>
+                <div class="request-feed" id="feed">
+                    <div class="feed-item">
+                        <span class="tag local">LOCAL_REQUEST</span>
+                        <span class="hash">REQ_882...F41</span>
+                        <div style="display: flex; justify-content: space-between; font-size: 0.65rem;">
+                            <span style="color: #4ade80;">FULFILLED</span>
+                            <span style="color: #52525b;">2m ago</span>
+                        </div>
+                    </div>
+                    <div class="feed-item">
+                        <span class="tag remote">REMOTE_LZ_IN</span>
+                        <span class="hash">SEQ_4402...A1B</span>
+                        <div style="display: flex; justify-content: space-between; font-size: 0.65rem;">
+                            <span style="color: var(--copper-bright);">PENDING_VRF</span>
+                            <span style="color: #52525b;">45s ago</span>
+                        </div>
+                    </div>
+                    <div class="feed-item">
+                        <span class="tag remote">REMOTE_LZ_IN</span>
+                        <span class="hash">SEQ_4401...C92</span>
+                        <div style="display: flex; justify-content: space-between; font-size: 0.65rem;">
+                            <span style="color: #4ade80;">RESPONDED</span>
+                            <span style="color: #52525b;">12m ago</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="panel" style="margin-top: 2rem; border-color: rgba(6, 182, 212, 0.2);">
+                <div class="panel-label" style="color: var(--signal-cyan);">Oracle Health</div>
+                <div style="font-family: var(--mono); font-size: 0.7rem; line-height: 1.6;">
+                    <div style="display: flex; justify-content: space-between;"><span>Price Node:</span> <span style="color: #4ade80;">ONLINE</span></div>
+                    <div style="display: flex; justify-content: space-between;"><span>LZ Endpoint:</span> <span style="color: #4ade80;">STABLE</span></div>
+                    <div style="display: flex; justify-content: space-between;"><span>VRF Co-ord:</span> <span style="color: #4ade80;">LINKED</span></div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <script>
+        // Decorative Price Fluctuations
+        const priceDisplay = document.getElementById('price-display');
+        let currentPrice = 0.8422;
+
+        setInterval(() => {
+            const noise = (Math.random() - 0.5) * 0.001;
+            currentPrice += noise;
+            priceDisplay.innerText = `$${currentPrice.toFixed(4)}`;
+            
+            // Randomly update a feed item to simulate activity
+            if(Math.random() > 0.8) {
+                addFeedItem();
+            }
+        }, 2000);
+
+        function addFeedItem() {
+            const feed = document.getElementById('feed');
+            const item = document.createElement('div');
+            item.className = 'feed-item';
+            const isLocal = Math.random() > 0.5;
+            const randomHash = Math.random().toString(16).substring(2, 8).toUpperCase();
+            
+            item.innerHTML = `
+                <span class="tag ${isLocal ? 'local' : 'remote'}">${isLocal ? 'LOCAL_REQUEST' : 'REMOTE_LZ_IN'}</span>
+                <span class="hash">REQ_${randomHash}...${Math.random().toString(16).substring(2, 5).toUpperCase()}</span>
+                <div style="display: flex; justify-content: space-between; font-size: 0.65rem;">
+                    <span style="color: var(--signal-pulse);">SYNCING...</span>
+                    <span style="color: #52525b;">just now</span>
+                </div>
+            `;
+            feed.prepend(item);
+            if(feed.children.length > 8) feed.lastElementChild.remove();
+        }
+
+        // Add visual interest to the button
+        document.querySelector('.btn-conduct').addEventListener('mousedown', function() {
+            this.style.transform = 'scale(0.98)';
+        });
+        document.querySelector('.btn-conduct').addEventListener('mouseup', function() {
+            this.style.transform = 'translateY(-1px)';
+        });
+    </script>
+</body>
+</html>

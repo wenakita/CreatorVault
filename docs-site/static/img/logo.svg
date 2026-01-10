@@ -1,0 +1,38 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256" fill="none">
+  <defs>
+    <radialGradient id="bg" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(90 70) rotate(55) scale(230 230)">
+      <stop stop-color="#F5D37A"/>
+      <stop offset="0.45" stop-color="#C7A24C"/>
+      <stop offset="0.75" stop-color="#7A5C1E"/>
+      <stop offset="1" stop-color="#070707"/>
+    </radialGradient>
+    <linearGradient id="ring" x1="46" y1="46" x2="210" y2="210" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FFFFFF" stop-opacity="0.55"/>
+      <stop offset="0.5" stop-color="#FFFFFF" stop-opacity="0.12"/>
+      <stop offset="1" stop-color="#FFFFFF" stop-opacity="0.35"/>
+    </linearGradient>
+    <linearGradient id="mark" x1="78" y1="64" x2="176" y2="192" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FFFFFF" stop-opacity="0.92"/>
+      <stop offset="1" stop-color="#FFFFFF" stop-opacity="0.62"/>
+    </linearGradient>
+  </defs>
+
+  <circle cx="128" cy="128" r="128" fill="url(#bg)"/>
+  <circle cx="128" cy="128" r="102" stroke="url(#ring)" stroke-width="10" opacity="0.9"/>
+
+  <!-- Minimal CV monogram -->
+  <path
+    d="M78 116c0-29 19-52 50-52 16 0 29 5 39 14 3 3 3 8 0 11l-8 8c-3 3-7 3-10 0-6-6-12-8-20-8-16 0-26 11-26 27v24c0 16 10 27 26 27 8 0 14-2 20-8 3-3 7-3 10 0l8 8c3 3 3 8 0 11-10 9-23 14-39 14-31 0-50-23-50-52v-22z"
+    fill="url(#mark)"
+  />
+  <path
+    d="M145 82h18c5 0 9 3 10 8l13 66c1 6-3 12-10 12h-14c-5 0-9-3-10-8l-7-36-7 36c-1 5-5 8-10 8h-14c-7 0-11-6-10-12l13-66c1-5 5-8 10-8h8z"
+    fill="url(#mark)"
+    opacity="0.95"
+  />
+
+  <circle cx="128" cy="128" r="124.5" stroke="#FFFFFF" stroke-opacity="0.06"/>
+</svg>
+
+
+

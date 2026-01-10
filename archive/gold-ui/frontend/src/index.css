@@ -1,0 +1,156 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply bg-black text-zinc-400 antialiased;
+    font-weight: 300;
+  }
+  
+  /* Cinematic Typography */
+  .headline {
+    @apply text-white font-extralight tracking-tight;
+  }
+  
+  .label {
+    @apply text-[9px] uppercase tracking-[0.2em] text-zinc-600 font-medium;
+  }
+  
+  .value {
+    @apply text-white font-light tabular-nums;
+  }
+  
+  .mono {
+    @apply font-mono tabular-nums;
+  }
+}
+
+@layer components {
+  /* Minimal Cards - No heavy chrome */
+  .card {
+    @apply bg-zinc-950/30 border-zinc-900/50 border rounded-none backdrop-blur-sm;
+  }
+  
+  /* Cinematic Sections with Letterbox Feel */
+  .cinematic-section {
+    @apply relative py-16 sm:py-24 lg:py-32 overflow-hidden;
+  }
+  
+  .cinematic-section::before,
+  .cinematic-section::after {
+    content: '';
+    @apply absolute left-0 right-0 h-[1px] bg-zinc-900;
+  }
+  
+  .cinematic-section::before {
+    @apply top-0;
+  }
+  
+  .cinematic-section::after {
+    @apply bottom-0;
+  }
+  
+  /* Data Row Style */
+  .data-row {
+    @apply flex items-center justify-between py-4 border-b border-zinc-900/50;
+  }
+  
+  /* Accent Glows - Selective, not everywhere */
+  .glow-purple {
+    text-shadow: 0 0 40px rgba(168, 85, 247, 0.4);
+  }
+  
+  .glow-cyan {
+    text-shadow: 0 0 40px rgba(34, 211, 238, 0.4);
+  }
+  
+  .glow-amber {
+    text-shadow: 0 0 40px rgba(251, 191, 36, 0.4);
+  }
+  
+  /* Minimal Buttons - Just accent on dark */
+  .btn-primary {
+    @apply bg-transparent border border-zinc-800 text-zinc-300 hover:text-white hover:border-zinc-700 px-8 py-3 transition-all duration-300 font-light tracking-wide;
+  }
+  
+  .btn-accent {
+    @apply bg-purple-500/10 border border-purple-500/20 text-purple-400 hover:bg-purple-500/20 px-8 py-3 transition-all duration-300 font-light tracking-wide;
+  }
+  
+  /* Input - Terminal style */
+  .input-field {
+    @apply bg-transparent border-b border-zinc-800 text-white px-0 py-3 focus:outline-none focus:border-zinc-600 transition-colors font-light;
+  }
+  
+  /* Status Indicators */
+  .status-active {
+    @apply inline-flex items-center gap-2;
+  }
+  
+  .status-active::before {
+    content: '';
+    @apply w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse;
+    box-shadow: 0 0 8px rgba(34, 211, 238, 0.6);
+  }
+  
+  /* Particle Container */
+  .particles {
+    @apply absolute inset-0 pointer-events-none opacity-30;
+  }
+}
+
+/* Cinematic Animations - 140 BPM timing */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes staggerIn {
+  from {
+    opacity: 0;
+    transform: translateX(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes particle-float {
+  0%, 100% {
+    transform: translate(0, 0);
+    opacity: 0.2;
+  }
+  50% {
+    transform: translate(10px, -10px);
+    opacity: 0.4;
+  }
+}
+
+.animate-fade-in-up {
+  animation: fadeInUp 0.8s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+.animate-stagger-in {
+  animation: staggerIn 0.6s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+/* Orchestral Delays - 140 BPM = 428ms per beat */
+.delay-1 { animation-delay: 428ms; }
+.delay-2 { animation-delay: 856ms; }
+.delay-3 { animation-delay: 1284ms; }
+.delay-4 { animation-delay: 1712ms; }
+
+/* Desaturated Palette */
+:root {
+  --purple-accent: #9333ea;
+  --cyan-accent: #22d3ee;
+  --amber-accent: #fbbf24;
+}
