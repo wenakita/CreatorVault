@@ -9,6 +9,9 @@ import { Play, RotateCw } from 'lucide-react'
 import { AKITA } from '../config/contracts'
 import { VaultCard } from '@/components/brand/VaultCard'
 import { CoinTradeModal } from '@/components/market/CoinTradeModal'
+import { VaultExplainer } from '@/components/VaultExplainer'
+import { TechScramble } from '@/components/TechScramble'
+import { TextScramble } from '@/components/brand/TextScramble'
 import { useDebankTotalBalanceBatch } from '@/lib/debank/hooks'
 import { useDexscreenerTokenStatsBatch } from '@/lib/dexscreener/hooks'
 import type { DexscreenerTokenStats } from '@/lib/dexscreener/client'
@@ -850,9 +853,9 @@ export function Dashboard() {
             transition={{ duration: 0.8 }}
             className="space-y-6"
           >
-            <span className="label">Vault Marketplace</span>
+            <TechScramble text="Vault Marketplace" className="label" duration={500} />
             <h1 className="headline text-7xl lg:text-8xl leading-[1.05]">
-              Creator Vaults
+              <TextScramble text="Creator Vaults" speed={0.9} />
             </h1>
             <p className="text-zinc-500 text-xl font-light max-w-2xl">
               Deposit creator coins · Earn yield · Grow together
@@ -864,6 +867,10 @@ export function Dashboard() {
       {/* Vaults */}
       <section className="cinematic-section">
         <div className="max-w-6xl mx-auto px-6">
+          <div className="mb-16">
+            <VaultExplainer />
+          </div>
+
           <motion.div
             initial={{ opacity: 0 }}
             whileInView={{ opacity: 1 }}

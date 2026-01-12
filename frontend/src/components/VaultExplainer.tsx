@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState } from 'react'
 
 // Animation phases
 // 0: Initial "ERC-4626"
@@ -44,8 +44,15 @@ export const VaultExplainer: React.FC = () => {
   const isExpanded = step === 1;
   const isFinal = step === 4;
 
+  const techLayerStyle: React.CSSProperties = {
+    opacity: isTechVisible ? 1 : 0,
+    transform: isTechVisible ? 'rotateX(0deg) scale(1)' : 'rotateX(90deg) scale(1.5)',
+    filter: isTechVisible ? 'blur(0px)' : 'blur(24px)',
+    transformStyle: 'preserve-3d',
+  }
+
   return (
-    <div className="relative w-full overflow-hidden bg-[#030303] p-8 md:p-16 transition-all duration-1000 group min-h-[320px] flex flex-col items-center justify-center">
+    <div className="relative w-full overflow-hidden rounded-2xl border border-white/10 bg-vault-card/80 backdrop-blur-xl p-8 md:p-16 transition-all duration-1000 group min-h-[320px] flex flex-col items-center justify-center">
       {/* --- Ambient Background Effects --- */}
       <div className="absolute inset-0 pointer-events-none opacity-20">
         <div className="absolute top-0 left-1/4 w-[1px] h-full bg-gradient-to-b from-transparent via-white/10 to-transparent"></div>
@@ -68,15 +75,12 @@ export const VaultExplainer: React.FC = () => {
            </span>
         </div>
 
-        <div className="relative h-32 flex items-center justify-center w-full perspective-[1000px]">
+        <div className="relative h-32 flex items-center justify-center w-full [perspective:1000px]">
             
             {/* 1. Technical Standard Layer (ERC-4626 -> ERCreator4626) */}
             <div 
-                className={`absolute inset-0 flex items-center justify-center transition-all duration-700 ease-[cubic-bezier(0.25,1,0.5,1)] ${
-                    isTechVisible 
-                    ? 'opacity-100 rotate-x-0 scale-100 blur-0' 
-                    : 'opacity-0 rotate-x-90 scale-150 blur-xl'
-                }`}
+                className="absolute inset-0 flex items-center justify-center transition-all duration-700 ease-[cubic-bezier(0.25,1,0.5,1)]"
+                style={techLayerStyle}
             >
                 <div className="flex items-baseline text-5xl md:text-7xl lg:text-8xl tracking-tighter select-none">
                     {/* Prefix */}
@@ -175,5 +179,5 @@ export const VaultExplainer: React.FC = () => {
 
       </div>
     </div>
-  );
-};
+  )
+}

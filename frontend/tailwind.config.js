@@ -94,6 +94,7 @@ export default {
         'slide-down': 'slideDown 0.3s ease-out',
         'scale-in': 'scaleIn 0.3s ease-out',
         'pulse-glow': 'pulseGlow 2s infinite',
+        'scan': 'scan 4s linear infinite',
         // Used by the Liquid Gold UI (moves a highlight streak across)
         'shimmer': 'shimmer 2s linear infinite',
         'float': 'float 3s ease-in-out infinite',
@@ -148,6 +149,10 @@ export default {
         pulseRing: {
           '0%': { transform: 'scale(0.8)', opacity: '0.5' },
           '100%': { transform: 'scale(2.4)', opacity: '0' },
+        },
+        scan: {
+          '0%': { transform: 'translateY(-100%)' },
+          '100%': { transform: 'translateY(100%)' },
         },
       },
       backgroundImage: {
