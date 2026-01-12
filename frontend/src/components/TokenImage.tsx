@@ -10,7 +10,7 @@
 import { useState, memo } from 'react'
 import { useWeb3 } from '@/web3/Web3Context'
 import { useTokenMetadata } from '../hooks/useTokenMetadata'
-import { LiquidGoldBorder } from './liquidGold/LiquidGoldBorder'
+import { OrbBorder } from './brand/OrbBorder'
 
 interface TokenImageProps {
   tokenAddress: `0x${string}`
@@ -107,13 +107,13 @@ function TokenImageInner({
   return (
     <div className={`relative ${className}`}>
       <div className={`${sizeClass} relative`}>
-        <LiquidGoldBorder intensity="low">
+        <OrbBorder intensity="low">
           <div className={`w-full h-full ${padClass} bg-obsidian rounded-full`}>
             <div className="w-full h-full rounded-full overflow-hidden relative shadow-[inset_0_0_20px_black]">
               {/* Token body */}
               <div className="absolute inset-0 rounded-full overflow-hidden bg-black">
                 {showFallback ? (
-                  <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-gold-300/30 via-gold-900/10 to-black">
+                  <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-brand-primary/25 via-brand-accent/10 to-black">
                     <span className="text-white/80 font-serif text-base leading-none select-none">
                       {symbol.trim()?.[0]?.toUpperCase() || '?'}
                     </span>
@@ -139,7 +139,7 @@ function TokenImageInner({
               <div className="absolute inset-0 rounded-full border border-white/10 pointer-events-none shadow-[inset_0_4px_20px_rgba(255,255,255,0.1)]" />
             </div>
           </div>
-        </LiquidGoldBorder>
+        </OrbBorder>
       </div>
     </div>
   )
@@ -174,11 +174,11 @@ export const TokenImage = memo(function TokenImage({
     return (
       <div className={`relative ${className}`}>
         <div className={`${sizeClass} relative`}>
-          <LiquidGoldBorder intensity="low">
+          <OrbBorder intensity="low">
             <div className={`w-full h-full ${padClass} bg-obsidian rounded-full`}>
               <div className="w-full h-full rounded-full overflow-hidden relative shadow-[inset_0_0_20px_black]">
                 <div className="absolute inset-0 rounded-full overflow-hidden bg-black">
-                  <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-gold-300/30 via-gold-900/10 to-black">
+                  <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-brand-primary/25 via-brand-accent/10 to-black">
                     <span className="text-white/80 font-serif text-base leading-none select-none">
                       {symbol.trim()?.[0]?.toUpperCase() || '?'}
                     </span>
@@ -189,7 +189,7 @@ export const TokenImage = memo(function TokenImage({
                 <div className="absolute inset-0 rounded-full border border-white/10 pointer-events-none shadow-[inset_0_4px_20px_rgba(255,255,255,0.1)]" />
               </div>
             </div>
-          </LiquidGoldBorder>
+          </OrbBorder>
         </div>
       </div>
     )

@@ -7,9 +7,9 @@ export function Home() {
     <div className="relative">
       {/* Subtle particle atmosphere */}
       <div className="particles">
-        <div className="absolute top-1/4 left-1/3 w-px h-px bg-purple-500 rounded-full" style={{ animation: 'particle-float 8s ease-in-out infinite' }} />
-        <div className="absolute top-1/2 right-1/4 w-px h-px bg-cyan-500 rounded-full" style={{ animation: 'particle-float 10s ease-in-out infinite', animationDelay: '2s' }} />
-        <div className="absolute bottom-1/3 left-1/2 w-px h-px bg-amber-500 rounded-full" style={{ animation: 'particle-float 12s ease-in-out infinite', animationDelay: '4s' }} />
+        <div className="absolute top-1/4 left-1/3 w-px h-px bg-brand-primary rounded-full" style={{ animation: 'particle-float 8s ease-in-out infinite' }} />
+        <div className="absolute top-1/2 right-1/4 w-px h-px bg-brand-primary/80 rounded-full" style={{ animation: 'particle-float 10s ease-in-out infinite', animationDelay: '2s' }} />
+        <div className="absolute bottom-1/3 left-1/2 w-px h-px bg-brand-primary/60 rounded-full" style={{ animation: 'particle-float 12s ease-in-out infinite', animationDelay: '4s' }} />
       </div>
 
       {/* Hero - Cinematic Letterbox */}
@@ -37,7 +37,7 @@ export function Home() {
             <h1 className="headline text-7xl sm:text-8xl lg:text-9xl leading-[1.05]">
               Turn Creator Coins
               <br />
-              <span className="glow-purple">Into Earnings</span>
+              <span className="glow-brand">Into Earnings</span>
             </h1>
           </motion.div>
 
@@ -115,7 +115,7 @@ export function Home() {
               className="bg-black p-8 space-y-4"
             >
               <span className="label">Uniswap V3</span>
-              <div className="value mono text-4xl glow-cyan">25%</div>
+              <div className="value mono text-4xl glow-brand">25%</div>
               <div className="text-zinc-600 text-xs font-light">WETH LP</div>
             </motion.div>
 
@@ -127,7 +127,7 @@ export function Home() {
               className="bg-black p-8 space-y-4"
             >
               <span className="label">Stable Pair</span>
-              <div className="value mono text-4xl glow-cyan">25%</div>
+              <div className="value mono text-4xl glow-brand">25%</div>
               <div className="text-zinc-600 text-xs font-light">USDC LP</div>
             </motion.div>
 
@@ -139,7 +139,7 @@ export function Home() {
               className="bg-black p-8 space-y-4"
             >
               <span className="label">Ajna Protocol</span>
-              <div className="value mono text-4xl glow-purple">25%</div>
+              <div className="value mono text-4xl glow-brand">25%</div>
               <div className="text-zinc-600 text-xs font-light">Lending</div>
             </motion.div>
 
@@ -173,7 +173,7 @@ export function Home() {
               <h2 className="headline text-6xl leading-tight">
                 Launch Your
                 <br />
-                <span className="glow-amber">Vault</span>
+                <span className="glow-brand">Vault</span>
               </h2>
               <p className="text-zinc-500 text-lg font-light leading-relaxed">
                 Create a vault for your coin, run a fair CCA auction, and start earning with your community

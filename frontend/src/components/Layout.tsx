@@ -1,7 +1,7 @@
 import { Suspense } from 'react'
 import { Outlet, Link, useLocation } from 'react-router-dom'
 import { Home, LayoutDashboard, HelpCircle } from 'lucide-react'
-import { LiquidGoldNavBar } from './liquidGold/LiquidGoldNavBar'
+import { VaultNavBar } from './brand/VaultNavBar'
 
 type MobileNavItem = {
   label: string
@@ -27,8 +27,8 @@ export function Layout() {
   const location = useLocation()
 
   return (
-    <div className="min-h-screen flex flex-col bg-black">
-      <LiquidGoldNavBar />
+    <div className="min-h-screen flex flex-col bg-vault-bg">
+      <VaultNavBar />
 
       {/* Main */}
       <main className="flex-1">

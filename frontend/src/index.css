@@ -4,21 +4,21 @@
 
 @layer base {
   body {
-    @apply bg-black text-zinc-400 antialiased;
+    @apply bg-vault-bg text-vault-text antialiased font-sans;
     font-weight: 300;
   }
   
   /* Cinematic Typography */
   .headline {
-    @apply text-white font-extralight tracking-tight;
+    @apply text-vault-text font-extralight tracking-tight;
   }
   
   .label {
-    @apply text-[9px] uppercase tracking-[0.2em] text-zinc-600 font-medium;
+    @apply text-[9px] uppercase tracking-[0.2em] text-vault-subtext font-medium;
   }
   
   .value {
-    @apply text-white font-light tabular-nums;
+    @apply text-vault-text font-light tabular-nums;
   }
   
   .mono {
@@ -27,9 +27,36 @@
 }
 
 @layer components {
+  /* Creator Vaults Brand Kit utilities */
+  .noise-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: 9999;
+    opacity: 0.035;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
+    mix-blend-mode: overlay;
+  }
+
+  .border-glass {
+    border-color: rgba(255, 255, 255, 0.08);
+  }
+
+  .bg-glass {
+    background-color: rgba(10, 10, 10, 0.6);
+    backdrop-filter: blur(12px);
+  }
+
+  .glass-card {
+    @apply bg-vault-card/60 backdrop-blur-xl border border-white/10 rounded-2xl;
+  }
+
   /* Minimal Cards - No heavy chrome */
   .card {
-    @apply bg-zinc-950/30 border-zinc-900/50 border rounded-none backdrop-blur-sm;
+    @apply bg-vault-card/40 border-glass border rounded-2xl backdrop-blur-sm;
   }
   
   /* Cinematic Sections with Letterbox Feel */
@@ -65,8 +92,8 @@
     text-shadow: 0 0 40px rgba(34, 211, 238, 0.4);
   }
   
-  .glow-amber {
-    text-shadow: 0 0 40px rgba(251, 191, 36, 0.4);
+  .glow-brand {
+    text-shadow: 0 0 40px rgba(0, 82, 255, 0.35);
   }
   
   /* Minimal Buttons - Just accent on dark */
@@ -75,7 +102,7 @@
   }
   
   .btn-accent {
-    @apply bg-purple-500/10 border border-purple-500/20 text-purple-400 hover:bg-purple-500/20 px-8 py-3 transition-all duration-300 font-light tracking-wide;
+    @apply bg-brand-primary/10 border border-brand-primary/20 text-brand-accent hover:bg-brand-primary/20 px-8 py-3 transition-all duration-300 font-light tracking-wide;
   }
   
   /* Input - Terminal style */
@@ -150,7 +177,9 @@
 
 /* Desaturated Palette */
 :root {
-  --purple-accent: #9333ea;
-  --cyan-accent: #22d3ee;
-  --amber-accent: #fbbf24;
+  --brand-primary: #0052FF;
+  --vault-bg: #020202;
+  --vault-card: #0A0A0A;
+  --vault-text: #EDEDED;
+  --vault-subtext: #666666;
 }

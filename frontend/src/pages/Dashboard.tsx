@@ -7,7 +7,7 @@ import { base } from 'viem/chains'
 import { useIsFetching, useQueryClient } from '@tanstack/react-query'
 import { Play, RotateCw } from 'lucide-react'
 import { AKITA } from '../config/contracts'
-import { LiquidGoldVaultCard } from '@/components/liquidGold/LiquidGoldVaultCard'
+import { VaultCard } from '@/components/brand/VaultCard'
 import { CoinTradeModal } from '@/components/market/CoinTradeModal'
 import { useDebankTotalBalanceBatch } from '@/lib/debank/hooks'
 import { useDexscreenerTokenStatsBatch } from '@/lib/dexscreener/hooks'
@@ -877,7 +877,7 @@ export function Dashboard() {
 
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
             {vaults.map((vault) => (
-              <LiquidGoldVaultCard key={vault.id} vault={vault} />
+              <VaultCard key={vault.id} vault={vault} />
             ))}
           </div>
         </div>

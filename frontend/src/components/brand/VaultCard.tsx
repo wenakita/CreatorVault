@@ -8,8 +8,8 @@ import { useReadContract } from 'wagmi'
 import { useTokenMetadata } from '@/hooks/useTokenMetadata'
 import { useZoraCoin } from '@/lib/zora/hooks'
 
-import { LiquidGoldBorder } from './LiquidGoldBorder'
-import { LiquidGoldTokenOrb } from './LiquidGoldTokenOrb'
+import { OrbBorder } from './OrbBorder'
+import { TokenOrb } from './TokenOrb'
 
 // CCA Strategy ABI (minimal)
 const CCA_STRATEGY_ABI = [
@@ -28,7 +28,7 @@ const CCA_STRATEGY_ABI = [
   },
 ] as const
 
-type VaultDescriptor = {
+export type VaultDescriptor = {
   id: string
   name: string
   symbol: string
@@ -71,7 +71,7 @@ function StatItem({
   )
 }
 
-export function LiquidGoldVaultCard({ vault }: { vault: VaultDescriptor }) {
+export function VaultCard({ vault }: { vault: VaultDescriptor }) {
   const { data: auctionStatus } = useReadContract({
     address: vault.ccaStrategy,
     abi: CCA_STRATEGY_ABI,
@@ -85,27 +85,24 @@ export function LiquidGoldVaultCard({ vault }: { vault: VaultDescriptor }) {
   const isUnlocked = isActive || isGraduated
   const phaseLabel = isActive ? 'Auction Phase' : isGraduated ? 'Vault Active' : 'Not Launched'
 
-  // Prefer Zora's indexed preview image (fast + works without Web3),
-  // then fall back to onchain tokenURI metadata.
+  // Prefer Zora indexed preview image (fast), then fall back to onchain tokenURI metadata.
   const { data: zoraCoin } = useZoraCoin(vault.token)
   const zoraPreview =
-    zoraCoin?.mediaContent?.previewImage?.medium ||
-    zoraCoin?.mediaContent?.previewImage?.small ||
-    undefined
+    zoraCoin?.mediaContent?.previewImage?.medium || zoraCoin?.mediaContent?.previewImage?.small || undefined
 
   const { imageUrl } = useTokenMetadata(vault.token)
   const image = zoraPreview || imageUrl || '/logo.svg'
 
   return (
     <div className="relative w-full max-w-[420px] mx-auto [perspective:1000px]">
-      {/* Cinematic backlight */}
+      {/* Backlight */}
       <motion.div
         animate={{
-          opacity: isUnlocked ? [0.6, 0.8, 0.6] : [0.1, 0.2, 0.1],
+          opacity: isUnlocked ? [0.55, 0.75, 0.55] : [0.08, 0.15, 0.08],
           scale: isUnlocked ? [1, 1.1, 1] : [1, 1.05, 1],
         }}
         transition={{ duration: 4, repeat: Infinity, ease: 'easeInOut' }}
-        className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[80%] h-[80%] bg-gold-400/20 blur-[100px] rounded-full pointer-events-none"
+        className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[80%] h-[80%] bg-brand-primary/12 blur-[100px] rounded-full pointer-events-none"
       />
 
       <motion.div
@@ -114,86 +111,67 @@ export function LiquidGoldVaultCard({ vault }: { vault: VaultDescriptor }) {
         animate={{ y: 0, opacity: 1 }}
         transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
       >
-        {/* Top sheen reflection */}
         <div className="absolute inset-0 bg-gradient-to-b from-white/5 to-transparent pointer-events-none opacity-20 h-32" />
 
-        {/* Header */}
         <div className="flex justify-between items-center mb-10 relative z-10">
           <div className="flex flex-col">
             <div className="flex items-center gap-2 mb-2">
               <motion.div
                 animate={{ opacity: [1, 0.5, 1] }}
                 transition={{ duration: 2, repeat: Infinity }}
-                className={`w-1.5 h-1.5 rounded-full shadow-[0_0_8px_#D4AF37] ${
-                  isUnlocked ? 'bg-gold-400' : 'bg-zinc-700'
+                className={`w-1.5 h-1.5 rounded-full shadow-[0_0_10px_#0052FF] ${
+                  isUnlocked ? 'bg-brand-primary' : 'bg-zinc-700'
                 }`}
               />
-              <span className="text-[10px] font-bold tracking-[0.2em] text-zinc-500 uppercase">
-                {phaseLabel}
-              </span>
+              <span className="text-[10px] font-bold tracking-[0.2em] text-zinc-500 uppercase">{phaseLabel}</span>
             </div>
-            <h2 className="text-2xl font-serif text-white tracking-wide">
+            <h2 className="text-2xl font-sans text-white tracking-wide">
               {vault.name}{' '}
-              <span className="text-transparent bg-clip-text bg-gradient-to-r from-gold-200 to-gold-500">
+              <span className="text-transparent bg-clip-text bg-gradient-to-r from-brand-primary to-brand-accent">
                 Vault
               </span>
             </h2>
           </div>
           <div className="bg-[#111] px-3 py-1.5 rounded-full border border-white/5 flex items-center gap-2 shadow-inner">
-            <ShieldCheck size={12} className="text-gold-400" />
+            <ShieldCheck size={12} className="text-brand-primary" />
             <span className="text-[10px] font-mono text-zinc-400">ERC-4626 • Base</span>
           </div>
         </div>
 
-        {/* Centerpiece: the liquid gold ring */}
         <div className="flex justify-center mb-12 relative z-20 scale-105">
           <div className="w-56 h-56 relative">
-            <LiquidGoldBorder intensity={isUnlocked ? 'high' : 'medium'}>
-              {/* Dark spacer between gold and image */}
+            <OrbBorder intensity={isUnlocked ? 'high' : 'medium'}>
               <div className="w-full h-full p-[6px] bg-obsidian rounded-full">
                 <div className="w-full h-full rounded-full overflow-hidden relative shadow-[inset_0_0_20px_black]">
-                  <LiquidGoldTokenOrb image={image} isUnlocked={isUnlocked} symbol={vault.symbol} />
+                  <TokenOrb image={image} isUnlocked={isUnlocked} symbol={vault.symbol} />
                 </div>
               </div>
-            </LiquidGoldBorder>
+            </OrbBorder>
           </div>
         </div>
 
-        {/* Stats row */}
         <div className="grid grid-cols-3 gap-2 mb-10 relative z-10 border-t border-white/5 pt-6">
-          <StatItem
-            label="Raised"
-            value={isActive ? `${fmtEth(currencyRaised)} ETH` : '—'}
-            icon={<BarChart3 size={10} />}
-            delay={0.1}
-          />
+          <StatItem label="Raised" value={isActive ? `${fmtEth(currencyRaised)} ETH` : '—'} icon={<BarChart3 size={10} />} delay={0.1} />
           <StatItem label="Status" value={isActive ? 'CCA' : isGraduated ? 'Active' : 'Idle'} icon={<Layers size={10} />} delay={0.2} />
           <StatItem label="Symbol" value={vault.symbol} icon={<Layers size={10} />} delay={0.3} />
         </div>
 
-        {/* Primary action */}
         <Link
           to={`/vault/${vault.vault}`}
           className="relative w-full h-16 rounded-full group cursor-pointer overflow-hidden transition-all duration-300 active:scale-95 shadow-[0_10px_30px_-10px_rgba(0,0,0,0.5)] flex items-center"
         >
-          {/* Background */}
           <div className="absolute inset-0 bg-[#0A0A0A] rounded-full" />
+          <div className="absolute inset-0 rounded-full border border-white/5 opacity-50 group-hover:border-brand-primary/30 transition-colors duration-500" />
 
-          {/* Border */}
-          <div className="absolute inset-0 rounded-full border border-white/5 opacity-50 group-hover:border-gold-500/30 transition-colors duration-500" />
-
-          {/* Shimmer streak */}
           <div className="absolute inset-0 rounded-full overflow-hidden opacity-0 group-hover:opacity-100 transition-opacity duration-500">
-            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-gold-200/10 to-transparent -translate-x-full group-hover:animate-shimmer w-[200%]" />
+            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-brand-primary/10 to-transparent -translate-x-full group-hover:animate-shimmer w-[200%]" />
           </div>
 
-          {/* Specular highlight */}
           <div className="absolute top-0 left-4 right-4 h-[40%] bg-gradient-to-b from-white/10 to-transparent rounded-full blur-[2px]" />
 
-          {/* Content */}
           <div className="relative z-10 h-full flex items-center justify-between px-4 w-full">
             <div className="flex items-center gap-3">
-              <div className="w-12 h-12 rounded-full flex items-center justify-center bg-[#151515] text-zinc-500 border border-white/5 group-hover:border-gold-500/20 transition-colors">
+              <div className="w-12 h-12 rounded-full flex items-center justify-center bg-[#151515] text-zinc-500 border border-white/5 group-hover:border-brand-primary/20 transition-colors">
                 <ArrowRight size={20} className="group-hover:translate-x-1 transition-transform" />
               </div>
               <div className="flex flex-col">
@@ -205,7 +183,7 @@ export function LiquidGoldVaultCard({ vault }: { vault: VaultDescriptor }) {
                 </span>
               </div>
             </div>
-            <div className="text-zinc-600 group-hover:text-gold-400 transition-colors">
+            <div className="text-zinc-600 group-hover:text-brand-primary transition-colors">
               <ArrowRight size={20} />
             </div>
           </div>
@@ -214,5 +192,4 @@ export function LiquidGoldVaultCard({ vault }: { vault: VaultDescriptor }) {
     </div>
   )
 }
-
 

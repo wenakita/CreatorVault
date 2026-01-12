@@ -11,34 +11,34 @@ export default {
         // Uniswap Pink (single accent)
         // Uses <alpha-value> so classes like `bg-uniswap/10` work.
         uniswap: 'rgb(255 0 122 / <alpha-value>)',
-        // Liquid Gold palette (from inspo UI)
-        gold: {
-          50: '#FBF8F1',
-          100: '#F9F1D8',
-          200: '#F0E2A3',
-          300: '#E6CC64',
-          400: '#D4AF37', // Base Gold
-          500: '#B5922B',
-          600: '#8F711E',
-          700: '#6B5216',
-          800: '#4D3A11',
-          900: '#261C05', // Deep Bronze
-          950: '#140E02',
-        },
-        // Base brand colors - using 'brand' to avoid Tailwind's 'base' directive conflict
-        // Brighter scale for dark mode visibility
+        // Creator Vaults Brand Kit (Glass Vault)
+        // - Primary: Electric Blue (#0052FF)
+        // - Surfaces: True black + deep charcoal
         brand: {
+          // Named tokens (preferred)
+          primary: '#0052FF',
+          hover: '#004AD9',
+          accent: '#3B82F6',
+          glow: 'rgba(0, 82, 255, 0.15)',
+          // Numeric scale (legacy; kept for existing UI)
           50: '#eff6ff',
           100: '#dbeafe',
           200: '#bfdbfe',
           300: '#93c5fd',
-          400: '#60a5fa',
-          500: '#3B82F6', // Bright blue - great contrast on dark backgrounds
-          600: '#2563eb',
-          700: '#1d4ed8',
-          800: '#1e40af',
-          900: '#1e3a8a',
+          400: '#3B82F6',
+          500: '#0052FF',
+          600: '#004AD9',
+          700: '#0033CC',
+          800: '#0029A3',
+          900: '#001F7A',
           950: '#172554',
+        },
+        vault: {
+          bg: '#020202', // True Black
+          card: '#0A0A0A', // Deep Charcoal
+          border: '#1F1F1F', // Fallback border
+          text: '#EDEDED',
+          subtext: '#666666',
         },
         // Surface colors - cool slate
         surface: {
@@ -86,6 +86,7 @@ export default {
         display: ['Space Grotesk', 'Inter', 'system-ui', 'sans-serif'],
         mono: ['JetBrains Mono', 'Space Mono', 'monospace'],
         serif: ['Playfair Display', 'ui-serif', 'Georgia', 'serif'],
+        doto: ['Doto', 'Inter', 'system-ui', 'sans-serif'],
       },
       animation: {
         'fade-in': 'fadeIn 0.5s ease-out',
@@ -152,6 +153,8 @@ export default {
       backgroundImage: {
         'gradient-radial': 'radial-gradient(var(--tw-gradient-stops))',
         'gradient-brand': 'linear-gradient(135deg, var(--tw-gradient-stops))',
+        'blue-gradient': 'linear-gradient(135deg, #0052FF 0%, #0033CC 100%)',
+        'subtle-glow': 'radial-gradient(circle at 50% 0%, rgba(0, 82, 255, 0.05) 0%, transparent 70%)',
         'grain': 'url("data:image/svg+xml,%3Csvg viewBox=\'0 0 200 200\' xmlns=\'http://www.w3.org/2000/svg\'%3E%3Cfilter id=\'filter\'%3E%3CfeTurbulence type=\'fractalNoise\' baseFrequency=\'0.65\' numOctaves=\'3\' stitchTiles=\'stitch\'/%3E%3C/filter%3E%3Crect width=\'100%25\' height=\'100%25\' filter=\'url(%23filter)\'/%3E%3C/svg%3E")',
         'wire-grid': 'linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px)',
       },

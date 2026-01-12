@@ -16,8 +16,8 @@ import { Link } from 'react-router-dom'
 import { CcaAuctionPanel } from '@/components/cca/CcaAuctionPanel'
 import { useTokenMetadata } from '@/hooks/useTokenMetadata'
 import { useZoraCoin } from '@/lib/zora/hooks'
-import { LiquidGoldBorder } from '@/components/liquidGold/LiquidGoldBorder'
-import { LiquidGoldTokenOrb } from '@/components/liquidGold/LiquidGoldTokenOrb'
+import { OrbBorder } from '@/components/brand/OrbBorder'
+import { TokenOrb } from '@/components/brand/TokenOrb'
 import { SHARE_SYMBOL_PREFIX, toShareSymbol } from '@/lib/tokenSymbols'
 
 // ABIs
@@ -77,7 +77,7 @@ function TokenAvatar({
 
       {badge ? (
         <div
-          className="absolute -bottom-1 -right-1 rounded-full backdrop-blur-md border border-gold-500/20 bg-black/70 text-gold-200 font-mono leading-none text-[10px] px-2 py-0.5"
+          className="absolute -bottom-1 -right-1 rounded-full backdrop-blur-md border border-brand-primary/20 bg-black/70 text-brand-accent font-mono leading-none text-[10px] px-2 py-0.5"
           aria-label={badge === SHARE_SYMBOL_PREFIX ? `Share token (${SHARE_SYMBOL_PREFIX}TOKEN)` : badge}
           title={badge === SHARE_SYMBOL_PREFIX ? `Share token (${SHARE_SYMBOL_PREFIX}TOKEN)` : badge}
         >
@@ -217,7 +217,7 @@ export function Vault() {
               aria-hidden
               animate={{ scale: [1, 1.12, 1], opacity: isUnlocked ? [0.18, 0.28, 0.18] : [0.08, 0.12, 0.08], x: [0, 40, 0] }}
               transition={{ duration: 16, repeat: Infinity, ease: 'easeInOut' }}
-              className="absolute -bottom-32 -right-24 w-[640px] h-[640px] bg-gold-900/20 rounded-full blur-[140px] pointer-events-none"
+              className="absolute -bottom-32 -right-24 w-[640px] h-[640px] bg-brand-primary/10 rounded-full blur-[140px] pointer-events-none"
             />
             <motion.div
               aria-hidden
@@ -230,17 +230,17 @@ export function Vault() {
               {/* Vessel */}
               <div className="mx-auto lg:mx-0">
                 <div className="relative w-56 h-56 sm:w-64 sm:h-64">
-                  <LiquidGoldBorder intensity={isUnlocked ? 'high' : 'medium'}>
+                  <OrbBorder intensity={isUnlocked ? 'high' : 'medium'}>
                     <div className="w-full h-full p-[6px] bg-obsidian rounded-full">
                       <div className="w-full h-full rounded-full overflow-hidden relative shadow-[inset_0_0_20px_black]">
-                        <LiquidGoldTokenOrb image={heroImage} isUnlocked={isUnlocked} symbol="AKITA" />
+                        <TokenOrb image={heroImage} isUnlocked={isUnlocked} symbol="AKITA" />
                       </div>
                     </div>
-                  </LiquidGoldBorder>
+                  </OrbBorder>
 
                   {/* Corner mark */}
-                  <div className="absolute -bottom-1 -right-1 rounded-full backdrop-blur-md border border-gold-500/20 bg-black/70 text-gold-200 font-mono leading-none text-[11px] px-2 py-0.5">
-                    ws
+                  <div className="absolute -bottom-1 -right-1 rounded-full backdrop-blur-md border border-brand-primary/20 bg-black/70 text-brand-accent font-mono leading-none text-[11px] px-2 py-0.5">
+                    {SHARE_SYMBOL_PREFIX}
                   </div>
                 </div>
               </div>
@@ -265,7 +265,7 @@ export function Vault() {
                     <span className="label mt-2 block">Creator Vault</span>
                     <h1 className="headline text-4xl sm:text-6xl mt-3">
                       AKITA{' '}
-                      <span className="text-transparent bg-clip-text bg-gradient-to-r from-gold-200 to-gold-500 italic">
+                      <span className="text-transparent bg-clip-text bg-gradient-to-r from-brand-primary to-brand-accent italic">
                         Vault
                       </span>
                     </h1>
@@ -274,7 +274,7 @@ export function Vault() {
 
                   <div className="shrink-0 hidden sm:flex flex-col items-end gap-3">
                     <div className="bg-black/20 px-3 py-1.5 rounded-full border border-white/5 flex items-center gap-2">
-                      <ShieldCheck className="w-3.5 h-3.5 text-gold-400" />
+                      <ShieldCheck className="w-3.5 h-3.5 text-brand-primary" />
                       <span className="text-[10px] font-mono text-zinc-400">ERC-4626 • Base</span>
                     </div>
                   </div>

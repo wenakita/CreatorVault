@@ -101,7 +101,7 @@ export function VaultGaugeVotingPanel({ vaults = [], className = '' }: VaultGaug
   if (!VAULT_GAUGE_VOTING_ADDRESS || !VE_AKITA_ADDRESS) {
     return (
       <div className={`bg-zinc-900/50 border border-zinc-800 rounded-2xl p-6 ${className}`}>
-        <h3 className="text-xl font-bold text-gold-400 mb-4">ve(3,3) Gauge Voting</h3>
+        <h3 className="text-xl font-bold text-brand-primary mb-4">ve(3,3) Gauge Voting</h3>
         <div className="text-center py-8">
           <div className="text-zinc-500 mb-2">Coming Soon</div>
           <p className="text-sm text-zinc-600">
@@ -115,10 +115,10 @@ export function VaultGaugeVotingPanel({ vaults = [], className = '' }: VaultGaug
   return (
     <div className={`bg-zinc-900/50 border border-zinc-800 rounded-2xl overflow-hidden ${className}`}>
       {/* Header */}
-      <div className="bg-gradient-to-r from-gold-500/10 to-amber-500/10 border-b border-zinc-800 p-6">
+      <div className="bg-gradient-to-r from-brand-primary/10 to-brand-accent/10 border-b border-zinc-800 p-6">
         <div className="flex items-center justify-between">
           <div>
-            <h3 className="text-xl font-bold text-gold-400">ve(3,3) Gauge Voting</h3>
+            <h3 className="text-xl font-bold text-brand-primary">ve(3,3) Gauge Voting</h3>
             <p className="text-sm text-zinc-400 mt-1">
               Direct jackpot probability to creator vaults
             </p>
@@ -128,7 +128,7 @@ export function VaultGaugeVotingPanel({ vaults = [], className = '' }: VaultGaug
           {epochInfo && (
             <div className="text-right">
               <div className="text-sm text-zinc-500">Epoch {epochInfo.currentEpoch}</div>
-              <div className="text-lg font-mono text-gold-400">{timeRemaining}</div>
+              <div className="text-lg font-mono text-brand-primary">{timeRemaining}</div>
               <div className="text-xs text-zinc-600">until next epoch</div>
             </div>
           )}
@@ -139,7 +139,7 @@ export function VaultGaugeVotingPanel({ vaults = [], className = '' }: VaultGaug
       <div className="p-6 border-b border-zinc-800">
         <div className="flex items-center justify-between mb-4">
           <span className="text-zinc-400">Your Voting Power</span>
-          <span className="text-gold-400 font-mono">
+          <span className="text-brand-primary font-mono">
             {votingPowerInfo ? formatVotingPower(votingPowerInfo.userPower) : '—'}
           </span>
         </div>
@@ -170,8 +170,8 @@ export function VaultGaugeVotingPanel({ vaults = [], className = '' }: VaultGaug
           <div key={allocation.vault} className="bg-zinc-800/50 rounded-xl p-4">
             <div className="flex items-center justify-between mb-3">
               <div className="flex items-center gap-3">
-                <div className="w-8 h-8 rounded-full bg-gold-500/20 flex items-center justify-center">
-                  <span className="text-gold-400 text-xs font-bold">
+                <div className="w-8 h-8 rounded-full bg-brand-primary/15 flex items-center justify-center">
+                  <span className="text-brand-primary text-xs font-bold">
                     {allocation.name.slice(0, 2).toUpperCase()}
                   </span>
                 </div>
@@ -189,7 +189,7 @@ export function VaultGaugeVotingPanel({ vaults = [], className = '' }: VaultGaug
                   max="100"
                   value={allocation.weight}
                   onChange={(e) => handleWeightChange(allocation.vault, parseInt(e.target.value) || 0)}
-                  className="w-16 bg-zinc-700 border border-zinc-600 rounded-lg px-2 py-1 text-center text-white focus:border-gold-500 focus:outline-none"
+                  className="w-16 bg-zinc-700 border border-zinc-600 rounded-lg px-2 py-1 text-center text-white focus:border-brand-primary focus:outline-none"
                 />
                 <span className="text-zinc-500">%</span>
               </div>
@@ -202,7 +202,7 @@ export function VaultGaugeVotingPanel({ vaults = [], className = '' }: VaultGaug
               max="100"
               value={allocation.weight}
               onChange={(e) => handleWeightChange(allocation.vault, parseInt(e.target.value))}
-              className="w-full h-2 bg-zinc-700 rounded-lg appearance-none cursor-pointer accent-gold-500"
+              className="w-full h-2 bg-zinc-700 rounded-lg appearance-none cursor-pointer accent-brand-primary"
             />
           </div>
         ))}
@@ -220,7 +220,7 @@ export function VaultGaugeVotingPanel({ vaults = [], className = '' }: VaultGaug
           <button
             onClick={handleVote}
             disabled={isVoting || totalAllocation === 0 || !votingPowerInfo?.hasActiveLock}
-            className="flex-1 bg-gradient-to-r from-gold-500 to-amber-500 hover:from-gold-400 hover:to-amber-400 disabled:from-zinc-600 disabled:to-zinc-700 text-black font-bold py-3 px-6 rounded-xl transition-all disabled:cursor-not-allowed"
+            className="flex-1 bg-gradient-to-r from-brand-primary to-brand-accent hover:opacity-90 disabled:from-zinc-600 disabled:to-zinc-700 text-white font-bold py-3 px-6 rounded-xl transition-all disabled:cursor-not-allowed"
           >
             {isVoting ? 'Voting...' : 'Cast Vote'}
           </button>
@@ -277,14 +277,14 @@ export function VaultGaugeVotingMini({ className = '' }: { className?: string })
     <div className={`bg-zinc-900/50 border border-zinc-800 rounded-xl p-4 ${className}`}>
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <span className="text-gold-400 text-sm font-medium">ve(3,3)</span>
+          <span className="text-brand-primary text-sm font-medium">ve(3,3)</span>
           {hasVotedThisEpoch && (
             <span className="text-xs text-green-400">✓ Voted</span>
           )}
         </div>
         <div className="text-right">
           <div className="text-xs text-zinc-500">Epoch {epochInfo?.currentEpoch ?? '—'}</div>
-          <div className="text-sm font-mono text-gold-400">{timeRemaining}</div>
+          <div className="text-sm font-mono text-brand-primary">{timeRemaining}</div>
         </div>
       </div>
       
