@@ -6,6 +6,8 @@ settings:
 
 overrides:
   '@chainlink/contracts-ccip': 1.6.4
+  '@openzeppelin/contracts-upgradeable': 4.9.6
+  '@chainlink/contracts>@openzeppelin/contracts': 4.9.6
   axios: 1.13.2
   tmp: 0.2.4
   ws: 8.18.0
@@ -262,7 +264,7 @@ packages:
       '@layerzerolabs/lz-evm-protocol-v2': ^3.0.152
       '@layerzerolabs/lz-evm-v1-0.7': ^3.0.152
       '@openzeppelin/contracts': ^4.8.1 || ^5.0.0
-      '@openzeppelin/contracts-upgradeable': ^4.8.1 || ^5.0.0
+      '@openzeppelin/contracts-upgradeable': 4.9.6
       hardhat-deploy: ^0.12.4
       solidity-bytes-utils: ^0.8.0
     peerDependenciesMeta:
@@ -273,7 +275,7 @@ packages:
     resolution: {integrity: sha512-W2Hcsbk4K+mAa21q/bnT930TQjd/Wvlp11RxouRGXATbvjB4NrFvZ8c0lrJjsgUm1f0LQC7djutZ2+dx2x3R/w==}
     peerDependencies:
       '@openzeppelin/contracts': ^4.8.1 || ^5.0.0
-      '@openzeppelin/contracts-upgradeable': ^4.8.1 || ^5.0.0
+      '@openzeppelin/contracts-upgradeable': 4.9.6
       hardhat-deploy: ^0.12.4
       solidity-bytes-utils: ^0.8.0
 
@@ -281,7 +283,7 @@ packages:
     resolution: {integrity: sha512-S1velKlKw2q5pWqXatgSe5OTRbZYslzGwjMwlcgmcpVLiPJpabcX9REZeUvxEI+xHXlQpim2sqUEvHfXtXJRhg==}
     peerDependencies:
       '@openzeppelin/contracts': 3.4.2-solc-0.7 || ^3.4.2 || ^4.0.0 || ^5.0.0
-      '@openzeppelin/contracts-upgradeable': 3.4.2-solc-0.7 || ^3.4.2 || ^4.0.0 || ^5.0.0
+      '@openzeppelin/contracts-upgradeable': 4.9.6
       hardhat-deploy: ^0.12.4
 
   '@layerzerolabs/oapp-evm@0.4.1':
@@ -291,7 +293,7 @@ packages:
       '@layerzerolabs/lz-evm-protocol-v2': ^3.0.148
       '@layerzerolabs/lz-evm-v1-0.7': ^3.0.148
       '@openzeppelin/contracts': ^4.8.1 || ^5.0.0
-      '@openzeppelin/contracts-upgradeable': ^4.8.1 || ^5.0.0
+      '@openzeppelin/contracts-upgradeable': 4.9.6
 
   '@layerzerolabs/oft-evm@4.0.1':
     resolution: {integrity: sha512-GjjfnUbx77TnFFKALVRXJYb1bt1jvarcyyx/AQo6sZfJng5DIqzI9wDxEGlUz03tEnsS6ZOOLBsH+e/hYsruiA==}
@@ -301,7 +303,7 @@ packages:
       '@layerzerolabs/lz-evm-v1-0.7': ^3.0.148
       '@layerzerolabs/oapp-evm': ^0.4.1
       '@openzeppelin/contracts': ^4.8.1 || ^5.0.0
-      '@openzeppelin/contracts-upgradeable': ^4.8.1 || ^5.0.0
+      '@openzeppelin/contracts-upgradeable': 4.9.6
 
   '@manypkg/find-root@1.1.0':
     resolution: {integrity: sha512-mki5uBvhHzO8kYYix/WRy2WX8S3B5wdVSc9D6KcU5lQNglP2yt58/VfLuAK49glRXChosY8ap2oJ1qgma3GUVA==}
@@ -324,12 +326,6 @@ packages:
   '@offchainlabs/upgrade-executor@1.1.0-beta.0':
     resolution: {integrity: sha512-mpn6PHjH/KDDjNX0pXHEKdyv8m6DVGQiI2nGzQn0JbM1nOSHJpWx6fvfjtH7YxHJ6zBZTcsKkqGkFKDtCfoSLw==}
 
-  '@openzeppelin/contracts-upgradeable@4.7.3':
-    resolution: {integrity: sha512-+wuegAMaLcZnLCJIvrVUDzA9z/Wp93f0Dla/4jJvIhijRrPabjQbZe6fWiECLaJyfn5ci9fqf9vTw3xpQOad2A==}
-
-  '@openzeppelin/contracts-upgradeable@4.9.3':
-    resolution: {integrity: sha512-jjaHAVRMrE4UuZNfDwjlLGDxTHWIOwTJS2ldnc278a0gevfXfPr8hxKEVBGFBE96kl2G3VHDZhUimw/+G3TG2A==}
-
   '@openzeppelin/contracts-upgradeable@4.9.6':
     resolution: {integrity: sha512-m4iHazOsOCv1DgM7eD7GupTJ+NFVujRZt1wzddDPSVGpWdKq1SKkla5htKG7+IS4d2XOCtzkUNwRZ7Vq5aEUMA==}
 
@@ -338,9 +334,6 @@ packages:
 
   '@openzeppelin/contracts@4.8.3':
     resolution: {integrity: sha512-bQHV8R9Me8IaJoJ2vPG4rXcL7seB7YVuskr4f+f5RyOStSZetwzkWtoqDMl5erkBJy0lDRUnIR2WIkPiC0GJlg==}
-
-  '@openzeppelin/contracts@4.9.3':
-    resolution: {integrity: sha512-He3LieZ1pP2TNt5JbkPA4PNT9WC3gOTOlDcFGJW4Le4QKqwmiNJCRt44APfxMxvq7OugU/cqYuPcSBzOw38DAg==}
 
   '@openzeppelin/contracts@4.9.6':
     resolution: {integrity: sha512-xSmezSupL+y9VkHZJGDoCBpmnB2ogM13ccaYDWqJTfS3dbuHkgjuwDFUmaFauBCboQMGB/S5UqUl2y54X99BmA==}
@@ -1202,7 +1195,7 @@ snapshots:
     dependencies:
       '@offchainlabs/upgrade-executor': 1.1.0-beta.0
       '@openzeppelin/contracts': 4.7.3
-      '@openzeppelin/contracts-upgradeable': 4.7.3
+      '@openzeppelin/contracts-upgradeable': 4.9.6
       patch-package: 6.5.1
       solady: 0.0.182
 
@@ -1231,8 +1224,8 @@ snapshots:
       '@changesets/changelog-github': 0.5.2
       '@changesets/cli': 2.27.12
       '@eth-optimism/contracts': 0.6.0(ethers@5.8.0)
-      '@openzeppelin/contracts': 4.9.3
-      '@openzeppelin/contracts-upgradeable': 4.9.3
+      '@openzeppelin/contracts': 4.9.6
+      '@openzeppelin/contracts-upgradeable': 4.9.6
       '@scroll-tech/contracts': 0.1.0
       semver: 7.7.3
     transitivePeerDependencies:
@@ -1852,19 +1845,13 @@ snapshots:
   '@offchainlabs/upgrade-executor@1.1.0-beta.0':
     dependencies:
       '@openzeppelin/contracts': 4.7.3
-      '@openzeppelin/contracts-upgradeable': 4.7.3
-
-  '@openzeppelin/contracts-upgradeable@4.7.3': {}
-
-  '@openzeppelin/contracts-upgradeable@4.9.3': {}
+      '@openzeppelin/contracts-upgradeable': 4.9.6
 
   '@openzeppelin/contracts-upgradeable@4.9.6': {}
 
   '@openzeppelin/contracts@4.7.3': {}
 
   '@openzeppelin/contracts@4.8.3': {}
-
-  '@openzeppelin/contracts@4.9.3': {}
 
   '@openzeppelin/contracts@4.9.6': {}
 
