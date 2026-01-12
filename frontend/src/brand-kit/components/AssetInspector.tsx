@@ -2,7 +2,6 @@ import React, { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { VaultAsset, AssetType } from '../types';
 import { Button } from './Button';
-import { TextScramble } from './TextScramble';
 
 interface AssetInspectorProps {
     asset: VaultAsset | null;

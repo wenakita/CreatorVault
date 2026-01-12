@@ -1,4 +1,5 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
+import { logger } from './_lib/logger.js';
 
 export default async function handler(
   req: VercelRequest,
@@ -31,7 +32,7 @@ export default async function handler(
     // Proxy the request to Revert Finance API
     const apiUrl = `https://api.revert.finance/v1/discover-pools/daily?pool=${pool}&days=${days}&network=${network}`;
     
-    console.log('[Revert Finance Proxy] Fetching:', apiUrl);
+    logger.info('[Revert Finance Proxy] Fetching', { apiUrl });
     
     const response = await fetch(apiUrl, {
       headers: {
@@ -50,7 +51,7 @@ export default async function handler(
     
     return res.status(200).json(data);
   } catch (error: any) {
-    console.error('[Revert Finance Proxy] Error:', error);
+    logger.error('[Revert Finance Proxy] Error', error);
     return res.status(500).json({
       success: false,
       error: error.message || 'Failed to fetch data from Revert Finance',

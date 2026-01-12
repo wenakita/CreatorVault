@@ -11,7 +11,7 @@ pragma solidity ^0.8.20;
  *      It serves ALL Creator Coins by looking up their contracts from the registry.
  * 
  * @dev LOTTERY MECHANICS:
- *      1. User trades ANY wsToken (wsAKITA, wsDRAGON, etc) → lottery entry created
+ *      1. User trades ANY share token (■AKITA, ■DRAGON, etc) → lottery entry created
  *      2. Win probability scales with trade size ($1 = base, $1000 = max)
  *      3. sToken holders get boosted win chances
  *      4. Winners receive % from ALL active creator vaults (diversified prize!)
@@ -19,7 +19,7 @@ pragma solidity ^0.8.20;
  * 
  * @dev MULTI-TOKEN PRIZE PAYOUT:
  *      Winner gets shares from EVERY active creator vault:
- *        - wsAKITA shares (69% of AKITA vault jackpot)
+ *        - ■AKITA shares (69% of AKITA vault jackpot)
  *        - wsDRAGON shares (69% of DRAGON vault jackpot)
  *        - wsXYZ shares (69% of XYZ vault jackpot)
  *        - ... etc for ALL active creators

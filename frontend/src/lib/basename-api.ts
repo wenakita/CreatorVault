@@ -4,6 +4,7 @@
 import { createPublicClient, http } from 'viem'
 import { base, baseSepolia } from 'viem/chains'
 import { normalize } from 'viem/ens'
+import { logger } from './logger'
 
 export interface BasenameInfo {
   name: string | null // e.g., "akita.base.eth"
@@ -39,7 +40,7 @@ export async function getBasename(
 
     return name
   } catch (error) {
-    console.error('Failed to fetch Basename:', error)
+    logger.error('Failed to fetch Basename', error)
     return null
   }
 }
@@ -89,7 +90,7 @@ export async function getBasenameProfile(
       url,
     }
   } catch (error) {
-    console.error('Failed to fetch Basename profile:', error)
+    logger.error('Failed to fetch Basename profile', error)
     return { name: null }
   }
 }

@@ -40,7 +40,7 @@ interface IBurnableRouter {
  * 
  * @dev FEE FLOW:
  *      ZORA → receives ZORA/ETH fees → converts → CreatorCoin
- *             → deposit → sAKITA → wrap → wsAKITA → queue for burn
+ *             → deposit → ▢AKITA → wrap → ■AKITA → queue for burn
  * 
  * @dev WEEKLY BURN SCHEDULE:
  *      - Fees accumulate in `pendingBurn`
@@ -119,6 +119,8 @@ contract PayoutRouter is Ownable, ReentrancyGuard {
     error BurnWeekActive();
     error NoBurnActive();
     error NothingToDrip();
+    error ETHSwapNotImplemented();
+    error TokenSwapNotImplemented();
     
     // =================================
     // CONSTRUCTOR
@@ -151,11 +153,10 @@ contract PayoutRouter is Ownable, ReentrancyGuard {
      * @notice Receive ETH fees and convert to wsToken
      * @dev Called when Zora sends ETH fees to payoutRecipient
      *      Requires a DEX swap path: ETH → CreatorCoin
+     * @dev REVERT: ETH swap functionality not yet implemented
      */
     receive() external payable {
-        emit FeesReceived(address(0), msg.value);
-        // TODO: Swap ETH → CreatorCoin via DEX
-        // For now, just hold ETH for manual handling
+        if (msg.value > 0) revert ETHSwapNotImplemented();
     }
     
     /**
@@ -171,8 +172,10 @@ contract PayoutRouter is Ownable, ReentrancyGuard {
         // If it's already the CreatorCoin, convert directly
         if (token == address(creatorCoin)) {
             _convertToWsToken(amount);
+        } else {
+            // Token swap functionality not yet implemented
+            revert TokenSwapNotImplemented();
         }
-        // TODO: Otherwise swap to CreatorCoin first
     }
     
     /**
@@ -187,7 +190,7 @@ contract PayoutRouter is Ownable, ReentrancyGuard {
     }
     
     /**
-     * @dev Internal: deposit CreatorCoin → sAKITA → wsToken
+     * @dev Internal: deposit CreatorCoin → ▢AKITA → ■AKITA
      */
     function _convertToWsToken(uint256 creatorCoinAmount) internal {
         // Use wrapper's depositAndWrap for single transaction

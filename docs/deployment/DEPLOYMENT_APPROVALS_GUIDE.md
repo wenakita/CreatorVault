@@ -123,6 +123,12 @@ function batchActivate(
 ) external
 ```
 
+#### **On CreatorVaultBatcher (deploy + launch):**
+```solidity
+function deployAndLaunch(...) external returns (...)
+function deployAndLaunchWithPermit2(...) external returns (...)
+```
+
 #### **On CharmAlphaVault (if needed):**
 ```solidity
 function acceptGovernance() external
@@ -141,6 +147,7 @@ const WHITELIST = {
     // Your deployed contracts
     strategyDeploymentBatcher: "0x...",
     vaultActivationBatcher: "0x...",
+    creatorVaultBatcher: "0x...",
     
     // Base protocol contracts (already deployed)
     USDC: "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",

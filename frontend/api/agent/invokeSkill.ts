@@ -16,6 +16,7 @@ import {
   resolveSkillScriptPath,
   type ResolvedSkill,
 } from '../_lib/skills.js'
+import { logger } from '../_lib/logger.js'
 
 declare const process: { env: Record<string, string | undefined> }
 
@@ -144,7 +145,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   try {
-    console.info('[skills] invoke request', { reference, execute: body.execute ?? false })
+    logger.info('[skills] invoke request', { reference, execute: body.execute ?? false })
     const resolved = await resolveSkill(reference)
 
     const response: SkillInvokeResponse = {
@@ -158,7 +159,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     if (body.execute) {
       if (!body.confirmed) {
-        console.warn('[skills] blocked execution: confirmation missing', { reference })
+        logger.warn('[skills] blocked execution: confirmation missing', { reference })
         return res.status(412).json({ success: false, error: 'Script execution requires confirmed=true.' } satisfies ApiEnvelope<never>)
       }
 
@@ -170,7 +171,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       const scriptPath = resolveSkillScriptPath(resolved.resolvedPath, scriptRef)
       const allowlistEntries = resolveAllowlistEntries(parseAllowlist(process.env.SKILL_SCRIPT_ALLOWLIST), getRepoRootPath())
       if (!isScriptAllowed(scriptPath, allowlistEntries)) {
-        console.warn('[skills] blocked execution: script not allowlisted', { reference, scriptPath })
+        logger.warn('[skills] blocked execution: script not allowlisted', { reference, scriptPath })
         return res.status(403).json({ success: false, error: 'Script path is not allowlisted.' } satisfies ApiEnvelope<never>)
       }
 
@@ -179,7 +180,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         return res.status(400).json({ success: false, error: 'Script file not found.' } satisfies ApiEnvelope<never>)
       }
 
-      console.info('[skills] executing script', { reference, scriptPath })
+      logger.info('[skills] executing script', { reference, scriptPath })
       const result = await runScript(scriptPath)
       response.execution = { scriptPath, ...result }
     }
@@ -187,7 +188,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(200).json({ success: true, data: response } satisfies ApiEnvelope<SkillInvokeResponse>)
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Failed to resolve skill.'
-    console.error('[skills] invoke error', { reference, message })
+    logger.error('[skills] invoke error', { reference, message })
     return res.status(500).json({ success: false, error: message } satisfies ApiEnvelope<never>)
   }
 }

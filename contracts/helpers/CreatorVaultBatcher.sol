@@ -5,6 +5,8 @@ import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {IERC20Permit} from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Permit.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
+import {EIP712} from "@openzeppelin/contracts/utils/cryptography/EIP712.sol";
+import {SignatureChecker} from "@openzeppelin/contracts/utils/cryptography/SignatureChecker.sol";
 import {ICreatorRegistry} from "../interfaces/core/ICreatorRegistry.sol";
 import {ISignatureTransfer} from "permit2/src/interfaces/ISignatureTransfer.sol";
 
@@ -24,6 +26,7 @@ interface ICreatorOVault {
     function deposit(uint256 assets, address receiver) external returns (uint256 shares);
     function setGaugeController(address _controller) external;
     function setWhitelist(address _account, bool _status) external;
+    function setProtocolRescue(address rescue) external;
     function transferOwnership(address newOwner) external;
 }
 
@@ -76,7 +79,7 @@ interface IOFTBootstrapRegistry {
  * @notice One-call CreatorVault deployment + launch for paymaster allowlisting.
  * @dev Uses the universal bytecode store + create2 deployer for deterministic addresses with small calldata.
  */
-contract CreatorVaultBatcher is ReentrancyGuard {
+contract CreatorVaultBatcher is ReentrancyGuard, EIP712 {
     using SafeERC20 for IERC20;
 
     struct CodeIds {
@@ -123,10 +126,45 @@ contract CreatorVaultBatcher is ReentrancyGuard {
         bytes32 s;
     }
 
+    // ================================
+    // OPERATOR-SAFE DEPLOY AUTHORIZATION (EIP-712)
+    // ================================
+
+    /// @notice Funding model for operator-submitted deploys
+    /// - 0: identity-funded (pull from `owner`)
+    /// - 1: operator-funded (pull from `msg.sender`)
+    uint8 private constant FUNDING_IDENTITY = 0;
+    uint8 private constant FUNDING_OPERATOR = 1;
+
+    struct DeployAuthorization {
+        address owner;
+        address operator;
+        address leftoverRecipient;
+        uint8 fundingModel;
+        bytes32 paramsHash;
+        uint256 nonce;
+        uint256 deadline;
+    }
+
+    bytes32 private constant _DEPLOY_AUTH_TYPEHASH = keccak256(
+        "DeployAuthorization(address owner,address operator,address leftoverRecipient,uint8 fundingModel,bytes32 paramsHash,uint256 nonce,uint256 deadline)"
+    );
+
+    /// @notice Nonces for DeployAuthorization (per identity owner)
+    mapping(address => uint256) public deployNonces;
+
     error ZeroAddress();
     error InvalidPercent();
     error InvalidCodeId();
     error NotOwner();
+    error DeployAuthExpired(uint256 deadline);
+    error DeployAuthInvalidSignature();
+    error DeployAuthInvalidOwner(address expected, address actual);
+    error DeployAuthInvalidOperator(address expected, address actual);
+    error DeployAuthInvalidParamsHash(bytes32 expected, bytes32 actual);
+    error DeployAuthInvalidNonce(uint256 expected, uint256 actual);
+    error DeployAuthInvalidLeftoverRecipient(address expected, address actual);
+    error DeployAuthInvalidFundingModel(uint8 expected, uint8 actual);
     error PermitTokenMismatch();
     error PermitAmountTooLow();
 
@@ -164,7 +202,7 @@ contract CreatorVaultBatcher is ReentrancyGuard {
         address _vaultActivationBatcher,
         address _lotteryManager,
         address _permit2
-    ) {
+    ) EIP712("CreatorVaultBatcher", "1") {
         if (_registry == address(0) || _bytecodeStore == address(0) || _create2Deployer == address(0)) revert ZeroAddress();
         if (_protocolTreasury == address(0) || _poolManager == address(0) || _taxHook == address(0)) revert ZeroAddress();
         if (_chainlinkEthUsd == address(0)) revert ZeroAddress();
@@ -298,6 +336,146 @@ contract CreatorVaultBatcher is ReentrancyGuard {
         result = _deployAndLaunch(params, codeIds);
     }
 
+    // ================================
+    // OPERATOR ENTRYPOINTS (DEPLOY AUTHORIZATION)
+    // ================================
+
+    /**
+     * @notice Operator-submitted deploy+launch where Permit2 pulls funds from the canonical identity (`owner`).
+     * @dev Requires an identity-signed DeployAuthorization that binds all parameters, plus an identity-signed Permit2 permit.
+     */
+    function deployAndLaunchWithPermit2AsOperatorIdentityFunded(
+        address creatorToken,
+        address owner,
+        address creatorTreasury,
+        address payoutRecipient,
+        string calldata vaultName,
+        string calldata vaultSymbol,
+        string calldata shareName,
+        string calldata shareSymbol,
+        string calldata version,
+        uint256 depositAmount,
+        uint8 auctionPercent,
+        uint128 requiredRaise,
+        uint256 floorPriceQ96,
+        bytes calldata auctionSteps,
+        CodeIds calldata codeIds,
+        DeployAuthorization calldata auth,
+        bytes calldata authSig,
+        ISignatureTransfer.PermitTransferFrom calldata permit,
+        bytes calldata signature
+    ) external nonReentrant returns (DeploymentResult memory result) {
+        bytes32 paramsHash = _computeParamsHash(
+            creatorToken,
+            owner,
+            creatorTreasury,
+            payoutRecipient,
+            vaultName,
+            vaultSymbol,
+            shareName,
+            shareSymbol,
+            version,
+            depositAmount,
+            auctionPercent,
+            requiredRaise,
+            floorPriceQ96,
+            auctionSteps,
+            codeIds,
+            owner,
+            FUNDING_IDENTITY
+        );
+
+        _verifyDeployAuthorization(auth, authSig, paramsHash, owner, owner, FUNDING_IDENTITY);
+        _permit2AndPull(creatorToken, owner, depositAmount, permit, signature);
+
+        DeployParams memory params = DeployParams({
+            creatorToken: creatorToken,
+            owner: owner,
+            creatorTreasury: creatorTreasury,
+            payoutRecipient: payoutRecipient,
+            vaultName: vaultName,
+            vaultSymbol: vaultSymbol,
+            shareName: shareName,
+            shareSymbol: shareSymbol,
+            version: version,
+            depositAmount: depositAmount,
+            auctionPercent: auctionPercent,
+            requiredRaise: requiredRaise,
+            floorPriceQ96: floorPriceQ96,
+            auctionSteps: auctionSteps
+        });
+
+        result = _deployAndLaunch(params, codeIds);
+    }
+
+    /**
+     * @notice Operator-submitted deploy+launch where Permit2 pulls funds from the operator (`msg.sender`).
+     * @dev Requires an identity-signed DeployAuthorization that binds all parameters. The operator funds the deposit.
+     */
+    function deployAndLaunchWithPermit2AsOperatorOperatorFunded(
+        address creatorToken,
+        address owner,
+        address creatorTreasury,
+        address payoutRecipient,
+        string calldata vaultName,
+        string calldata vaultSymbol,
+        string calldata shareName,
+        string calldata shareSymbol,
+        string calldata version,
+        uint256 depositAmount,
+        uint8 auctionPercent,
+        uint128 requiredRaise,
+        uint256 floorPriceQ96,
+        bytes calldata auctionSteps,
+        CodeIds calldata codeIds,
+        DeployAuthorization calldata auth,
+        bytes calldata authSig,
+        ISignatureTransfer.PermitTransferFrom calldata permit,
+        bytes calldata signature
+    ) external nonReentrant returns (DeploymentResult memory result) {
+        bytes32 paramsHash = _computeParamsHash(
+            creatorToken,
+            owner,
+            creatorTreasury,
+            payoutRecipient,
+            vaultName,
+            vaultSymbol,
+            shareName,
+            shareSymbol,
+            version,
+            depositAmount,
+            auctionPercent,
+            requiredRaise,
+            floorPriceQ96,
+            auctionSteps,
+            codeIds,
+            owner,
+            FUNDING_OPERATOR
+        );
+
+        _verifyDeployAuthorization(auth, authSig, paramsHash, owner, owner, FUNDING_OPERATOR);
+        _permit2AndPull(creatorToken, msg.sender, depositAmount, permit, signature);
+
+        DeployParams memory params = DeployParams({
+            creatorToken: creatorToken,
+            owner: owner,
+            creatorTreasury: creatorTreasury,
+            payoutRecipient: payoutRecipient,
+            vaultName: vaultName,
+            vaultSymbol: vaultSymbol,
+            shareName: shareName,
+            shareSymbol: shareSymbol,
+            version: version,
+            depositAmount: depositAmount,
+            auctionPercent: auctionPercent,
+            requiredRaise: requiredRaise,
+            floorPriceQ96: floorPriceQ96,
+            auctionSteps: auctionSteps
+        });
+
+        result = _deployAndLaunch(params, codeIds);
+    }
+
     function _deployAndLaunch(
         DeployParams memory params,
         CodeIds calldata codeIds
@@ -307,6 +485,9 @@ contract CreatorVaultBatcher is ReentrancyGuard {
         _requireCodeIds(codeIds);
 
         address treasury = params.creatorTreasury == address(0) ? params.owner : params.creatorTreasury;
+        // Deploy all components with this batcher as the temporary owner so it can perform post-deploy wiring.
+        // Final ownership is hybrid: vault -> params.owner, shared components -> protocolTreasury.
+        address tempOwner = address(this);
 
         bytes32 baseSalt = _deriveBaseSalt(params.creatorToken, params.owner, params.version);
         bytes32 vaultSalt = _saltFor(baseSalt, "vault");
@@ -330,22 +511,22 @@ contract CreatorVaultBatcher is ReentrancyGuard {
         address lzEndpoint = registry.getLayerZeroEndpoint(uint16(block.chainid));
         IOFTBootstrapRegistry(oftBootstrapRegistry).setLayerZeroEndpoint(uint16(block.chainid), lzEndpoint);
 
-        bytes memory vaultArgs = abi.encode(params.creatorToken, params.owner, params.vaultName, params.vaultSymbol);
+        bytes memory vaultArgs = abi.encode(params.creatorToken, tempOwner, params.vaultName, params.vaultSymbol);
         result.vault = create2Deployer.deploy(vaultSalt, codeIds.vault, vaultArgs);
 
-        bytes memory wrapperArgs = abi.encode(params.creatorToken, result.vault, params.owner);
+        bytes memory wrapperArgs = abi.encode(params.creatorToken, result.vault, tempOwner);
         result.wrapper = create2Deployer.deploy(wrapperSalt, codeIds.wrapper, wrapperArgs);
 
-        bytes memory shareOftArgs = abi.encode(params.shareName, params.shareSymbol, oftBootstrapRegistry, params.owner);
+        bytes memory shareOftArgs = abi.encode(params.shareName, params.shareSymbol, oftBootstrapRegistry, tempOwner);
         result.shareOFT = create2Deployer.deploy(shareOftSalt, codeIds.shareOFT, shareOftArgs);
 
-        bytes memory gaugeArgs = abi.encode(result.shareOFT, treasury, protocolTreasury, params.owner);
+        bytes memory gaugeArgs = abi.encode(result.shareOFT, treasury, protocolTreasury, tempOwner);
         result.gaugeController = create2Deployer.deploy(gaugeSalt, codeIds.gauge, gaugeArgs);
 
-        bytes memory ccaArgs = abi.encode(result.shareOFT, address(0), result.vault, result.vault, params.owner);
+        bytes memory ccaArgs = abi.encode(result.shareOFT, address(0), result.vault, result.vault, tempOwner);
         result.ccaStrategy = create2Deployer.deploy(ccaSalt, codeIds.cca, ccaArgs);
 
-        bytes memory oracleArgs = abi.encode(address(registry), chainlinkEthUsd, params.shareSymbol, params.owner);
+        bytes memory oracleArgs = abi.encode(address(registry), chainlinkEthUsd, params.shareSymbol, tempOwner);
         result.oracle = create2Deployer.deploy(oracleSalt, codeIds.oracle, oracleArgs);
 
         if (params.payoutRecipient != address(0)) {
@@ -402,14 +583,17 @@ contract CreatorVaultBatcher is ReentrancyGuard {
             IERC20(result.shareOFT).safeTransfer(params.owner, remaining);
         }
 
-        if (protocolTreasury != params.owner) {
-            ICreatorOVault(result.vault).transferOwnership(protocolTreasury);
-            ICreatorOVaultWrapper(result.wrapper).transferOwnership(protocolTreasury);
-            ICreatorShareOFT(result.shareOFT).transferOwnership(protocolTreasury);
-            ICreatorGaugeController(result.gaugeController).transferOwnership(protocolTreasury);
-            ICCALaunchStrategy(result.ccaStrategy).transferOwnership(protocolTreasury);
-            ICreatorOracle(result.oracle).transferOwnership(protocolTreasury);
-        }
+        // Final ownership (hybrid):
+        // - Vault is owned by the canonical creator identity (value layer)
+        // - Protocol retains ownership of shared/riskier components for ops + configuration
+        // Set protocol rescue authority before transferring vault ownership (owner can opt-out later).
+        ICreatorOVault(result.vault).setProtocolRescue(protocolTreasury);
+        ICreatorOVault(result.vault).transferOwnership(params.owner);
+        ICreatorOVaultWrapper(result.wrapper).transferOwnership(protocolTreasury);
+        ICreatorShareOFT(result.shareOFT).transferOwnership(protocolTreasury);
+        ICreatorGaugeController(result.gaugeController).transferOwnership(protocolTreasury);
+        ICCALaunchStrategy(result.ccaStrategy).transferOwnership(protocolTreasury);
+        ICreatorOracle(result.oracle).transferOwnership(protocolTreasury);
 
         emit CreatorVaultDeployed(
             params.creatorToken,
@@ -426,6 +610,93 @@ contract CreatorVaultBatcher is ReentrancyGuard {
 
     function _requireOwner(address owner) internal view {
         if (msg.sender != owner) revert NotOwner();
+    }
+
+    function _computeParamsHash(
+        address creatorToken,
+        address owner,
+        address creatorTreasury,
+        address payoutRecipient,
+        string calldata vaultName,
+        string calldata vaultSymbol,
+        string calldata shareName,
+        string calldata shareSymbol,
+        string calldata version,
+        uint256 depositAmount,
+        uint8 auctionPercent,
+        uint128 requiredRaise,
+        uint256 floorPriceQ96,
+        bytes calldata auctionSteps,
+        CodeIds calldata codeIds,
+        address leftoverRecipient,
+        uint8 fundingModel
+    ) internal pure returns (bytes32) {
+        return keccak256(
+            abi.encode(
+                creatorToken,
+                owner,
+                creatorTreasury,
+                payoutRecipient,
+                keccak256(bytes(vaultName)),
+                keccak256(bytes(vaultSymbol)),
+                keccak256(bytes(shareName)),
+                keccak256(bytes(shareSymbol)),
+                keccak256(bytes(version)),
+                depositAmount,
+                auctionPercent,
+                requiredRaise,
+                floorPriceQ96,
+                keccak256(auctionSteps),
+                codeIds.vault,
+                codeIds.wrapper,
+                codeIds.shareOFT,
+                codeIds.gauge,
+                codeIds.cca,
+                codeIds.oracle,
+                codeIds.oftBootstrap,
+                leftoverRecipient,
+                fundingModel
+            )
+        );
+    }
+
+    function _verifyDeployAuthorization(
+        DeployAuthorization calldata auth,
+        bytes calldata authSig,
+        bytes32 expectedParamsHash,
+        address owner,
+        address leftoverRecipient,
+        uint8 fundingModel
+    ) internal {
+        if (auth.owner != owner) revert DeployAuthInvalidOwner(owner, auth.owner);
+        if (auth.operator != msg.sender) revert DeployAuthInvalidOperator(auth.operator, msg.sender);
+        if (auth.leftoverRecipient != leftoverRecipient) {
+            revert DeployAuthInvalidLeftoverRecipient(leftoverRecipient, auth.leftoverRecipient);
+        }
+        if (auth.fundingModel != fundingModel) revert DeployAuthInvalidFundingModel(fundingModel, auth.fundingModel);
+        if (auth.paramsHash != expectedParamsHash) revert DeployAuthInvalidParamsHash(expectedParamsHash, auth.paramsHash);
+        if (block.timestamp > auth.deadline) revert DeployAuthExpired(auth.deadline);
+
+        uint256 nonce = deployNonces[owner];
+        if (auth.nonce != nonce) revert DeployAuthInvalidNonce(nonce, auth.nonce);
+
+        bytes32 structHash = keccak256(
+            abi.encode(
+                _DEPLOY_AUTH_TYPEHASH,
+                auth.owner,
+                auth.operator,
+                auth.leftoverRecipient,
+                auth.fundingModel,
+                auth.paramsHash,
+                auth.nonce,
+                auth.deadline
+            )
+        );
+        bytes32 digest = _hashTypedDataV4(structHash);
+
+        if (!SignatureChecker.isValidSignatureNow(owner, digest, authSig)) revert DeployAuthInvalidSignature();
+
+        deployNonces[owner] = nonce + 1;
     }
 
     function _pullCreatorTokens(address creatorToken, address owner, uint256 amount) internal {

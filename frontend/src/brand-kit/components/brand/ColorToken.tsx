@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 
 export const ColorToken = ({ name, value, description }: { name: string, value: string, description?: string }) => {
   const [copied, setCopied] = useState(false);

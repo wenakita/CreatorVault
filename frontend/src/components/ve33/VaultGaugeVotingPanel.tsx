@@ -1,10 +1,13 @@
 import { useState, useEffect, useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useVaultGaugeVoting, useTimeRemaining, formatVotingPower } from '../../hooks/useVaultGaugeVoting'
+import { logger } from '@/lib/logger'
+import { toShareSymbol } from '@/lib/tokenSymbols'
 
 // Temporary placeholder - replace with actual addresses when deployed
 const VAULT_GAUGE_VOTING_ADDRESS = undefined as `0x${string}` | undefined
 const VE_AKITA_ADDRESS = undefined as `0x${string}` | undefined
+const SHARE_SYMBOL = toShareSymbol('AKITA')
 
 interface VaultVoteAllocation {
   vault: string
@@ -81,7 +84,7 @@ export function VaultGaugeVotingPanel({ vaults = [], className = '' }: VaultGaug
         votingVaults.map(v => v.weight)
       )
     } catch (err) {
-      console.error('Vote failed:', err)
+      logger.error('Vote failed', err)
     }
   }
 
@@ -90,7 +93,7 @@ export function VaultGaugeVotingPanel({ vaults = [], className = '' }: VaultGaug
       await resetVotes()
       setAllocations(prev => prev.map(a => ({ ...a, weight: 0 })))
     } catch (err) {
-      console.error('Reset failed:', err)
+      logger.error('Reset failed', err)
     }
   }
 
@@ -143,7 +146,7 @@ export function VaultGaugeVotingPanel({ vaults = [], className = '' }: VaultGaug
         
         {votingPowerInfo && !votingPowerInfo.hasActiveLock && (
           <div className="bg-amber-500/10 border border-amber-500/30 rounded-lg p-3 text-sm text-amber-400">
-            Lock wsAKITA to get voting power
+            Lock {SHARE_SYMBOL} to get voting power
           </div>
         )}
 

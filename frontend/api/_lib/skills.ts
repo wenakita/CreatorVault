@@ -1,5 +1,6 @@
 import fs from 'node:fs/promises'
 import path from 'node:path'
+import { logger } from './logger.js'
 
 declare const process: { env: Record<string, string | undefined>; cwd: () => string }
 
@@ -144,7 +145,7 @@ export async function resolveSkill(reference: string): Promise<ResolvedSkill> {
   const contents = await fs.readFile(resolvedPath, 'utf8')
   const scripts = extractSkillScripts(contents)
 
-  console.info('[skills] resolved skill', {
+  logger.info('[skills] resolved skill', {
     reference: normalized,
     resolvedPath,
     scripts: scripts.length,

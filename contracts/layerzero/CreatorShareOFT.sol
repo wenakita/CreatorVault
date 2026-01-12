@@ -45,7 +45,7 @@ interface ISimpleSellTaxHook {
 
 /**
  * @title CreatorShareOFT
- * @author 0xakita.eth (CreatorVault)
+ * @author 0xakita.eth 
  * @notice OFT receipt token for CreatorOVault with buy fee and lottery integration
  * 
  * @dev FEATURES:
@@ -60,7 +60,7 @@ interface ISimpleSellTaxHook {
  *      - Sells and normal transfers = no fee
  * 
  * @dev PART OF CREATORTECH PLATFORM:
- *      Each creator deploys their own ShareOFT (e.g., wsAKITA for akita vault)
+ *      Each creator deploys their own ShareOFT (e.g., ■AKITA for AKITA vault)
  */
 contract CreatorShareOFT is OFT, ReentrancyGuard {
     
@@ -159,7 +159,7 @@ contract CreatorShareOFT is OFT, ReentrancyGuard {
     /**
      * @notice Deploy chain-specific share token
      * @param _name Token name (e.g., "AKITA Shares")
-     * @param _symbol Token symbol (e.g., "wsAKITA")
+     * @param _symbol Token symbol (e.g., "■AKITA")
      * @param _registry CreatorRegistry address (same on all chains for deterministic addresses)
      * @param _owner Owner address
      * 
@@ -285,7 +285,7 @@ contract CreatorShareOFT is OFT, ReentrancyGuard {
      * @dev Process buy with fees. Follows CEI pattern.
      * 
      * @notice FEE FLOW - THE SOCIAL-FI ENGINE:
-     *         1. Fee is collected in OFT tokens (wsAKITA)
+     *         1. Fee is collected in OFT tokens (■AKITA)
      *         2. Sent to GaugeController via receiveFees()
      *         3. GaugeController distributes:
      *            - 50% burned → increases PPS for all vault holders

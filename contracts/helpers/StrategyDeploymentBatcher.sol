@@ -170,8 +170,8 @@ contract StrategyDeploymentBatcher is ReentrancyGuard {
     function encodeAddStrategyBatch(
         address vault,
         DeploymentResult memory result,
-        uint256 charmAllocation,  // e.g., 690000000000000000 for 69%
-        uint256 ajnaAllocation    // e.g., 213900000000000000 for 21.39%
+        uint256 charmWeightBps,  // e.g., 6900 for 69.00%
+        uint256 ajnaWeightBps    // e.g., 2139 for 21.39%
     ) external pure returns (bytes[] memory calls) {
         uint256 numCalls = result.ajnaStrategy != address(0) ? 2 : 1;
         calls = new bytes[](numCalls);
@@ -180,7 +180,7 @@ contract StrategyDeploymentBatcher is ReentrancyGuard {
         calls[0] = abi.encodeWithSignature(
             "addStrategy(address,uint256)",
             result.creatorCharmStrategy,
-            charmAllocation
+            charmWeightBps
         );
         
         // Ajna strategy (if exists)
@@ -188,7 +188,7 @@ contract StrategyDeploymentBatcher is ReentrancyGuard {
             calls[1] = abi.encodeWithSignature(
                 "addStrategy(address,uint256)",
                 result.ajnaStrategy,
-                ajnaAllocation
+                ajnaWeightBps
             );
         }
     }

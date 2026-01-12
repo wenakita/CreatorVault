@@ -13,7 +13,7 @@ When you win the CreatorVault lottery, you receive a diversified portfolio of sh
 ### 1. **One Lottery, All Creators**
 
 ```
-User buys wsAKITA on Uniswap
+User buys ■AKITA on Uniswap
   ↓
 6.9% fee → AKITA GaugeController (jackpot pool)
   ↓
@@ -30,9 +30,9 @@ When someone wins, they receive **69% of the jackpot** from EVERY active creator
 
 ```solidity
 Winner receives:
-├── wsAKITA shares  (69% of AKITA vault jackpot)
-├── wsDRAGON shares (69% of DRAGON vault jackpot)
-├── wsXYZ shares    (69% of XYZ vault jackpot)
+├── ■AKITA shares  (69% of AKITA vault jackpot)
+├── ■DRAGON shares (69% of DRAGON vault jackpot)
+├── ■XYZ shares    (69% of XYZ vault jackpot)
 └── ... (ALL active creator vaults!)
 ```
 
@@ -46,9 +46,9 @@ Winner receives:
 
 | Creator | Jackpot Balance | Winner Receives (69%) |
 |---------|----------------|----------------------|
-| **AKITA** | 10,000 wsAKITA | 6,900 wsAKITA |
-| **DRAGON** | 5,000 wsDRAGON | 3,450 wsDRAGON |
-| **XYZ** | 2,000 wsXYZ | 1,380 wsXYZ |
+| **AKITA** | 10,000 ■AKITA | 6,900 ■AKITA |
+| **DRAGON** | 5,000 ■DRAGON | 3,450 ■DRAGON |
+| **XYZ** | 2,000 ■XYZ | 1,380 ■XYZ |
 
 **Total Prize:** A diversified portfolio worth potentially $10K+ USD!
 
@@ -186,8 +186,8 @@ As more creators join, the jackpot grows exponentially:
 
 ### 1. **New Creator Discovery**
 
-- Win lottery by buying wsAKITA
-- Receive wsAKITA + wsDRAGON + wsXYZ + ...
+- Win lottery by buying ■AKITA
+- Receive ■AKITA + ■DRAGON + ■XYZ + ...
 - Discover new creators you didn't know about!
 
 ### 2. **Instant Portfolio**
@@ -235,8 +235,8 @@ try gaugeController.payJackpot(vault, winner, shares) {
 ### Scenario 1: Early Days (2 Creators)
 
 ```
-AKITA Jackpot: 5,000 wsAKITA ($500)
-DRAGON Jackpot: 3,000 wsDRAGON ($300)
+AKITA Jackpot: 5,000 ■AKITA ($500)
+DRAGON Jackpot: 3,000 ■DRAGON ($300)
 ---
 Winner Prize: $800 in tokens
 ```
@@ -265,11 +265,11 @@ When AKITA launches as the first creator:
 
 ```
 Day 1: Only AKITA
-├── Winner gets: wsAKITA only
+├── Winner gets: ■AKITA only
 └── Prize: 69% of AKITA jackpot
 
 Week 4: AKITA + DRAGON launch
-├── Winner gets: wsAKITA + wsDRAGON
+├── Winner gets: ■AKITA + ■DRAGON
 └── Prize: 69% of both jackpots
 
 Month 3: 5 creators active

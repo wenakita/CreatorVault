@@ -16,7 +16,7 @@ pragma solidity ^0.8.20;
  *      - Local contracts can also request VRF directly
  * 
  * @dev PRICE AGGREGATION:
- *      - Collects wsAKITA/USD prices from all chains
+ *      - Collects ■AKITA/USD prices from all chains
  *      - Returns aggregated average price with VRF responses
  *      - Ensures consistent pricing for lottery across all chains
  */

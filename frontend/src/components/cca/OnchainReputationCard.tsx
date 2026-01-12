@@ -17,6 +17,7 @@ import {
 import type { Address } from 'viem'
 import { getOnchainReputation, type OnchainReputation } from '@/lib/reputation-aggregator'
 import { formatBasename } from '@/lib/basename-api'
+import { logger } from '@/lib/logger'
 
 interface OnchainReputationCardProps {
   creatorAddress: Address
@@ -33,9 +34,9 @@ export function OnchainReputationCard({
   useEffect(() => {
     async function loadReputation() {
       setLoading(true)
-      console.log('[OnchainReputation] Fetching reputation for:', creatorAddress)
+      logger.debug('[OnchainReputation] Fetching reputation for', { creatorAddress })
       const data = await getOnchainReputation(creatorAddress)
-      console.log('[OnchainReputation] Received data:', data)
+      logger.debug('[OnchainReputation] Received data', data)
       setReputation(data)
       setLoading(false)
     }

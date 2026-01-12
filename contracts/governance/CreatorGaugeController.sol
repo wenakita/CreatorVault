@@ -85,14 +85,14 @@ interface IVoterRewardsDistributor {
  *         → Operations, gas, development
  * 
  * @dev TOKEN FLOW (both sources):
- *      wsAKITA → GaugeController → distribute directly as wsAKITA
+ *      ■AKITA → GaugeController → distribute directly as ■AKITA
  *                                       ↓
  *               ┌───────────────────────┼───────────────────────┐
  *               ↓                       ↓                       ↓
  *            69%                    21.39%                   9.61%
  *           LOTTERY                  BURN                  PROTOCOL
  *          (jackpot)          (unwrap→burn)              (multisig)
- *           wsAKITA              sAKITA                   wsAKITA
+ *           ■AKITA              ▢AKITA                   ■AKITA
  * 
  * @dev ve(3,3) SPLIT:
  *      - 69%    → Lottery Reserve (jackpot payouts, vote-directed probability)
@@ -128,7 +128,7 @@ contract CreatorGaugeController is Ownable, ReentrancyGuard {
     // STATE
     // ================================
     
-    /// @notice The ShareOFT token (e.g., wsAKITA) - what we receive as fees
+    /// @notice The ShareOFT token (e.g., ■AKITA) - what we receive as fees
     IERC20 public immutable shareOFT;
     
     /// @notice The underlying Creator Coin (e.g., akita)
@@ -137,7 +137,7 @@ contract CreatorGaugeController is Ownable, ReentrancyGuard {
     /// @notice The wrapper to unwrap OFT → vault shares
     ICreatorOVaultWrapper public wrapper;
     
-    /// @notice The ERC-4626 vault (e.g., sAKITA)
+    /// @notice The ERC-4626 vault (e.g., ▢AKITA)
     ICreatorOVault public vault;
     
     /// @notice Vault shares token (same as vault address, but as IERC20)
@@ -290,7 +290,7 @@ contract CreatorGaugeController is Ownable, ReentrancyGuard {
     
     /**
      * @notice Create gauge controller for a Creator Coin vault
-     * @param _shareOFT The ShareOFT token address (e.g., wsAKITA)
+     * @param _shareOFT The ShareOFT token address (e.g., ■AKITA)
      * @param _creatorTreasury Creator's treasury wallet
      * @param _protocolTreasury Protocol multisig (CreatorVault treasury)
      * @param _owner Owner (usually the creator)
@@ -316,7 +316,7 @@ contract CreatorGaugeController is Ownable, ReentrancyGuard {
     /**
      * @notice Receive fees from CreatorShareOFT buy transactions
      * @dev Called by ShareOFT when buy fees are collected
-     *      Fees arrive as OFT tokens (e.g., wsAKITA)
+     *      Fees arrive as OFT tokens (e.g., ■AKITA)
      * @param amount Amount of OFT tokens received
      */
     function receiveFees(uint256 amount) external nonReentrant {
@@ -355,7 +355,7 @@ contract CreatorGaugeController is Ownable, ReentrancyGuard {
     
     /**
      * @notice Receive WETH fees from the V4 Tax Hook
-     * @dev Called when swaps happen on the wsAKITA/ETH pool with tax hook
+     * @dev Called when swaps happen on the ■AKITA/ETH pool with tax hook
      *      The tax hook sends WETH here, which we convert to vault shares
      * @param amount Amount of WETH received
      */
@@ -507,7 +507,7 @@ contract CreatorGaugeController is Ownable, ReentrancyGuard {
     /**
      * @notice Internal function to distribute vault shares according to fee split
      * @dev Called from both OFT fee path and WETH fee path
-     *      DEFAULT SPLIT: 90% lottery, 5% creator, 5% protocol, 0% burn
+     *      DEFAULT SPLIT (bps): burn=2139, lottery=6900, creator=0, protocol=961
      * @param vaultSharesReceived Amount of vault shares to distribute
      */
     function _distributeVaultShares(uint256 vaultSharesReceived) internal {
@@ -531,13 +531,13 @@ contract CreatorGaugeController is Ownable, ReentrancyGuard {
             emit SharesBurned(toBurn, vault.pricePerShare());
         }
         
-        // Add to jackpot reserve (90% default)
+        // Add to jackpot reserve (lotteryShareBps default: 6900)
         if (toLottery > 0) {
             jackpotReserve += toLottery;
             totalLotteryFunded += toLottery;
         }
         
-        // Send to creator (5% default)
+        // Send to creator (creatorShareBps default: 0)
         if (toCreator > 0 && creatorTreasury != address(0)) {
             vaultShares.safeTransfer(creatorTreasury, toCreator);
             totalCreatorEarned += toCreator;

@@ -20,28 +20,28 @@ interface IMintableBurnableOFT {
  * @dev COMBINES WRAPPER + COMPOSER FUNCTIONALITY:
  *      
  *      USER-FACING (Simple):
- *      - deposit(akita) → wsAKITA  (one tx!)
- *      - withdraw(wsAKITA) → akita (one tx!)
+ *      - deposit(akita) → ■AKITA  (one tx!)
+ *      - withdraw(■AKITA) → akita (one tx!)
  *      
  *      INTERNAL (Advanced, for integrations):
- *      - wrap(sAKITA) → wsAKITA
- *      - unwrap(wsAKITA) → sAKITA
+ *      - wrap(▢AKITA) → ■AKITA
+ *      - unwrap(■AKITA) → ▢AKITA
  *      
  * @dev WHAT USERS SEE:
- *      "I deposit 1 akita, I get 1 wsAKITA"
- *      "I withdraw 1 wsAKITA, I get 1 akita"
+ *      "I deposit 1 akita, I get 1 ■AKITA"
+ *      "I withdraw 1 ■AKITA, I get 1 akita"
  *      
- *      They never see vault shares (sAKITA), wrapping, or the 10^3 offset.
+ *      They never see vault shares (▢AKITA), wrapping, or the 10^3 offset.
  * 
  * @dev NORMALIZATION:
  *      The vault uses a 10^3 offset for inflation attack protection:
- *      - Deposit 1 AKITA → ~1000 sAKITA (vault shares)
+ *      - Deposit 1 AKITA → ~1000 ▢AKITA (vault shares)
  *      
  *      This wrapper normalizes the amounts:
- *      - Wrap 1000 sAKITA → 1 wsAKITA (÷1000)
- *      - Unwrap 1 wsAKITA → 1000 sAKITA (×1000)
+ *      - Wrap 1000 ▢AKITA → 1 ■AKITA (÷1000)
+ *      - Unwrap 1 ■AKITA → 1000 ▢AKITA (×1000)
  *      
- *      Result: 1 AKITA ≈ 1 wsAKITA (clean UX!)
+ *      Result: 1 AKITA ≈ 1 ■AKITA (clean UX!)
  * 
  * @dev CROSS-CHAIN COMPATIBLE:
  *      Constructor only takes immutables
@@ -57,13 +57,13 @@ contract CreatorOVaultWrapper is Ownable, ReentrancyGuard {
     /**
      * @notice Normalization factor to offset the vault's 10^3 decimals offset
      * @dev The vault uses _decimalsOffset() = 3, meaning:
-     *      - 1 AKITA deposited → ~1000 sAKITA shares
+     *      - 1 AKITA deposited → ~1000 ▢AKITA shares
      *      
      *      We normalize this in wrap/unwrap:
-     *      - Wrap: wsAKITA = sAKITA / 1000
-     *      - Unwrap: sAKITA = wsAKITA * 1000
+     *      - Wrap: ■AKITA = ▢AKITA / 1000
+     *      - Unwrap: ▢AKITA = ■AKITA * 1000
      *      
-     *      Result: 1 AKITA ≈ 1 wsAKITA (clean UX!)
+     *      Result: 1 AKITA ≈ 1 ■AKITA (clean UX!)
      */
     uint256 public constant NORMALIZATION_FACTOR = 1000; // 10^3
     
@@ -81,7 +81,7 @@ contract CreatorOVaultWrapper is Ownable, ReentrancyGuard {
     // MUTABLE STATE
     // ================================
     
-    /// @notice ShareOFT token (e.g., wsAKITA) - set post-deploy
+    /// @notice ShareOFT token (e.g., ■AKITA) - set post-deploy
     IMintableBurnableOFT public shareOFT;
     
     /// @notice Tracking for wrap/unwrap accounting
@@ -167,7 +167,7 @@ contract CreatorOVaultWrapper is Ownable, ReentrancyGuard {
     
     /**
      * @notice Set the chain-specific ShareOFT (called after deploy)
-     * @param _shareOFT CreatorShareOFT address (e.g., wsAKITA)
+     * @param _shareOFT CreatorShareOFT address (e.g., ■AKITA)
      */
     function setShareOFT(address _shareOFT) external onlyOwner {
         if (_shareOFT == address(0)) revert ZeroAddress();
@@ -207,7 +207,7 @@ contract CreatorOVaultWrapper is Ownable, ReentrancyGuard {
     /**
      * @notice Deposit Creator Coin and receive ShareOFT in ONE transaction
      * 
-     * @dev USER SEES: akita → wsAKITA
+     * @dev USER SEES: akita → ■AKITA
      * 
      * @dev INTERNAL FLOW:
      *      1. Take Creator Coin from user
@@ -258,7 +258,7 @@ contract CreatorOVaultWrapper is Ownable, ReentrancyGuard {
     /**
      * @notice Withdraw ShareOFT and receive Creator Coin in ONE transaction
      * 
-     * @dev USER SEES: wsAKITA → akita
+     * @dev USER SEES: ■AKITA → akita
      * 
      * @dev INTERNAL FLOW:
      *      1. Burn ShareOFT from user
@@ -309,7 +309,7 @@ contract CreatorOVaultWrapper is Ownable, ReentrancyGuard {
     
     /**
      * @notice Wrap vault shares → ShareOFT tokens
-     * @dev For advanced users who already have vault shares (sAKITA)
+     * @dev For advanced users who already have vault shares (▢AKITA)
      * @param amount Amount of vault shares to wrap
      * @return amountOut Amount of ShareOFT tokens minted
      */
@@ -326,7 +326,7 @@ contract CreatorOVaultWrapper is Ownable, ReentrancyGuard {
     
     /**
      * @notice Unwrap ShareOFT tokens → vault shares
-     * @dev For advanced users who want vault shares (sAKITA) directly
+     * @dev For advanced users who want vault shares (▢AKITA) directly
      * @param amount Amount of ShareOFT tokens to unwrap
      * @return amountOut Amount of vault shares released
      */
@@ -349,13 +349,13 @@ contract CreatorOVaultWrapper is Ownable, ReentrancyGuard {
      * @dev Internal wrap: locks vault shares, mints NORMALIZED ShareOFT
      * @param vaultSharesIn Vault shares to lock (already in this contract)
      * @param user User to mint ShareOFT to and check whitelist
-     * @return wsAKITAOut Normalized wsAKITA amount (vaultShares / 1000)
+     * @return shareOFTOut Normalized share token amount (■AKITA = vaultShares / 1000)
      * 
      * @dev NORMALIZATION:
-     *      1000 sAKITA → 1 wsAKITA
-     *      This makes: 1 AKITA ≈ 1 wsAKITA (clean UX!)
+     *      1000 ▢AKITA → 1 ■AKITA
+     *      This makes: 1 AKITA ≈ 1 ■AKITA (clean UX!)
      */
-    function _wrapInternal(uint256 vaultSharesIn, address user) internal returns (uint256 wsAKITAOut) {
+    function _wrapInternal(uint256 vaultSharesIn, address user) internal returns (uint256 shareOFTOut) {
         // Must have at least NORMALIZATION_FACTOR shares to wrap
         if (vaultSharesIn < NORMALIZATION_FACTOR) revert AmountTooSmallToNormalize();
         
@@ -376,31 +376,31 @@ contract CreatorOVaultWrapper is Ownable, ReentrancyGuard {
         // Track locked shares (minus fee)
         totalLocked += vaultSharesAfterFee;
         
-        // NORMALIZE: Divide by 1000 to get wsAKITA amount
-        // 1000 sAKITA → 1 wsAKITA
-        wsAKITAOut = vaultSharesAfterFee / NORMALIZATION_FACTOR;
+        // NORMALIZE: Divide by 1000 to get share token amount
+        // 1000 ▢AKITA → 1 ■AKITA
+        shareOFTOut = vaultSharesAfterFee / NORMALIZATION_FACTOR;
         
-        // Mint normalized wsAKITA to user
-        shareOFT.mint(user, wsAKITAOut);
-        totalMinted += wsAKITAOut;
+        // Mint normalized share token to user
+        shareOFT.mint(user, shareOFTOut);
+        totalMinted += shareOFTOut;
         
-        emit Wrapped(user, vaultSharesIn, wsAKITAOut, fee);
+        emit Wrapped(user, vaultSharesIn, shareOFTOut, fee);
     }
     
     /**
      * @dev Internal unwrap: burns ShareOFT, releases DENORMALIZED vault shares
-     * @param wsAKITAIn Normalized wsAKITA to burn
+     * @param shareOFTIn Normalized share token amount (■AKITA) to burn
      * @param user User to burn from and check whitelist
-     * @return vaultSharesOut Denormalized vault shares (wsAKITA * 1000)
+     * @return vaultSharesOut Denormalized vault shares (▢AKITA = ■AKITA * 1000)
      * 
      * @dev DENORMALIZATION:
-     *      1 wsAKITA → 1000 sAKITA
-     *      This makes: 1 wsAKITA ≈ 1 AKITA (clean UX!)
+     *      1 ■AKITA → 1000 ▢AKITA
+     *      This makes: 1 ■AKITA ≈ 1 AKITA (clean UX!)
      */
-    function _unwrapInternal(uint256 wsAKITAIn, address user) internal returns (uint256 vaultSharesOut) {
+    function _unwrapInternal(uint256 shareOFTIn, address user) internal returns (uint256 vaultSharesOut) {
         // DENORMALIZE: Multiply by 1000 to get vault shares
-        // 1 wsAKITA → 1000 sAKITA
-        uint256 vaultSharesBeforeFee = wsAKITAIn * NORMALIZATION_FACTOR;
+        // 1 ■AKITA → 1000 ▢AKITA
+        uint256 vaultSharesBeforeFee = shareOFTIn * NORMALIZATION_FACTOR;
         
         uint256 fee = 0;
         vaultSharesOut = vaultSharesBeforeFee;
@@ -413,9 +413,9 @@ contract CreatorOVaultWrapper is Ownable, ReentrancyGuard {
         
         if (totalLocked < vaultSharesBeforeFee) revert InsufficientLocked();
         
-        // Burn normalized wsAKITA from user
-        shareOFT.burn(user, wsAKITAIn);
-        totalMinted -= wsAKITAIn;
+        // Burn normalized share token from user
+        shareOFT.burn(user, shareOFTIn);
+        totalMinted -= shareOFTIn;
         
         // Release vault shares (denormalized)
         totalLocked -= vaultSharesBeforeFee;
@@ -425,7 +425,7 @@ contract CreatorOVaultWrapper is Ownable, ReentrancyGuard {
             IERC20(address(vault)).safeTransfer(feeRecipient, fee);
         }
         
-        emit Unwrapped(user, wsAKITAIn, vaultSharesOut, fee);
+        emit Unwrapped(user, shareOFTIn, vaultSharesOut, fee);
     }
     
     // ================================
@@ -463,23 +463,23 @@ contract CreatorOVaultWrapper is Ownable, ReentrancyGuard {
     }
     
     /**
-     * @dev Preview wrap with normalization: vaultShares → wsAKITA
+     * @dev Preview wrap with normalization: vaultShares → share token (■AKITA)
      */
-    function _previewWrap(uint256 vaultShares, address user) internal view returns (uint256 wsAKITA) {
+    function _previewWrap(uint256 vaultShares, address user) internal view returns (uint256 shareOFTAmount) {
         uint256 afterFee = vaultShares;
         if (!isWhitelisted[user] && wrapFee > 0) {
             afterFee = vaultShares - (vaultShares * wrapFee) / BASIS_POINTS;
         }
         // NORMALIZE: ÷1000
-        wsAKITA = afterFee / NORMALIZATION_FACTOR;
+        shareOFTAmount = afterFee / NORMALIZATION_FACTOR;
     }
     
     /**
-     * @dev Preview unwrap with denormalization: wsAKITA → vaultShares
+     * @dev Preview unwrap with denormalization: share token (■AKITA) → vaultShares
      */
-    function _previewUnwrap(uint256 wsAKITA, address user) internal view returns (uint256 vaultShares) {
+    function _previewUnwrap(uint256 shareOFTAmount, address user) internal view returns (uint256 vaultShares) {
         // DENORMALIZE: ×1000
-        uint256 vaultSharesBeforeFee = wsAKITA * NORMALIZATION_FACTOR;
+        uint256 vaultSharesBeforeFee = shareOFTAmount * NORMALIZATION_FACTOR;
         
         if (isWhitelisted[user] || unwrapFee == 0) return vaultSharesBeforeFee;
         return vaultSharesBeforeFee - (vaultSharesBeforeFee * unwrapFee) / BASIS_POINTS;
@@ -503,8 +503,8 @@ contract CreatorOVaultWrapper is Ownable, ReentrancyGuard {
     }
     
     /**
-     * @notice Check if wrapper is balanced (locked vault shares == minted wsAKITA * 1000)
-     * @dev Due to normalization: totalLocked (sAKITA) == totalMinted (wsAKITA) * 1000
+     * @notice Check if wrapper is balanced (locked vault shares == minted share tokens * 1000)
+     * @dev Due to normalization: totalLocked (▢AKITA) == totalMinted (■AKITA) * 1000
      */
     function isBalanced() external view returns (bool) {
         return totalLocked == totalMinted * NORMALIZATION_FACTOR;
@@ -512,8 +512,8 @@ contract CreatorOVaultWrapper is Ownable, ReentrancyGuard {
     
     /**
      * @notice Get wrapper reserves
-     * @return locked Vault shares locked (sAKITA, NOT normalized)
-     * @return minted ShareOFT minted (wsAKITA, normalized)
+     * @return locked Vault shares locked (▢AKITA, NOT normalized)
+     * @return minted ShareOFT minted (■AKITA, normalized)
      * @dev Note: locked = minted * 1000 when balanced
      */
     function getReserves() external view returns (uint256 locked, uint256 minted) {

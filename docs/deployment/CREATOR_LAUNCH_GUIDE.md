@@ -6,7 +6,7 @@ This guide walks you through deploying your Creator Vault in **5 simple steps**.
 
 **Total Time:** 15-20 minutes  
 **Total Cost:** ~$15-20 in gas on Base  
-**Deployed Infrastructure:** VaultActivationBatcher at `0x6d796554698f5Ddd74Ff20d745304096aEf93CB6`
+**Deployed Infrastructure:** VaultActivationBatcher at `0x6d796554698f5Ddd74Ff20d745304096aEf93CB6` (supports `batchActivate`; operator-safe Permit2 activation requires deploying the updated batcher build)
 
 ---
 
@@ -243,15 +243,14 @@ Use this to track your progress:
 ## 🎯 **WHAT HAPPENS NEXT**
 
 ### **During 7-Day CCA:**
-- Users bid ETH for your wsTokens
+- Users bid ETH for ■AKITA
 - Auction clears at fair market price
 - You can monitor bids in real-time
 
 ### **After Auction Completes:**
-- Call `completeAuction()` on CCA
-- Uniswap V4 pool initializes
-- Trading begins
-- Fee distribution starts
+- Call `sweepCurrency()` on `CCALaunchStrategy` (permissionless)
+- Token owner configures the V4 tax hook via `setTaxConfig(...)`
+- Trading begins (with 6.9% hook fees routed to the GaugeController)
 
 ### **Optional: Deploy Strategies:**
 - Deploy Charm vault strategy (yield farming)

@@ -68,7 +68,7 @@ CreatorVault enables any creator to deploy institutional-grade **ERC-4626 vault*
 
 **The 6.9% fee applies to ALL DEX trades (buys and sells) and is the core incentive mechanism. Here's the exact flow:**
 
-1. **Trade Event** -> User buys or sells share tokens (wsAKITA, wsBRET, etc.) on a DEX (Uniswap V4 pool).
+1. **Trade Event** -> User buys or sells share tokens (■AKITA, ■BRET, etc.) on a DEX (Uniswap V4 pool).
 2. **Fee Collection** -> 6.9% of the trade amount is automatically deducted and sent to the **GaugeController** contract.
 3. **GaugeController Routing** -> 100% of collected fees are routed to the **CreatorLotteryManager** prize pool.
 4. **Lottery Entry** -> Trader automatically receives lottery entries proportional to their trading volume. Entry percentage scales linearly: **$1 traded = 0.0004% chance**, $100 = 0.04%, $1,000 = 0.4%, $10,000 = 4% (works for both buys and sells).
@@ -97,12 +97,12 @@ CreatorVault enables any creator to deploy institutional-grade **ERC-4626 vault*
 
 1. **CreatorOVault** (ERC-4626 Vault)
    - Holds deposited Creator Coins (e.g., akita tokens).
-   - Mints vault shares (sAKITA) representing proportional ownership.
+   - Mints vault shares (▢AKITA) representing proportional ownership.
    - Allocates deposits across multiple yield strategies.
    - Based on **Yearn V3** architecture (profit unlocking, strategy queues, debt purchasing).
 
 2. **CreatorOVaultWrapper**
-   - Wraps vault shares (sAKITA) into **LayerZero OFT** tokens (wsAKITA).
+   - Wraps vault shares (▢AKITA) into **LayerZero OFT** share tokens (■AKITA).
    - Enables cross-chain transfers via LayerZero V2 messaging.
    - 1:1 wrapping ratio (no dilution).
 
@@ -164,21 +164,21 @@ Backend batches these calls:
 ```
 Creator Coin (akita)
    v Deposit
-CreatorOVault (sAKITA shares)
+CreatorOVault (▢AKITA shares)
    v Wrap
 CreatorOVaultWrapper
    v Mint
-CreatorShareOFT (wsAKITA)
+CreatorShareOFT (■AKITA)
    v Bridge
 LayerZero V2 Messaging -> Arbitrum, Ethereum, BSC, etc.
    v Unwrap on destination chain
-sAKITA -> Redeem -> akita (if available on that chain)
+▢AKITA -> Redeem -> akita (if available on that chain)
 ```
 
 **Trading Fee Flow:**
 
 ```
-User trades wsAKITA on Uniswap V4 (buy or sell)
+User trades ■AKITA on Uniswap V4 (buy or sell)
    v 6.9% fee deducted
 CreatorShareOFT.transfer hook
    v Send fee
@@ -199,8 +199,8 @@ User accumulates chances -> Weekly VRF draw -> Winner receives prize pool
 |--------|-----|-----------|-------|
 | **DEX Buy** (e.g., Uniswap V4) | **6.9%** | GaugeController -> Lottery | Applies to all token purchases on DEX pools |
 | **DEX Sell** (e.g., Uniswap V4) | **6.9%** | GaugeController -> Lottery | Applies to all token sales on DEX pools |
-| **Vault Deposit** (akita -> sAKITA) | **0%** | N/A | Direct deposits are free |
-| **Vault Withdrawal** (sAKITA -> akita) | **0%** | N/A | Withdrawals are free |
+| **Vault Deposit** (akita -> ▢AKITA) | **0%** | N/A | Direct deposits are free |
+| **Vault Withdrawal** (▢AKITA -> akita) | **0%** | N/A | Withdrawals are free |
 | **Cross-Chain Bridge** (via LayerZero) | **0%** + gas | LayerZero relayers | Only pay LayerZero messaging fees (~ $1-5 depending on chain) |
 
 ### Lottery Mechanics (Provably Fair)
@@ -337,7 +337,7 @@ forge test -vvv
 
 ### Deploy a Vault (Web UI)
 
-1. Navigate to [creatorvault.fun/deploy](https://creatorvault.fun/deploy)
+1. Navigate to [erc4626.fun/deploy](https://erc4626.fun/deploy)
 2. Connect Coinbase Smart Wallet
 3. Enter your Creator Coin address (e.g., 0x5b67...75 for akita)
 4. Send 50,000,000 tokens to your smart wallet (for initial CCA deposit)
@@ -400,11 +400,11 @@ CreatorVault/
 |------|-------|
 | **Creator Coin** | akita (Base) |
 | **Token Address** | `0x5b674196812451b7cec024fe9d22d2c0b172fa75` |
-| **Vault Symbol** | sAKITA |
-| **OFT Symbol** | wsAKITA |
+| **Vault Symbol** | ▢AKITA |
+| **OFT Symbol** | ■AKITA |
 | **DEX Pair** | akita/ZORA (Uniswap V4, 3% fee tier) |
 | **Lottery Prize Pool** | Growing daily via 6.9% trading fees (buys + sells) |
-| **CCA Launch** | [View live auction](https://creatorvault.fun/auction/demo) |
+| **CCA Launch** | [View live auction](https://erc4626.fun/auction/demo) |
 
 ---
 
@@ -450,7 +450,7 @@ CreatorVault/
 **Deploy a vault for your Creator Coin:**
 
 ```solidity
-// Via Factory (or use web UI at creatorvault.fun/deploy)
+// Via Factory (or use web UI at erc4626.fun/deploy)
 (address vault, address wrapper, address shareOFT) = factory.deployCreatorVault(
     0x5b67...75,                      // Your Creator Coin address
     "MyToken Omnichain Vault",        // Vault name
@@ -481,13 +481,13 @@ vault.addStrategy(strategyAddress, 5000); // 50% allocation to strategy
 
 ```solidity
 IERC20(akitaToken).approve(vaultAddress, 1000e18);
-vault.deposit(1000e18, msg.sender); // Receive sAKITA shares
+vault.deposit(1000e18, msg.sender); // Receive ▢AKITA vault shares
 ```
 
 **Wrap for cross-chain:**
 
 ```solidity
-wrapper.wrap(shareAmount); // Convert sAKITA -> wsAKITA
+wrapper.wrap(shareAmount); // Convert ▢AKITA -> ■AKITA
 ```
 
 **Bridge to another chain:**
@@ -551,9 +551,9 @@ cd frontend && pnpm dev
 
 ## Links
 
-- **Website**: [creatorvault.fun](https://creatorvault.fun)
+- **Website**: [erc4626.fun](https://erc4626.fun)
 - **GitHub**: [github.com/wenakita/CreatorVault](https://github.com/wenakita/CreatorVault)
-- **Docs**: [docs.creatorvault.fun](https://docs.creatorvault.fun) *(coming soon)*
+- **Docs**: [docs.erc4626.fun](https://docs.erc4626.fun) *(coming soon)*
 - **Coinbase Creator Coins**: [Coinbase Ecosystem](https://www.coinbase.com)
 - **LayerZero**: [docs.layerzero.network](https://docs.layerzero.network)
 - **Uniswap CCA**: [cca.uniswap.org](https://cca.uniswap.org)

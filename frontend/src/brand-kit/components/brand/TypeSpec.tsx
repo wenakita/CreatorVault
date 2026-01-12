@@ -1,5 +1,3 @@
-import React from 'react';
-
 export const TypeSpec = ({ role, sizeClass, weight, sample }: { role: string, sizeClass: string, weight: string, sample: string }) => (
     <div className="grid grid-cols-1 md:grid-cols-12 gap-4 py-6 border-b border-glass items-center group hover:bg-white/[0.02] px-6 -mx-6 rounded-xl transition-all duration-300">
         <div className="col-span-12 md:col-span-3">

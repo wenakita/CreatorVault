@@ -73,6 +73,11 @@ const AdminMiniApp = lazy(async () => {
   return { default: m.AdminMiniApp }
 })
 
+const AdminDeployStrategies = lazy(async () => {
+  const m = await import('./pages/AdminDeployStrategies')
+  return { default: m.AdminDeployStrategies }
+})
+
 const GaugeVoting = lazy(async () => {
   const m = await import('./pages/GaugeVoting')
   return { default: m.default }
@@ -102,6 +107,7 @@ function App() {
           <Route path="/status" element={<Status />} />
           <Route path="/admin/creator-access" element={<AdminCreatorAccess />} />
           <Route path="/admin/miniapp" element={<AdminMiniApp />} />
+          <Route path="/admin/deploy-strategies" element={<AdminDeployStrategies />} />
           <Route path="/vote" element={<GaugeVoting />} />
           <Route path="/activate-akita" element={<ActivateAkita />} />
           <Route path="/auction/bid/:address" element={<AuctionBid />} />

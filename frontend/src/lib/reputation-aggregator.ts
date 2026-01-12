@@ -7,6 +7,7 @@ import { getBaseGuildStats, type BaseGuildStats } from './guild-api'
 import { getBasenameProfile, type BasenameInfo } from './basename-api'
 import { getZoraCreatorProfile, type ZoraCreator } from './zora-api'
 import { resolveCreatorAddress } from './creator-coin-resolver'
+import { logger } from './logger'
 
 export interface OnchainReputation {
   // Identity
@@ -205,9 +206,9 @@ function estimateSocialReach(
 export async function getOnchainReputation(address: string): Promise<OnchainReputation> {
   try {
     // STEP 1: Resolve CreatorCoin address to actual creator address
-    console.log('[Reputation] Input address:', address)
+    logger.debug('[Reputation] Input address:', address)
     const resolvedAddress = await resolveCreatorAddress(address as Address)
-    console.log('[Reputation] Resolved address:', resolvedAddress)
+    logger.debug('[Reputation] Resolved address:', resolvedAddress)
     
     // STEP 2: Fetch all data sources in parallel using the resolved address
     const [talent, talentSocials, guild, basename, zora] = await Promise.all([
@@ -251,7 +252,7 @@ export async function getOnchainReputation(address: string): Promise<OnchainRepu
       },
     }
   } catch (error) {
-    console.error('Failed to fetch onchain reputation:', error)
+    logger.error('[Reputation] Failed to fetch onchain reputation:', error)
     
     // Return minimal fallback
     return {

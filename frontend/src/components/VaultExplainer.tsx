@@ -9,7 +9,6 @@ import React, { useState, useEffect } from 'react';
 
 export const VaultExplainer: React.FC = () => {
   const [step, setStep] = useState(0);
-  const [sequenceKey, setSequenceKey] = useState(0); // Used to restart the animation loop
 
   useEffect(() => {
     // Timeline configuration
@@ -37,7 +36,7 @@ export const VaultExplainer: React.FC = () => {
     runSequence(0);
 
     return () => clearTimeout(timeoutId);
-  }, [sequenceKey]); // Restart effect when sequenceKey changes
+  }, []);
 
   // Derived states for easier rendering logic
   const isTechVisible = step < 3;

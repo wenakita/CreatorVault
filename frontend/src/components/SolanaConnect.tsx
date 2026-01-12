@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { motion } from 'framer-motion'
 import { Wallet, ExternalLink, ArrowLeftRight, Loader2 } from 'lucide-react'
+import { logger } from '@/lib/logger'
 
 /**
  * SolanaConnect - Solana wallet connection for Base-Solana bridge
@@ -58,7 +59,7 @@ export function SolanaConnect({ onConnect, className = '' }: SolanaConnectProps)
         setPublicKey(null)
       }
     } catch (err) {
-      console.error('Disconnect error:', err)
+      logger.error('Disconnect error', err)
     }
   }
 

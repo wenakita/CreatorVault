@@ -10,13 +10,15 @@ This repo **does not** use an onchain `CreatorVaultFactory` (it was removed). Va
 ## ✅ **What your frontend should do**
 
 ### **1) Deploy + launch (one signature)**
-Use the existing component:
-- `frontend/src/components/DeployVaultAA.tsx`
+Use the canonical deploy route:
+- `/deploy` (`frontend/src/pages/DeployVault.tsx`)
 
-That component:
-- deploys the vault stack deterministically (CREATE2 salts)
-- launches the CCA (via `VaultActivationBatcher`)
-- optionally activates yield immediately (`deployToStrategies()` / `syncBalances()`)
+That flow:
+- enforces canonical creator identity for existing creator coins (prevents fragmentation)
+- deploys the vault stack deterministically (CREATE2 salts) via `CreatorVaultBatcher`
+- deposits + launches CCA during deploy
+
+If you already have a deployed vault stack and only need activation, use `LaunchVaultAA`.
 
 ### **2) Read canonical addresses**
 Once deployed, read from onchain registries:
@@ -31,6 +33,7 @@ Once deployed, read from onchain registries:
 ## 🧩 **Key contracts your UI interacts with**
 
 - **Vault activation**: `contracts/helpers/VaultActivationBatcher.sol`
+- **Deploy + launch**: `contracts/helpers/CreatorVaultBatcher.sol`
 - **Deployment registry**: `contracts/factories/CreatorOVaultFactory.sol`
 - **Canonical registry**: `contracts/core/CreatorRegistry.sol`
 - **Strategy deployment (optional)**: `contracts/helpers/StrategyDeploymentBatcher.sol`

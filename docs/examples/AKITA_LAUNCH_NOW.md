@@ -37,7 +37,7 @@ Minimum Raise:      0.1 ETH            (Low barrier for testing)
 **What This Means:**
 - You deposit 100M AKITA
 - 50M goes to CCA auction (7 days)
-- 50M wsAKITA tokens sent to you
+- 50M ■AKITA tokens sent to you
 - Auction needs at least 0.1 ETH total to succeed
 
 ---
@@ -81,7 +81,7 @@ Minimum Raise:      0.1 ETH            (Low barrier for testing)
 
 2. **Your Wallet Shows:**
    - ✅ -100M AKITA (deposited)
-   - ✅ +50M wsAKITA (your share)
+   - ✅ +50M ■AKITA (your share)
 
 3. **Vault Page Shows:**
    - ✅ Status: "CCA Phase" (7 days)
@@ -118,7 +118,7 @@ Minimum Raise:      0.1 ETH            (Low barrier for testing)
 ### **Day 8+: Vault Live** 🌟
 
 **What's active:**
-- ✅ Users can deposit AKITA → get wsAKITA
+- ✅ Users can deposit AKITA → get ■AKITA
 - ✅ 6.9% trading fees → lottery jackpot
 - ✅ Multi-token lottery (winners get ALL creator tokens!)
 - ✅ Burns create deflationary pressure

@@ -18,6 +18,7 @@ import { useTokenMetadata } from '@/hooks/useTokenMetadata'
 import { useZoraCoin } from '@/lib/zora/hooks'
 import { LiquidGoldBorder } from '@/components/liquidGold/LiquidGoldBorder'
 import { LiquidGoldTokenOrb } from '@/components/liquidGold/LiquidGoldTokenOrb'
+import { SHARE_SYMBOL_PREFIX, toShareSymbol } from '@/lib/tokenSymbols'
 
 // ABIs
 const WRAPPER_ABI = [
@@ -49,6 +50,8 @@ const CCA_STRATEGY_ABI = [
 const tabs = ['Deposit', 'Withdraw'] as const
 type TabType = typeof tabs[number]
 
+const SHARE_SYMBOL = toShareSymbol('AKITA')
+
 function TokenAvatar({
   image,
   symbol,
@@ -75,8 +78,8 @@ function TokenAvatar({
       {badge ? (
         <div
           className="absolute -bottom-1 -right-1 rounded-full backdrop-blur-md border border-gold-500/20 bg-black/70 text-gold-200 font-mono leading-none text-[10px] px-2 py-0.5"
-          aria-label={badge === 'ws' ? 'Wrapped vault share token (wsTOKEN)' : badge}
-          title={badge === 'ws' ? 'Wrapped vault share token (wsTOKEN)' : badge}
+          aria-label={badge === SHARE_SYMBOL_PREFIX ? `Share token (${SHARE_SYMBOL_PREFIX}TOKEN)` : badge}
+          title={badge === SHARE_SYMBOL_PREFIX ? `Share token (${SHARE_SYMBOL_PREFIX}TOKEN)` : badge}
         >
           {badge}
         </div>
@@ -266,7 +269,7 @@ export function Vault() {
                         Vault
                       </span>
                     </h1>
-                    <p className="text-zinc-600 text-sm font-light mono mt-3">AKITA → wsAKITA</p>
+                    <p className="text-zinc-600 text-sm font-light mono mt-3">AKITA → {SHARE_SYMBOL}</p>
                   </div>
 
                   <div className="shrink-0 hidden sm:flex flex-col items-end gap-3">
@@ -326,7 +329,7 @@ export function Vault() {
                   <div className="status-active mb-2">
                     <span className="label text-cyan-400">CCA Auction Active</span>
                   </div>
-                  <p className="text-zinc-500 text-sm font-light">Get wsAKITA before anyone else</p>
+                  <p className="text-zinc-500 text-sm font-light">Get {SHARE_SYMBOL} before anyone else</p>
                 </div>
               </div>
               <Link to={`/auction/bid/${ccaStrategy}`} className="btn-accent w-full sm:w-auto text-center">
@@ -366,7 +369,7 @@ export function Vault() {
           <div id="auction" className="mt-10">
             <CcaAuctionPanel
               ccaStrategy={ccaStrategy as Address}
-              wsSymbol="wsAKITA"
+              wsSymbol={SHARE_SYMBOL}
               vaultAddress={AKITA.vault as Address}
             />
           </div>
@@ -446,7 +449,7 @@ export function Vault() {
                     className="input-field w-full text-4xl sm:text-5xl font-light text-center"
                   />
                   <div className="mt-4 text-center">
-                    <span className="label">{activeTab === 'Deposit' ? 'AKITA' : 'wsAKITA'}</span>
+                    <span className="label">{activeTab === 'Deposit' ? 'AKITA' : SHARE_SYMBOL}</span>
                   </div>
                 </div>
 
@@ -454,7 +457,7 @@ export function Vault() {
                   <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2 py-4 border-y border-zinc-900/50">
                     <span className="label">You Will Receive</span>
                     <div className="value mono text-lg sm:text-xl glow-cyan sm:text-right whitespace-nowrap">
-                      {amount} {activeTab === 'Deposit' ? 'wsAKITA' : 'AKITA'}
+                      {amount} {activeTab === 'Deposit' ? SHARE_SYMBOL : 'AKITA'}
                     </div>
                   </div>
                 )}
@@ -518,10 +521,10 @@ export function Vault() {
                 <div className="card p-5 sm:p-8">
                   <div className="space-y-6">
                     <div className="grid grid-cols-[auto_minmax(0,1fr)_auto] gap-3 items-center">
-                      <TokenAvatar image={heroImage} symbol="AKITA" badge="ws" />
+                      <TokenAvatar image={heroImage} symbol="AKITA" badge={SHARE_SYMBOL_PREFIX} />
                       <div className="min-w-0">
                         <div className="text-[10px] tracking-[0.34em] uppercase text-zinc-600">Vault token</div>
-                        <div className="text-sm text-zinc-200 mt-1 font-light truncate">wsAKITA</div>
+                        <div className="text-sm text-zinc-200 mt-1 font-light truncate">{SHARE_SYMBOL}</div>
                       </div>
                       <div className="text-right">
                         <div className="font-mono text-xl sm:text-2xl text-zinc-200 tabular-nums glow-cyan">

@@ -2,6 +2,8 @@
 // Calls backend proxy to avoid CORS issues and keep API keys secure
 // Backend: /api/social/twitter
 
+import { logger } from './logger'
+
 export interface TwitterUser {
   id: string
   username: string
@@ -32,7 +34,7 @@ export interface TwitterProfile {
  * Backend handles API authentication and CORS
  */
 export async function getTwitterUserByUsername(username: string): Promise<TwitterProfile | null> {
-  console.log('[Twitter] Fetching user by username:', username)
+  logger.debug('[Twitter] Fetching user by username', { username })
   
   // Remove @ if present
   const cleanUsername = username.replace('@', '')
@@ -42,20 +44,20 @@ export async function getTwitterUserByUsername(username: string): Promise<Twitte
     const response = await fetch(`/api/social/twitter?username=${encodeURIComponent(cleanUsername)}`)
     
     if (!response.ok) {
-      console.error('[Twitter] Proxy error:', response.status, response.statusText)
+      logger.error('[Twitter] Proxy error', { status: response.status, statusText: response.statusText })
       return null
     }
     
     const result = await response.json()
     
     if (result.success && result.data) {
-      console.log('[Twitter] User data:', result.data)
+      logger.debug('[Twitter] User data', result.data)
       return result.data
     }
     
     return null
   } catch (error) {
-    console.error('[Twitter] Failed to fetch user:', error)
+    logger.error('[Twitter] Failed to fetch user', error)
     return null
   }
 }
@@ -66,8 +68,7 @@ export async function getTwitterUserByUsername(username: string): Promise<Twitte
  * Use getTwitterUserByUsername instead
  */
 export async function getTwitterUserById(userId: string): Promise<TwitterProfile | null> {
-  console.log('[Twitter] Fetching user by ID not implemented:', userId)
-  console.warn('[Twitter] Use getTwitterUserByUsername instead')
+  logger.warn('[Twitter] Fetching user by ID not implemented', { userId })
   return null
 }
 

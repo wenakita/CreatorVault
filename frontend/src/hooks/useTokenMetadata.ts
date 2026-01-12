@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useReadContract } from 'wagmi'
+import { logger } from '@/lib/logger'
 
 // ABI for tokenURI function (common to CreatorCoin contracts)
 const tokenURIAbi = [
@@ -118,7 +119,7 @@ export function useTokenMetadata(tokenAddress: `0x${string}` | undefined) {
         const directUrl = ipfsToHttp(tokenURI)
         setImageUrl(directUrl)
         setMetadata({ image: directUrl })
-        console.log('Using tokenURI directly as image:', directUrl)
+        logger.debug('Using tokenURI directly as image', { directUrl })
       } finally {
         setIsLoading(false)
       }

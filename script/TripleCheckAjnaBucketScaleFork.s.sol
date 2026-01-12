@@ -62,12 +62,3 @@ contract TripleCheckAjnaBucketScaleFork is Script {
         vm.stopBroadcast();
     }
 }
-
-
-
-
-import "forge-std/Script.sol";
-import "forge-std/console.sol";
-
-import {IAjnaPool, IAjnaPoolFactory} from "../contracts/interfaces/ajna/IAjnaPool.sol";
-import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";

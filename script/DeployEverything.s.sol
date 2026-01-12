@@ -36,7 +36,8 @@ contract DeployEverything is Script {
         // STEP 2: Deploy VaultActivationBatcher
         // ═══════════════════════════════════════════════════════════
         console.log("\n2. Deploying VaultActivationBatcher...");
-        VaultActivationBatcher activationBatcher = new VaultActivationBatcher();
+        address permit2 = vm.envOr("PERMIT2", address(0x000000000022D473030F116dDEE9F6B43aC78BA3));
+        VaultActivationBatcher activationBatcher = new VaultActivationBatcher(permit2);
         console.log("   Address:", address(activationBatcher));
         
         vm.stopBroadcast();

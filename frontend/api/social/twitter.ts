@@ -1,4 +1,5 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
+import { logger } from '../_lib/logger.js'
 
 declare const process: { env: Record<string, string | undefined> }
 
@@ -54,7 +55,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     if (!response.ok) {
       const errorText = await response.text()
-      console.error('[Twitter API] Error:', response.status, errorText)
+      logger.error('[Twitter API] Error', { status: response.status, errorText })
       return res.status(response.status).json({ 
         success: false, 
         error: `Twitter API error: ${response.statusText}` 
@@ -88,7 +89,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     return res.status(200).json({ success: true, data: profile })
   } catch (error) {
-    console.error('[Twitter API] Failed to fetch user:', error)
+    logger.error('[Twitter API] Failed to fetch user', error)
     return res.status(500).json({ 
       success: false, 
       error: 'Failed to fetch Twitter profile' 

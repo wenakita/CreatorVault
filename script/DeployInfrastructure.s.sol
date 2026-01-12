@@ -162,6 +162,15 @@ contract DeployInfrastructure is Script {
         // Register Base chain
         console.log("\n[Config] Registering Base chain...");
         registry.registerChain(BASE_CHAIN_ID, "Base", WETH, true);
+
+        // Configure DEX infra (optional but recommended for downstream tooling)
+        // NOTE: PoolManager is known on Base; other periphery addresses can be set via envs.
+        address poolManager = vm.envOr("POOL_MANAGER", address(0x498581fF718922c3f8e6A244956aF099B2652b2b));
+        address swapRouter = vm.envOr("SWAP_ROUTER", address(0x2626664c2603336E57B271c5C0b26F421741e481)); // Uniswap router on Base
+        address positionManager = vm.envOr("POSITION_MANAGER", address(0));
+        address quoter = vm.envOr("QUOTER", address(0));
+        registry.setDexInfrastructure(BASE_CHAIN_ID, poolManager, swapRouter, positionManager, quoter);
+        console.log("[Config] Setting DEX infrastructure (poolManager/swapRouter/positionManager/quoter)...");
         
         // Set LayerZero endpoint
         console.log("[Config] Setting LayerZero endpoint...");
@@ -327,9 +336,9 @@ contract DeployCreatorVault is Script {
         // Get token symbol for naming (UPPERCASE for consistency)
         string memory symbol = _toUpperCase(IERC20Metadata(creatorCoin).symbol());
         string memory vaultName = string(abi.encodePacked(symbol, " Shares"));
-        string memory vaultSymbol = string(abi.encodePacked("s", symbol));
+        string memory vaultSymbol = string(abi.encodePacked(unicode"▢", symbol));
         string memory oftName = string(abi.encodePacked("Wrapped ", symbol, " Shares"));
-        string memory oftSymbol = string(abi.encodePacked("ws", symbol));
+        string memory oftSymbol = string(abi.encodePacked(unicode"■", symbol));
         
         console.log("\n");
         console.log("Vault Name:   ", vaultName);
@@ -534,10 +543,10 @@ contract DeployCreatorVault is Script {
         console.log(unicode"│  CreatorCoin (AKITA)                                            │");
         console.log(unicode"│       │                                                         │");
         console.log(unicode"│       ▼ stake                                                   │");
-        console.log(unicode"│  Vault Shares (sAKITA)                                          │");
+        console.log(unicode"│  Vault Shares (▢AKITA)                                          │");
         console.log(unicode"│       │                                                         │");
         console.log(unicode"│       ▼ wrap                                                    │");
-        console.log(unicode"│  Wrapped Shares (wsAKITA) ← Trades on DEX with 6.9% fees        │");
+        console.log(unicode"│  Wrapped Shares (■AKITA) ← Trades on DEX with 6.9% fees         │");
         console.log(unicode"│                                                                 │");
         console.log(unicode"└─────────────────────────────────────────────────────────────────┘");
     }

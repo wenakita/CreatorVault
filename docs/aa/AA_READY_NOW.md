@@ -27,36 +27,36 @@ VaultActivationBatcher: 0x6d796554698f5Ddd74Ff20d745304096aEf93CB6
 
 ## 📊 **USER FLOW**
 
-### **With AA (Phase 1):**
+### **Deploy + Launch (onchain, recommended)**
 
 ```
-1. Creator fills form:
-   - Token address
-   - Deposit amount
-   - Auction percentage
-   - Required raise
-
-2. Backend deploys (`scripts/deploy/QUICK_DEPLOY.sh`):
-   - Vault
-   - Wrapper
-   - ShareOFT
-   - CCA
-   (~30 seconds, no user interaction)
-
-3. Frontend shows LaunchVaultAA component
-
-4. User clicks "Launch CCA" → Signs ONCE
-
-5. ✅ CCA live in 30 seconds!
+1. Creator opens /deploy and pastes their Zora Creator Coin address
+2. App enforces canonical identity (prevents fragmentation)
+3. Creator clicks “Deploy” → wallet signs (1-click when supported)
+4. CreatorVaultBatcher deploys + wires + deposits + launches the CCA
+5. ✅ Vault stack + auction live
 ```
 
-**Total user signatures: 1** (down from 10!)
+### **Activate only (for already-deployed vaults)**
+
+```
+1. Creator has an existing vault stack (vault + wrapper + CCA)
+2. Frontend renders LaunchVaultAA
+3. User clicks “Launch CCA” → signs (1-click when supported)
+4. ✅ Auction launched
+```
 
 ---
 
 ## 💻 **HOW TO USE RIGHT NOW**
 
-### **1. Import the component:**
+### **1. Deploy new vaults**
+
+Use `/deploy` (`frontend/src/pages/DeployVault.tsx`). It calls the on-chain `CreatorVaultBatcher` and handles deterministic addresses + identity gating.
+
+### **2. Activate existing vaults**
+
+Import the component:
 
 ```typescript
 // In your launch page
@@ -81,176 +81,45 @@ function LaunchCCAPage({ vaultAddresses }) {
 }
 ```
 
-### **2. Complete flow example:**
+### **3. Example: launch an existing vault (Activation)**
 
-```typescript
-// pages/CreateVault.tsx
-import { useState } from 'react';
-import { LaunchVaultAA } from '@/components/LaunchVaultAA';
-
-export default function CreateVault() {
-  const [step, setStep] = useState<'deploy' | 'launch'>('deploy');
-  const [vaultAddresses, setVaultAddresses] = useState(null);
-  const [deploying, setDeploying] = useState(false);
-  
-  async function deployVault(tokenAddress: string) {
-    setDeploying(true);
-    
-    try {
-      // Call your backend API to run scripts/deploy/QUICK_DEPLOY.sh
-      const response = await fetch('/api/deploy-vault', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          creatorToken: tokenAddress,
-          symbol: 'wsAKITA',
-          name: 'Wrapped Staked AKITA'
-        })
-      });
-      
-      const addresses = await response.json();
-      setVaultAddresses(addresses);
-      setStep('launch');
-      
-    } catch (error) {
-      console.error('Deployment failed:', error);
-    } finally {
-      setDeploying(false);
-    }
-  }
-  
-  return (
-    <div className="max-w-2xl mx-auto p-8 space-y-8">
-      {step === 'deploy' && (
-        <div>
-          <h1>Create Your Vault</h1>
-          <button 
-            onClick={() => deployVault('0x...')}
-            disabled={deploying}
-          >
-            {deploying ? 'Deploying...' : 'Deploy Vault'}
-          </button>
-        </div>
-      )}
-      
-      {step === 'launch' && vaultAddresses && (
-        <div>
-          <h1>Launch Your CCA</h1>
-          <LaunchVaultAA
-            creatorToken={vaultAddresses.token}
-            vault={vaultAddresses.vault}
-            wrapper={vaultAddresses.wrapper}
-            ccaStrategy={vaultAddresses.cca}
-            depositAmount="50000000"
-            auctionPercent={69}
-            requiredRaise="10"
-          />
-        </div>
-      )}
-    </div>
-  );
-}
-```
+Use `LaunchVaultAA` anywhere you already know the deployed addresses (e.g. a curated launch like AKITA).
 
 ---
 
 ## 🚀 **PHASE 2: FULL AA DEPLOYMENT**
 
-### **Why it's blocked:**
+### **Status: LIVE**
 
-The `VaultDeploymentBatcher` contract has a dependency issue:
-- It imports `CCALaunchStrategy`
-- Which imports Uniswap V4
-- Which pulls in v3-core `FullMath.sol`
-- Which requires Solidity `<0.8.0`
-- Project uses `0.8.20` → Compilation conflict
+Deploy + launch is fully onchain via `CreatorVaultBatcher` and the `/deploy` route:
 
-### **Solutions:**
-
-**Option A: Use Phase 1** (✅ Recommended)
-- Works NOW
-- Great UX (1 signature)
-- Proven and deployed
-- Can enhance later
-
-**Option B: Fix v3-core**
-- Vendor `FullMath.sol` to 0.8.20
-- Create compatibility layer
-- Redeploy batcher
-- Then enable Phase 2
-
-**Option C: Simplify batcher**
-- Deploy only Vault + Wrapper + ShareOFT
-- Skip CCA (deploy separately)
-- Smaller, simpler contract
-- Avoids v3-core entirely
+- Configure `VITE_CREATOR_VAULT_BATCHER`
+- Use `/deploy` to deploy the full stack deterministically (CREATE2) and launch the auction
+- Prefer Permit2 signatures; fall back to approvals when needed
 
 ---
 
 ## 📈 **COMPARISON**
 
-| Flow | Signatures | Time | Status |
-|------|-----------|------|--------|
-| **Manual** | 10 | ~5 min | 😢 Painful |
-| **Phase 1 (AA Launch)** | 1 | ~45 sec | ✅ **LIVE NOW** |
-| **Phase 2 (Full AA)** | 1 | ~60 sec | ⏳ Blocked by v3-core |
-
----
-
-## ✅ **RECOMMENDATION**
-
-### **Ship Phase 1 TODAY:**
-
-1. **Frontend integration:** (5 minutes)
-   ```bash
-   # Import LaunchVaultAA component
-   # Connect to vault addresses from scripts/deploy/QUICK_DEPLOY.sh
-   # Done!
-   ```
-
-2. **Backend API:** (15 minutes)
-   ```javascript
-   // POST /api/deploy-vault
-   // Run scripts/deploy/QUICK_DEPLOY.sh
-   // Return addresses
-   ```
-
-3. **Test:** (10 minutes)
-   ```bash
-   # Deploy test vault
-   # Use LaunchVaultAA component
-   # Sign once → Verify CCA launched
-   ```
-
-**Total: 30 minutes to production-ready AA!** 🚀
-
-### **Phase 2 later:**
-
-- Fix v3-core compilation issue
-- Deploy VaultDeploymentBatcher
-- Enable full 1-signature deployment
-- But don't block on this!
+| Flow | What it covers | Notes |
+|------|----------------|------|
+| **Manual** | Deploy + configure + approve + launch | Many transactions |
+| **Activate existing (LaunchVaultAA)** | Approve + launch only | For already-deployed stacks |
+| **Deploy + launch (/deploy)** | Deploy + configure + deposit + launch | Canonical path for new vaults |
 
 ---
 
 ## 🎉 **THE BOTTOM LINE**
 
-You have a **working AA solution deployed and ready** RIGHT NOW:
+You can ship **onchain deploy + launch** and **activation-only launch** today:
 
-✅ **VaultActivationBatcher** at `0x6d796554698f5Ddd74Ff20d745304096aEf93CB6`  
-✅ **LaunchVaultAA** component complete  
-✅ **Integration examples** provided  
-✅ **Production-ready** on Base mainnet  
+- ✅ **Deploy + launch**: `/deploy` uses `CreatorVaultBatcher`
+- ✅ **Activate existing**: `LaunchVaultAA` uses `VaultActivationBatcher` (`0x6d796554698f5Ddd74Ff20d745304096aEf93CB6`)
+- ✅ **Identity-safe**: deploy flow blocks canonical identity mismatches for existing creator coins
+- ✅ **Farcaster-aligned**: custody is treated as the root identity signal when no onchain coin identity exists; verified wallets are suggestion-only
+- ✅ **Operator authorization**: see `docs/aa/OPERATOR_AUTH.md` (execution wallets acting for identity without drift)
 
-**You can ship AA TODAY.** 🚀
-
-Phase 2 is a nice enhancement, but Phase 1 already gives users:
-- 90% better UX vs manual
-- 1 signature instead of 10
-- 30 seconds instead of 5 minutes
-- Seamless, elegant flow
-
-**Start with Phase 1, enhance with Phase 2 later!**
+Note: the deployed `VaultActivationBatcher` address above supports `batchActivate`. Operator-safe Permit2 activation requires deploying the updated batcher build.
 
 ---
 
@@ -258,14 +127,12 @@ Phase 2 is a nice enhancement, but Phase 1 already gives users:
 
 ### **Already created:**
 - ✅ `frontend/src/components/LaunchVaultAA.tsx`
-- ✅ `frontend/src/components/DeployVaultAA.tsx` (for Phase 2)
-- ✅ `scripts/deploy/QUICK_DEPLOY.sh` (backend deployment)
+- ✅ `frontend/src/pages/DeployVault.tsx` (onchain deploy + launch via `CreatorVaultBatcher`)
 - ✅ `FULL_AA_SOLUTION.md` (complete documentation)
 
 ### **Integration points:**
-1. Import `LaunchVaultAA` in your launch page
-2. Pass vault addresses from backend deployment
-3. User clicks → Signs once → Done!
+1. Deploy new vaults via `/deploy`
+2. Activate already-deployed vaults via `LaunchVaultAA`
 
 **That's it. You're ready to ship.** ✨
 

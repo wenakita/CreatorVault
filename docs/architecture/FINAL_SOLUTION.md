@@ -136,7 +136,7 @@ You already have the script approach ready to use:
 - ✅ VaultActivationBatcher deployed
 
 **You just need:**
-1. Use the existing AA deploy flow (`frontend/src/components/DeployVaultAA.tsx` / `script/deploy-with-aa.ts`)
+1. Use `/deploy` (`frontend/src/pages/DeployVault.tsx`) which calls the onchain `CreatorVaultBatcher`
 2. Or run Foundry scripts to deploy and then `registerDeployment(...)` in `CreatorOVaultFactory`
 
 ---
@@ -145,10 +145,8 @@ You already have the script approach ready to use:
 
 ### **1. Create Script**
 ```bash
-# Prefer the AA deploy flow (one-signature) or the existing Foundry scripts in /script.
-# See:
-# - script/DeployInfrastructure.s.sol
-# - script/deploy-with-aa.ts
+# Prefer `/deploy` (onchain `CreatorVaultBatcher`) or the existing Foundry scripts in /script.
+# See: script/DeployInfrastructure.s.sol
 ```
 
 ### **2. Test Locally**
@@ -173,8 +171,3 @@ const { vault, wrapper, shareOFT } = await deployVault(token, creator);
 ✅ **Easier to update**
 
 ---
-
-**Want me to create the deployment script now?** 🚀
-
-This is the BEST solution for your use case!
-

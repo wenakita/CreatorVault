@@ -5,6 +5,7 @@ import { AuctionPriceChart } from '@/components/cca/AuctionPriceChart'
 import { AuctionFAQ } from '@/components/cca/AuctionFAQ'
 import { AuctionRecentBidsPanel } from '@/components/cca/AuctionRecentBidsPanel'
 import { InfoPopover } from '@/components/cca/InfoPopover'
+import { toShareSymbol } from '@/lib/tokenSymbols'
 
 // Generate realistic price history
 function generatePriceHistory(count: number = 20) {
@@ -29,6 +30,7 @@ function generatePriceHistory(count: number = 20) {
 }
 
 export default function AuctionDemo() {
+  const SHARE_SYMBOL = toShareSymbol('AKITA')
   const [priceHistory, setPriceHistory] = useState(() => generatePriceHistory(20))
   const totalRaised = 12.45
   const bidCount = 47
@@ -229,7 +231,7 @@ export default function AuctionDemo() {
 
             <div>
               <CcaAuctionPanelLiveDemo
-                tokenSymbol="wsAKITA"
+                tokenSymbol={SHARE_SYMBOL}
                 clearingPrice={currentPrice}
                 totalRaised={totalRaised}
                 tokenSupply={25}

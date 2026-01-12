@@ -325,7 +325,7 @@ export function Status() {
 
     const canonical = document.createElement('link')
     canonical.rel = 'canonical'
-    canonical.href = 'https://www.creatorvaults.fun/status'
+    canonical.href = 'https://erc4626.fun/status'
     document.head.appendChild(canonical)
 
     return () => {

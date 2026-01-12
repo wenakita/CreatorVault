@@ -2,6 +2,8 @@
 // Calls backend proxy to avoid CORS issues and keep API keys secure
 // Backend: /api/social/farcaster
 
+import { logger } from './logger'
+
 export interface FarcasterUser {
   fid: number
   username: string
@@ -23,7 +25,10 @@ export interface FarcasterProfile {
   following: number
   bio?: string
   fid: number
-  verifiedAddresses: string[]
+  verifiedAddresses?: string[]
+  custodyAddress?: string | null
+  verifiedEthAddresses?: string[]
+  fetchedAt?: number
 }
 
 /**
@@ -32,9 +37,30 @@ export interface FarcasterProfile {
  * Use getFarcasterUserByAddress instead
  */
 export async function getFarcasterUserByFid(fid: number): Promise<FarcasterProfile | null> {
-  console.log('[Neynar] Fetching user by FID not implemented:', fid)
-  console.warn('[Neynar] Use getFarcasterUserByAddress instead')
-  return null
+  logger.debug('[Neynar] Fetching user by FID:', fid)
+
+  if (!Number.isFinite(fid) || fid <= 0) return null
+
+  try {
+    const response = await fetch(`/api/social/farcaster?fid=${encodeURIComponent(String(fid))}`)
+
+    if (!response.ok) {
+      logger.error('[Neynar] Proxy error:', { status: response.status, statusText: response.statusText })
+      return null
+    }
+
+    const result = await response.json()
+
+    if (result.success && result.data) {
+      logger.debug('[Neynar] User data:', result.data)
+      return result.data
+    }
+
+    return null
+  } catch (error) {
+    logger.error('[Neynar] Failed to fetch user:', error)
+    return null
+  }
 }
 
 /**
@@ -43,8 +69,7 @@ export async function getFarcasterUserByFid(fid: number): Promise<FarcasterProfi
  * Use getFarcasterUserByAddress instead
  */
 export async function getFarcasterUserByUsername(username: string): Promise<FarcasterProfile | null> {
-  console.log('[Neynar] Fetching user by username not implemented:', username)
-  console.warn('[Neynar] Use getFarcasterUserByAddress instead')
+  logger.warn('[Neynar] Fetching user by username not implemented:', username)
   return null
 }
 
@@ -53,27 +78,27 @@ export async function getFarcasterUserByUsername(username: string): Promise<Farc
  * Backend handles API authentication and CORS
  */
 export async function getFarcasterUserByAddress(address: string): Promise<FarcasterProfile | null> {
-  console.log('[Neynar] Fetching user by address:', address)
+  logger.debug('[Neynar] Fetching user by address:', address)
   
   try {
     // Call backend proxy instead of Neynar API directly
     const response = await fetch(`/api/social/farcaster?address=${encodeURIComponent(address)}`)
     
     if (!response.ok) {
-      console.error('[Neynar] Proxy error:', response.status, response.statusText)
+      logger.error('[Neynar] Proxy error:', { status: response.status, statusText: response.statusText })
       return null
     }
     
     const result = await response.json()
     
     if (result.success && result.data) {
-      console.log('[Neynar] User data:', result.data)
+      logger.debug('[Neynar] User data:', result.data)
       return result.data
     }
     
     return null
   } catch (error) {
-    console.error('[Neynar] Failed to fetch user:', error)
+    logger.error('[Neynar] Failed to fetch user:', error)
     return null
   }
 }

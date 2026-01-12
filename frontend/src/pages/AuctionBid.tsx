@@ -5,6 +5,7 @@ import { isAddress, type Address } from 'viem'
 
 import { AKITA } from '@/config/contracts'
 import { CcaAuctionPanel } from '@/components/cca/CcaAuctionPanel'
+import { toShareSymbol } from '@/lib/tokenSymbols'
 
 function resolveCcaStrategyFromRouteParam(addr: string | undefined): Address {
   // Preserve backwards compatibility with older links in this repo that passed
@@ -28,6 +29,7 @@ function resolveCcaStrategyFromRouteParam(addr: string | undefined): Address {
 }
 
 export function AuctionBid() {
+  const SHARE_SYMBOL = toShareSymbol('AKITA')
   const { address } = useParams()
   const ccaStrategy = resolveCcaStrategyFromRouteParam(address)
 
@@ -51,7 +53,7 @@ export function AuctionBid() {
           >
             <CcaAuctionPanel
               ccaStrategy={ccaStrategy}
-              wsSymbol="wsAKITA"
+              wsSymbol={SHARE_SYMBOL}
               vaultAddress={AKITA.vault as Address}
             />
           </motion.div>

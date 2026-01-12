@@ -10,39 +10,35 @@ VaultActivationBatcher: 0x6d796554698f5Ddd74Ff20d745304096aEf93CB6
 ✅ Ready for all creators
 ```
 
+Note: the address above is the currently deployed activation batcher for `batchActivate`. Operator-safe Permit2 activation requires deploying the updated batcher build (constructor includes `permit2`).
+
 ---
 
 ## 🚀 **HOW CREATORS LAUNCH**
 
-### **Option 1: Automated Script** ⚡ (Recommended)
+### **Option 1: Onchain deploy + launch (Recommended)**
 
 ```bash
-# 1. Set up environment
-cp .env.example .env
-# Edit .env with your token details
+# 1. Configure the frontend
+# - Set VITE_CREATOR_VAULT_BATCHER to your deployed CreatorVaultBatcher
+# - (Optional) set up paymaster sponsorship
 
-# 2. Run deployment script
-./scripts/deploy/QUICK_DEPLOY.sh
-
-# 3. Launch CCA (from script output)
-# Done in 5 minutes!
+# 2. Creators use the /deploy route
+# - paste their Zora Creator Coin address
+# - click Deploy
 ```
 
-### **Option 2: Manual Deployment** 📝
+### **Option 2: Activate an already-deployed vault**
 
-```bash
-# Follow the comprehensive guide
-# See: CREATOR_LAUNCH_GUIDE.md
-```
+Use `LaunchVaultAA` (calls `VaultActivationBatcher`) when the per-vault contracts already exist.
 
 ---
 
 ## 📚 **DOCUMENTATION**
 
 ### **For Creators:**
-1. **CREATOR_LAUNCH_GUIDE.md** - Complete step-by-step guide
-2. **scripts/deploy/QUICK_DEPLOY.sh** - Automated deployment script
-3. **deployed_addresses.env** - Saved addresses after deployment
+1. **CREATOR_LAUNCH_GUIDE.md** - Step-by-step guide
+2. **/deploy** - Onchain deploy + launch
 
 ### **For You:**
 1. **DEPLOYMENT_SUMMARY.md** - Technical overview
@@ -54,21 +50,16 @@ cp .env.example .env
 ## 🎯 **CREATOR JOURNEY**
 
 ```
-Step 1: Deploy Contracts (5 min)
+Step 1: Open /deploy
     ↓
-Step 2: Configure Permissions (2 min)
+Step 2: Wallet signs (1-click when supported)
     ↓
-Step 3: Deploy Gauge & CCA (3 min)
-    ↓
-Step 4: Approve Batcher (1 min)
-    ↓
-Step 5: Launch CCA (1 min)
+Step 3: CreatorVaultBatcher deploys + wires + launches
     ↓
 ✅ LIVE! 7-Day Auction Begins
 ```
 
-**Total Time: ~15 minutes**
-**Total Cost: ~$15-20 in gas**
+**Time:** typically under a minute once configured
 
 ---
 
@@ -97,7 +88,7 @@ Step 5: Launch CCA (1 min)
 | VaultActivationBatcher | ✅ Deployed | `0x6d79...3CB6` |
 | Core Contracts | ✅ Ready | All tested |
 | Documentation | ✅ Complete | Creator guide ready |
-| Deployment Script | ✅ Ready | `scripts/deploy/QUICK_DEPLOY.sh` |
+| Deploy + launch | ✅ Ready | `/deploy` + `CreatorVaultBatcher` |
 | CCA Integration | ✅ Working | Auto-approved |
 | LayerZero OFT | ✅ Working | Cross-chain ready |
 
@@ -105,17 +96,12 @@ Step 5: Launch CCA (1 min)
 
 ## 🔮 **FUTURE ENHANCEMENTS**
 
-### **Phase 2: Automation** (Next)
-- Forge script deployment
-- CREATE2 for deterministic addresses
-- Backend API for frontend integration
-- Same addresses across all chains
+### **Phase 2: Automation**
+- Expand strategy auto-deploy + post-launch internal linking/status UX
 
 ### **Phase 3: Advanced Features**
-- Account Abstraction (gasless for creators)
-- Frontend deployment interface
 - Multi-chain deployment automation
-- Strategy deployment batcher
+- Strategy deployment batcher improvements
 
 ---
 
@@ -131,8 +117,8 @@ Step 5: Launch CCA (1 min)
 
 ### **For Creators:**
 - [ ] Read CREATOR_LAUNCH_GUIDE.md
-- [ ] Prepare .env file
-- [ ] Run scripts/deploy/QUICK_DEPLOY.sh
+- [ ] Open `/deploy`
+- [ ] Ensure you are connected as the canonical creator identity wallet
 - [ ] Launch CCA
 - [ ] Monitor auction
 
@@ -148,16 +134,8 @@ const LZ_ENDPOINT_BASE = '0x1a44076050125825900e736c501f859c50fE728c';
 
 ### **Deployment Commands:**
 ```bash
-# Quick deploy
-./scripts/deploy/QUICK_DEPLOY.sh
-
-# Manual deploy
-# See CREATOR_LAUNCH_GUIDE.md
-
-# Launch CCA
-cast send 0x6d796554698f5Ddd74Ff20d745304096aEf93CB6 \
-    "batchActivate(...)" \
-    --rpc-url base
+# Deploy + launch is executed from the frontend (/deploy) via CreatorVaultBatcher.
+# For activation-only (already deployed stacks), VaultActivationBatcher can be called directly.
 ```
 
 ### **Verify Contracts:**
@@ -173,7 +151,7 @@ forge verify-contract <ADDRESS> <CONTRACT> \
 ## 🎉 **SUCCESS METRICS**
 
 ### **For Launch:**
-- ✅ Deployment script runs successfully
+- ✅ Deploy + launch completes from `/deploy`
 - ✅ All contracts verify on BaseScan
 - ✅ CCA launches without errors
 - ✅ Users can bid in auction
@@ -191,21 +169,19 @@ forge verify-contract <ADDRESS> <CONTRACT> \
 
 ### **Immediate (Today):**
 1. Share CREATOR_LAUNCH_GUIDE.md with creators
-2. Test scripts/deploy/QUICK_DEPLOY.sh on Base mainnet
+2. Configure `VITE_CREATOR_VAULT_BATCHER` in production
 3. Deploy first example vault (AKITA?)
 4. Monitor deployment
 
 ### **This Week:**
 1. Gather feedback from first creators
 2. Improve documentation based on feedback
-3. Build frontend deployment interface
-4. Plan CREATE2 automation
+3. Expand strategy deployment automation (optional)
+4. Improve status + verification UX
 
 ### **Next Week:**
-1. Implement forge script deployment
-2. Add backend API
-3. Enable CREATE2 for deterministic addresses
-4. Deploy strategy batchers
+1. Add multi-chain deployment automation
+2. Deploy strategy batchers (if not already)
 
 ---
 
@@ -226,7 +202,7 @@ Everything is ready for creators to launch their vaults:
 
 ### **For Creators:**
 - Guide: CREATOR_LAUNCH_GUIDE.md
-- Script: scripts/deploy/QUICK_DEPLOY.sh
+- Deploy: `/deploy`
 - Examples: See repository
 
 ### **For Developers:**

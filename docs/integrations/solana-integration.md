@@ -58,7 +58,7 @@ Every BUY of wsToken is a lottery entry! Solana users can participate:
 bridge SOL + call buyAndEnterLottery(
   router,
   tokenIn,      // SOL
-  wsToken,      // e.g., wsAKITA
+  wsToken,      // e.g., ■AKITA
   amountIn,
   amountOutMin,
   recipient     // Twin contract or any address
@@ -284,7 +284,7 @@ Every BUY of wsToken is a lottery entry! Solana users can participate:
 bridge SOL + call buyAndEnterLottery(
   router,
   tokenIn,      // SOL
-  wsToken,      // e.g., wsAKITA
+  wsToken,      // e.g., ■AKITA
   amountIn,
   amountOutMin,
   recipient     // Twin contract or any address

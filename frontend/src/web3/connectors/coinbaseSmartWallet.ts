@@ -14,6 +14,14 @@ export function coinbaseSmartWallet(parameters: {
   appName: string
   appLogoUrl?: string | null
 }): ReturnType<typeof createConnector> {
+  type CoinbaseEip1193Provider = {
+    request: (args: { method: string; params?: any }) => Promise<any>
+    on: (event: string, listener: (...args: any[]) => void) => void
+    removeListener: (event: string, listener: (...args: any[]) => void) => void
+    disconnect: () => void
+    close?: () => void
+  }
+
   let walletProvider: any
   let accountsChanged: any
   let chainChanged: any
@@ -27,7 +35,7 @@ export function coinbaseSmartWallet(parameters: {
 
     async connect({ chainId, withCapabilities, ...rest }: any = {}) {
       try {
-        const provider = await this.getProvider()
+        const provider = (await this.getProvider()) as CoinbaseEip1193Provider
         const accounts = (await provider.request({
           method: 'eth_requestAccounts',
           params: 'instantOnboarding' in rest && rest.instantOnboarding ? [{ onboarding: 'instant' }] : [],
@@ -69,7 +77,7 @@ export function coinbaseSmartWallet(parameters: {
     },
 
     async disconnect() {
-      const provider = await this.getProvider()
+      const provider = (await this.getProvider()) as CoinbaseEip1193Provider
       if (accountsChanged) {
         provider.removeListener('accountsChanged', accountsChanged)
         accountsChanged = undefined
@@ -87,12 +95,12 @@ export function coinbaseSmartWallet(parameters: {
     },
 
     async getAccounts() {
-      const provider = await this.getProvider()
+      const provider = (await this.getProvider()) as CoinbaseEip1193Provider
       return (await provider.request({ method: 'eth_accounts' })).map((x: string) => getAddress(x))
     },
 
     async getChainId() {
-      const provider = await this.getProvider()
+      const provider = (await this.getProvider()) as CoinbaseEip1193Provider
       const chainId = await provider.request({ method: 'eth_chainId' })
       return Number(chainId)
     },
@@ -126,7 +134,7 @@ export function coinbaseSmartWallet(parameters: {
       const chain = config.chains.find((chain) => chain.id === chainId)
       if (!chain) throw new SwitchChainError(new ChainNotConfiguredError())
 
-      const provider = await this.getProvider()
+      const provider = (await this.getProvider()) as CoinbaseEip1193Provider
       try {
         await provider.request({
           method: 'wallet_switchEthereumChain',
@@ -175,7 +183,7 @@ export function coinbaseSmartWallet(parameters: {
 
     async onDisconnect(_error?: any) {
       config.emitter.emit('disconnect')
-      const provider = await this.getProvider()
+      const provider = (await this.getProvider()) as CoinbaseEip1193Provider
       if (accountsChanged) {
         provider.removeListener('accountsChanged', accountsChanged)
         accountsChanged = undefined

@@ -34,9 +34,9 @@ This keeps contracts **deployable (24KB limit)** and the system **easier to evol
 ## 🚀 **Canonical creator flow**
 
 ### **Step 1: One-signature deploy (recommended)**
-Use the repo’s AA flow:
-- **Frontend**: `frontend/src/components/DeployVaultAA.tsx`
-- **Script**: `script/deploy-with-aa.ts`
+Use the onchain batcher via the frontend:
+- **Frontend route**: `/deploy` (`frontend/src/pages/DeployVault.tsx`)
+- **Onchain batcher**: `contracts/helpers/CreatorVaultBatcher.sol`
 
 This flow:
 - deploys the full vault stack
@@ -54,7 +54,7 @@ Use `VaultActivationBatcher.batchActivate(...)` (or the AA flow that calls it).
 
 ## 🔎 **Where to look in this repo**
 
-- **Deploy (AA)**: `frontend/src/components/DeployVaultAA.tsx`
+- **Deploy + launch (AA)**: `frontend/src/pages/DeployVault.tsx` (calls `CreatorVaultBatcher`)
 - **Activate (batcher)**: `contracts/helpers/VaultActivationBatcher.sol`
 - **Deploy strategies (batcher)**: `contracts/helpers/StrategyDeploymentBatcher.sol`
 - **Registry**: `contracts/factories/CreatorOVaultFactory.sol`, `contracts/core/CreatorRegistry.sol`

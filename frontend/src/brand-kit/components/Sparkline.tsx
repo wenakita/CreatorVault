@@ -1,5 +1,3 @@
-import React from 'react';
-
 export const Sparkline = ({ color = "#0052FF" }) => (
     <svg className="w-full h-12 overflow-visible" viewBox="0 0 100 40" preserveAspectRatio="none">
         <path d="M0 40 L10 35 L20 38 L30 20 L40 25 L50 15 L60 18 L70 5 L80 10 L90 0 L100 20" 

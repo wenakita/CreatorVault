@@ -6,13 +6,29 @@ import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
+import {IPoolManager} from "@uniswap/v4-core/src/interfaces/IPoolManager.sol";
+import {PoolKey} from "@uniswap/v4-core/src/types/PoolKey.sol";
+import {PoolId} from "@uniswap/v4-core/src/types/PoolId.sol";
+import {Currency} from "@uniswap/v4-core/src/types/Currency.sol";
+import {StateLibrary} from "@uniswap/v4-core/src/libraries/StateLibrary.sol";
+import {TickMath} from "@uniswap/v4-core/src/libraries/TickMath.sol";
+
+import {IPositionManager} from "@uniswap/v4-periphery/src/interfaces/IPositionManager.sol";
+import {Actions} from "@uniswap/v4-periphery/src/libraries/Actions.sol";
+import {LiquidityAmounts} from "@uniswap/v4-periphery/src/libraries/LiquidityAmounts.sol";
+
+import {IAllowanceTransfer} from "permit2/src/interfaces/IAllowanceTransfer.sol";
+
+import {ICreatorOracle} from "../../interfaces/oracles/ICreatorOracle.sol";
+import {V4LiquidityAmounts} from "../../libraries/V4LiquidityAmounts.sol";
+
 /**
  * @title CreatorLPManager
  * @author 0xakita.eth
- * @notice Manages LP liquidity for CreatorShareOFT (wsAKITA) on Uniswap V4
+ * @notice Manages LP liquidity for CreatorShareOFT (■AKITA) on Uniswap V4
  * 
  * @dev PURPOSE:
- *      This strategy manages liquidity for the WRAPPED SHARE TOKEN (wsAKITA)
+ *      This strategy manages liquidity for the WRAPPED SHARE TOKEN (■AKITA)
  *      on Uniswap V4 with 6.9% fee hooks for the lottery system.
  * 
  *      NOT for the original Creator Coin - that uses CreatorCharmStrategy on V3.
@@ -20,14 +36,14 @@ import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol
  * @dev TOKEN DISTINCTION:
  *      ┌────────────────────────────────────────────────────────────┐
  *      │ AKITA (Creator Coin)  →  CreatorCharmStrategy  →  V3 Pool  │
- *      │ wsAKITA (ShareOFT)    →  CreatorLPManager      →  V4 Pool  │
+ *      │ ■AKITA (ShareOFT)     →  CreatorLPManager      →  V4 Pool  │
  *      │                                                  + 6.9% Hook
  *      └────────────────────────────────────────────────────────────┘
  * 
  * @dev WHY V4 FOR SHARE TOKEN:
  *      - V4 hooks enable the 6.9% fee on trades
  *      - Fees feed into the lottery jackpot via GaugeController
- *      - The ShareOFT (wsAKITA) is the primary trading token for the lottery system
+ *      - The ShareOFT (■AKITA) is the primary trading token for the lottery system
  * 
  * @dev ARCHITECTURE (inspired by Charm Alpha Pro Vault):
  *      CreatorOVault → CreatorLPManager → Uniswap V4 Positions
@@ -50,45 +66,9 @@ import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol
  *      - Boundary: Price can't be too close to MIN/MAX tick
  */
 
-// =================================
-// INTERFACES
-// =================================
-
-interface IV4Pool {
-    function slot0() external view returns (
-        uint160 sqrtPriceX96,
-        int24 tick,
-        uint24 protocolFee,
-        uint24 lpFee
-    );
-    function observe(uint32[] calldata secondsAgos) external view returns (
-        int56[] memory tickCumulatives,
-        uint160[] memory secondsPerLiquidityCumulativeX128s
-    );
-    function tickSpacing() external view returns (int24);
-}
-
-interface IV4PositionManager {
-    function mint(
-        address pool,
-        int24 tickLower,
-        int24 tickUpper,
-        uint128 liquidity,
-        bytes calldata data
-    ) external returns (uint256 tokenId);
-    
-    function burn(
-        uint256 tokenId,
-        uint128 liquidity
-    ) external returns (uint256 amount0, uint256 amount1);
-    
-    function collect(
-        uint256 tokenId
-    ) external returns (uint256 amount0, uint256 amount1);
-}
-
 contract CreatorLPManager is Ownable, ReentrancyGuard {
     using SafeERC20 for IERC20;
+    using StateLibrary for IPoolManager;
 
     // =================================
     // CONSTANTS
@@ -108,17 +88,33 @@ contract CreatorLPManager is Ownable, ReentrancyGuard {
     /// @notice Paired token (WETH)
     IERC20 public immutable PAIRED_TOKEN;
     
-    /// @notice Uniswap V4 Pool
-    address public pool;
-    
-    /// @notice Uniswap V4 Position Manager
+    /// @notice Uniswap V4 PoolManager (holds all pools)
+    IPoolManager public poolManager;
+
+    /// @notice Uniswap V4 pool key (defines currencies/fee/tickSpacing/hooks)
+    PoolKey public poolKey;
+
+    /// @notice Uniswap V4 pool id (derived from poolKey)
+    PoolId public poolId;
+
+    /// @notice True if CREATOR_COIN is currency0 for poolKey
+    bool public creatorIsCurrency0;
+
+    /// @notice Uniswap V4 PositionManager (PosM)
     address public positionManager;
+
+    /// @notice Permit2 contract used by PosM for token pulls into PoolManager
+    address public permit2;
     
     /// @notice Vault that owns this manager
     address public vault;
     
     /// @notice Tick spacing of the pool
     int24 public tickSpacing;
+
+    /// @notice Optional TWAP oracle for tick-based manipulation resistance.
+    /// @dev If maxTwapDeviation > 0 and this is unset, rebalances will revert.
+    ICreatorOracle public twapOracle;
 
     // =================================
     // STATE - POSITIONS (Charm-style)
@@ -197,7 +193,7 @@ contract CreatorLPManager is Ownable, ReentrancyGuard {
     event Snapshot(int24 tick, uint256 totalAmount0, uint256 totalAmount1);
     event FeesCollected(uint256 fees0, uint256 fees1);
     event ParametersUpdated(uint24 fullRangeWeight, int24 baseThreshold, int24 limitThreshold);
-    event PoolConfigured(address pool, address positionManager);
+    event PoolConfigured(bytes32 poolId, address poolManager, address positionManager, address permit2, bool creatorIsCurrency0);
 
     // =================================
     // ERRORS
@@ -213,6 +209,10 @@ contract CreatorLPManager is Ownable, ReentrancyGuard {
     error TwapDeviationTooHigh();
     error PriceTooCloseToBoundary();
     error InvalidParameters();
+    error PositionManagerNotSet();
+    error Permit2NotSet();
+    error InvalidPoolKey();
+    error TwapOracleNotSet();
 
     // =================================
     // MODIFIERS
@@ -252,26 +252,48 @@ contract CreatorLPManager is Ownable, ReentrancyGuard {
     // CONFIGURATION
     // =================================
 
-    function configurePool(
-        address _pool,
-        address _positionManager
-    ) external onlyOwner {
-        if (_pool == address(0)) revert ZeroAddress();
+    function configurePool(address _poolManager, address _positionManager, address _permit2, PoolKey calldata _poolKey)
+        external
+        onlyOwner
+    {
+        if (_poolManager == address(0)) revert ZeroAddress();
         if (_positionManager == address(0)) revert ZeroAddress();
+        if (_permit2 == address(0)) revert ZeroAddress();
 
-        pool = _pool;
+        // Validate poolKey currencies match our configured tokens
+        address c0 = Currency.unwrap(_poolKey.currency0);
+        address c1 = Currency.unwrap(_poolKey.currency1);
+        bool _creatorIsCurrency0 = c0 == address(CREATOR_COIN);
+        if (
+            !(
+                (_creatorIsCurrency0 && c1 == address(PAIRED_TOKEN)) || (c0 == address(PAIRED_TOKEN) && c1 == address(CREATOR_COIN))
+            )
+        ) revert InvalidPoolKey();
+        if (_poolKey.tickSpacing == 0) revert InvalidPoolKey();
+
+        poolManager = IPoolManager(_poolManager);
         positionManager = _positionManager;
-        tickSpacing = IV4Pool(_pool).tickSpacing();
+        permit2 = _permit2;
+        poolKey = _poolKey;
+        poolId = _poolKey.toId();
+        creatorIsCurrency0 = _creatorIsCurrency0;
+        tickSpacing = _poolKey.tickSpacing;
 
         // Initialize full range bounds
         fullRangePosition.tickLower = (MIN_TICK / tickSpacing) * tickSpacing;
         fullRangePosition.tickUpper = (MAX_TICK / tickSpacing) * tickSpacing;
 
-        // Approve position manager
-        CREATOR_COIN.forceApprove(_positionManager, type(uint256).max);
-        PAIRED_TOKEN.forceApprove(_positionManager, type(uint256).max);
+        // Approvals for PosM: token -> Permit2, then Permit2 -> PosM
+        CREATOR_COIN.forceApprove(_permit2, type(uint256).max);
+        PAIRED_TOKEN.forceApprove(_permit2, type(uint256).max);
+        IAllowanceTransfer(_permit2).approve(address(CREATOR_COIN), _positionManager, type(uint160).max, type(uint48).max);
+        IAllowanceTransfer(_permit2).approve(address(PAIRED_TOKEN), _positionManager, type(uint160).max, type(uint48).max);
 
-        emit PoolConfigured(_pool, _positionManager);
+        emit PoolConfigured(PoolId.unwrap(poolId), _poolManager, _positionManager, _permit2, _creatorIsCurrency0);
+    }
+
+    function setTwapOracle(address _oracle) external onlyOwner {
+        twapOracle = ICreatorOracle(_oracle);
     }
 
     /**
@@ -384,7 +406,7 @@ contract CreatorLPManager is Ownable, ReentrancyGuard {
      *      3. Limit order (single-sided with excess)
      */
     function rebalance() external nonReentrant onlyManager {
-        if (pool == address(0)) revert PoolNotConfigured();
+        _requireConfigured();
         
         // Check all rebalance guards
         checkCanRebalance();
@@ -496,20 +518,10 @@ contract CreatorLPManager is Ownable, ReentrancyGuard {
      * @notice Get TWAP price in ticks
      */
     function getTwap() public view returns (int24) {
-        if (pool == address(0)) return 0;
-
-        uint32[] memory secondsAgos = new uint32[](2);
-        secondsAgos[0] = twapDuration;
-        secondsAgos[1] = 0;
-
-        try IV4Pool(pool).observe(secondsAgos) returns (
-            int56[] memory tickCumulatives,
-            uint160[] memory /* secondsPerLiquidityCumulativeX128s */
-        ) {
-            return int24((tickCumulatives[1] - tickCumulatives[0]) / int56(uint56(twapDuration)));
-        } catch {
-            return _getCurrentTick();
-        }
+        // Allow explicitly disabling TWAP checks by setting maxTwapDeviation == 0.
+        if (maxTwapDeviation == 0) return _getCurrentTick();
+        if (address(twapOracle) == address(0)) revert TwapOracleNotSet();
+        return twapOracle.getTWAPTick(twapDuration);
     }
 
     // =================================
@@ -569,8 +581,8 @@ contract CreatorLPManager is Ownable, ReentrancyGuard {
     // =================================
 
     function _getCurrentTick() internal view returns (int24) {
-        if (pool == address(0)) return 0;
-        (, int24 tick, , ) = IV4Pool(pool).slot0();
+        if (address(poolManager) == address(0)) return 0;
+        (, int24 tick,,) = poolManager.getSlot0(poolId);
         return tick;
     }
 
@@ -583,22 +595,61 @@ contract CreatorLPManager is Ownable, ReentrancyGuard {
     function _mintLiquidity(PositionInfo storage pos, uint128 liquidity) internal {
         if (liquidity == 0) return;
         
-        // TODO: Actual V4 mint call
-        // pos.tokenId = IV4PositionManager(positionManager).mint(
-        //     pool, pos.tickLower, pos.tickUpper, liquidity, ""
-        // );
-        
+        _requireConfigured();
+
+        // Mint a new ERC721 position for this range (we burn+mint on range changes)
+        uint256 tokenId = IPositionManager(positionManager).nextTokenId();
+
+        bytes memory actions = new bytes(3);
+        actions[0] = bytes1(uint8(Actions.MINT_POSITION));
+        actions[1] = bytes1(uint8(Actions.CLOSE_CURRENCY));
+        actions[2] = bytes1(uint8(Actions.CLOSE_CURRENCY));
+
+        bytes[] memory params = new bytes[](3);
+        params[0] = abi.encode(
+            poolKey,
+            pos.tickLower,
+            pos.tickUpper,
+            uint256(liquidity),
+            type(uint128).max,
+            type(uint128).max,
+            address(this),
+            bytes("")
+        );
+        params[1] = abi.encode(poolKey.currency0);
+        params[2] = abi.encode(poolKey.currency1);
+
+        IPositionManager(positionManager).modifyLiquidities(abi.encode(actions, params), block.timestamp + 1);
+
+        pos.tokenId = tokenId;
         pos.liquidity = liquidity;
     }
 
     function _burnAndCollect(PositionInfo storage pos) internal returns (uint256 amount0, uint256 amount1) {
         if (pos.liquidity == 0) return (0, 0);
 
-        // TODO: Actual V4 burn and collect
-        // (amount0, amount1) = IV4PositionManager(positionManager).burn(pos.tokenId, pos.liquidity);
-        // IV4PositionManager(positionManager).collect(pos.tokenId);
+        _requireConfigured();
+
+        uint256 balCreatorBefore = CREATOR_COIN.balanceOf(address(this));
+        uint256 balPairedBefore = PAIRED_TOKEN.balanceOf(address(this));
+
+        bytes memory actions = new bytes(3);
+        actions[0] = bytes1(uint8(Actions.BURN_POSITION));
+        actions[1] = bytes1(uint8(Actions.CLOSE_CURRENCY));
+        actions[2] = bytes1(uint8(Actions.CLOSE_CURRENCY));
+
+        bytes[] memory params = new bytes[](3);
+        params[0] = abi.encode(pos.tokenId, uint128(0), uint128(0), bytes(""));
+        params[1] = abi.encode(poolKey.currency0);
+        params[2] = abi.encode(poolKey.currency1);
+
+        IPositionManager(positionManager).modifyLiquidities(abi.encode(actions, params), block.timestamp + 1);
+
+        amount0 = CREATOR_COIN.balanceOf(address(this)) - balCreatorBefore;
+        amount1 = PAIRED_TOKEN.balanceOf(address(this)) - balPairedBefore;
 
         pos.liquidity = 0;
+        pos.tokenId = 0;
     }
 
     function _burnLiquidityShare(
@@ -611,8 +662,25 @@ contract CreatorLPManager is Ownable, ReentrancyGuard {
         uint128 liquidityToBurn = uint128((uint256(pos.liquidity) * shares) / totalShares);
         if (liquidityToBurn == 0) return (0, 0);
 
-        // TODO: Actual V4 decrease liquidity
-        // (amount0, amount1) = IV4PositionManager(positionManager).burn(pos.tokenId, liquidityToBurn);
+        _requireConfigured();
+
+        uint256 balCreatorBefore = CREATOR_COIN.balanceOf(address(this));
+        uint256 balPairedBefore = PAIRED_TOKEN.balanceOf(address(this));
+
+        bytes memory actions = new bytes(3);
+        actions[0] = bytes1(uint8(Actions.DECREASE_LIQUIDITY));
+        actions[1] = bytes1(uint8(Actions.CLOSE_CURRENCY));
+        actions[2] = bytes1(uint8(Actions.CLOSE_CURRENCY));
+
+        bytes[] memory params = new bytes[](3);
+        params[0] = abi.encode(pos.tokenId, uint256(liquidityToBurn), uint128(0), uint128(0), bytes(""));
+        params[1] = abi.encode(poolKey.currency0);
+        params[2] = abi.encode(poolKey.currency1);
+
+        IPositionManager(positionManager).modifyLiquidities(abi.encode(actions, params), block.timestamp + 1);
+
+        amount0 = CREATOR_COIN.balanceOf(address(this)) - balCreatorBefore;
+        amount1 = PAIRED_TOKEN.balanceOf(address(this)) - balPairedBefore;
 
         pos.liquidity -= liquidityToBurn;
     }
@@ -621,13 +689,20 @@ contract CreatorLPManager is Ownable, ReentrancyGuard {
         PositionInfo storage pos
     ) internal view returns (uint256 amount0, uint256 amount1) {
         if (pos.liquidity == 0) return (0, 0);
-        
-        // TODO: Actual V4 position query
-        // Use LiquidityAmounts library
-        
-        // Simplified estimation
-        amount0 = pos.liquidity / 2;
-        amount1 = pos.liquidity / 2;
+        if (address(poolManager) == address(0)) return (0, 0);
+
+        (uint160 sqrtPriceX96,,,) = poolManager.getSlot0(poolId);
+        (uint256 amountCurrency0, uint256 amountCurrency1) = V4LiquidityAmounts.getAmountsForLiquidity(
+            sqrtPriceX96,
+            TickMath.getSqrtPriceAtTick(pos.tickLower),
+            TickMath.getSqrtPriceAtTick(pos.tickUpper),
+            pos.liquidity
+        );
+
+        if (creatorIsCurrency0) {
+            return (amountCurrency0, amountCurrency1);
+        }
+        return (amountCurrency1, amountCurrency0);
     }
 
     function _liquidityForAmounts(
@@ -636,14 +711,21 @@ contract CreatorLPManager is Ownable, ReentrancyGuard {
         uint256 amount0,
         uint256 amount1
     ) internal view returns (uint128) {
-        // TODO: Use actual V4 LiquidityAmounts.getLiquidityForAmounts()
-        
-        // Simplified estimation
-        if (amount0 == 0 && amount1 == 0) return 0;
-        if (amount0 == 0) return uint128(amount1);
-        if (amount1 == 0) return uint128(amount0);
-        
-        return uint128(_sqrt(amount0 * amount1));
+        if (address(poolManager) == address(0)) return 0;
+
+        (uint160 sqrtPriceX96,,,) = poolManager.getSlot0(poolId);
+        uint160 sqrtPriceAX96 = TickMath.getSqrtPriceAtTick(tickLower);
+        uint160 sqrtPriceBX96 = TickMath.getSqrtPriceAtTick(tickUpper);
+
+        (uint256 amountCurrency0, uint256 amountCurrency1) = creatorIsCurrency0 ? (amount0, amount1) : (amount1, amount0);
+        return LiquidityAmounts.getLiquidityForAmounts(sqrtPriceX96, sqrtPriceAX96, sqrtPriceBX96, amountCurrency0, amountCurrency1);
+    }
+
+    function _requireConfigured() internal view {
+        if (address(poolManager) == address(0)) revert PoolNotConfigured();
+        if (positionManager == address(0)) revert PositionManagerNotSet();
+        if (permit2 == address(0)) revert Permit2NotSet();
+        if (tickSpacing == 0) revert PoolNotConfigured();
     }
 
     function _estimateLiquidity(uint256 amount0, uint256 amount1) internal pure returns (uint256) {

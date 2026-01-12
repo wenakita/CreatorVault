@@ -72,7 +72,7 @@ interface IContinuousClearingAuction {
  * @notice Fair launch strategy using Uniswap's Continuous Clearing Auction
  * 
  * @dev USE CASES:
- *      1. Initial wsAKITA token launch - fair price discovery
+ *      1. Initial ■AKITA token launch - fair price discovery
  *      2. Creator token fundraise - no sniping, early participants rewarded
  *      3. Periodic fee auctions - sell accumulated fees fairly
  * 
@@ -105,7 +105,7 @@ contract CCALaunchStrategy is Ownable, ReentrancyGuard {
     // STATE
     // ================================
 
-    /// @notice Token being auctioned (e.g., wsAKITA)
+    /// @notice Token being auctioned (e.g., ■AKITA)
     IERC20 public immutable auctionToken;
     
     /// @notice Currency to raise (address(0) for ETH)
@@ -204,7 +204,7 @@ contract CCALaunchStrategy is Ownable, ReentrancyGuard {
 
     /**
      * @notice Create CCA launch strategy
-     * @param _auctionToken Token to auction (e.g., wsAKITA)
+     * @param _auctionToken Token to auction (e.g., ■AKITA)
      * @param _currency Currency to raise (address(0) for ETH, or USDC/WETH)
      * @param _fundsRecipient Where to send raised funds
      * @param _tokensRecipient Where to send unsold tokens

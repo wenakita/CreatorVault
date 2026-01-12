@@ -25,7 +25,7 @@ interface ICreatorLotteryManager {
     function processSwapLottery(
         address creatorCoin,  // The underlying creator token (AKITA)
         address trader,       // The buyer
-        address tokenIn,      // The token being bought (wsAKITA)
+        address tokenIn,      // The token being bought (■AKITA)
         uint256 amountIn      // Amount bought
     ) external payable returns (uint256);
 }
@@ -35,8 +35,8 @@ address creatorCoin = vault != address(0) ? ICreatorOVault(vault).asset() : addr
 ICreatorLotteryManager(mgr).processSwapLottery(
     creatorCoin,      // e.g., AKITA token address
     recipient,        // Buyer address
-    address(this),    // wsAKITA (ShareOFT)
-    amount            // Amount of wsAKITA bought
+    address(this),    // ■AKITA (ShareOFT)
+    amount            // Amount of ■AKITA bought
 )
 ```
 
@@ -65,7 +65,7 @@ ICreatorLotteryManager(mgr).processSwapLottery(
 ### **Buy Flow with Lottery:**
 
 ```
-1. User buys wsAKITA on Uniswap
+1. User buys ■AKITA on Uniswap
    ↓
 2. ShareOFT.transfer() detects it's a buy (from SwapOnly address)
    ↓
@@ -75,7 +75,7 @@ ICreatorLotteryManager(mgr).processSwapLottery(
    ↓
 4. _triggerLottery() executes:
    - Looks up AKITA token address from vault
-   - Calls LotteryManager.processSwapLottery(AKITA, buyer, wsAKITA, amount)
+   - Calls LotteryManager.processSwapLottery(AKITA, buyer, ■AKITA, amount)
    ↓
 5. LotteryManager:
    - Verifies AKITA is registered & active
@@ -98,7 +98,7 @@ ICreatorLotteryManager(mgr).processSwapLottery(
 ### **Integration Tests Needed:**
 
 - [ ] End-to-end buy flow:
-  - User swaps ETH → wsAKITA on Uniswap
+  - User swaps ETH → ■AKITA on Uniswap
   - Fee is collected
   - Lottery entry is created
   - Transfer completes successfully
@@ -113,7 +113,7 @@ ICreatorLotteryManager(mgr).processSwapLottery(
 # 1. Deploy contracts
 forge script script/DeployBase.s.sol --rpc-url base --broadcast
 
-# 2. Buy wsAKITA on testnet DEX
+# 2. Buy ■AKITA on testnet DEX
 # - Watch for LotteryTriggered event
 # - Check lottery manager state
 
@@ -122,7 +122,7 @@ cast call $LOTTERY_MANAGER "entries(uint256)" <entryId>
 # Should show:
 # - creatorCoin = AKITA address (0x5b67...)
 # - trader = buyer address
-# - tokenIn = wsAKITA address
+# - tokenIn = ■AKITA address
 # - amountIn = amount bought
 ```
 
@@ -189,7 +189,7 @@ cast call $LOTTERY_MANAGER "entries(uint256)" <entryId>
 
 ## 📊 **Expected Events After Fix**
 
-When a user buys wsAKITA, you should see these events in order:
+When a user buys ■AKITA, you should see these events in order:
 
 ```solidity
 1. Transfer(from: uniswapPool, to: feeCollector, value: feeAmount)

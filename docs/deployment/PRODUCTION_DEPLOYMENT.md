@@ -8,7 +8,7 @@
 - [ ] Contracts verified on Basescan (recommended)
 
 ### **2. Environment Variables** 
-- [ ] CDP API Key obtained from https://portal.cdp.coinbase.com/
+- [ ] `VITE_CREATOR_VAULT_BATCHER` configured (onchain deploy + launch)
 - [ ] Base RPC URL configured (or use default)
 
 ### **3. Frontend Code** ✓
@@ -32,11 +32,18 @@ cp .env.example .env.production
 
 **Required:**
 ```bash
-# Get from https://portal.cdp.coinbase.com/
-VITE_CDP_API_KEY=your_cdp_api_key_here
+# Onchain deploy + launch
+VITE_CREATOR_VAULT_BATCHER=0xYourCreatorVaultBatcher
 
 # Base mainnet RPC
 VITE_BASE_RPC=https://mainnet.base.org
+```
+
+**Optional (paymaster sponsorship):**
+```bash
+# Get from https://portal.cdp.coinbase.com/
+VITE_CDP_API_KEY=your_cdp_api_key_here
+VITE_CDP_PAYMASTER_URL=...
 ```
 
 **Optional (already hardcoded in contracts.ts):**

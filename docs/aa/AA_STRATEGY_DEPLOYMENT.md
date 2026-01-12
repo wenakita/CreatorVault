@@ -242,17 +242,18 @@ DeploymentResult memory result = batcher.batchDeployStrategies(...);
 
 ### **Step 2: Add to Vault**
 ```solidity
-vault.addStrategy(result.creatorCharmStrategy, 0.69e18);  // 69%
-vault.addStrategy(result.ajnaStrategy, 0.2139e18);        // 21.39%
+// Vault strategy weights are in basis points (sum <= 10_000)
+vault.addStrategy(result.creatorCharmStrategy, 6900); // 69.00%
+vault.addStrategy(result.ajnaStrategy, 2139);         // 21.39% (leaves 9.61% idle)
 ```
 
 ### **Step 3: Verify**
 ```solidity
-uint256 charmAllocation = vault.strategies(result.creatorCharmStrategy);
-uint256 ajnaAllocation = vault.strategies(result.ajnaStrategy);
+uint256 charmWeightBps = vault.strategyWeights(result.creatorCharmStrategy);
+uint256 ajnaWeightBps = vault.strategyWeights(result.ajnaStrategy);
 
-assert(charmAllocation == 0.69e18);
-assert(ajnaAllocation == 0.2139e18);
+assert(charmWeightBps == 6900);
+assert(ajnaWeightBps == 2139);
 ```
 
 ---

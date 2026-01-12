@@ -7,6 +7,8 @@ import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {ERC4626} from "@openzeppelin/contracts/token/ERC20/extensions/ERC4626.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
+import {EIP712} from "@openzeppelin/contracts/utils/cryptography/EIP712.sol";
+import {SignatureChecker} from "@openzeppelin/contracts/utils/cryptography/SignatureChecker.sol";
 import {IStrategy} from "../interfaces/strategies/IStrategy.sol";
 
 /**
@@ -36,9 +38,9 @@ import {IStrategy} from "../interfaces/strategies/IStrategy.sol";
  *      - _creatorCoin: Creator Coin address
  *      - _owner: deployer
  *      - _name: Vault name (e.g., "Creator OVault - AKITA")
- *      - _symbol: Vault symbol (e.g., "sAKITA")
+ *      - _symbol: Vault symbol (e.g., "▢AKITA")
  */
-contract CreatorOVault is ERC4626, Ownable, ReentrancyGuard {
+contract CreatorOVault is ERC4626, Ownable, ReentrancyGuard, EIP712 {
     using SafeERC20 for IERC20;
 
     // =================================
@@ -179,6 +181,50 @@ contract CreatorOVault is ERC4626, Ownable, ReentrancyGuard {
     
     /// @notice Whitelist mapping
     mapping(address => bool) public whitelist;
+
+    // =================================
+    // OPERATOR AUTHORIZATION (EXECUTION WALLETS)
+    // =================================
+
+    /// @notice Bitmask permission: deposit-like actions
+    uint256 public constant OP_DEPOSIT = 1 << 0;
+    /// @notice Bitmask permission: withdraw-like actions
+    uint256 public constant OP_WITHDRAW = 1 << 1;
+    /// @notice Bitmask permission: activation/batching actions
+    uint256 public constant OP_ACTIVATE = 1 << 2;
+
+    /// @notice Operator epoch. Bumped on ownership transfer to invalidate all previous operator grants.
+    uint256 public operatorEpoch;
+
+    /// @notice Operator permissions per epoch (epoch-scoped to make invalidation trivial).
+    mapping(uint256 => mapping(address => uint256)) internal _operatorPerms;
+
+    /// @notice Nonce for `permitOperator` (separate from Permit2 nonces and deploy authorizations).
+    uint256 public operatorNonce;
+
+    bytes32 private constant _PERMIT_OPERATOR_TYPEHASH =
+        keccak256("PermitOperator(address exec,uint256 perms,uint256 nonce,uint256 deadline)");
+
+    // =================================
+    // PROTOCOL-ASSISTED OWNERSHIP RESCUE (CUSTODY LOSS)
+    // =================================
+
+    /// @notice Minimum allowed rescue delay
+    uint64 public constant MIN_RESCUE_DELAY = 1 days;
+    /// @notice Maximum allowed rescue delay
+    uint64 public constant MAX_RESCUE_DELAY = 30 days;
+
+    /// @notice Protocol rescue authority (typically a multisig). Settable by owner (opt-out by setting to 0).
+    address public protocolRescue;
+
+    /// @notice Delay before the protocol can finalize an ownership rescue
+    uint64 public rescueDelay;
+
+    /// @notice Pending rescue target owner
+    address public pendingRescueOwner;
+
+    /// @notice Timestamp when `pendingRescueOwner` may be finalized by `protocolRescue`
+    uint64 public rescueUnlockTime;
     
     /// @notice Maximum total supply (in shares)
     uint256 public maxTotalSupply = type(uint256).max;
@@ -297,6 +343,17 @@ contract CreatorOVault is ERC4626, Ownable, ReentrancyGuard {
     event UnrealisedLossAssessed(address indexed strategy, uint256 lossAmount);
     event AutoAllocated(address indexed strategy, uint256 amount);
 
+    // Operator authorization events
+    event OperatorPermsSet(uint256 indexed epoch, address indexed exec, uint256 perms);
+    event OperatorPermitted(uint256 indexed epoch, address indexed exec, uint256 perms, uint256 nonce, uint256 deadline);
+    event OperatorEpochBumped(uint256 newEpoch);
+
+    // Protocol rescue events (custody loss / recovery)
+    event RescueConfigured(address indexed rescue, uint64 delay);
+    event RescueInitiated(address indexed oldOwner, address indexed pendingOwner, uint64 unlockTime);
+    event RescueCancelled(address indexed owner);
+    event RescueFinalized(address indexed oldOwner, address indexed newOwner);
+
     // =================================
     // ERRORS
     // =================================
@@ -344,6 +401,18 @@ contract CreatorOVault is ERC4626, Ownable, ReentrancyGuard {
     error StrategyNotInQueue(address strategy);
     error NothingToBuy();
     error OnlyDebtPurchaser();
+
+    // Operator authorization errors
+    error OperatorPermitExpired(uint256 deadline);
+    error InvalidOperatorSignature();
+
+    // Protocol rescue errors
+    error RescueNotConfigured();
+    error RescueDelayOutOfBounds(uint64 provided, uint64 min, uint64 max);
+    error RescueAlreadyPending(address pendingOwner);
+    error RescueNotPending();
+    error RescueTooEarly(uint64 unlockTime);
+    error InvalidRescueOwner(address newOwner);
 
     // =================================
     // MODIFIERS
@@ -393,6 +462,13 @@ contract CreatorOVault is ERC4626, Ownable, ReentrancyGuard {
         _;
     }
 
+    modifier onlyProtocolRescue() {
+        address rescue = protocolRescue;
+        if (rescue == address(0)) revert RescueNotConfigured();
+        if (msg.sender != rescue) revert Unauthorized();
+        _;
+    }
+
     // =================================
     // CONSTRUCTOR
     // =================================
@@ -402,7 +478,7 @@ contract CreatorOVault is ERC4626, Ownable, ReentrancyGuard {
      * @param _creatorCoin Creator Coin address
      * @param _owner Owner address
      * @param _name Vault name (e.g., "Creator OVault - AKITA")
-     * @param _symbol Vault symbol (e.g., "sAKITA")
+     * @param _symbol Vault symbol (e.g., "▢AKITA")
      */
     constructor(
         address _creatorCoin,
@@ -412,7 +488,8 @@ contract CreatorOVault is ERC4626, Ownable, ReentrancyGuard {
     ) 
         ERC20(_name, _symbol) 
         ERC4626(IERC20(_creatorCoin)) 
-        Ownable(_owner) 
+        Ownable(_owner)
+        EIP712("CreatorOVault", "1")
     {
         if (_creatorCoin == address(0)) revert ZeroAddress();
         
@@ -425,6 +502,7 @@ contract CreatorOVault is ERC4626, Ownable, ReentrancyGuard {
         performanceFeeRecipient = _owner;
         performanceFee = 1000; // 10% default
         profitMaxUnlockTime = 7 days;
+        rescueDelay = uint64(7 days);
         
         whitelist[_owner] = true;
         lastDeployment = block.timestamp;
@@ -1489,6 +1567,149 @@ contract CreatorOVault is ERC4626, Ownable, ReentrancyGuard {
             emit WhitelistUpdated(_accounts[i], _status);
         }
     }
+
+    // =================================
+    // OPERATOR AUTHORIZATION (EXECUTION WALLETS)
+    // =================================
+
+    /**
+     * @notice Get operator permissions for the current epoch
+     */
+    function operatorPerms(address exec) public view returns (uint256) {
+        return _operatorPerms[operatorEpoch][exec];
+    }
+
+    /**
+     * @notice Set operator permissions for an execution wallet (current epoch)
+     * @dev Setting perms to 0 revokes the operator
+     */
+    function setOperatorPerms(address exec, uint256 perms) external onlyOwner {
+        if (exec == address(0)) revert ZeroAddress();
+        _operatorPerms[operatorEpoch][exec] = perms;
+        emit OperatorPermsSet(operatorEpoch, exec, perms);
+    }
+
+    /**
+     * @notice Permit-based operator grant (EIP-712)
+     * @dev Signature MUST be produced by the current `owner()` (canonical identity).
+     *      The domain binds `chainId` + `verifyingContract` (this vault).
+     */
+    function permitOperator(address exec, uint256 perms, uint256 deadline, bytes calldata sig) external {
+        if (exec == address(0)) revert ZeroAddress();
+        if (block.timestamp > deadline) revert OperatorPermitExpired(deadline);
+
+        uint256 nonce = operatorNonce;
+        bytes32 structHash = keccak256(abi.encode(_PERMIT_OPERATOR_TYPEHASH, exec, perms, nonce, deadline));
+        bytes32 digest = _hashTypedDataV4(structHash);
+
+        if (!SignatureChecker.isValidSignatureNow(owner(), digest, sig)) revert InvalidOperatorSignature();
+
+        operatorNonce = nonce + 1;
+        _operatorPerms[operatorEpoch][exec] = perms;
+
+        emit OperatorPermitted(operatorEpoch, exec, perms, nonce, deadline);
+    }
+
+    /**
+     * @notice Check whether an execution wallet is authorized for a specific permission
+     * @dev The owner is always authorized.
+     */
+    function isAuthorizedOperator(address exec, uint256 perm) public view returns (bool) {
+        if (exec == owner()) return true;
+        return (_operatorPerms[operatorEpoch][exec] & perm) != 0;
+    }
+
+    /**
+     * @dev Bump `operatorEpoch` on ownership transfer to invalidate all prior operator grants.
+     *      Skip bump on the constructor's initial owner set (oldOwner == 0).
+     */
+    function _transferOwnership(address newOwner) internal override {
+        address oldOwner = owner();
+        super._transferOwnership(newOwner);
+
+        // Any pending rescue is invalid after an ownership change.
+        if (pendingRescueOwner != address(0)) {
+            pendingRescueOwner = address(0);
+            rescueUnlockTime = 0;
+            emit RescueCancelled(oldOwner);
+        }
+
+        if (oldOwner != address(0) && newOwner != oldOwner) {
+            unchecked {
+                operatorEpoch++;
+            }
+            emit OperatorEpochBumped(operatorEpoch);
+        }
+    }
+
+    // =================================
+    // PROTOCOL-ASSISTED OWNERSHIP RESCUE
+    // =================================
+
+    /**
+     * @notice Configure the protocol rescue authority (typically a multisig). Owner may opt out by setting to 0.
+     * @dev Configuration changes are blocked while a rescue is pending; cancel first.
+     */
+    function setProtocolRescue(address rescue) external onlyOwner {
+        if (pendingRescueOwner != address(0)) revert RescueAlreadyPending(pendingRescueOwner);
+        protocolRescue = rescue;
+        emit RescueConfigured(rescue, rescueDelay);
+    }
+
+    /**
+     * @notice Set the rescue delay (time between initiate/finalize).
+     * @dev Configuration changes are blocked while a rescue is pending; cancel first.
+     */
+    function setRescueDelay(uint64 delay) external onlyOwner {
+        if (pendingRescueOwner != address(0)) revert RescueAlreadyPending(pendingRescueOwner);
+        if (delay < MIN_RESCUE_DELAY || delay > MAX_RESCUE_DELAY) revert RescueDelayOutOfBounds(delay, MIN_RESCUE_DELAY, MAX_RESCUE_DELAY);
+        rescueDelay = delay;
+        emit RescueConfigured(protocolRescue, delay);
+    }
+
+    /**
+     * @notice Initiate a timelocked ownership rescue to `newOwner`.
+     * @dev Only callable by `protocolRescue`. The current owner can cancel before finalization.
+     */
+    function initiateOwnershipRescue(address newOwner) external onlyProtocolRescue {
+        if (pendingRescueOwner != address(0)) revert RescueAlreadyPending(pendingRescueOwner);
+        if (newOwner == address(0) || newOwner == owner()) revert InvalidRescueOwner(newOwner);
+
+        pendingRescueOwner = newOwner;
+        uint64 unlockTime = uint64(block.timestamp) + rescueDelay;
+        rescueUnlockTime = unlockTime;
+
+        emit RescueInitiated(owner(), newOwner, unlockTime);
+    }
+
+    /**
+     * @notice Cancel a pending ownership rescue.
+     */
+    function cancelOwnershipRescue() external onlyOwner {
+        if (pendingRescueOwner == address(0)) revert RescueNotPending();
+        pendingRescueOwner = address(0);
+        rescueUnlockTime = 0;
+        emit RescueCancelled(owner());
+    }
+
+    /**
+     * @notice Finalize a pending ownership rescue after the timelock.
+     */
+    function finalizeOwnershipRescue() external onlyProtocolRescue {
+        address newOwner = pendingRescueOwner;
+        if (newOwner == address(0)) revert RescueNotPending();
+
+        uint64 unlockTime = rescueUnlockTime;
+        if (block.timestamp < unlockTime) revert RescueTooEarly(unlockTime);
+
+        address oldOwner = owner();
+
+        pendingRescueOwner = address(0);
+        rescueUnlockTime = 0;
+
+        _transferOwnership(newOwner);
+        emit RescueFinalized(oldOwner, newOwner);
+    }
     
     function setPerformanceFee(uint16 _performanceFee) external onlyManagement {
         if (_performanceFee > MAX_FEE) revert InvalidAmount();
@@ -1651,6 +1872,21 @@ contract CreatorOVault is ERC4626, Ownable, ReentrancyGuard {
                 assets[i] = IStrategy(strategyList[i]).getTotalAssets();
             }
         }
+    }
+
+    /**
+     * @notice Convenience helper for scripts/ops: number of configured strategies.
+     */
+    function getStrategyCount() external view returns (uint256) {
+        return strategyList.length;
+    }
+
+    /**
+     * @notice Convenience helper for scripts/ops: current withdrawal queue.
+     * @dev Returns the default queue (may be empty if unset).
+     */
+    function getStrategyQueue() external view returns (address[] memory) {
+        return defaultQueue;
     }
     
     /**

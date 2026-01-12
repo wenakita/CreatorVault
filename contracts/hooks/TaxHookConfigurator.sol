@@ -9,7 +9,7 @@ pragma solidity ^0.8.20;
  * @dev EXISTING TAX HOOK:
  *      Address: 0xca975B9dAF772C71161f3648437c3616E5Be0088 (Base)
  *      This hook is already deployed and approved on Uniswap V4!
- *      We just need to configure it for our wsAKITA/ETH pool.
+ *      We just need to configure it for our ■AKITA/ETH pool.
  * 
  * @dev CONFIGURATION:
  *      - Set 6.9% (690 bps) fee on swaps
@@ -82,7 +82,7 @@ contract TaxHookConfigurator {
     // =================================
     
     /**
-     * @notice Configure tax hook for a wsAKITA/ETH pool
+     * @notice Configure tax hook for a ■AKITA/ETH pool
      * @param _shareOFT The CreatorShareOFT token address
      * @param _gaugeController The CreatorGaugeController address (fee recipient)
      * @param _feeBps Fee in basis points (690 = 6.9%)

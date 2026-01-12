@@ -1,9 +1,10 @@
 // Talent Protocol API integration
 // Docs: https://docs.talentprotocol.com/docs/developers/talent-api/api-reference
 
+import { logger } from './logger'
+
 const TALENT_API_KEY = import.meta.env.VITE_TALENT_API_KEY || 'a4ff9ba57e689ac0e22ed2b448986717329dae9b8f5b45344f4140e6a7e6'
 const TALENT_API_BASE = 'https://api.talentprotocol.com'
-const TALENT_DEBUG = import.meta.env.DEV && import.meta.env.VITE_DEBUG_LOGS === 'true'
 
 export interface SocialAccount {
   platform: string
@@ -117,7 +118,7 @@ export async function getTalentPassport(walletAddress: string): Promise<TalentPa
     )
     
     if (!response.ok) {
-      console.error('[Talent] Search error:', response.status, response.statusText)
+      logger.error('[Talent] Search error:', { status: response.status, statusText: response.statusText })
       return null
     }
     
@@ -127,10 +128,10 @@ export async function getTalentPassport(walletAddress: string): Promise<TalentPa
       return mapProfileData(data.profiles[0])
     }
     
-    if (TALENT_DEBUG) console.warn('[Talent] No profile found for wallet:', walletAddress)
+    logger.debug('[Talent] No profile found for wallet:', walletAddress)
     return null
   } catch (error) {
-    console.error('[Talent] Failed to search profile:', error)
+    logger.error('[Talent] Failed to search profile:', error)
     return null
   }
 }
@@ -396,7 +397,7 @@ export async function getTalentSocials(walletAddress: string): Promise<CreatorSo
     const profile = await getTalentPassport(walletAddress)
     return profile?.socials || {}
   } catch (error) {
-    console.error('[Talent] Failed to fetch socials:', error)
+    logger.error('[Talent] Failed to fetch socials:', error)
     return {}
   }
 }
@@ -409,7 +410,7 @@ export async function getTalentScore(walletAddress: string): Promise<number | nu
     const passport = await getTalentPassport(walletAddress)
     return passport?.score ?? null
   } catch (error) {
-    console.error('Failed to fetch Talent Score:', error)
+    logger.error('[Talent] Failed to fetch score:', error)
     return null
   }
 }

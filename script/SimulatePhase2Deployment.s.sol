@@ -48,9 +48,9 @@ contract SimulatePhase2Deployment is Script {
 
         // Mirror frontend naming defaults
         string memory vaultName = "CreatorVault: AKITA";
-        string memory vaultSymbol = "sAKITA";
+        string memory vaultSymbol = unicode"▢AKITA";
         string memory shareName = "Wrapped AKITA Share";
-        string memory shareSymbol = "wsAKITA";
+        string memory shareSymbol = unicode"■AKITA";
 
         // Mirror frontend salt derivation (includes chainId)
         bytes32 baseSalt = keccak256(abi.encodePacked(creatorToken, owner, uint256(block.chainid)));
@@ -138,22 +138,3 @@ contract SimulatePhase2Deployment is Script {
         require(CCALaunchStrategy(payable(predictedCCA)).approvedLaunchers(VAULT_ACTIVATION_BATCHER), "launcher not approved");
     }
 }
-
-
-
-
-import "forge-std/Script.sol";
-
-import {Create2Deployer} from "../contracts/helpers/Create2Deployer.sol";
-import {CreatorOVault} from "../contracts/vault/CreatorOVault.sol";
-import {CreatorOVaultWrapper} from "../contracts/vault/CreatorOVaultWrapper.sol";
-import {CreatorShareOFT} from "../contracts/layerzero/CreatorShareOFT.sol";
-import {CreatorGaugeController} from "../contracts/governance/CreatorGaugeController.sol";
-import {CCALaunchStrategy} from "../contracts/strategies/CCALaunchStrategy.sol";
-import {CreatorOracle} from "../contracts/oracles/CreatorOracle.sol";
-
-/// @notice Fork simulation of the Phase 2 AA deployment sequence.
-/// @dev Run (no broadcast):
-///   forge script script/SimulatePhase2Deployment.s.sol:SimulatePhase2Deployment --rpc-url $BASE_RPC_URL
-/// or:
-///   forge script script/SimulatePhase2Deployment.s.sol:SimulatePhase2Deployment --fork-url $BASE_RPC_URL

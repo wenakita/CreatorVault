@@ -134,7 +134,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     {
       id: 'server-env',
       title: 'Server environment',
-      description: 'These affect /api/* data on creatorvault.fun (Status page, analytics, rewards).',
+      description: 'These affect /api/* data on erc4626.fun (Status page, analytics, rewards).',
       checks: envChecks,
     },
     {

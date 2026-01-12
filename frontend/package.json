@@ -39,9 +39,7 @@
     "viem": "^2.21.54",
     "vite": "^6.0.3",
     "wagmi": "^2.14.1",
-    "@wagmi/core": "^2.14.1",
-    "which-typed-array": "^1.1.19",
-    "xtend": "^4.0.2"
+    "@wagmi/core": "^2.14.1"
   },
   "devDependencies": {
     "@types/node": "^22.10.2",

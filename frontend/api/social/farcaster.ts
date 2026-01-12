@@ -1,9 +1,34 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
+import { logger } from '../_lib/logger.js'
+import { getAddress, isAddress } from 'viem'
 
 declare const process: { env: Record<string, string | undefined> }
 
 const NEYNAR_API_KEY = process.env.VITE_NEYNAR_API_KEY || ''
 const NEYNAR_API_BASE = 'https://api.neynar.com/v2/farcaster'
+
+function normalizeAddress(value: unknown): string | null {
+  if (typeof value !== 'string') return null
+  if (!isAddress(value)) return null
+  try {
+    return getAddress(value)
+  } catch {
+    return null
+  }
+}
+
+function uniqueChecksummed(addrs: Array<string | null | undefined>): string[] {
+  const out: string[] = []
+  const seen = new Set<string>()
+  for (const a of addrs) {
+    if (!a) continue
+    const lc = a.toLowerCase()
+    if (seen.has(lc)) continue
+    seen.add(lc)
+    out.push(a)
+  }
+  return out
+}
 
 function setCors(res: VercelResponse) {
   res.setHeader('Access-Control-Allow-Origin', '*')
@@ -28,10 +53,19 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(405).json({ success: false, error: 'Method not allowed' })
   }
 
-  const { address } = req.query
+  const { address, fid } = req.query
 
-  if (!address || typeof address !== 'string') {
-    return res.status(400).json({ success: false, error: 'Address parameter is required' })
+  const addressParam = typeof address === 'string' ? address : null
+  const fidParam = typeof fid === 'string' ? fid : null
+
+  if (!addressParam && !fidParam) {
+    return res.status(400).json({ success: false, error: 'Address or fid parameter is required' })
+  }
+
+  const fidNumber =
+    fidParam && /^\d+$/.test(fidParam) ? Number(fidParam) : null
+  if (fidParam && (!fidNumber || !Number.isFinite(fidNumber) || fidNumber <= 0)) {
+    return res.status(400).json({ success: false, error: 'Invalid fid parameter' })
   }
 
   if (!NEYNAR_API_KEY) {
@@ -39,21 +73,30 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   try {
-    // Use the correct Neynar endpoint: bulk-by-address
-    // The correct format is: addresses=0x123,0x456 (comma-separated, no viewer_fid)
-    const response = await fetch(
-      `${NEYNAR_API_BASE}/user/bulk-by-address?addresses=${address}`,
-      {
-        headers: {
-          'api_key': NEYNAR_API_KEY,
-          'Content-Type': 'application/json',
-        },
-      }
-    )
+    const now = Math.floor(Date.now() / 1000)
+
+    const headers = {
+      api_key: NEYNAR_API_KEY,
+      'Content-Type': 'application/json',
+    } as const
+
+    // Keep cache short to reduce rate-limit risk while still de-duping bursts.
+    res.setHeader('Cache-Control', 'public, s-maxage=60, stale-while-revalidate=120')
+
+    let response: Response
+
+    if (fidNumber) {
+      // Neynar FID lookup. Response shape varies by endpoint; parse defensively below.
+      response = await fetch(`${NEYNAR_API_BASE}/user/bulk?fids=${fidNumber}`, { headers })
+    } else {
+      // Use the correct Neynar endpoint: bulk-by-address
+      // The correct format is: addresses=0x123,0x456 (comma-separated, no viewer_fid)
+      response = await fetch(`${NEYNAR_API_BASE}/user/bulk-by-address?addresses=${addressParam}`, { headers })
+    }
 
     if (!response.ok) {
       const errorText = await response.text()
-      console.error('[Neynar API] Error:', response.status, errorText)
+      logger.error('[Neynar API] Error', { status: response.status, errorText })
       
       // If no user found, return null instead of error
       if (response.status === 404) {
@@ -68,17 +111,37 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     const data = (await response.json()) as unknown
 
-    // Neynar returns an object with address keys
-    // Example: { "0x123": [{ fid, username, ... }] }
-    const map = (data ?? {}) as Record<string, any>
-    const addressKey = Object.keys(map)[0]
-    const users = addressKey ? map[addressKey] : null
+    // Parse user payload defensively:
+    // - bulk-by-address: { "0xabc": [ user ] }
+    // - bulk by fid: { users: [ user ] } (expected)
+    let user: any | null = null
+    if (fidNumber) {
+      const obj = (data ?? {}) as any
+      const users = Array.isArray(obj?.users) ? obj.users : Array.isArray(obj) ? obj : null
+      user = Array.isArray(users) && users.length > 0 ? users[0] : null
+    } else {
+      const map = (data ?? {}) as Record<string, any>
+      const addressKey = Object.keys(map)[0]
+      const users = addressKey ? map[addressKey] : null
+      user = Array.isArray(users) && users.length > 0 ? users[0] : null
+    }
 
-    if (!users || users.length === 0) {
+    if (!user) {
       return res.status(200).json({ success: true, data: null })
     }
 
-    const user = (users as any[])[0] // Get the first user
+    const custodyAddress =
+      normalizeAddress(user.custody_address) ??
+      normalizeAddress(user.custodyAddress) ??
+      normalizeAddress(user?.custody?.address)
+
+    const verifiedEthAddresses = uniqueChecksummed([
+      // Common Neynar fields
+      ...(Array.isArray(user.verifications) ? user.verifications.map((v: any) => normalizeAddress(v)) : []),
+      ...(Array.isArray(user?.verified_addresses?.eth_addresses)
+        ? user.verified_addresses.eth_addresses.map((v: any) => normalizeAddress(v))
+        : []),
+    ])
 
     // Transform to our format
     const profile = {
@@ -92,14 +155,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       verified: user.power_badge || false,
       verifications: user.verifications || [],
       url: `https://warpcast.com/${user.username}`,
+      custodyAddress,
+      verifiedEthAddresses,
+      fetchedAt: now,
     }
-
-    // Cache for 5 minutes
-    res.setHeader('Cache-Control', 'public, s-maxage=300, stale-while-revalidate=600')
 
     return res.status(200).json({ success: true, data: profile })
   } catch (error) {
-    console.error('[Neynar API] Failed to fetch user:', error)
+    logger.error('[Neynar API] Failed to fetch user', error)
     return res.status(500).json({ 
       success: false, 
       error: 'Failed to fetch Farcaster profile' 

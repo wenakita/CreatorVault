@@ -1,7 +1,7 @@
 import React, { useState, useRef } from 'react';
 import { Logo } from '../components/Logo';
 import { Button } from '../components/Button';
-import { TextScramble } from '../components/TextScramble';
+import { logger } from '@/lib/logger';
 
 import { ColorToken } from '../components/brand/ColorToken';
 import { TypeSpec } from '../components/brand/TypeSpec';
@@ -176,7 +176,7 @@ const downloadPNG = (containerId: string, fileName: string) => {
     const exportSvg = container.querySelector('.export-svg');
     const svg = exportSvg || container.querySelector('svg');
     if (!svg) {
-        console.error('SVG not found in container');
+        logger.error('SVG not found in container', { containerId, fileName });
         return;
     }
 

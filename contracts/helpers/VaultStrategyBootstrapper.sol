@@ -8,6 +8,7 @@ interface ICreatorOVault {
     function setGaugeController(address _gaugeController) external;
     function setWhitelist(address user, bool allowed) external;
     function addStrategy(address strategy, uint256 weight) external;
+    function setMinimumTotalIdle(uint256 _minimumTotalIdle) external;
 
     function setKeeper(address _keeper) external;
     function setEmergencyAdmin(address _emergencyAdmin) external;
@@ -56,7 +57,8 @@ contract VaultStrategyBootstrapper {
         string calldata charmVaultName,
         string calldata charmVaultSymbol,
         uint256 charmWeightBps,
-        uint256 ajnaWeightBps
+        uint256 ajnaWeightBps,
+        uint256 minimumTotalIdle
     ) external {
         if (msg.sender != finalOwner) revert Unauthorized();
         if (finalized) revert AlreadyFinalized();
@@ -88,7 +90,10 @@ contract VaultStrategyBootstrapper {
             ICreatorOVault(vault).addStrategy(result.ajnaStrategy, ajnaWeightBps);
         }
 
-        // 4) Hand off vault roles and ownership to final owner
+        // 4) Set idle reserve (how much underlying stays liquid in the vault)
+        ICreatorOVault(vault).setMinimumTotalIdle(minimumTotalIdle);
+
+        // 5) Hand off vault roles and ownership to final owner
         ICreatorOVault(vault).setKeeper(finalOwner);
         ICreatorOVault(vault).setEmergencyAdmin(finalOwner);
         ICreatorOVault(vault).setPerformanceFeeRecipient(finalOwner);

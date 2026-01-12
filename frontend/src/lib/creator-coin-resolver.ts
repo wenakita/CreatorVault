@@ -3,6 +3,7 @@
 
 import { createPublicClient, http, type Address } from 'viem'
 import { base } from 'viem/chains'
+import { logger } from './logger'
 
 const CREATOR_COIN_DEBUG = import.meta.env.DEV && import.meta.env.VITE_DEBUG_LOGS === 'true'
 
@@ -47,10 +48,10 @@ export async function getPayoutRecipient(coinAddress: Address): Promise<Address 
       functionName: 'payoutRecipient',
     })
     
-    if (CREATOR_COIN_DEBUG) console.log('[CreatorCoin] Payout recipient:', recipient)
+    if (CREATOR_COIN_DEBUG) logger.debug('[CreatorCoin] Payout recipient', { recipient })
     return recipient as Address
   } catch (error) {
-    console.error('[CreatorCoin] Failed to get payout recipient:', error)
+    logger.error('[CreatorCoin] Failed to get payout recipient', error)
     return null
   }
 }
@@ -70,10 +71,10 @@ export async function getOwnerAt(coinAddress: Address, index: number): Promise<A
       args: [BigInt(index)],
     })
     
-    if (CREATOR_COIN_DEBUG) console.log(`[CreatorCoin] Owner at index ${index}:`, owner)
+    if (CREATOR_COIN_DEBUG) logger.debug('[CreatorCoin] Owner at index', { index, owner })
     return owner as Address
   } catch (error) {
-    console.error(`[CreatorCoin] Failed to get owner at index ${index}:`, error)
+    logger.error('[CreatorCoin] Failed to get owner at index', { index, error })
     return null
   }
 }
@@ -97,10 +98,10 @@ export async function getAllOwners(coinAddress: Address): Promise<Address[]> {
       }
     }
     
-    if (CREATOR_COIN_DEBUG) console.log('[CreatorCoin] All owners:', owners)
+    if (CREATOR_COIN_DEBUG) logger.debug('[CreatorCoin] All owners', owners)
     return owners
   } catch (error) {
-    console.error('[CreatorCoin] Failed to get all owners:', error)
+    logger.error('[CreatorCoin] Failed to get all owners', error)
     return []
   }
 }
@@ -113,28 +114,28 @@ export async function getAllOwners(coinAddress: Address): Promise<Address[]> {
  * 3. Fallback to the contract address itself
  */
 export async function resolveCreatorAddress(addressOrCoin: Address): Promise<Address> {
-  if (CREATOR_COIN_DEBUG) console.log('[CreatorCoin] Resolving address:', addressOrCoin)
+  if (CREATOR_COIN_DEBUG) logger.debug('[CreatorCoin] Resolving address', { addressOrCoin })
   
   try {
     // First try to get payout recipient
     const payoutRecipient = await getPayoutRecipient(addressOrCoin)
     if (payoutRecipient && payoutRecipient !== '0x0000000000000000000000000000000000000000') {
-      if (CREATOR_COIN_DEBUG) console.log('[CreatorCoin] Using payout recipient:', payoutRecipient)
+      if (CREATOR_COIN_DEBUG) logger.debug('[CreatorCoin] Using payout recipient', { payoutRecipient })
       return payoutRecipient
     }
     
     // Fallback to owner at index 2 (main EOA)
     const mainEOA = await getOwnerAt(addressOrCoin, 2)
     if (mainEOA && mainEOA !== '0x0000000000000000000000000000000000000000') {
-      if (CREATOR_COIN_DEBUG) console.log('[CreatorCoin] Using owner at index 2:', mainEOA)
+      if (CREATOR_COIN_DEBUG) logger.debug('[CreatorCoin] Using owner at index 2', { owner: mainEOA })
       return mainEOA
     }
     
     // If all else fails, return the original address
-    if (CREATOR_COIN_DEBUG) console.log('[CreatorCoin] Using original address (not a CreatorCoin or no payout recipient)')
+    if (CREATOR_COIN_DEBUG) logger.debug('[CreatorCoin] Using original address (not a CreatorCoin or no payout recipient)')
     return addressOrCoin
   } catch (error) {
-    console.error('[CreatorCoin] Error resolving address, using original:', error)
+    logger.error('[CreatorCoin] Error resolving address, using original', error)
     return addressOrCoin
   }
 }

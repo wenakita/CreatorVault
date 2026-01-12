@@ -3,17 +3,28 @@
  * Updated: December 2024
  */
 
+import { AKITA_DEFAULTS, BASE_DEFAULTS } from './contracts.defaults'
+
+// Prefer env overrides for deployment flexibility. Use fallbacks for known Base mainnet addresses.
+function envAddress(name: string, fallback?: `0x${string}` | undefined): `0x${string}` | undefined {
+  const v = (import.meta as any)?.env?.[name] as string | undefined
+  if (!v) return fallback
+  const trimmed = v.trim()
+  if (!trimmed) return fallback
+  return trimmed as `0x${string}`
+}
+
 export const CONTRACTS = {
   // Shared Infrastructure
-  registry: '0x777e28d7617ADb6E2fE7b7C49864A173e36881EF' as const,
-  factory: '0x6205c91941A207A622fD00481b92cA04308a2819' as const,
-  lotteryManager: '0xe2C39D39FF92c0cF7A0e9eD16FcE1d6F14bB38fD' as const,
-  vrfConsumer: '0xE7Bdc1dA09E6fD92B1a1cb82F427ed8d53B4f3Cb' as const,
-  payoutRouterFactory: '0x9C53cEaA15AdDB436c89A1F929fF12ED2BD26ea9' as const,
+  registry: envAddress('VITE_REGISTRY', BASE_DEFAULTS.registry)!,
+  factory: envAddress('VITE_FACTORY', BASE_DEFAULTS.factory)!,
+  lotteryManager: envAddress('VITE_LOTTERY_MANAGER', BASE_DEFAULTS.lotteryManager)!,
+  vrfConsumer: envAddress('VITE_VRF_CONSUMER', BASE_DEFAULTS.vrfConsumer)!,
+  payoutRouterFactory: envAddress('VITE_PAYOUT_ROUTER_FACTORY', BASE_DEFAULTS.payoutRouterFactory)!,
   // Universal CREATE2 factory (EIP-2470-style; deployed on many chains)
-  create2Factory: '0x4e59b44847b379578588920cA78FbF26c0B4956C' as const,
+  create2Factory: envAddress('VITE_CREATE2_FACTORY', BASE_DEFAULTS.create2Factory)!,
   // Phase 2 (AA): CREATE2 deployer for permissionless, one-signature deployments
-  create2Deployer: '0xaBf645362104F34D9C3FE48440bE7c99aaDE58E7' as const,
+  create2Deployer: envAddress('VITE_CREATE2_DEPLOYER', BASE_DEFAULTS.create2Deployer)!,
 
   // Universal AA optimization:
   // Store large creation bytecode once, then deploy via CREATE2 using (codeId + constructor args).
@@ -21,60 +32,66 @@ export const CONTRACTS = {
   //
   // NOTE: These addresses may not be deployed on every chain yet. The frontend should treat them as optional
   // and fall back to calldata-based deployments when missing.
-  universalBytecodeStore: '0xbec0c922835136949032223860C021484b0Cbdfa' as const,
-  universalCreate2DeployerFromStore: '0x6E01e598e450F07551200e7b2db333BEcC66b35e' as const,
+  universalBytecodeStore: envAddress('VITE_UNIVERSAL_BYTECODE_STORE', BASE_DEFAULTS.universalBytecodeStore)!,
+  universalCreate2DeployerFromStore: envAddress('VITE_UNIVERSAL_CREATE2_DEPLOYER', BASE_DEFAULTS.universalCreate2DeployerFromStore)!,
 
   // Phase 1/2 (AA): Vault activation batcher (approve + deposit + wrap + launch auction)
-  vaultActivationBatcher: '0x6d796554698f5Ddd74Ff20d745304096aEf93CB6' as const,
+  vaultActivationBatcher: envAddress('VITE_VAULT_ACTIVATION_BATCHER', BASE_DEFAULTS.vaultActivationBatcher),
+  // Phase 2 (AA): One-call deploy+launch primitive (optional; used for deterministic AA deployments)
+  creatorVaultBatcher: envAddress('VITE_CREATOR_VAULT_BATCHER'),
 
   // Protocol treasury / multisig (receives protocol fee slice from GaugeController)
-  protocolTreasury: '0x7d429eCbdcE5ff516D6e0a93299cbBa97203f2d3' as const,
+  protocolTreasury: envAddress('VITE_PROTOCOL_TREASURY', BASE_DEFAULTS.protocolTreasury)!,
 
   // Legacy activator (older 2-click flow). Kept for backwards compatibility.
-  vaultActivator: '0x1bf02C90B226C028720D25dE535b345e5FfB9743' as const,
+  vaultActivator: BASE_DEFAULTS.vaultActivator,
 
   // External - Uniswap V4
-  poolManager: '0x498581fF718922c3f8e6A244956aF099B2652b2b' as const,
-  taxHook: '0xca975B9dAF772C71161f3648437c3616E5Be0088' as const,
-  chainlinkEthUsd: '0x71041dddad3595F9CEd3DcCFBe3D1F4b0a16Bb70' as const,
-  weth: '0x4200000000000000000000000000000000000006' as const, // Base WETH
+  poolManager: envAddress('VITE_V4_POOL_MANAGER', BASE_DEFAULTS.poolManager)!,
+  taxHook: envAddress('VITE_V4_TAX_HOOK', BASE_DEFAULTS.taxHook)!,
+  // V4 periphery (optional; required for on-chain V4 LP strategies like CreatorLPManager)
+  v4PositionManager: envAddress('VITE_V4_POSITION_MANAGER'),
+  chainlinkEthUsd: envAddress('VITE_CHAINLINK_ETH_USD', BASE_DEFAULTS.chainlinkEthUsd)!,
+  weth: envAddress('VITE_WETH', BASE_DEFAULTS.weth)!, // Base WETH
+  // Permit2 (used by Uniswap periphery; canonical address is chain-agnostic)
+  permit2: envAddress('VITE_PERMIT2', BASE_DEFAULTS.permit2)!,
   
   // External - Ajna Protocol (Base)
   // Source: https://faqs.ajna.finance/info/deployment-addresses-and-bridges
-  ajnaErc20Factory: '0x214f62B5836D83f3D6c4f71F174209097B1A779C' as const,
-  ajnaErc721Factory: '0xeefEC5d1Cc4bde97279d01D88eFf9e0fEe981769' as const,
-  ajnaPoolInfoUtils: '0x97fa9b0909C238D170C1ab3B5c728A3a45BBEcBa' as const,
-  ajnaPositionManager: '0x59710a4149A27585f1841b5783ac704a08274e64' as const,
+  ajnaErc20Factory: envAddress('VITE_AJNA_ERC20_FACTORY', BASE_DEFAULTS.ajnaErc20Factory)!,
+  ajnaErc721Factory: envAddress('VITE_AJNA_ERC721_FACTORY', BASE_DEFAULTS.ajnaErc721Factory)!,
+  ajnaPoolInfoUtils: envAddress('VITE_AJNA_POOL_INFO_UTILS', BASE_DEFAULTS.ajnaPoolInfoUtils)!,
+  ajnaPositionManager: envAddress('VITE_AJNA_POSITION_MANAGER', BASE_DEFAULTS.ajnaPositionManager)!,
 
-  // External - Charm Finance (TODO: Add Base deployment addresses)
-  charmAlphaVault: undefined as `0x${string}` | undefined,
+  // External - Charm Finance (Base deployment addresses not yet available)
+  charmAlphaVault: envAddress('VITE_CHARM_ALPHA_VAULT'),
 
   // External - Uniswap
-  uniswapV3Factory: '0x33128a8fC17869897dcE68Ed026d694621f6FDfD' as const,
+  uniswapV3Factory: envAddress('VITE_UNISWAP_V3_FACTORY', BASE_DEFAULTS.uniswapV3Factory)!,
 
   // External - Standard Tokens
-  zora: '0x4200000000000000000000000000000000000777' as const,
-  usdc: '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913' as const,
+  zora: envAddress('VITE_ZORA', BASE_DEFAULTS.zora)!,
+  usdc: envAddress('VITE_USDC', BASE_DEFAULTS.usdc)!,
 
   // Helpers
-  strategyDeploymentBatcher: undefined as `0x${string}` | undefined, // Deploy with: forge create StrategyDeploymentBatcher
+  strategyDeploymentBatcher: envAddress('VITE_STRATEGY_DEPLOYMENT_BATCHER'), // Deploy with: forge create StrategyDeploymentBatcher
 } as const
 
 // Example: AKITA Vault (first creator)
 export const AKITA = {
-  token: '0x5b674196812451b7cec024fe9d22d2c0b172fa75' as const,
-  vault: '0xA015954E2606d08967Aee3787456bB3A86a46A42' as const,
-  wrapper: '0x58Cd1E9248F89138208A601e95A531d3c0fa0c4f' as const,
-  shareOFT: '0x4df30fFfDA1D4A81bcf4DC778292Be8Ff9752a57' as const,
-  gaugeController: '0xB471B53cD0A30289Bc3a2dc3c6dd913288F8baA1' as const,
-  ccaStrategy: '0x00c7897e0554b34A477D9D144AcC613Cdc97046F' as const,
-  oracle: '0x8C044aeF10d05bcC53912869db89f6e1f37bC6fC' as const,
+  token: envAddress('VITE_AKITA_TOKEN', AKITA_DEFAULTS.token)!,
+  vault: envAddress('VITE_AKITA_VAULT', AKITA_DEFAULTS.vault)!,
+  wrapper: envAddress('VITE_AKITA_WRAPPER', AKITA_DEFAULTS.wrapper)!,
+  shareOFT: envAddress('VITE_AKITA_SHARE_OFT', AKITA_DEFAULTS.shareOFT)!,
+  gaugeController: envAddress('VITE_AKITA_GAUGE_CONTROLLER', AKITA_DEFAULTS.gaugeController)!,
+  ccaStrategy: envAddress('VITE_AKITA_CCA_STRATEGY', AKITA_DEFAULTS.ccaStrategy)!,
+  oracle: envAddress('VITE_AKITA_ORACLE', AKITA_DEFAULTS.oracle)!,
   // Strategies for vault allocation
   strategies: {
-    akitaWethLP: '0x0000000000000000000000000000000000000000' as const, // TODO: Deploy AKITA/WETH 1% LP strategy
-    akitaUsdcLP: '0x0000000000000000000000000000000000000000' as const, // TODO: Deploy AKITA/USDC 1% LP strategy
-    ajna: '0x0000000000000000000000000000000000000000' as const, // TODO: Deploy Ajna strategy
+    akitaWethLP: envAddress('VITE_AKITA_WETH_LP'), // Deploy AKITA/WETH 1% LP strategy
+    akitaUsdcLP: envAddress('VITE_AKITA_USDC_LP'), // Deploy AKITA/USDC 1% LP strategy
+    ajna: envAddress('VITE_AKITA_AJNA_STRATEGY'), // Ajna strategy
   },
 } as const
 
-export type ContractAddress = `0x${string}`
+export type { ContractAddress } from './contracts.defaults'

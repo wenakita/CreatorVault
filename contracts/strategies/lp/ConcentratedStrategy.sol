@@ -6,6 +6,22 @@ import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
+import {IPoolManager} from "@uniswap/v4-core/src/interfaces/IPoolManager.sol";
+import {PoolKey} from "@uniswap/v4-core/src/types/PoolKey.sol";
+import {PoolId} from "@uniswap/v4-core/src/types/PoolId.sol";
+import {Currency} from "@uniswap/v4-core/src/types/Currency.sol";
+import {StateLibrary} from "@uniswap/v4-core/src/libraries/StateLibrary.sol";
+import {TickMath} from "@uniswap/v4-core/src/libraries/TickMath.sol";
+
+import {IPositionManager} from "@uniswap/v4-periphery/src/interfaces/IPositionManager.sol";
+import {Actions} from "@uniswap/v4-periphery/src/libraries/Actions.sol";
+import {LiquidityAmounts} from "@uniswap/v4-periphery/src/libraries/LiquidityAmounts.sol";
+
+import {IAllowanceTransfer} from "permit2/src/interfaces/IAllowanceTransfer.sol";
+
+import {ICreatorOracle} from "../../interfaces/oracles/ICreatorOracle.sol";
+import {V4LiquidityAmounts} from "../../libraries/V4LiquidityAmounts.sol";
+
 /**
  * @title ConcentratedStrategy
  * @author 0xakita.eth (CreatorVault)
@@ -37,22 +53,9 @@ enum StrategyType {
     Concentrated
 }
 
-/// @notice Minimal interface for V4 pool state
-interface IV4PoolState {
-    function slot0() external view returns (
-        uint160 sqrtPriceX96,
-        int24 tick,
-        uint24 protocolFee,
-        uint24 lpFee
-    );
-    function observe(uint32[] calldata secondsAgos) external view returns (
-        int56[] memory tickCumulatives,
-        uint160[] memory secondsPerLiquidityCumulativeX128s
-    );
-}
-
 contract ConcentratedStrategy is Ownable, ReentrancyGuard {
     using SafeERC20 for IERC20;
+    using StateLibrary for IPoolManager;
 
     // =================================
     // CONSTANTS
@@ -75,26 +78,36 @@ contract ConcentratedStrategy is Ownable, ReentrancyGuard {
     /// @notice LP Manager that controls this strategy
     address public lpManager;
 
-    /// @notice Uniswap V4 Pool Manager
-    address public poolManager;
+    /// @notice Uniswap V4 PoolManager (holds all pools)
+    IPoolManager public poolManager;
 
-    /// @notice Uniswap V4 Position Manager
+    /// @notice Uniswap V4 pool key (defines currencies/fee/tickSpacing/hooks)
+    PoolKey public poolKey;
+
+    /// @notice Uniswap V4 pool id (derived from poolKey)
+    PoolId public poolId;
+
+    /// @notice True if CREATOR_COIN is currency0 for poolKey
+    bool public creatorIsCurrency0;
+
+    /// @notice Uniswap V4 PositionManager (PosM)
     address public positionManager;
 
-    /// @notice Pool address for TWAP queries
-    address public pool;
-
-    /// @notice Pool ID
-    bytes32 public poolId;
+    /// @notice Permit2 contract used by PosM for token pulls into PoolManager
+    address public permit2;
 
     /// @notice Tick spacing for the pool
     int24 public tickSpacing = 60;
+
+    /// @notice Optional TWAP oracle for tick-based manipulation resistance.
+    /// @dev If maxTwapDeviation > 0 and this is unset, rebalances will revert.
+    ICreatorOracle public twapOracle;
 
     /// @notice Current position
     struct Position {
         int24 tickLower;
         int24 tickUpper;
-        uint256 liquidity;
+        uint128 liquidity;
         uint256 tokenId;
     }
     Position public position;
@@ -141,7 +154,7 @@ contract ConcentratedStrategy is Ownable, ReentrancyGuard {
     event Withdrawn(uint256 liquidity, uint256 creatorCoinAmount, uint256 pairedAmount);
     event Rebalanced(int24 oldTickLower, int24 oldTickUpper, int24 newTickLower, int24 newTickUpper, int24 tick);
     event Snapshot(int24 tick, uint256 totalAmount0, uint256 totalAmount1, uint256 totalSupply);
-    event PoolConfigured(bytes32 poolId, address pool);
+    event PoolConfigured(bytes32 poolId, address poolManager, address positionManager, address permit2, bool creatorIsCurrency0);
     event ParametersUpdated(int24 baseThreshold, uint32 period, int24 minTickMove, int24 maxTwapDeviation, uint32 twapDuration);
 
     // =================================
@@ -159,6 +172,8 @@ contract ConcentratedStrategy is Ownable, ReentrancyGuard {
     error TwapDeviationTooHigh();       // TP - TWAP check
     error PriceTooCloseToBoundary();    // PB - boundary check
     error InvalidParameters();
+    error PoolNotFullyConfigured();
+    error TwapOracleNotSet();
 
     // =================================
     // MODIFIERS
@@ -196,28 +211,44 @@ contract ConcentratedStrategy is Ownable, ReentrancyGuard {
     // CONFIGURATION
     // =================================
 
-    function configurePool(
-        address _poolManager,
-        address _positionManager,
-        address _pool,
-        bytes32 _poolId,
-        int24 _tickSpacing
-    ) external onlyOwner {
+    function configurePool(address _poolManager, address _positionManager, address _permit2, PoolKey calldata _poolKey)
+        external
+        onlyOwner
+    {
         if (_poolManager == address(0)) revert ZeroAddress();
         if (_positionManager == address(0)) revert ZeroAddress();
-        if (_pool == address(0)) revert ZeroAddress();
+        if (_permit2 == address(0)) revert ZeroAddress();
 
-        poolManager = _poolManager;
+        // Validate poolKey currencies match our configured tokens
+        address c0 = Currency.unwrap(_poolKey.currency0);
+        address c1 = Currency.unwrap(_poolKey.currency1);
+        bool _creatorIsCurrency0 = c0 == address(CREATOR_COIN);
+        if (
+            !(
+                (_creatorIsCurrency0 && c1 == address(PAIRED_TOKEN)) || (c0 == address(PAIRED_TOKEN) && c1 == address(CREATOR_COIN))
+            )
+        ) revert PoolNotFullyConfigured();
+        if (_poolKey.tickSpacing == 0) revert PoolNotFullyConfigured();
+
+        poolManager = IPoolManager(_poolManager);
         positionManager = _positionManager;
-        pool = _pool;
-        poolId = _poolId;
-        tickSpacing = _tickSpacing;
+        permit2 = _permit2;
+        poolKey = _poolKey;
+        poolId = _poolKey.toId();
+        creatorIsCurrency0 = _creatorIsCurrency0;
+        tickSpacing = _poolKey.tickSpacing;
 
-        // Approve position manager
-        CREATOR_COIN.forceApprove(_positionManager, type(uint256).max);
-        PAIRED_TOKEN.forceApprove(_positionManager, type(uint256).max);
+        // Approvals for PosM: token -> Permit2, then Permit2 -> PosM
+        CREATOR_COIN.forceApprove(_permit2, type(uint256).max);
+        PAIRED_TOKEN.forceApprove(_permit2, type(uint256).max);
+        IAllowanceTransfer(_permit2).approve(address(CREATOR_COIN), _positionManager, type(uint160).max, type(uint48).max);
+        IAllowanceTransfer(_permit2).approve(address(PAIRED_TOKEN), _positionManager, type(uint160).max, type(uint48).max);
 
-        emit PoolConfigured(_poolId, _pool);
+        emit PoolConfigured(PoolId.unwrap(poolId), _poolManager, _positionManager, _permit2, _creatorIsCurrency0);
+    }
+
+    function setTwapOracle(address _oracle) external onlyOwner {
+        twapOracle = ICreatorOracle(_oracle);
     }
 
     /**
@@ -262,7 +293,7 @@ contract ConcentratedStrategy is Ownable, ReentrancyGuard {
         uint256 creatorCoinAmount,
         uint256 pairedAmount
     ) external nonReentrant onlyLPManager whenActive returns (uint256 liquidity) {
-        if (pool == address(0)) revert PoolNotConfigured();
+        _requireConfigured();
         if (creatorCoinAmount == 0 && pairedAmount == 0) revert ZeroAmount();
 
         // Pull tokens
@@ -273,36 +304,46 @@ contract ConcentratedStrategy is Ownable, ReentrancyGuard {
             PAIRED_TOKEN.safeTransferFrom(msg.sender, address(this), pairedAmount);
         }
 
-        // Calculate optimal range around current price
         int24 currentTick = _getCurrentTick();
-        (int24 tickLower, int24 tickUpper) = _calculateRange(currentTick);
 
-        // Calculate liquidity
-        liquidity = _calculateLiquidity(creatorCoinAmount, pairedAmount, tickLower, tickUpper);
-
+        // For first deposit, initialize a new range around current price. Subsequent deposits add to existing range.
+        int24 tickLower;
+        int24 tickUpper;
         if (position.liquidity == 0) {
-            // Create new position
-            position = Position({
-                tickLower: tickLower,
-                tickUpper: tickUpper,
-                liquidity: liquidity,
-                tokenId: 0
-            });
-
-            lastTimestamp = block.timestamp;
-            lastTick = currentTick;
-
-            // TODO: Mint V4 position
-            // position.tokenId = _mintPosition(tickLower, tickUpper, liquidity);
+            (tickLower, tickUpper) = _calculateRange(currentTick);
         } else {
-            // Add to existing position
-            position.liquidity += liquidity;
-
-            // TODO: Increase V4 position liquidity
-            // _increaseLiquidity(liquidity);
+            tickLower = position.tickLower;
+            tickUpper = position.tickUpper;
         }
 
-        totalLiquidity += liquidity;
+        (uint256 amountCurrency0, uint256 amountCurrency1) = creatorIsCurrency0
+            ? (creatorCoinAmount, pairedAmount)
+            : (pairedAmount, creatorCoinAmount);
+
+        (uint160 sqrtPriceX96,,,) = poolManager.getSlot0(poolId);
+        uint128 liq = LiquidityAmounts.getLiquidityForAmounts(
+            sqrtPriceX96,
+            TickMath.getSqrtPriceAtTick(tickLower),
+            TickMath.getSqrtPriceAtTick(tickUpper),
+            amountCurrency0,
+            amountCurrency1
+        );
+
+        if (liq == 0) return 0;
+
+        if (position.liquidity == 0) {
+            uint256 tokenId = IPositionManager(positionManager).nextTokenId();
+            _posmMint(tickLower, tickUpper, liq);
+            position = Position({tickLower: tickLower, tickUpper: tickUpper, liquidity: liq, tokenId: tokenId});
+            lastTimestamp = block.timestamp;
+            lastTick = currentTick;
+        } else {
+            _posmIncrease(position.tokenId, liq);
+            position.liquidity += liq;
+        }
+
+        totalLiquidity += uint256(liq);
+        liquidity = uint256(liq);
 
         emit Deposited(creatorCoinAmount, pairedAmount, liquidity);
     }
@@ -313,18 +354,22 @@ contract ConcentratedStrategy is Ownable, ReentrancyGuard {
     function withdraw(
         uint256 liquidity
     ) external nonReentrant onlyLPManager returns (uint256 creatorCoinAmount, uint256 pairedAmount) {
+        _requireConfigured();
         if (liquidity == 0) revert ZeroAmount();
         if (liquidity > totalLiquidity) revert InsufficientLiquidity();
+        uint128 liqToRemove = uint128(liquidity);
+        if (liqToRemove > position.liquidity) liqToRemove = position.liquidity;
 
-        // Calculate amounts
-        (creatorCoinAmount, pairedAmount) = _calculateAmountsForLiquidity(liquidity);
+        uint256 balCreatorBefore = CREATOR_COIN.balanceOf(address(this));
+        uint256 balPairedBefore = PAIRED_TOKEN.balanceOf(address(this));
 
-        // Decrease position
-        position.liquidity -= liquidity;
-        totalLiquidity -= liquidity;
+        _posmDecrease(position.tokenId, liqToRemove);
 
-        // TODO: Decrease V4 position
-        // _decreaseLiquidity(liquidity);
+        creatorCoinAmount = CREATOR_COIN.balanceOf(address(this)) - balCreatorBefore;
+        pairedAmount = PAIRED_TOKEN.balanceOf(address(this)) - balPairedBefore;
+
+        position.liquidity -= liqToRemove;
+        totalLiquidity -= uint256(liqToRemove);
 
         // Transfer tokens
         if (creatorCoinAmount > 0) {
@@ -341,19 +386,21 @@ contract ConcentratedStrategy is Ownable, ReentrancyGuard {
      * @notice Withdraw all liquidity
      */
     function withdrawAll() external nonReentrant onlyLPManager returns (uint256 creatorCoinAmount, uint256 pairedAmount) {
+        _requireConfigured();
         if (totalLiquidity == 0) return (0, 0);
+        uint256 balCreatorBefore = CREATOR_COIN.balanceOf(address(this));
+        uint256 balPairedBefore = PAIRED_TOKEN.balanceOf(address(this));
 
-        uint256 liquidity = totalLiquidity;
+        uint256 tokenId = position.tokenId;
+        _posmBurn(tokenId);
 
-        // Calculate amounts
-        (creatorCoinAmount, pairedAmount) = _calculateAmountsForLiquidity(liquidity);
+        creatorCoinAmount = CREATOR_COIN.balanceOf(address(this)) - balCreatorBefore;
+        pairedAmount = PAIRED_TOKEN.balanceOf(address(this)) - balPairedBefore;
 
-        // Clear position
+        uint256 liquidity_ = totalLiquidity;
         position.liquidity = 0;
+        position.tokenId = 0;
         totalLiquidity = 0;
-
-        // TODO: Remove V4 position entirely
-        // _burnPosition();
 
         // Transfer tokens
         if (creatorCoinAmount > 0) {
@@ -363,7 +410,7 @@ contract ConcentratedStrategy is Ownable, ReentrancyGuard {
             PAIRED_TOKEN.safeTransfer(lpManager, pairedAmount);
         }
 
-        emit Withdrawn(liquidity, creatorCoinAmount, pairedAmount);
+        emit Withdrawn(liquidity_, creatorCoinAmount, pairedAmount);
     }
 
     /**
@@ -371,6 +418,7 @@ contract ConcentratedStrategy is Ownable, ReentrancyGuard {
      * @dev Checks: time elapsed, price movement, TWAP deviation, boundary
      */
     function rebalance() external onlyLPManager whenActive {
+        _requireConfigured();
         if (position.liquidity == 0) return;
 
         // Run all rebalance checks (reverts if any fail)
@@ -392,15 +440,37 @@ contract ConcentratedStrategy is Ownable, ReentrancyGuard {
         uint256 balance1 = PAIRED_TOKEN.balanceOf(address(this));
         emit Snapshot(currentTick, balance0, balance1, totalLiquidity);
 
-        // 1. Remove all liquidity from old position
-        // 2. Create new position at new range
-        // 3. Add liquidity to new position
-        
-        // TODO: V4 position management
-        // _rebalancePosition(newTickLower, newTickUpper);
+        // Burn old position, then mint a fresh one at the new range using all available balances.
+        uint256 oldTokenId = position.tokenId;
+        uint128 oldLiquidity = position.liquidity;
 
+        _posmBurn(oldTokenId);
+
+        // Compute new liquidity from current balances (fees + principal now sit idle on this contract)
+        uint256 creatorBal = CREATOR_COIN.balanceOf(address(this));
+        uint256 pairedBal = PAIRED_TOKEN.balanceOf(address(this));
+
+        (uint256 amountCurrency0, uint256 amountCurrency1) = creatorIsCurrency0 ? (creatorBal, pairedBal) : (pairedBal, creatorBal);
+        (uint160 sqrtPriceX96,,,) = poolManager.getSlot0(poolId);
+        uint128 newLiquidity = LiquidityAmounts.getLiquidityForAmounts(
+            sqrtPriceX96,
+            TickMath.getSqrtPriceAtTick(newTickLower),
+            TickMath.getSqrtPriceAtTick(newTickUpper),
+            amountCurrency0,
+            amountCurrency1
+        );
+
+        uint256 newTokenId = 0;
+        if (newLiquidity > 0) {
+            newTokenId = IPositionManager(positionManager).nextTokenId();
+            _posmMint(newTickLower, newTickUpper, newLiquidity);
+        }
+
+        totalLiquidity = totalLiquidity - uint256(oldLiquidity) + uint256(newLiquidity);
         position.tickLower = newTickLower;
         position.tickUpper = newTickUpper;
+        position.liquidity = newLiquidity;
+        position.tokenId = newTokenId;
         lastTimestamp = block.timestamp;
         lastTick = currentTick;
 
@@ -448,32 +518,34 @@ contract ConcentratedStrategy is Ownable, ReentrancyGuard {
      * @dev Queries pool's oracle for historical price data
      */
     function getTwap() public view returns (int24) {
-        if (pool == address(0)) return _getCurrentTick();
-
-        uint32[] memory secondsAgos = new uint32[](2);
-        secondsAgos[0] = twapDuration;
-        secondsAgos[1] = 0;
-
-        try IV4PoolState(pool).observe(secondsAgos) returns (
-            int56[] memory tickCumulatives,
-            uint160[] memory /* secondsPerLiquidityCumulativeX128s */
-        ) {
-            return int24((tickCumulatives[1] - tickCumulatives[0]) / int56(uint56(twapDuration)));
-        } catch {
-            // If observe fails, return current tick
-            return _getCurrentTick();
-        }
+        // Allow explicitly disabling TWAP checks by setting maxTwapDeviation == 0.
+        if (maxTwapDeviation == 0) return _getCurrentTick();
+        if (address(twapOracle) == address(0)) revert TwapOracleNotSet();
+        return twapOracle.getTWAPTick(twapDuration);
     }
 
     /**
      * @notice Get total value
      */
     function getTotalValue() external view returns (uint256 creatorCoinValue, uint256 pairedValue) {
-        if (totalLiquidity > 0) {
-            (creatorCoinValue, pairedValue) = _calculateAmountsForLiquidity(totalLiquidity);
+        if (address(poolManager) != address(0) && PoolId.unwrap(poolId) != bytes32(0) && position.liquidity > 0) {
+            (uint160 sqrtPriceX96,,,) = poolManager.getSlot0(poolId);
+            (uint256 amount0, uint256 amount1) = V4LiquidityAmounts.getAmountsForLiquidity(
+                sqrtPriceX96,
+                TickMath.getSqrtPriceAtTick(position.tickLower),
+                TickMath.getSqrtPriceAtTick(position.tickUpper),
+                position.liquidity
+            );
+
+            if (creatorIsCurrency0) {
+                creatorCoinValue += amount0;
+                pairedValue += amount1;
+            } else {
+                creatorCoinValue += amount1;
+                pairedValue += amount0;
+            }
         }
 
-        // Add local balances
         creatorCoinValue += CREATOR_COIN.balanceOf(address(this));
         pairedValue += PAIRED_TOKEN.balanceOf(address(this));
     }
@@ -551,18 +623,9 @@ contract ConcentratedStrategy is Ownable, ReentrancyGuard {
     // =================================
 
     function _getCurrentTick() internal view returns (int24) {
-        if (pool == address(0)) return 0;
-        
-        try IV4PoolState(pool).slot0() returns (
-            uint160 /* sqrtPriceX96 */,
-            int24 tick,
-            uint24 /* protocolFee */,
-            uint24 /* lpFee */
-        ) {
-            return tick;
-        } catch {
-            return 0;
-        }
+        _requireConfigured();
+        (, int24 tick,,) = poolManager.getSlot0(poolId);
+        return tick;
     }
 
     function _calculateRange(int24 currentTick) internal view returns (int24 tickLower, int24 tickUpper) {
@@ -578,6 +641,71 @@ contract ConcentratedStrategy is Ownable, ReentrancyGuard {
         int24 compressed = tick / tickSpacing;
         if (tick < 0 && tick % tickSpacing != 0) compressed--;
         return compressed * tickSpacing;
+    }
+
+    function _posmMint(int24 tickLower, int24 tickUpper, uint128 liquidityToAdd) internal {
+        bytes memory actions = new bytes(3);
+        actions[0] = bytes1(uint8(Actions.MINT_POSITION));
+        actions[1] = bytes1(uint8(Actions.CLOSE_CURRENCY));
+        actions[2] = bytes1(uint8(Actions.CLOSE_CURRENCY));
+
+        bytes[] memory params = new bytes[](3);
+        params[0] = abi.encode(
+            poolKey,
+            tickLower,
+            tickUpper,
+            uint256(liquidityToAdd),
+            type(uint128).max,
+            type(uint128).max,
+            address(this),
+            bytes("")
+        );
+        params[1] = abi.encode(poolKey.currency0);
+        params[2] = abi.encode(poolKey.currency1);
+
+        IPositionManager(positionManager).modifyLiquidities(abi.encode(actions, params), block.timestamp + 1);
+    }
+
+    function _posmIncrease(uint256 tokenId, uint128 liquidityToAdd) internal {
+        bytes memory actions = new bytes(3);
+        actions[0] = bytes1(uint8(Actions.INCREASE_LIQUIDITY));
+        actions[1] = bytes1(uint8(Actions.CLOSE_CURRENCY));
+        actions[2] = bytes1(uint8(Actions.CLOSE_CURRENCY));
+
+        bytes[] memory params = new bytes[](3);
+        params[0] = abi.encode(tokenId, uint256(liquidityToAdd), type(uint128).max, type(uint128).max, bytes(""));
+        params[1] = abi.encode(poolKey.currency0);
+        params[2] = abi.encode(poolKey.currency1);
+
+        IPositionManager(positionManager).modifyLiquidities(abi.encode(actions, params), block.timestamp + 1);
+    }
+
+    function _posmDecrease(uint256 tokenId, uint128 liquidityToRemove) internal {
+        bytes memory actions = new bytes(3);
+        actions[0] = bytes1(uint8(Actions.DECREASE_LIQUIDITY));
+        actions[1] = bytes1(uint8(Actions.CLOSE_CURRENCY));
+        actions[2] = bytes1(uint8(Actions.CLOSE_CURRENCY));
+
+        bytes[] memory params = new bytes[](3);
+        params[0] = abi.encode(tokenId, uint256(liquidityToRemove), uint128(0), uint128(0), bytes(""));
+        params[1] = abi.encode(poolKey.currency0);
+        params[2] = abi.encode(poolKey.currency1);
+
+        IPositionManager(positionManager).modifyLiquidities(abi.encode(actions, params), block.timestamp + 1);
+    }
+
+    function _posmBurn(uint256 tokenId) internal {
+        bytes memory actions = new bytes(3);
+        actions[0] = bytes1(uint8(Actions.BURN_POSITION));
+        actions[1] = bytes1(uint8(Actions.CLOSE_CURRENCY));
+        actions[2] = bytes1(uint8(Actions.CLOSE_CURRENCY));
+
+        bytes[] memory params = new bytes[](3);
+        params[0] = abi.encode(tokenId, uint128(0), uint128(0), bytes(""));
+        params[1] = abi.encode(poolKey.currency0);
+        params[2] = abi.encode(poolKey.currency1);
+
+        IPositionManager(positionManager).modifyLiquidities(abi.encode(actions, params), block.timestamp + 1);
     }
 
     function _calculateLiquidity(
@@ -627,6 +755,13 @@ contract ConcentratedStrategy is Ownable, ReentrancyGuard {
 
     function enableEmergencyMode() external onlyOwner {
         isEmergencyMode = true;
+    }
+
+    function _requireConfigured() internal view {
+        if (address(poolManager) == address(0)) revert PoolNotConfigured();
+        if (positionManager == address(0)) revert PoolNotConfigured();
+        if (permit2 == address(0)) revert PoolNotConfigured();
+        if (PoolId.unwrap(poolId) == bytes32(0)) revert PoolNotConfigured();
     }
 
     function emergencyWithdraw() external onlyOwner {

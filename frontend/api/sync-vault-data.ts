@@ -1,4 +1,5 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
+import { logger } from './_lib/logger.js';
 
 // Declare process for Node.js environment
 declare const process: { env: Record<string, string | undefined> };
@@ -12,17 +13,17 @@ async function getPrisma(): Promise<any> {
       const modulePath = '@prisma/client';
       const prismaModule = await eval(`import('${modulePath}')`).catch(() => null);
       if (!prismaModule) {
-        console.warn('[sync-vault-data] Could not load Prisma module');
+        logger.warn('[sync-vault-data] Could not load Prisma module');
         return null;
       }
       const PrismaClient = prismaModule.PrismaClient || prismaModule.default?.PrismaClient;
       if (!PrismaClient) {
-        console.warn('[sync-vault-data] PrismaClient not found in module');
+        logger.warn('[sync-vault-data] PrismaClient not found in module');
         return null;
       }
       prisma = new PrismaClient();
     } catch (e) {
-      console.warn('[sync-vault-data] Prisma not available, skipping database operations');
+      logger.warn('[sync-vault-data] Prisma not available, skipping database operations', e);
       return null;
     }
   }
@@ -111,7 +112,7 @@ async function fetchFromCharmGraphQL(vaultAddress: string, first: number = 100, 
   }
 
   if (Array.isArray(result.errors) && result.errors.length > 0) {
-    console.error('[sync-vault-data] GraphQL errors:', result.errors);
+    logger.error('[sync-vault-data] GraphQL errors', result.errors);
     throw new Error('GraphQL query failed');
   }
   
@@ -119,11 +120,11 @@ async function fetchFromCharmGraphQL(vaultAddress: string, first: number = 100, 
 }
 
 async function syncVaultSnapshots(vaultAddress: string) {
-  console.log(`[sync-vault-data] Syncing vault: ${vaultAddress}`);
+  logger.info('[sync-vault-data] Syncing vault', { vaultAddress });
   
   const db = await getPrisma();
   if (!db) {
-    console.log('[sync-vault-data] Database not available, skipping sync');
+    logger.info('[sync-vault-data] Database not available, skipping sync');
     return { synced: 0, vault: vaultAddress, skipped: true };
   }
   
@@ -139,7 +140,7 @@ async function syncVaultSnapshots(vaultAddress: string) {
     const vaultData = await fetchFromCharmGraphQL(vaultAddress, 500, 0);
     
     if (!vaultData || !vaultData.snapshot) {
-      console.log(`[sync-vault-data] No data for vault ${vaultAddress}`);
+      logger.info('[sync-vault-data] No data for vault', { vaultAddress });
       return { synced: 0, vault: vaultAddress };
     }
     
@@ -209,11 +210,11 @@ async function syncVaultSnapshots(vaultAddress: string) {
       }
     });
     
-    console.log(`[sync-vault-data] Synced ${syncedCount} snapshots for ${vaultAddress}`);
+    logger.info('[sync-vault-data] Synced snapshots', { vaultAddress, syncedCount });
     return { synced: syncedCount, vault: vaultAddress };
     
   } catch (error: any) {
-    console.error(`[sync-vault-data] Error syncing ${vaultAddress}:`, error);
+    logger.error('[sync-vault-data] Error syncing vault', { vaultAddress, error });
     
     // Update sync status with error
     await db.syncStatus.upsert({
@@ -334,7 +335,7 @@ export default async function handler(
     });
     
   } catch (error: any) {
-    console.error('[sync-vault-data] Fatal error:', error);
+    logger.error('[sync-vault-data] Fatal error', error);
     return res.status(500).json({
       success: false,
       error: error.message,

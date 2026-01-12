@@ -1,6 +1,8 @@
 // Zora API integration for creator profiles
 // Docs: https://docs.zora.co/docs/zora-api/intro
 
+import { logger } from './logger'
+
 const ZORA_API_BASE = 'https://api.zora.co/graphql'
 
 export interface ZoraCreator {
@@ -48,20 +50,20 @@ export async function getZoraCreatorProfile(address: string): Promise<ZoraCreato
     })
 
     if (!response.ok) {
-      console.error('Zora API error:', response.status, response.statusText)
+      logger.error('Zora API error', { status: response.status, statusText: response.statusText })
       return null
     }
 
     const data = await response.json()
     
     if (data.errors) {
-      console.error('Zora API GraphQL errors:', data.errors)
+      logger.error('Zora API GraphQL errors', data.errors)
       return null
     }
 
     return data.data?.creator || null
   } catch (error) {
-    console.error('Failed to fetch Zora creator profile:', error)
+    logger.error('Failed to fetch Zora creator profile', error)
     return null
   }
 }

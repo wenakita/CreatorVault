@@ -4,6 +4,7 @@ import { Button } from '../components/Button';
 import { TextScramble } from '../components/TextScramble';
 import { VaultExplainer } from '../components/VaultExplainer';
 import { TelemetryModule } from '../components/TelemetryModule';
+import { logger } from '@/lib/logger';
 
 interface DashboardProps {
   assets: VaultAsset[];
@@ -37,7 +38,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ assets, onGenerate, onAsse
             if (onNotify) onNotify('success', 'Content copied to clipboard');
         }
     } catch (err) {
-        console.error("Download failed:", err);
+        logger.error('Download failed', err);
     }
   };
 

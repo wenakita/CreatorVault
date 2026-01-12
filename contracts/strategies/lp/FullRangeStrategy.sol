@@ -6,6 +6,19 @@ import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
+import {IPoolManager} from "@uniswap/v4-core/src/interfaces/IPoolManager.sol";
+import {PoolKey} from "@uniswap/v4-core/src/types/PoolKey.sol";
+import {PoolId} from "@uniswap/v4-core/src/types/PoolId.sol";
+import {Currency} from "@uniswap/v4-core/src/types/Currency.sol";
+import {StateLibrary} from "@uniswap/v4-core/src/libraries/StateLibrary.sol";
+import {TickMath} from "@uniswap/v4-core/src/libraries/TickMath.sol";
+
+import {IPositionManager} from "@uniswap/v4-periphery/src/interfaces/IPositionManager.sol";
+import {Actions} from "@uniswap/v4-periphery/src/libraries/Actions.sol";
+import {LiquidityAmounts} from "@uniswap/v4-periphery/src/libraries/LiquidityAmounts.sol";
+
+import {IAllowanceTransfer} from "permit2/src/interfaces/IAllowanceTransfer.sol";
+
 /**
  * @title FullRangeStrategy
  * @author 0xakita.eth (CreatorVault)
@@ -34,6 +47,7 @@ enum StrategyType {
 
 contract FullRangeStrategy is Ownable, ReentrancyGuard {
     using SafeERC20 for IERC20;
+    using StateLibrary for IPoolManager;
 
     // =================================
     // CONSTANTS
@@ -56,14 +70,23 @@ contract FullRangeStrategy is Ownable, ReentrancyGuard {
     /// @notice LP Manager that controls this strategy
     address public lpManager;
 
-    /// @notice Uniswap V4 Pool Manager
-    address public poolManager;
+    /// @notice Uniswap V4 PoolManager (holds all pools)
+    IPoolManager public poolManager;
 
-    /// @notice Uniswap V4 Position Manager
+    /// @notice Uniswap V4 pool key (defines currencies/fee/tickSpacing/hooks)
+    PoolKey public poolKey;
+
+    /// @notice Uniswap V4 pool id (derived from poolKey)
+    PoolId public poolId;
+
+    /// @notice True if CREATOR_COIN is currency0 for poolKey
+    bool public creatorIsCurrency0;
+
+    /// @notice Uniswap V4 PositionManager (PosM)
     address public positionManager;
 
-    /// @notice Pool ID for this strategy's pool
-    bytes32 public poolId;
+    /// @notice Permit2 contract used by PosM for token pulls into PoolManager
+    address public permit2;
 
     /// @notice Current position token ID (NFT)
     uint256 public positionTokenId;
@@ -84,7 +107,7 @@ contract FullRangeStrategy is Ownable, ReentrancyGuard {
     event Deposited(uint256 creatorCoinAmount, uint256 pairedAmount, uint256 liquidity);
     event Withdrawn(uint256 liquidity, uint256 creatorCoinAmount, uint256 pairedAmount);
     event Rebalanced(uint256 timestamp);
-    event PoolConfigured(bytes32 poolId, address poolManager, address positionManager);
+    event PoolConfigured(bytes32 poolId, address poolManager, address positionManager, address permit2, bool creatorIsCurrency0);
     event EmergencyModeEnabled();
 
     // =================================
@@ -97,6 +120,7 @@ contract FullRangeStrategy is Ownable, ReentrancyGuard {
     error ZeroAmount();
     error PoolNotConfigured();
     error InsufficientLiquidity();
+    error PoolNotFullyConfigured();
 
     // =================================
     // MODIFIERS
@@ -144,26 +168,43 @@ contract FullRangeStrategy is Ownable, ReentrancyGuard {
     /**
      * @notice Configure Uniswap V4 pool
      * @param _poolManager V4 Pool Manager
-     * @param _positionManager V4 Position Manager
-     * @param _poolId Pool identifier
+     * @param _positionManager V4 Position Manager (PosM)
+     * @param _permit2 Permit2 contract used by PosM
+     * @param _poolKey The pool key (pool id is derived from this)
      */
-    function configurePool(
-        address _poolManager,
-        address _positionManager,
-        bytes32 _poolId
-    ) external onlyOwner {
+    function configurePool(address _poolManager, address _positionManager, address _permit2, PoolKey calldata _poolKey)
+        external
+        onlyOwner
+    {
         if (_poolManager == address(0)) revert ZeroAddress();
         if (_positionManager == address(0)) revert ZeroAddress();
+        if (_permit2 == address(0)) revert ZeroAddress();
 
-        poolManager = _poolManager;
+        // Validate poolKey currencies match our configured tokens
+        address c0 = Currency.unwrap(_poolKey.currency0);
+        address c1 = Currency.unwrap(_poolKey.currency1);
+        bool _creatorIsCurrency0 = c0 == address(CREATOR_COIN);
+        if (
+            !(
+                (_creatorIsCurrency0 && c1 == address(PAIRED_TOKEN)) || (c0 == address(PAIRED_TOKEN) && c1 == address(CREATOR_COIN))
+            )
+        ) revert PoolNotFullyConfigured();
+        if (_poolKey.tickSpacing == 0) revert PoolNotFullyConfigured();
+
+        poolManager = IPoolManager(_poolManager);
         positionManager = _positionManager;
-        poolId = _poolId;
+        permit2 = _permit2;
+        poolKey = _poolKey;
+        poolId = _poolKey.toId();
+        creatorIsCurrency0 = _creatorIsCurrency0;
 
-        // Approve position manager to spend tokens
-        CREATOR_COIN.forceApprove(_positionManager, type(uint256).max);
-        PAIRED_TOKEN.forceApprove(_positionManager, type(uint256).max);
+        // Approvals for PosM: token -> Permit2, then Permit2 -> PosM
+        CREATOR_COIN.forceApprove(_permit2, type(uint256).max);
+        PAIRED_TOKEN.forceApprove(_permit2, type(uint256).max);
+        IAllowanceTransfer(_permit2).approve(address(CREATOR_COIN), _positionManager, type(uint160).max, type(uint48).max);
+        IAllowanceTransfer(_permit2).approve(address(PAIRED_TOKEN), _positionManager, type(uint160).max, type(uint48).max);
 
-        emit PoolConfigured(_poolId, _poolManager, _positionManager);
+        emit PoolConfigured(PoolId.unwrap(poolId), _poolManager, _positionManager, _permit2, _creatorIsCurrency0);
     }
 
     // =================================
@@ -180,7 +221,7 @@ contract FullRangeStrategy is Ownable, ReentrancyGuard {
         uint256 creatorCoinAmount,
         uint256 pairedAmount
     ) external nonReentrant onlyLPManager whenActive returns (uint256 liquidity) {
-        if (poolId == bytes32(0)) revert PoolNotConfigured();
+        _requireConfigured();
         if (creatorCoinAmount == 0 && pairedAmount == 0) revert ZeroAmount();
 
         // Pull tokens from LP Manager
@@ -191,22 +232,35 @@ contract FullRangeStrategy is Ownable, ReentrancyGuard {
             PAIRED_TOKEN.safeTransferFrom(msg.sender, address(this), pairedAmount);
         }
 
-        // Add liquidity to V4 position
-        // TODO: Implement V4 position manager interaction
-        // This would call positionManager.modifyLiquidity() or similar
-        
-        // For now, calculate approximate liquidity based on amounts
-        // In production, this comes from the actual V4 position
-        liquidity = _calculateLiquidity(creatorCoinAmount, pairedAmount);
+        // Compute full-range bounds aligned to pool tick spacing
+        int24 _tickSpacing = poolKey.tickSpacing;
+        int24 tickLower = (MIN_TICK / _tickSpacing) * _tickSpacing;
+        int24 tickUpper = (MAX_TICK / _tickSpacing) * _tickSpacing;
+
+        // Convert our token amounts to currency0/currency1 ordering
+        (uint256 amountCurrency0, uint256 amountCurrency1) = creatorIsCurrency0
+            ? (creatorCoinAmount, pairedAmount)
+            : (pairedAmount, creatorCoinAmount);
+
+        (uint160 sqrtPriceX96,,,) = poolManager.getSlot0(poolId);
+        uint128 liquidityToAdd = LiquidityAmounts.getLiquidityForAmounts(
+            sqrtPriceX96,
+            TickMath.getSqrtPriceAtTick(tickLower),
+            TickMath.getSqrtPriceAtTick(tickUpper),
+            amountCurrency0,
+            amountCurrency1
+        );
+
+        if (liquidityToAdd == 0) return 0;
 
         if (positionTokenId == 0) {
-            // Create new position
-            // positionTokenId = _mintPosition(creatorCoinAmount, pairedAmount);
+            positionTokenId = IPositionManager(positionManager).nextTokenId();
+            _posmMint(tickLower, tickUpper, liquidityToAdd);
         } else {
-            // Add to existing position
-            // _increaseLiquidity(creatorCoinAmount, pairedAmount);
+            _posmIncrease(positionTokenId, liquidityToAdd);
         }
 
+        liquidity = uint256(liquidityToAdd);
         totalLiquidity += liquidity;
 
         emit Deposited(creatorCoinAmount, pairedAmount, liquidity);
@@ -221,15 +275,17 @@ contract FullRangeStrategy is Ownable, ReentrancyGuard {
     function withdraw(
         uint256 liquidity
     ) external nonReentrant onlyLPManager returns (uint256 creatorCoinAmount, uint256 pairedAmount) {
+        _requireConfigured();
         if (liquidity == 0) revert ZeroAmount();
         if (liquidity > totalLiquidity) revert InsufficientLiquidity();
 
-        // Calculate proportional amounts
-        // TODO: Get actual amounts from V4 position
-        (creatorCoinAmount, pairedAmount) = _calculateAmountsForLiquidity(liquidity);
+        uint256 balCreatorBefore = CREATOR_COIN.balanceOf(address(this));
+        uint256 balPairedBefore = PAIRED_TOKEN.balanceOf(address(this));
 
-        // Remove liquidity from V4
-        // _decreaseLiquidity(liquidity);
+        _posmDecrease(positionTokenId, uint128(liquidity));
+
+        creatorCoinAmount = CREATOR_COIN.balanceOf(address(this)) - balCreatorBefore;
+        pairedAmount = PAIRED_TOKEN.balanceOf(address(this)) - balPairedBefore;
 
         totalLiquidity -= liquidity;
 
@@ -250,25 +306,23 @@ contract FullRangeStrategy is Ownable, ReentrancyGuard {
      * @return pairedAmount Amount of paired token returned
      */
     function withdrawAll() external nonReentrant onlyLPManager returns (uint256 creatorCoinAmount, uint256 pairedAmount) {
+        _requireConfigured();
         if (totalLiquidity == 0) return (0, 0);
 
         uint256 liquidity = totalLiquidity;
-        
-        // Calculate amounts
-        (creatorCoinAmount, pairedAmount) = _calculateAmountsForLiquidity(liquidity);
 
-        // Remove all liquidity from V4
-        // _decreaseLiquidity(liquidity);
+        uint256 balCreatorBefore = CREATOR_COIN.balanceOf(address(this));
+        uint256 balPairedBefore = PAIRED_TOKEN.balanceOf(address(this));
+
+        _posmDecrease(positionTokenId, uint128(liquidity));
+
+        creatorCoinAmount = CREATOR_COIN.balanceOf(address(this)) - balCreatorBefore;
+        pairedAmount = PAIRED_TOKEN.balanceOf(address(this)) - balPairedBefore;
 
         totalLiquidity = 0;
 
-        // Transfer tokens
-        if (creatorCoinAmount > 0) {
-            CREATOR_COIN.safeTransfer(lpManager, creatorCoinAmount);
-        }
-        if (pairedAmount > 0) {
-            PAIRED_TOKEN.safeTransfer(lpManager, pairedAmount);
-        }
+        if (creatorCoinAmount > 0) CREATOR_COIN.safeTransfer(lpManager, creatorCoinAmount);
+        if (pairedAmount > 0) PAIRED_TOKEN.safeTransfer(lpManager, pairedAmount);
 
         emit Withdrawn(liquidity, creatorCoinAmount, pairedAmount);
     }
@@ -293,8 +347,8 @@ contract FullRangeStrategy is Ownable, ReentrancyGuard {
      * @return pairedValue Value in paired token terms
      */
     function getTotalValue() external view returns (uint256 creatorCoinValue, uint256 pairedValue) {
-        // TODO: Get actual values from V4 position
-        // For now, return token balances + position value
+        // Simplified calculation - V4 position integration not yet implemented
+        // Returns token balances + estimated position value
         
         creatorCoinValue = CREATOR_COIN.balanceOf(address(this));
         pairedValue = PAIRED_TOKEN.balanceOf(address(this));
@@ -331,6 +385,64 @@ contract FullRangeStrategy is Ownable, ReentrancyGuard {
     // =================================
     // INTERNAL
     // =================================
+
+    function _requireConfigured() internal view {
+        if (address(poolManager) == address(0)) revert PoolNotConfigured();
+        if (positionManager == address(0)) revert PoolNotConfigured();
+        if (permit2 == address(0)) revert PoolNotConfigured();
+        if (PoolId.unwrap(poolId) == bytes32(0)) revert PoolNotConfigured();
+    }
+
+    function _posmMint(int24 tickLower, int24 tickUpper, uint128 liquidityToAdd) internal {
+        bytes memory actions = new bytes(3);
+        actions[0] = bytes1(uint8(Actions.MINT_POSITION));
+        actions[1] = bytes1(uint8(Actions.CLOSE_CURRENCY));
+        actions[2] = bytes1(uint8(Actions.CLOSE_CURRENCY));
+
+        bytes[] memory params = new bytes[](3);
+        params[0] = abi.encode(
+            poolKey,
+            tickLower,
+            tickUpper,
+            uint256(liquidityToAdd),
+            type(uint128).max,
+            type(uint128).max,
+            address(this),
+            bytes("")
+        );
+        params[1] = abi.encode(poolKey.currency0);
+        params[2] = abi.encode(poolKey.currency1);
+
+        IPositionManager(positionManager).modifyLiquidities(abi.encode(actions, params), block.timestamp + 1);
+    }
+
+    function _posmIncrease(uint256 tokenId, uint128 liquidityToAdd) internal {
+        bytes memory actions = new bytes(3);
+        actions[0] = bytes1(uint8(Actions.INCREASE_LIQUIDITY));
+        actions[1] = bytes1(uint8(Actions.CLOSE_CURRENCY));
+        actions[2] = bytes1(uint8(Actions.CLOSE_CURRENCY));
+
+        bytes[] memory params = new bytes[](3);
+        params[0] = abi.encode(tokenId, uint256(liquidityToAdd), type(uint128).max, type(uint128).max, bytes(""));
+        params[1] = abi.encode(poolKey.currency0);
+        params[2] = abi.encode(poolKey.currency1);
+
+        IPositionManager(positionManager).modifyLiquidities(abi.encode(actions, params), block.timestamp + 1);
+    }
+
+    function _posmDecrease(uint256 tokenId, uint128 liquidityToRemove) internal {
+        bytes memory actions = new bytes(3);
+        actions[0] = bytes1(uint8(Actions.DECREASE_LIQUIDITY));
+        actions[1] = bytes1(uint8(Actions.CLOSE_CURRENCY));
+        actions[2] = bytes1(uint8(Actions.CLOSE_CURRENCY));
+
+        bytes[] memory params = new bytes[](3);
+        params[0] = abi.encode(tokenId, uint256(liquidityToRemove), uint128(0), uint128(0), bytes(""));
+        params[1] = abi.encode(poolKey.currency0);
+        params[2] = abi.encode(poolKey.currency1);
+
+        IPositionManager(positionManager).modifyLiquidities(abi.encode(actions, params), block.timestamp + 1);
+    }
 
     /**
      * @dev Calculate liquidity from token amounts

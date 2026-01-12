@@ -2,7 +2,7 @@
 
 ## 🔍 Scenario Analysis
 
-### If Nobody Calls `completeAuction()` After Day 7...
+### If nobody calls `sweepCurrency()` (and the token owner doesn’t configure the tax hook) after Day 7...
 
 ---
 
@@ -12,11 +12,11 @@
 
 1. **Auction Participants Can Still Claim:**
    - ✅ After 7 days, auction automatically ends (by block number)
-   - ✅ Users can claim their wsAKITA tokens from the auction contract
+   - ✅ Users can claim their ■AKITA tokens from the auction contract
    - ✅ The `claim()` function on CCA contract works independently
    - ✅ No completion needed for users to get their tokens
 
-2. **Creator's 25M wsAKITA:**
+2. **Creator's 25M ■AKITA:**
    - ✅ Already in creator's wallet from launch
    - ✅ Not affected by auction completion
    - ✅ Can be held, transferred, or used
@@ -26,7 +26,7 @@
    - ✅ Cannot be stolen or lost
    - ✅ Can be swept anytime later via `sweepCurrency()`
 
-4. **wsAKITA Tokens:**
+4. **■AKITA Tokens:**
    - ✅ Valid and transferable
    - ✅ Can be unwrapped back to vault shares
    - ✅ Can withdraw underlying AKITA from vault
@@ -39,9 +39,9 @@
 ### **Without Completion:**
 
 1. **No Trading Pool:**
-   - ❌ wsAKITA/ETH V4 pool doesn't exist
-   - ❌ No public market for wsAKITA
-   - ❌ Users can't buy/sell wsAKITA on Uniswap
+   - ❌ ■AKITA/ETH V4 pool doesn't exist
+   - ❌ No public market for ■AKITA
+   - ❌ Users can't buy/sell ■AKITA on Uniswap
    - ⚠️ Only OTC trades possible
 
 2. **No Fee Generation:**
@@ -53,7 +53,7 @@
 3. **No Price Discovery (Post-Auction):**
    - ❌ No public market price
    - ❌ Oracles can't reference pool
-   - ❌ Hard to value wsAKITA
+   - ❌ Hard to value ■AKITA
 
 4. **Incomplete Launch:**
    - ⚠️ Auction succeeded but ecosystem not live
@@ -64,7 +64,7 @@
 
 ## 🔧 **CAN IT BE COMPLETED LATER?**
 
-### **YES! Anytime, By Anyone:**
+### **YES — with the correct permissions:**
 
 ```solidity
 // In CCALaunchStrategy.sol
@@ -75,9 +75,9 @@ function sweepCurrency() external nonReentrant {
 ```
 
 **Key Points:**
-- ✅ No deadline to complete
-- ✅ Any wallet can call it (not just creator)
-- ✅ ETH will still be there
+- ✅ No deadline to sweep: `sweepCurrency()` is permissionless
+- ⚠️ Hook config is not permissionless: `setTaxConfig(...)` requires the ■AKITA token owner (or a configured delegate)
+- ✅ ETH will still be there in the auction until swept
 - ✅ Pool can be created anytime
 
 **However:**
@@ -271,7 +271,7 @@ setInterval(checkAndComplete, 60 * 60 * 1000)
 ## ✅ **BOTTOM LINE:**
 
 ### **Users Are Safe:**
-- ✅ Can claim wsAKITA from auction
+- ✅ Can claim ■AKITA from auction
 - ✅ Can unwrap to vault shares
 - ✅ Can withdraw underlying AKITA
 - ✅ No funds lost or locked

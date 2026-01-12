@@ -109,7 +109,9 @@ function localApiRoutesPlugin(): Plugin {
 
           await handler(makeVercelCompatReq(req as any), makeVercelCompatRes(res as any))
         } catch (e) {
-          console.error('[local api routes] error', e)
+          // Structured error logging for dev server
+          const err = e instanceof Error ? e : new Error(String(e))
+          console.error(`[local api routes] error: ${err.message}`, err.stack ? `\n${err.stack}` : '')
           if (!res.headersSent) {
             ;(res as any).statusCode = 500
             ;(res as any).setHeader?.('Content-Type', 'application/json')

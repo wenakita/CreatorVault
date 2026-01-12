@@ -1,6 +1,7 @@
 import { motion } from 'framer-motion'
 import { VaultGaugeVotingPanel } from '../components/ve33'
 import { AKITA } from '../config/contracts'
+import { toShareSymbol } from '@/lib/tokenSymbols'
 
 // Example vaults - in production, fetch from registry
 const EXAMPLE_VAULTS = [
@@ -11,6 +12,8 @@ const EXAMPLE_VAULTS = [
   },
   // Add more vaults as they're deployed
 ]
+
+const SHARE_SYMBOL = toShareSymbol('AKITA')
 
 export default function GaugeVoting() {
   return (
@@ -31,7 +34,7 @@ export default function GaugeVoting() {
               </span>
             </h1>
             <p className="text-lg text-zinc-400 max-w-2xl mx-auto">
-              Lock your wsAKITA to earn veAKITA voting power. Vote weekly to direct 
+              Lock your {SHARE_SYMBOL} to earn veAKITA voting power. Vote weekly to direct 
               jackpot probability to your favorite creator vaults.
             </p>
           </motion.div>
@@ -68,7 +71,7 @@ export default function GaugeVoting() {
             <div className="grid md:grid-cols-4 gap-4">
               <div className="text-center">
                 <div className="w-10 h-10 rounded-full bg-gold-500/20 text-gold-400 flex items-center justify-center mx-auto mb-2 font-bold">1</div>
-                <div className="text-sm text-zinc-300 font-medium">Lock wsAKITA</div>
+                <div className="text-sm text-zinc-300 font-medium">Lock {SHARE_SYMBOL}</div>
                 <div className="text-xs text-zinc-500 mt-1">Get veAKITA power</div>
               </div>
               <div className="text-center">

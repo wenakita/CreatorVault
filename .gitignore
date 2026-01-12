@@ -1,5 +1,6 @@
 # Dependencies
 node_modules/
+docs-site/node_modules/
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
@@ -126,11 +127,6 @@ bsc-production-ready.json
 eagle-vanity-data.json
 vanity-result-found.json
 reference.sol
-
-# Vanity and test JSON files
-bsc-production-ready.json
-eagle-vanity-data.json
-vanity-result-found.json
 .vercel
 .env*.local
 

@@ -14,6 +14,7 @@
 **Files:**
 - `frontend/src/components/LaunchVaultAA.tsx` - Ready to use
 - `VaultActivationBatcher` deployed at `0x6d796554698f5Ddd74Ff20d745304096aEf93CB6`
+  - Note: operator-safe Permit2 activation functions require deploying a newer `VaultActivationBatcher` build (constructor includes `permit2`).
 
 **User Flow:**
 ```
@@ -25,26 +26,30 @@
 
 ---
 
-### **🚀 PHASE 2: FULL AA DEPLOYMENT (NEXT)**
+### **🚀 PHASE 2: FULL ONCHAIN DEPLOY + LAUNCH (LIVE)**
 
-**Status:** Ready to deploy
+**Status:** Live via the on-chain `CreatorVaultBatcher`
 
 **What it does:**
-- Complete 1-signature deployment
-- Deploy + Configure + Launch = ONE transaction
-- No backend needed, pure on-chain automation
+- Deploy + configure + deposit + launch CCA from the frontend
+- Deterministic CREATE2 addresses (versioned salts)
+- Prefer Permit2 signatures; fallback to token approve when needed
 
-**Files:**
-- `contracts/helpers/VaultDeploymentBatcher.sol` - Complete
-- `frontend/src/components/DeployVaultAA.tsx` - Complete
-- `script/DeployVaultDeploymentBatcher.s.sol` - Ready to deploy
+**Canonical files:**
+- `contracts/helpers/CreatorVaultBatcher.sol`
+- `frontend/src/pages/DeployVault.tsx` (uses `VITE_CREATOR_VAULT_BATCHER`)
 
 **User Flow:**
 ```
-1. Creator fills out form (token, symbol, name)
-2. Clicks "Deploy Vault" → Signs ONCE
-3. ✅ Full vault + CCA live in 45 seconds!
+1. Creator opens /deploy and pastes their Zora Creator Coin address
+2. App enforces canonical identity (prevents fragmentation)
+3. Click “Deploy” → wallet signs (1-click when supported)
+4. ✅ Vault stack deployed + auction launched
 ```
+
+**Operator-safe execution wallets (recommended):**
+- See `docs/aa/OPERATOR_AUTH.md` for the identity-vs-operator model, DeployAuthorization, and Permit2 funding models.
+- Farcaster alignment: custody is treated as the root identity signal (when no coin exists); verified wallets are suggestions only; custody-loss recovery is protocol-assisted and timelocked.
 
 ---
 
@@ -83,144 +88,22 @@ function LaunchPage() {
 
 ---
 
-### **Phase 2: Deploy Full AA (Next Step)** 🚀
+### **Phase 2: Deploy Full AA (Current)** 🚀
 
-**1. Deploy VaultDeploymentBatcher**
+**Deploy + launch is fully onchain via `CreatorVaultBatcher`:**
 
-```bash
-# Load environment
-source .env
+1. Deploy `contracts/helpers/CreatorVaultBatcher.sol` (once per chain) and set its address in the frontend:
+   - `VITE_CREATOR_VAULT_BATCHER`
+2. Use `/deploy` (`frontend/src/pages/DeployVault.tsx`) to deploy the full stack and launch the auction.
 
-# Deploy batcher
-forge script script/DeployVaultDeploymentBatcher.s.sol:DeployVaultDeploymentBatcherScript \
-  --rpc-url $BASE_RPC_URL \
-  --broadcast \
-  --verify
-
-# Expected output:
-# VaultDeploymentBatcher deployed at: 0x...
-```
-
-**2. Update Frontend**
-
-```typescript
-// frontend/src/components/DeployVaultAA.tsx
-// Line 15: Update this constant
-const VAULT_DEPLOYMENT_BATCHER = '0x...'; // Your deployed address
-```
-
-**3. Test AA Flow**
-
-```bash
-# Test deployment
-forge test --match-contract VaultDeploymentBatcherTest -vvv
-
-# Test with mainnet fork
-forge test --match-contract VaultDeploymentBatcherTest \
-  --fork-url $BASE_RPC_URL \
-  -vvv
-```
-
-**4. Frontend Integration**
-
-```tsx
-import { DeployVaultAA } from '@/components/DeployVaultAA';
-
-function CreateVaultPage() {
-  const [deployed, setDeployed] = useState(null);
-  
-  return (
-    <div>
-      <DeployVaultAA
-        creatorToken="0x..."
-        symbol="wsAKITA"
-        name="Wrapped Staked AKITA"
-        onSuccess={(addresses) => {
-          setDeployed(addresses);
-          console.log('Vault deployed!', addresses);
-        }}
-      />
-      
-      {deployed && (
-        <div>
-          <p>Vault: {deployed.vault}</p>
-          <p>ShareOFT: {deployed.shareOFT}</p>
-          <p>CCA: {deployed.ccaStrategy}</p>
-          
-          {/* Now use LaunchVaultAA to launch CCA */}
-          <LaunchVaultAA {...deployed} />
-        </div>
-      )}
-    </div>
-  );
-}
-```
+`LaunchVaultAA` remains the activation primitive for already-deployed stacks (e.g. `/activate-akita`).
 
 ---
 
 ## 🎨 **FRONTEND IMPLEMENTATION**
 
-### **Option A: Separate Deploy + Launch**
-
-```tsx
-// Step 1: Deploy vault infrastructure
-<DeployVaultAA
-  creatorToken={token}
-  symbol="wsAKITA"
-  name="Wrapped Staked AKITA"
-  onSuccess={(addresses) => setDeployed(addresses)}
-/>
-
-// Step 2: Launch CCA
-{deployed && (
-  <LaunchVaultAA
-    {...deployed}
-    depositAmount={amount}
-    auctionPercent={69}
-    requiredRaise={raise}
-  />
-)}
-```
-
-### **Option B: All-in-One Component** ⭐
-
-```tsx
-// frontend/src/components/CreateVaultComplete.tsx
-import { DeployVaultAA } from './DeployVaultAA';
-import { LaunchVaultAA } from './LaunchVaultAA';
-
-export function CreateVaultComplete() {
-  const [step, setStep] = useState<'deploy' | 'launch'>('deploy');
-  const [deployed, setDeployed] = useState(null);
-  
-  return (
-    <div className="space-y-8">
-      {/* Step 1: Deploy */}
-      {step === 'deploy' && (
-        <DeployVaultAA
-          creatorToken={token}
-          symbol={symbol}
-          name={name}
-          onSuccess={(addresses) => {
-            setDeployed(addresses);
-            setStep('launch');
-          }}
-        />
-      )}
-      
-      {/* Step 2: Launch */}
-      {step === 'launch' && deployed && (
-        <LaunchVaultAA
-          {...deployed}
-          depositAmount={amount}
-          auctionPercent={percent}
-          requiredRaise={raise}
-        />
-      )}
-    </div>
-  );
-}
-```
+- **Deploy + launch**: use `/deploy` (`frontend/src/pages/DeployVault.tsx`) which calls `CreatorVaultBatcher`.
+- **Activate existing vaults**: use `LaunchVaultAA` (`frontend/src/components/LaunchVaultAA.tsx`) which calls `VaultActivationBatcher`.
 
 ---
 
@@ -288,111 +171,44 @@ Both components work with:
 
 ## 🎯 **RECOMMENDED ROLLOUT**
 
-### **Week 1: Phase 1**
-- ✅ Use `LaunchVaultAA` component
-- ✅ Backend deploys infrastructure
-- ✅ Users launch with 1 signature
-- ✅ 90% better UX vs manual
-
-### **Week 2: Phase 2**
-- 🚀 Deploy `VaultDeploymentBatcher`
-- 🚀 Enable full 1-signature deployment
-- 🚀 Remove backend deployment dependency
-- 🚀 100% on-chain, perfect UX
+### **Default path**
+- **Deploy + launch**: `/deploy` (`frontend/src/pages/DeployVault.tsx`) calls `contracts/helpers/CreatorVaultBatcher.sol`
+- **Activate existing**: `frontend/src/components/LaunchVaultAA.tsx` calls `contracts/helpers/VaultActivationBatcher.sol`
 
 ---
 
 ## 📝 **TESTING GUIDE**
 
-### **Test Phase 1 (AA Launch):**
+### **Deploy + launch**
+- Deploy `CreatorVaultBatcher` on a fork and point the frontend at it via `VITE_CREATOR_VAULT_BATCHER`
+- Use `/deploy` to run the full deploy+launch path end-to-end
 
-```bash
-# 1. Start local node
-anvil --fork-url $BASE_RPC_URL
-
-# 2. Deploy test vault (use scripts/deploy/QUICK_DEPLOY.sh)
-./scripts/deploy/QUICK_DEPLOY.sh
-
-# 3. Test AA launch in frontend
-# Open browser console:
-```
-
-```javascript
-// Test batched transaction
-const txs = [
-  { to: token, data: approveData },
-  { to: batcher, data: launchData }
-];
-
-const hash = await window.ethereum.sendBatchTransaction(txs);
-console.log('Launched!', hash);
-```
-
-### **Test Phase 2 (Full Deployment):**
-
-```bash
-# 1. Deploy batcher
-forge script script/DeployVaultDeploymentBatcher.s.sol \
-  --fork-url $BASE_RPC_URL
-
-# 2. Run unit tests
-forge test --match-contract VaultDeploymentBatcher -vvv
-
-# 3. Test in frontend (after updating batcher address)
-# Should deploy all contracts in one signature
-```
+### **Activation-only**
+- Use `LaunchVaultAA` against a known deployed vault stack (approve + launch via `VaultActivationBatcher`)
 
 ---
 
 ## 🚨 **IMPORTANT NOTES**
 
-### **Contract Size:**
-- ✅ `VaultActivationBatcher`: 12KB (deployed)
-- ✅ `VaultDeploymentBatcher`: ~18KB (under limit)
-- ✅ Both are deployable without issues
-
-### **Gas Costs:**
-- Phase 1 (AA Launch): ~200k gas (~$0.02)
-- Phase 2 (Full Deployment): ~3M gas (~$0.30)
-- Still cheaper than 10 separate transactions!
-
-### **Security:**
-- Both batchers use `ReentrancyGuard`
-- All contracts deployed with correct ownership
-- Auto-approvals are one-way (batcher → CCA)
-- No funds held by batchers (stateless)
+### **Security + ownership**
+- Batchers are stateless; they do not custody funds.
+- Final ownership model (hybrid):
+  - `CreatorOVault` → canonical creator identity
+  - shared/riskier components (wrapper/OFT/gauge/CCA/oracle) → protocol
 
 ---
 
 ## ✅ **READY TO SHIP?**
 
-**Phase 1 (Use Now):**
-- ✅ `VaultActivationBatcher` deployed
-- ✅ `LaunchVaultAA` component ready
-- ✅ Integration examples provided
-- ✅ Can deploy TODAY
-
-**Phase 2 (Next Week):**
-- ✅ `VaultDeploymentBatcher` contract ready
-- ✅ `DeployVaultAA` component ready
-- ✅ Deployment script ready
-- ✅ Can deploy in 1 command
+✅ **Activation-only**: `VaultActivationBatcher` deployed at `0x6d796554698f5Ddd74Ff20d745304096aEf93CB6` and `LaunchVaultAA` is ready.  
+✅ **Deploy + launch**: `/deploy` is ready once `VITE_CREATOR_VAULT_BATCHER` is configured.  
 
 ---
 
 ## 🎉 **SUMMARY**
 
-You now have **TWO complete AA solutions**:
+Two user-facing surfaces:
 
-1. **Quick Win (Phase 1):** Use `LaunchVaultAA` today
-   - Integrates with current flow
-   - 1-signature launch
-   - 10x better UX
-
-2. **Full Solution (Phase 2):** Deploy `VaultDeploymentBatcher`
-   - Complete 1-signature deployment
-   - No backend needed
-   - Perfect UX
-
-**Both are ready to go! Which one do you want to deploy first?** 🚀
+1. **Deploy + launch**: `/deploy` (calls `CreatorVaultBatcher`)
+2. **Activate existing**: `LaunchVaultAA` (calls `VaultActivationBatcher`)
 

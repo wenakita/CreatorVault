@@ -1,5 +1,5 @@
 import { GoogleGenAI, GenerateContentResponse } from "@google/genai";
-import { AssetType } from '../types';
+import { logger } from '@/lib/logger';
 
 // Robustly retrieve API Key, handling environments where process might be undefined
 const getApiKey = (): string => {
@@ -15,7 +15,7 @@ const getApiKey = (): string => {
       return import.meta.env.VITE_API_KEY;
     }
   } catch (e) {
-    console.warn("Environment check failed.");
+    logger.warn('Environment check failed.', e);
   }
   return '';
 };
@@ -27,7 +27,7 @@ const getAI = () => new GoogleGenAI({ apiKey });
 
 export const generateCreativeText = async (prompt: string): Promise<string> => {
   if (!apiKey) {
-    console.error("CRITICAL: API Key is missing. Please check README.md for setup instructions.");
+    logger.error('CRITICAL: API Key is missing. Please check README.md for setup instructions.');
     throw new Error("API Key configuration missing. Check console for details.");
   }
   
@@ -42,14 +42,14 @@ export const generateCreativeText = async (prompt: string): Promise<string> => {
     });
     return response.text || "No content generated.";
   } catch (error) {
-    console.error("Text generation error:", error);
+    logger.error('Text generation error', error);
     throw error;
   }
 };
 
 export const generateCreativeImage = async (prompt: string): Promise<string> => {
   if (!apiKey) {
-    console.error("CRITICAL: API Key is missing. Please check README.md for setup instructions.");
+    logger.error('CRITICAL: API Key is missing. Please check README.md for setup instructions.');
     throw new Error("API Key configuration missing. Check console for details.");
   }
   
@@ -75,7 +75,7 @@ export const generateCreativeImage = async (prompt: string): Promise<string> => 
     }
     throw new Error("No image data found in response");
   } catch (error) {
-    console.error("Image generation error:", error);
+    logger.error('Image generation error', error);
     throw error;
   }
 };

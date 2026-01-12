@@ -14,11 +14,11 @@ pragma solidity ^0.8.20;
  * │                    CreatorVault Platform                            │
  * ├─────────────────────────────────────────────────────────────────────┤
  * │  PROTOCOL TOKEN: AKITA                                              │
- * │  └── wsAKITA → veAKITA (boosts across ALL creator vaults)          │
+ * │  └── ■AKITA → veAKITA (boosts across ALL creator vaults)            │
  * │                                                                     │
- * │  Creator A (Bob):   BOB → vBOB → wsBOB   (uses veAKITA for boost)  │
- * │  Creator B (Alice): ALICE → vALICE → wsALICE (uses veAKITA for boost)│
- * │  Creator C (You):   AKITA → sAKITA → wsAKITA → veAKITA             │
+ * │  Creator A (Bob):   BOB → ▢BOB → ■BOB     (uses veAKITA for boost)  │
+ * │  Creator B (Alice): ALICE → ▢ALICE → ■ALICE (uses veAKITA for boost)│
+ * │  Creator C (You):   AKITA → ▢AKITA → ■AKITA → veAKITA              │
  * └─────────────────────────────────────────────────────────────────────┘
  *
  * WHY AKITA AS PROTOCOL TOKEN:
@@ -28,7 +28,7 @@ pragma solidity ^0.8.20;
  * - You control the protocol governance via veAKITA
  *
  * BOOST MECHANICS:
- * - Lock wsAKITA for 1 week to 4 years
+ * - Lock ■AKITA for 1 week to 4 years
  * - Longer lock = more voting power = higher boost (up to 2.5x)
  * - Boosts apply to lottery odds on ANY creator's vault
  *
@@ -55,13 +55,13 @@ pragma solidity ^0.8.20;
  * determined primarily by lock duration (e.g., up to 4 years for maximum boost).
  *
  * Boost application rules:
- * - Boosts apply only up to the user’s locked wsAKITA value.
+ * - Boosts apply only up to the user’s locked ■AKITA value.
  * - If swap size ≤ locked value, the entire swap is boosted.
  * - If swap size > locked value, only the portion up to the locked value is boosted;
  *   the remainder is applied at the base rate.
  *
  * Example:
- * - User locks $100 worth of wsAKITA (veAKITA) for 4 years (max boost).
+ * - User locks $100 worth of ■AKITA (veAKITA) for 4 years (max boost).
  * - User swaps $200:
  *   - First $100 receives a 2.5× probability boost.
  *   - Remaining $100 is unboosted.
@@ -79,7 +79,7 @@ pragma solidity ^0.8.20;
  * - 1,400 bps (0.14%) chance to win.
  *
  * The maximum probability per user is capped at 10%, achievable by:
- * - Locking $10,000 worth of wsAKITA, and
+ * - Locking $10,000 worth of ■AKITA, and
  * - Swapping $10,000 in a single transaction.
  *
  * Under optimal conditions, this implies an expected jackpot winner approximately
@@ -165,10 +165,10 @@ contract veAKITA is IveAKITA, Ownable, ERC20, ERC20Permit, ERC20Votes, Reentranc
     // STATE
     // ================================
 
-    /// @notice Wrapped ShareOFT token (e.g., wsAKITA)
+    /// @notice Wrapped ShareOFT token (e.g., ■AKITA)
     address public immutable wrappedShareOFT;
 
-    /// @notice Vault shares token (e.g., sAKITA) - alternative lock token
+    /// @notice Vault shares token (e.g., ▢AKITA) - alternative lock token
     address public vaultShares;
 
     /// @notice Vault for calculating underlying value
@@ -193,8 +193,8 @@ contract veAKITA is IveAKITA, Ownable, ERC20, ERC20Permit, ERC20Votes, Reentranc
     /**
      * @notice Constructor
      * @param _name Token name (e.g., "Vote-Escrowed Wrapped AKITA Share")
-     * @param _symbol Token symbol (e.g., "vewsAKITA" or "veAKITA")
-     * @param _wrappedShareOFT The wsAKITA (or similar) token to lock
+     * @param _symbol Token symbol (e.g., "veAKITA")
+     * @param _wrappedShareOFT The ■AKITA (or similar) token to lock
      * @param _owner Owner address
      */
     constructor(
@@ -217,7 +217,7 @@ contract veAKITA is IveAKITA, Ownable, ERC20, ERC20Permit, ERC20Votes, Reentranc
     // ================================
 
     /**
-     * @notice Lock wrapped shares (wsAKITA) or vault shares (sAKITA) to receive voting power
+     * @notice Lock wrapped shares (■AKITA) or vault shares (▢AKITA) to receive voting power
      * @param _token Token to lock (wrappedShareOFT or vaultShares)
      * @param amount Amount to lock
      * @param duration Lock duration in seconds

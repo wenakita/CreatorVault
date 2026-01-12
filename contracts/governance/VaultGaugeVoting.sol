@@ -18,7 +18,7 @@ pragma solidity ^0.8.20;
  *      - Historical weights are stored per epoch
  * 
  * @dev VOTING POWER:
- *      - Voting power comes from veAKITA (locked wsAKITA)
+ *      - Voting power comes from veAKITA (locked ■AKITA)
  *      - Users can split votes across multiple vaults
  *      - Votes are normalized by user's total veAKITA balance
  */

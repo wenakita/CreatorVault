@@ -4,20 +4,6 @@
   "installCommand": "pnpm install --frozen-lockfile",
   "framework": "vite",
   "outputDirectory": "dist",
-  "redirects": [
-    {
-      "source": "/(.*)",
-      "has": [{ "type": "host", "value": "creatorvault.fun" }],
-      "destination": "https://www.creatorvaults.fun/$1",
-      "permanent": true
-    },
-    {
-      "source": "/(.*)",
-      "has": [{ "type": "host", "value": "www.creatorvault.fun" }],
-      "destination": "https://www.creatorvaults.fun/$1",
-      "permanent": true
-    }
-  ],
   "headers": [
     {
       "source": "/.well-known/farcaster.json",

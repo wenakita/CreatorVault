@@ -5,7 +5,7 @@ import { useMiniAppContext } from '@/hooks'
 
 type SignManifestResult = { header: string; payload: string; signature: string }
 
-const DOMAIN = 'www.creatorvaults.fun'
+const DOMAIN = 'erc4626.fun'
 
 function tryParseJson(input: string): unknown | null {
   try {

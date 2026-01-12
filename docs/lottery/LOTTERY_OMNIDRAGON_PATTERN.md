@@ -56,7 +56,7 @@ function _triggerLottery(address, uint256 amount) internal {
 ```solidity
 function processSwapLottery(
     address buyer,      // From tx.origin (actual user)
-    address tokenIn,    // ShareOFT being bought (wsAKITA)
+    address tokenIn,    // ShareOFT being bought (■AKITA)
     uint256 amountIn    // Amount purchased
 ) external payable returns (uint256 entryId)
 ```
@@ -137,7 +137,7 @@ processSwapLottery(buyer, address(this), amount);
 ## 🔄 Flow Diagram
 
 ```
-User buys wsAKITA on Uniswap
+User buys ■AKITA on Uniswap
   ↓
 Router calls ShareOFT.transfer()
   msg.sender = Router (0xabc...)
@@ -147,12 +147,12 @@ ShareOFT._processBuy() [6.9% fee]
   ↓
 ShareOFT._triggerLottery()
   buyer = tx.origin  ✅ (actual user)
-  tokenIn = address(this)  (wsAKITA)
+  tokenIn = address(this)  (■AKITA)
   amount = tokens bought
   ↓
-LotteryManager.processSwapLottery(buyer, wsAKITA, amount)
+LotteryManager.processSwapLottery(buyer, tokenIn, amount)
   ↓
-creatorCoin = registry.getTokenForShareOFT(wsAKITA)
+creatorCoin = registry.getTokenForShareOFT(tokenIn)
   → returns AKITA ✅
   ↓
 Create lottery entry for AKITA ecosystem

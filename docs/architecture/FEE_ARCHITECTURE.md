@@ -16,7 +16,7 @@ CreatorVault uses a **dual-phase token launch system** with **two fee capture me
 
 ## ⚡ V4 Tax Hook Integration (NEW!)
 
-We leverage an **existing, approved Tax Hook** on Base for the wsAKITA/ETH pool:
+We leverage an **existing, approved Tax Hook** on Base for the ■AKITA/ETH pool:
 
 **Tax Hook Address**: [`0xca975B9dAF772C71161f3648437c3616E5Be0088`](https://basescan.org/address/0xca975B9dAF772C71161f3648437c3616E5Be0088)
 
@@ -33,10 +33,10 @@ We leverage an **existing, approved Tax Hook** on Base for the wsAKITA/ETH pool:
 
 ```
 ┌─────────────────────────────────────────────────────────────────────┐
-│              wsAKITA/ETH V4 POOL (with Tax Hook)                │
+│              ■AKITA/ETH V4 POOL (with Tax Hook)                │
 ├─────────────────────────────────────────────────────────────────────┤
 │                                                                     │
-│  User swaps ETH → wsAKITA                                       │
+│  User swaps ETH → ■AKITA                                       │
 │                    │                                                │
 │                    ▼                                                │
 │           Tax Hook extracts 6.9%                                   │
@@ -47,28 +47,28 @@ We leverage an **existing, approved Tax Hook** on Base for the wsAKITA/ETH pool:
 │   ┌────────────────┼────────────────┐                              │
 │   │                │                │                              │
 │   ▼                ▼                ▼                              │
-│  90%              5%               5%                              │
-│LOTTERY         CREATOR          PROTOCOL                           │
-│   │                │                │                              │
-│   ▼                ▼                ▼                              │
-│ Jackpot       Treasury          Multisig                          │
+│  69%            21.39%           9.61%                             │
+│LOTTERY          BURN        VOTERS/PROTOCOL                         │
+│   │               │               │                                │
+│   ▼               ▼               ▼                                │
+│ Reserve        PPS ↑        Rewards / Treasury                      │
 │                                                                     │
 └─────────────────────────────────────────────────────────────────────┘
 ```
 
 ### WETH Fee Processing
 
-The Tax Hook sends **WETH** (not wsAKITA). The GaugeController automatically:
+The Tax Hook sends **WETH** (not ■AKITA). The GaugeController automatically:
 
 1. **Receives WETH** from Tax Hook
 2. **Swaps WETH → akita** (Creator Coin) via Uniswap
 3. **Deposits akita → vault** → receives vault shares
-4. **Distributes shares**: 50% burn, 31% lottery, 19% creator
+4. **Distributes vault shares (defaults)**: 69% lottery, 21.39% burn, 9.61% voters/protocol
 
 ```solidity
 // Tax Hook configuration
 TaxHookConfigurator.configureCreatorPool(
-    wsAKITA,           // ShareOFT token
+    shareOFT,          // ■AKITA (ShareOFT token)
     gaugeController,      // Fee recipient (receives WETH)
     690,                  // 6.9% fee in basis points
     10                    // Tick spacing
@@ -82,9 +82,9 @@ TaxHookConfigurator.configureCreatorPool(
 │                    PHASE 1: FAIR LAUNCH (CCA)                   │
 ├─────────────────────────────────────────────────────────────────┤
 │                                                                 │
-│  1. Creator deposits akita → gets wsAKITA                   │
+│  1. Creator deposits akita → gets ■AKITA                   │
 │                                                                 │
-│  2. Creator sends wsAKITA to CCALaunchStrategy              │
+│  2. Creator sends ■AKITA to CCALaunchStrategy              │
 │                                                                 │
 │  3. CCA Auction runs:                                          │
 │     ┌───────────────────────────────────────────────────────┐  │
@@ -116,11 +116,11 @@ Networks: Base, Mainnet, Unichain, Sepolia
 
 After CCA graduation, trading continues with **TWO fee capture mechanisms**:
 
-#### Method 1: V4 Tax Hook (PRIMARY - wsAKITA/ETH Pool)
+#### Method 1: V4 Tax Hook (PRIMARY - ■AKITA/ETH Pool)
 
 ```
 ┌─────────────────────────────────────────────────────────────────────┐
-│       wsAKITA/ETH V4 POOL (with Tax Hook 0xca975B9d...)         │
+│       ■AKITA/ETH V4 POOL (with Tax Hook 0xca975B9d...)         │
 ├─────────────────────────────────────────────────────────────────────┤
 │                                                                     │
 │  POOL SWAP FEE: ~0% (set low, fees via hook instead)               │
@@ -128,7 +128,7 @@ After CCA graduation, trading continues with **TWO fee capture mechanisms**:
 │  TAX HOOK FEE: 6.9% (configured via setTaxConfig)                  │
 │  └── 100% → GaugeController (as WETH)                              │
 │              └── Swap WETH → akita → deposit → vault shares        │
-│                  └── 90% lottery, 5% creator, 5% protocol          │
+│                  └── Split: 69% lottery, 21.39% burn, 9.61% voters/protocol │
 │                                                                     │
 ├─────────────────────────────────────────────────────────────────────┤
 │  TOTAL BUY COST: 6.9% (tax hook fee)                               │
@@ -147,9 +147,9 @@ After CCA graduation, trading continues with **TWO fee capture mechanisms**:
 │  └── 100% → Liquidity Providers                                    │
 │                                                                     │
 │  BUY FEE: 6.9% (detected by ShareOFT on transfer)                  │
-│  └── 100% → GaugeController (as wsAKITA)                        │
+│  └── 100% → GaugeController (as ■AKITA)                        │
 │              └── Unwrap → vault shares                             │
-│                  └── 50% burn, 31% lottery, 19% creator            │
+│                  └── Split: 69% lottery, 21.39% burn, 9.61% voters/protocol │
 │                                                                     │
 ├─────────────────────────────────────────────────────────────────────┤
 │  TOTAL BUY COST: ~7.2% (0.3% swap + 6.9% fee)                      │
@@ -164,16 +164,16 @@ After CCA graduation, trading continues with **TWO fee capture mechanisms**:
 │                    GaugeController Distribution                     │
 ├─────────────────────────────────────────────────────────────────────┤
 │                                                                     │
-│  Incoming: WETH (from Tax Hook) OR wsAKITA (from ShareOFT)      │
+│  Incoming: WETH (from Tax Hook) OR ■AKITA (from ShareOFT)       │
 │                                                                     │
 │  Processing:                                                        │
 │  ├── WETH path: WETH → swap → akita → deposit → vault shares      │
-│  └── OFT path: wsAKITA → unwrap → vault shares                  │
+│  └── OFT path: ■AKITA → unwrap → vault shares                   │
 │                                                                     │
 │  Distribution (vault shares):                                       │
-│  ├── 90% (6.21%) → Lottery Jackpot (held as vault shares)          │
-│  ├── 5%  (0.345%) → Creator Treasury                               │
-│  └── 5%  (0.345%) → Protocol Multisig                              │
+│  ├── 69% → Lottery Reserve (jackpot)                               │
+│  ├── 21.39% → Burn (PPS ↑)                                         │
+│  └── 9.61% → Voter Rewards / Protocol                              │
 │                                                                     │
 └─────────────────────────────────────────────────────────────────────┘
 ```
@@ -200,18 +200,18 @@ Instead of building custom hooks (which need allowlist approval), we use:
 | Token Type | Name Format | Symbol Format | Example |
 |------------|-------------|---------------|---------|
 | **Creator Coin** | (original) | (original) | akita |
-| **Vault Share** | `{SYMBOL} Vault` | `v{SYMBOL}` | AKITA Vault / sAKITA |
-| **Wrapped Share** | `Wrapped {SYMBOL} Share` | `ws{SYMBOL}` | Wrapped AKITA Share / wsAKITA |
+| **Vault Token (ERC-4626)** | `{COIN} Vault Token` | `▢{COIN}` | Akita Vault Token / ▢AKITA |
+| **Share Token (LayerZero OFT)** | `{COIN} Share Token` | `■{COIN}` | Akita Share Token / ■AKITA |
 
 ### Token Flow
 ```
 akita (Creator Coin)
     │
     ▼ deposit
-sAKITA (Vault Share) ← Stays on-chain, earns yield via strategies
+▢AKITA (Vault Token) ← Stays on-chain, earns yield via strategies
     │
     ▼ wrap
-wsAKITA (Wrapped Share) ← Cross-chain via LayerZero, trades on DEXes
+■AKITA (Share Token) ← Cross-chain via LayerZero, trades on DEXes
 ```
 
 ### Why This Convention?
@@ -223,8 +223,8 @@ wsAKITA (Wrapped Share) ← Cross-chain via LayerZero, trades on DEXes
 | Token | Paired With | DEX | Fee Tier | Notes |
 |-------|-------------|-----|----------|-------|
 | akita (Creator Coin) | ZORA | Uniswap V4 | 3% | Original creator coin pool |
-| wsAKITA (Wrapped OFT) | ETH | CCA → V4 | 6.9% (Tax Hook) | Launched via CCA, trades on V4 |
-| wsAKITA (Wrapped OFT) | USDC | Uniswap V3 | 1% | Stablecoin pair, fallback |
+| ■AKITA (ShareOFT) | ETH | CCA → V4 | 6.9% (Tax Hook) | Launched via CCA, trades on V4 |
+| ■AKITA (ShareOFT) | USDC | Uniswap V3 | 1% | Stablecoin pair, fallback |
 
 ## Complete Launch & Trading Flow
 
@@ -234,15 +234,15 @@ wsAKITA (Wrapped Share) ← Cross-chain via LayerZero, trades on DEXes
 ├─────────────────────────────────────────────────────────────────────┤
 │                                                                     │
 │  1. Factory deploys all contracts:                                 │
-│     - CreatorOVault (sAKITA)                                        │
+│     - CreatorOVault (▢AKITA)                                        │
 │     - CreatorOVaultWrapper (user-facing: deposit/withdraw)         │
-│     - CreatorShareOFT (wsAKITA)                                 │
+│     - CreatorShareOFT (■AKITA)                                 │
 │     - CreatorGaugeController                                       │
 │     - CCALaunchStrategy  ← Fair launch mechanism                   │
 │                                                                     │
-│  2. Creator deposits akita via Wrapper → gets wsAKITA           │
+│  2. Creator deposits akita via Wrapper → gets ■AKITA           │
 │                                                                     │
-│  3. Creator transfers wsAKITA to CCALaunchStrategy              │
+│  3. Creator transfers ■AKITA to CCALaunchStrategy              │
 │                                                                     │
 │  4. Launch CCA auction (1-4 weeks):                                │
 │     strategy.launchAuction(amount, floorPrice, minRaise, steps)    │
@@ -259,7 +259,7 @@ wsAKITA (Wrapped Share) ← Cross-chain via LayerZero, trades on DEXes
 ## Fee Flow Diagram (Post-Launch)
 
 ```
-                                 USER BUYS wsAKITA
+                                 USER BUYS ■AKITA
                                          │
                            Any DEX (V4, V3, V2, Aggregator)
                                          │
@@ -271,14 +271,13 @@ wsAKITA (Wrapped Share) ← Cross-chain via LayerZero, trades on DEXes
                                          │
           ┌──────────────────────────────┼──────────────────────────────┐
           │                              │                              │
-         90%                            5%                             5%
-       LOTTERY                       CREATOR                       PROTOCOL
+         69%                          21.39%                         9.61%
+       LOTTERY                         BURN                    VOTERS/PROTOCOL
           │                              │                              │
           ▼                              ▼                              ▼
-   Jackpot Reserve                   Treasury                       Multisig
-   (Swap-to-Win!)                        │                              │
-          │                              ▼                              ▼
-          ▼                     Creator Earnings               Platform Revenue
+   Jackpot Reserve                   PPS ↑                    Rewards / Treasury
+   (Swap-to-Win!)
+          ▼
    Next Winner Gets!
 ```
 
@@ -288,8 +287,8 @@ wsAKITA (Wrapped Share) ← Cross-chain via LayerZero, trades on DEXes
 // 1. Get the deployed strategy
 CCALaunchStrategy strategy = CCALaunchStrategy(info.ccaStrategy);
 
-// 2. Approve wsAKITA transfer
-wsAKITA.approve(address(strategy), amount);
+// 2. Approve ■AKITA transfer
+shareOFT.approve(address(strategy), amount);
 
 // 3. Launch simple auction (linear distribution)
 strategy.launchAuctionSimple(
@@ -335,8 +334,8 @@ strategy.sweepUnsoldTokens();  // Remaining tokens to creator
 | Contract | Address | Network |
 |----------|---------|---------|
 | akita (Creator Coin) | `0x5b674196812451b7cec024fe9d22d2c0b172fa75` | Base |
-| wsAKITA (ShareOFT) | TBD (via Factory) | Base |
-| CreatorOVault (sAKITA) | TBD (via Factory) | Base |
+| ■AKITA (ShareOFT) | TBD (via Factory) | Base |
+| CreatorOVault (▢AKITA) | TBD (via Factory) | Base |
 | CreatorOVaultWrapper | TBD (via Factory) | Base |
 | CCALaunchStrategy | TBD (via Factory) | Base |
 | CreatorGaugeController | TBD (via Factory) | Base |
@@ -347,7 +346,7 @@ strategy.sweepUnsoldTokens();  // Remaining tokens to creator
 ### For Users (Depositors/Holders)
 - **Fair entry**: CCA ensures fair price discovery
 - **Passive yield**: Every buy increases your PPS
-- **No action needed**: Just hold wsAKITA
+- **No action needed**: Just hold ■AKITA
 - **Compounding**: Gains compound as more people trade
 
 ### For Early Participants (CCA Bidders)
@@ -361,7 +360,7 @@ strategy.sweepUnsoldTokens();  // Remaining tokens to creator
 - **Standard pools**: Trade on any DEX
 
 ### For Creators
-- **Revenue stream**: 19% of all buy fees
+- **Revenue**: Creator fee share is configurable (default 0%)
 - **Fair launch**: No accusations of insider trading
 - **Funds upfront**: CCA raises ETH before trading starts
 - **Community trust**: Official mechanism builds credibility

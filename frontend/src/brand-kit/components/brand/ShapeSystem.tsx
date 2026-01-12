@@ -1,42 +1,5 @@
 import React, { useState } from 'react';
 
-const SuperEllipsePath = ({ width, height, curvature }: { width: number, height: number, curvature: number }) => {
-    // A rough approximation of a superellipse using SVG paths for visualization
-    // M 0 c 0 (h/2) (w/2) 0
-    // This is just a visualizer, true superellipse math is complex for simple SVG paths without many points.
-    // Instead, we will simulate the "Squircle" look by adjusting bezier handles.
-    
-    const w = width;
-    const h = height;
-    const m = Math.min(w, h) / 2;
-    const r = m * curvature; 
-
-    // Standard rounded rect path for comparison
-    const roundedRect = `
-        M ${r},0 
-        H ${w - r} 
-        Q ${w},0 ${w},${r} 
-        V ${h - r} 
-        Q ${w},${h} ${w - r},${h} 
-        H ${r} 
-        Q 0,${h} 0,${h - r} 
-        V ${r} 
-        Q 0,0 ${r},0 
-        Z
-    `;
-
-    // "Squircle" / Superellipse approximation (Figma logic: longer control points)
-    // We extend the bezier handles to create a smoother curve entry
-    const k = 0.552284749831; // Standard circular handle length ratio
-    const sk = k + (1 - k) * 0.6; // Smoother handle
-    
-    // Creating a path that looks "more squarish" at corners but smoother (Superellipse-ish)
-    // Actually, purely visual distinction:
-    return (
-        <path d={roundedRect} fill="none" stroke="currentColor" strokeWidth="1" vectorEffect="non-scaling-stroke" />
-    );
-};
-
 export const ShapeSystem: React.FC = () => {
     const [smoothness, setSmoothness] = useState(0.6);
 

@@ -76,21 +76,22 @@ contract TestAADeployment is Script, Test {
             // ═══════════════════════════════════════════════════════════
             console.log("Phase 3: Generating AA batch calls...");
             
-            // 69% to Charm, 21.39% to Ajna
-            uint256 charmAllocation = 690000000000000000;  // 0.69 * 1e18
-            uint256 ajnaAllocation = 213900000000000000;   // 0.2139 * 1e18
+            // Vault strategy weights are in basis points (sum <= 10_000)
+            // 69.00% to Charm, 21.39% to Ajna (leaves 9.61% idle)
+            uint256 charmWeightBps = 6900;
+            uint256 ajnaWeightBps = 2139;
 
             bytes[] memory calls = batcher.encodeAddStrategyBatch(
                 CREATOR_VAULT,
                 result,
-                charmAllocation,
-                ajnaAllocation
+                charmWeightBps,
+                ajnaWeightBps
             );
 
             console.log("   Generated", calls.length, "batch calls:");
-            console.log("   1. vault.addStrategy(charmStrategy, 69%)");
+            console.log("   1. vault.addStrategy(charmStrategy, 6900 bps)");
             if (calls.length > 1) {
-                console.log("   2. vault.addStrategy(ajnaStrategy, 21.39%)");
+                console.log("   2. vault.addStrategy(ajnaStrategy, 2139 bps)");
             }
             console.log("");
 
@@ -157,17 +158,3 @@ contract TestAADeployment is Script, Test {
         vm.stopBroadcast();
     }
 }
-
-
-
-import "forge-std/Script.sol";
-import "forge-std/Test.sol";
-import "../contracts/helpers/StrategyDeploymentBatcher.sol";
-import "../contracts/helpers/VaultActivationBatcher.sol";
-import "../contracts/strategies/CreatorCharmStrategyV2.sol";
-
-/**
- * @title TestAADeployment
- * @notice Test script to verify Charm + Ajna strategies work with AA
- * @dev Simulates the full deployment flow
- */

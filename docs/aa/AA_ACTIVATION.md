@@ -2,7 +2,9 @@
 
 ## Overview
 
-CreatorVault uses **ERC-4337 Account Abstraction** to batch all activation steps into **ONE transaction**, powered by Coinbase Smart Wallet.
+CreatorVault uses **EIP-5792 batching** (when available) plus onchain batchers to make activation feel like **one click**.
+
+This doc also covers **operator-safe activation** (execution wallets acting for a canonical identity) using **Permit2** + vault operator perms.
 
 ---
 
@@ -23,38 +25,44 @@ User → Launch auction → Wait...
 User → Launch Auction (1-Click) → Done!
   ↓
 Smart Wallet batches:
-  1. approve(AKITA, vault, amount)
-  2. deposit(amount, user)
-  3. approve(shares, wrapper, amount)
-  4. wrap(amount)
-  5. approve(wsAKITA, cca, auctionAmount)
-  6. launchAuctionSimple(auctionAmount, requiredRaise)
+  1. approve(AKITA, VaultActivationBatcher, amount)
+  2. VaultActivationBatcher.batchActivate(AKITA, vault, wrapper, cca, amount, 50, requiredRaise)
+
+Where `batchActivate` performs (inside the contract, with correct ERC-4626 share accounting):
+  - deposit(amount) → receives vault **shares**
+  - wrap(shares) → ■AKITA
+  - approve + launchAuctionSimple()
+  - transfers remaining ■AKITA back to the user
 ```
 
 ---
 
+## Operator-safe activation (identity vs execution wallet)
+
+If `msg.sender` is an **operator** (execution wallet), activation must still be bound to a single **identity**:
+
+- The batcher requires `identity == Ownable(vault).owner()`
+- The operator must be authorized by the vault owner: `CreatorOVault.isAuthorizedOperator(operator, OP_ACTIVATE)`
+- Any remaining ■shares are returned to **identity** (never to `msg.sender`)
+
+Permit2 funding models:
+- **Identity-funded**: identity signs Permit2; operator submits tx (`batchActivateWithPermit2For`)
+- **Operator-funded**: operator provides tokens (`batchActivateWithPermit2FromOperator`)
+
 ## Implementation
 
-### Frontend (`ActivateAkita.tsx`)
+### Frontend (`LaunchVaultAA.tsx`)
 
 ```typescript
-// Encode all calls
 const calls = [
-  { to: AKITA.token, data: encodeFunctionData({ abi: erc20Abi, functionName: 'approve', ... }) },
-  { to: AKITA.vault, data: encodeFunctionData({ abi: VAULT_ABI, functionName: 'deposit', ... }) },
-  { to: AKITA.vault, data: encodeFunctionData({ abi: erc20Abi, functionName: 'approve', ... }) },
-  { to: AKITA.wrapper, data: encodeFunctionData({ abi: WRAPPER_ABI, functionName: 'wrap', ... }) },
-  { to: AKITA.shareOFT, data: encodeFunctionData({ abi: erc20Abi, functionName: 'approve', ... }) },
-  { to: AKITA.ccaStrategy, data: encodeFunctionData({ abi: CCA_ABI, functionName: 'launchAuctionSimple', ... }) },
+  // 1) Approve tokens to the on-chain batcher
+  { to: creatorToken, data: encodeFunctionData({ abi: erc20Abi, functionName: 'approve', args: [VAULT_ACTIVATION_BATCHER, depositAmount] }) },
+  // 2) Activate (deposit → wrap → auction) inside the batcher
+  { to: VAULT_ACTIVATION_BATCHER, data: encodeFunctionData({ abi: VaultActivationBatcherABI, functionName: 'batchActivate', args: [creatorToken, vault, wrapper, ccaStrategy, depositAmount, 50, requiredRaise] }) },
 ]
 
-// Send as single batched transaction
-sendTransaction({
-  to: address,
-  data: '0x',
-  value: 0n,
-  calls, // Smart wallet executes all calls atomically
-})
+// Prefer wallet_sendCalls (AA) and fall back to sequential transactions when unsupported.
+await sendCallsAsync({ calls, forceAtomic: true })
 ```
 
 ### Smart Contract Fallback (`VaultActivationBatcher.sol`)
@@ -63,6 +71,9 @@ For users **without** smart wallets (MetaMask, Rainbow, etc.), we provide a help
 
 ```solidity
 contract VaultActivationBatcher {
+  // New deployments set Permit2 once:
+  constructor(address permit2) {}
+
   function batchActivate(
     address creatorToken,
     address vault,
@@ -75,6 +86,10 @@ contract VaultActivationBatcher {
     // Pulls tokens, deposits, wraps, launches auction
     // Returns remaining wsTokens to user
   }
+
+  // Operator-safe Permit2 flows (leftovers always go to identity):
+  function batchActivateWithPermit2For(address identity, ...) external returns (address auction) {}
+  function batchActivateWithPermit2FromOperator(address identity, ...) external returns (address auction) {}
 }
 ```
 
@@ -174,47 +189,21 @@ batcher.batchActivate(...)
 ### Frontend
 - ✅ Already deployed on Vercel
 - ✅ Smart wallet detection automatic
-- ✅ Falls back to VaultActivationBatcher for EOAs
+- ✅ Uses `wallet_sendCalls` when supported; falls back to sequential transactions when not
 
 ### Contracts
-- ✅ VaultActivationBatcher.sol created
-- ⏳ TODO: Deploy to Base mainnet
-- ⏳ TODO: Update CONTRACTS config with batcher address
+- ✅ `VaultActivationBatcher.sol` deployed on Base (configure via `VITE_VAULT_ACTIVATION_BATCHER`)
+- ✅ Frontend reads `CONTRACTS.vaultActivationBatcher`
 
 ---
 
 ## Next Steps
 
-### To Enable Full 1-Click:
+### To enable the AA + fallback flow on a new deployment:
 
-1. **Deploy VaultActivationBatcher**
-   ```bash
-   cd contracts
-   forge create VaultActivationBatcher --rpc-url base --private-key $PRIVATE_KEY
-   ```
-
-2. **Update Frontend Config**
-   ```typescript
-   // frontend/src/config/contracts.ts
-   export const CONTRACTS = {
-     ...
-     batcher: '0x...', // Add deployed batcher address
-   }
-   ```
-
-3. **Update ActivateAkita.tsx**
-   ```typescript
-   // Add fallback for non-smart-wallet users
-   if (!isSmartWallet) {
-     // Use VaultActivationBatcher instead
-     writeContract({
-       address: CONTRACTS.batcher,
-       abi: BATCHER_ABI,
-       functionName: 'batchActivate',
-       args: [...],
-     })
-   }
-   ```
+1. **Deploy `VaultActivationBatcher` (if needed)** and set `VITE_VAULT_ACTIVATION_BATCHER`
+2. **Approve the batcher as a launcher** on `CCALaunchStrategy` (required because `launchAuctionSimple` is gated by `onlyApprovedOrOwner`)
+3. **(If whitelist is enabled)** whitelist the batcher on the vault
 
 ---
 
@@ -224,16 +213,14 @@ batcher.batchActivate(...)
 1. Connect with Coinbase Smart Wallet
 2. Go to `/activate-akita`
 3. Click "Launch Auction (1-Click)"
-4. Should see 1 confirmation popup
-5. All 6 steps execute in one tx
+4. Should batch `approve + batchActivate` into one atomic bundle when supported
 
 ### EOA Flow (Current)
 1. Connect with MetaMask
 2. Go to `/activate-akita`
 3. Click "Launch Auction (1-Click)"
-4. See warning about multi-step process
-5. Execute via sendTransaction (will fail on EOA)
-6. TODO: Fallback to VaultActivationBatcher
+4. Expect 2 transactions: `approve`, then `batchActivate`
+6. Pending: Fallback to VaultActivationBatcher for EOA support
 
 ---
 

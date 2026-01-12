@@ -1,322 +1,396 @@
-import { useState } from 'react';
-import { useAccount, useWriteContract, useWaitForTransactionReceipt, useReadContract } from 'wagmi';
-import { useSendCalls } from 'wagmi/experimental';
-import { parseUnits, encodeFunctionData, keccak256, encodePacked } from 'viem';
-import { base } from 'wagmi/chains';
-import { CONTRACTS } from '@/config/contracts';
+import { useMemo, useState } from 'react'
+import { useAccount, usePublicClient, useReadContract, useWalletClient } from 'wagmi'
+import { useSendCalls } from 'wagmi/experimental'
+import { base } from 'wagmi/chains'
+import { encodeFunctionData, erc20Abi, getContractAddress, isAddress, parseUnits, type Address, type Hex } from 'viem'
+import { CONTRACTS } from '@/config/contracts'
+import { logger } from '@/lib/logger'
 
 interface DeployStrategiesProps {
-  vaultAddress: `0x${string}`;
-  tokenAddress: `0x${string}`;
-  onSuccess?: (strategies: {
-    ajna: string;
-    charmWeth: string;
-    charmUsdc: string;
-  }) => void;
+  vaultAddress: `0x${string}`
+  tokenAddress: `0x${string}`
 }
 
-export function DeployStrategies({ vaultAddress, tokenAddress, onSuccess }: DeployStrategiesProps) {
-  const { address, connector } = useAccount();
-  const { writeContract, data: hash, isPending } = useWriteContract();
-  const { sendCalls } = useSendCalls();
-  const [isCalculating, setIsCalculating] = useState(false);
+const STRATEGY_BATCHER_ABI = [
+  {
+    type: 'function',
+    name: 'batchDeployStrategies',
+    stateMutability: 'nonpayable',
+    inputs: [
+      { name: 'underlyingToken', type: 'address' },
+      { name: 'quoteToken', type: 'address' },
+      { name: 'creatorVault', type: 'address' },
+      { name: '_ajnaFactory', type: 'address' },
+      { name: 'v3FeeTier', type: 'uint24' },
+      { name: 'initialSqrtPriceX96', type: 'uint160' },
+      { name: 'owner', type: 'address' },
+      { name: 'vaultName', type: 'string' },
+      { name: 'vaultSymbol', type: 'string' },
+    ],
+    outputs: [
+      {
+        name: 'result',
+        type: 'tuple',
+        components: [
+          { name: 'charmVault', type: 'address' },
+          { name: 'charmStrategy', type: 'address' },
+          { name: 'creatorCharmStrategy', type: 'address' },
+          { name: 'ajnaStrategy', type: 'address' },
+          { name: 'v3Pool', type: 'address' },
+        ],
+      },
+    ],
+  },
+] as const
 
-  // Check if user has smart wallet (Coinbase)
-  const isSmartWallet = connector?.id === 'coinbaseWalletSDK';
+const VAULT_MGMT_ABI = [
+  { type: 'function', name: 'management', stateMutability: 'view', inputs: [], outputs: [{ type: 'address' }] },
+  { type: 'function', name: 'getStrategyCount', stateMutability: 'view', inputs: [], outputs: [{ type: 'uint256' }] },
+  { type: 'function', name: 'addStrategy', stateMutability: 'nonpayable', inputs: [{ name: 'strategy', type: 'address' }, { name: 'weight', type: 'uint256' }], outputs: [] },
+  { type: 'function', name: 'setMinimumTotalIdle', stateMutability: 'nonpayable', inputs: [{ name: '_minimumTotalIdle', type: 'uint256' }], outputs: [] },
+] as const
 
-  // Wait for transaction
-  const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({
-    hash,
-    chainId: base.id,
-  });
+export function DeployStrategies({ vaultAddress, tokenAddress }: DeployStrategiesProps) {
+  const { address, connector } = useAccount()
+  const publicClient = usePublicClient({ chainId: base.id })
+  const { data: walletClient } = useWalletClient({ chainId: base.id })
+  const { sendCallsAsync } = useSendCalls()
 
-  // Get pool key from token
-  const { data: poolKey } = useReadContract({
+  const { data: tokenDecimalsRaw } = useReadContract({
     address: tokenAddress,
-    abi: [{
-      name: 'getPoolKey',
-      type: 'function',
-      stateMutability: 'view',
-      inputs: [],
-      outputs: [
-        { name: 'currency0', type: 'address' },
-        { name: 'currency1', type: 'address' },
-        { name: 'fee', type: 'uint24' },
-        { name: 'tickSpacing', type: 'int24' },
-        { name: 'hooks', type: 'address' }
-      ]
-    }],
-    functionName: 'getPoolKey',
-  });
+    abi: erc20Abi,
+    functionName: 'decimals',
+  })
+  const tokenDecimals = typeof tokenDecimalsRaw === 'number' ? tokenDecimalsRaw : 18
 
-  const calculateBucketIndex = async (): Promise<number> => {
-    if (!poolKey) {
-      throw new Error('Pool key not available');
-    }
+  const isSmartWallet = connector?.id === 'coinbaseWalletSDK'
 
-    // poolKey is a tuple: [currency0, currency1, fee, tickSpacing, hooks]
-    const [currency0, currency1, fee, tickSpacing, hooks] = poolKey;
+  const [batcherAddress, setBatcherAddress] = useState<string>(CONTRACTS.strategyDeploymentBatcher ?? '')
+  const [quoteToken, setQuoteToken] = useState<string>(CONTRACTS.usdc)
+  const [ajnaFactory, setAjnaFactory] = useState<string>(CONTRACTS.ajnaErc20Factory)
+  const [v3FeeTier, setV3FeeTier] = useState<number>(3000)
 
-    // Calculate PoolId
-    const poolId = keccak256(
-      encodePacked(
-        ['address', 'address', 'uint24', 'int24', 'address'],
-        [
-          currency0 as `0x${string}`,
-          currency1 as `0x${string}`,
-          fee,
-          tickSpacing,
-          hooks as `0x${string}`
-        ]
-      )
-    );
+  // Default: Q96 (price = 1 in raw token1/token0 terms). Only used if pool doesn't exist yet.
+  const [initialSqrtPriceX96, setInitialSqrtPriceX96] = useState<string>('79228162514264337593543950336')
+  const [charmVaultName, setCharmVaultName] = useState<string>('CreatorVault: creator/USDC')
+  const [charmVaultSymbol, setCharmVaultSymbol] = useState<string>('CV-creator-USDC')
 
-    // Get current tick from PoolManager
-    const slot0 = await fetch(`https://mainnet.base.org`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        jsonrpc: '2.0',
-        id: 1,
-        method: 'eth_call',
-        params: [{
-          to: CONTRACTS.poolManager,
-          data: `0x24b73cc4${poolId.slice(2)}`  // getSlot0(bytes32)
-        }, 'latest']
-      })
-    }).then(r => r.json());
+  // Allocation weights are basis points (relative). Idle reserve is controlled by `minimumTotalIdle`.
+  const [charmWeightBps, setCharmWeightBps] = useState<number>(6900)
+  const [ajnaWeightBps, setAjnaWeightBps] = useState<number>(2139)
+  // AKITA default: 9.61% idle of 50,000,000 = 4,805,000
+  const [minimumIdle, setMinimumIdle] = useState<string>('4805000')
 
-    if (!slot0.result || slot0.result === '0x') {
-      console.warn('No V4 pool found, using default bucket 4156');
-      return 4156;
-    }
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [bundleId, setBundleId] = useState<string | null>(null)
+  const [predicted, setPredicted] = useState<{
+    nonce: bigint
+    charmVault: Address
+    creatorCharmStrategy: Address
+    ajnaStrategy: Address
+  } | null>(null)
 
-    // Parse tick (second value in slot0)
-    const tickHex = '0x' + slot0.result.slice(66, 130);
-    let tick = parseInt(tickHex, 16);
-    
-    // Handle negative tick (two's complement)
-    if (tick > 0x7FFFFFFF) {
-      tick = tick - 0x100000000;
-    }
+  const baseBatcher = useMemo(() => {
+    const v = batcherAddress.trim()
+    return (isAddress(v) ? (v as Address) : null)
+  }, [batcherAddress])
 
-    // Invert tick if creator token is currency1
-    if (currency1.toLowerCase() === tokenAddress.toLowerCase()) {
-      tick = -tick;
-    }
+  const canSubmit = !!address && !!publicClient && !!walletClient && !!baseBatcher
 
-    // Calculate Ajna bucket (approx):
-    // - 50 Uniswap ticks ≈ 0.5% (≈ Ajna 1.005 step)
-    // - Ajna index ≈ 4156 - (tick / 50)
-    const bucket = 4156 - Math.floor(tick / 50);
+  async function computePredicted() {
+    if (!publicClient) throw new Error('Network client not ready')
+    if (!baseBatcher) throw new Error('Invalid StrategyDeploymentBatcher address')
 
-    // Clamp to valid Ajna range (1..7388). Note: index 0 is invalid on Ajna pools.
-    return Math.max(1, Math.min(7388, bucket));
-  };
+    // viem returns nonce as a JS number; convert so we can do safe +1n/+2n math and satisfy viem typings.
+    const nonce = BigInt(await publicClient.getTransactionCount({ address: baseBatcher }))
+    const charmVault = getContractAddress({ from: baseBatcher, nonce })
+    const creatorCharmStrategy = getContractAddress({ from: baseBatcher, nonce: nonce + 1n })
+    const ajnaStrategy = getContractAddress({ from: baseBatcher, nonce: nonce + 2n })
+    return { nonce, charmVault, creatorCharmStrategy, ajnaStrategy }
+  }
 
-  const deployAllStrategies = async () => {
-    if (!address) return;
+  async function deployAndConfigure() {
+    if (!address || !publicClient || !walletClient) return
+    setError(null)
+    setBundleId(null)
+    setIsSubmitting(true)
 
-    setIsCalculating(true);
     try {
-      // Step 1: Calculate optimal Ajna bucket from ZORA V4 pool
-      const ajnaBucketIndex = await calculateBucketIndex();
-      console.log('Calculated Ajna bucket:', ajnaBucketIndex);
+      if (!baseBatcher) throw new Error('StrategyDeploymentBatcher not configured')
 
-      // Step 2: Prepare deployment params
-      const params = {
-        vault: vaultAddress,
-        creatorToken: tokenAddress,
-        ajnaFactory: CONTRACTS.ajnaErc20Factory,
-        charmVault: CONTRACTS.charmAlphaVault || '0x0000000000000000000000000000000000000000', // TODO: Update
-        weth: CONTRACTS.weth,
-        usdc: CONTRACTS.usdc,
-        zora: CONTRACTS.zora,
-        uniswapV3Factory: CONTRACTS.uniswapV3Factory,
-        ajnaBucketIndex: BigInt(ajnaBucketIndex),
-        wethFee: 10000,  // 1%
-        usdcFee: 10000,  // 1%
-        ajnaWeight: 100n,
-        charmWethWeight: 100n,
-        charmUsdcWeight: 100n,
-        minimumIdle: parseUnits('12500000', 18), // 12.5M tokens
-      };
+      const quote = quoteToken.trim()
+      const ajna = ajnaFactory.trim()
+      if (!isAddress(quote)) throw new Error('Invalid quote token address')
+      if (!isAddress(ajna)) throw new Error('Invalid Ajna factory address')
 
-      setIsCalculating(false);
+      const charmW = Number(charmWeightBps)
+      const ajnaW = Number(ajnaWeightBps)
+      if (!Number.isFinite(charmW) || charmW < 0 || charmW > 10_000) throw new Error('Invalid Charm weight (bps)')
+      if (!Number.isFinite(ajnaW) || ajnaW < 0 || ajnaW > 10_000) throw new Error('Invalid Ajna weight (bps)')
+      if (charmW + ajnaW > 10_000) throw new Error('Weights must sum to <= 10,000 bps')
 
-      // Step 3: Deploy (different methods for smart wallet vs regular wallet)
-      if (isSmartWallet) {
-        // Smart Wallet: Use sendCalls for AA batching
-        const result = await sendCalls({
-          calls: [{
-            to: CONTRACTS.strategyDeploymentBatcher || '0x0000000000000000000000000000000000000000',
-            data: encodeFunctionData({
-              abi: StrategyDeploymentBatcherABI,
-              functionName: 'deployAllStrategies',
-              args: [params]
-            })
-          }]
-        });
-        
-        console.log('Strategies deployed via AA:', result);
-        
-        if (onSuccess) {
-          // TODO: Parse return values from transaction receipt
-          onSuccess({
-            ajna: '0x...',
-            charmWeth: '0x...',
-            charmUsdc: '0x...'
-          });
-        }
-      } else {
-        // Regular Wallet: Single contract call to batcher
-        await writeContract({
-          address: CONTRACTS.strategyDeploymentBatcher as `0x${string}` || '0x0000000000000000000000000000000000000000',
-          abi: StrategyDeploymentBatcherABI,
-          functionName: 'deployAllStrategies',
-          args: [params],
-          gas: 6_000_000n, // Set high gas limit
-        });
+      const sqrt = BigInt(initialSqrtPriceX96.trim())
+      if (sqrt <= 0n) throw new Error('initialSqrtPriceX96 must be > 0')
+
+      const minIdle = parseUnits(minimumIdle.trim(), tokenDecimals)
+
+      const next = await computePredicted()
+      setPredicted(next)
+
+      const calls: { to: Address; data: Hex; value: bigint }[] = []
+
+      // 1) Deploy strategies (creates V3 pool if needed, deploys Charm vault + strategies, deploys Ajna strategy)
+      calls.push({
+        to: baseBatcher,
+        data: encodeFunctionData({
+          abi: STRATEGY_BATCHER_ABI,
+          functionName: 'batchDeployStrategies',
+          args: [
+            tokenAddress,
+            quote as Address,
+            vaultAddress,
+            ajna as Address,
+            v3FeeTier,
+            sqrt,
+            address as Address,
+            charmVaultName,
+            charmVaultSymbol,
+          ],
+        }),
+        value: 0n,
+      })
+
+      // 2) Configure vault allocations
+      if (charmW > 0) {
+        calls.push({
+          to: vaultAddress,
+          data: encodeFunctionData({
+            abi: VAULT_MGMT_ABI,
+            functionName: 'addStrategy',
+            args: [next.creatorCharmStrategy, BigInt(charmW)],
+          }),
+          value: 0n,
+        })
       }
-    } catch (error) {
-      console.error('Deployment failed:', error);
-      setIsCalculating(false);
-    }
-  };
+      if (ajnaW > 0) {
+        calls.push({
+          to: vaultAddress,
+          data: encodeFunctionData({
+            abi: VAULT_MGMT_ABI,
+            functionName: 'addStrategy',
+            args: [next.ajnaStrategy, BigInt(ajnaW)],
+          }),
+          value: 0n,
+        })
+      }
 
-  const isLoading = isPending || isConfirming || isCalculating;
+      // 3) Set vault min idle buffer (keep liquidity available for redemptions)
+      calls.push({
+        to: vaultAddress,
+        data: encodeFunctionData({
+          abi: VAULT_MGMT_ABI,
+          functionName: 'setMinimumTotalIdle',
+          args: [minIdle],
+        }),
+        value: 0n,
+      })
+
+      // Preferred: atomic sendCalls (Smart Wallets)
+      try {
+        const res = await sendCallsAsync({
+          calls,
+          account: address as Address,
+          chainId: base.id,
+          forceAtomic: true,
+        })
+        setBundleId(res.id)
+        return
+      } catch (e) {
+        logger.warn('[DeployStrategies] wallet_sendCalls failed; falling back to sequential txs', e)
+      }
+
+      // Fallback: sequential transactions
+      for (const c of calls) {
+        const txHash = await walletClient.sendTransaction({
+          account: address as any,
+          chain: base as any,
+          to: c.to,
+          data: c.data,
+          value: c.value,
+        })
+        setBundleId(String(txHash))
+        await publicClient.waitForTransactionReceipt({ hash: txHash as any })
+      }
+    } catch (e: any) {
+      logger.error('[DeployStrategies] failed', e)
+      setError(String(e?.shortMessage || e?.message || e))
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
 
   return (
     <div className="space-y-6">
       <div>
         <h3 className="text-xl font-bold mb-2">Deploy Yield Strategies</h3>
         <p className="text-sm text-gray-400">
-          Deploy all 3 strategies (Ajna, Charm WETH, Charm USDC) in one transaction
+          Deploys Charm + Ajna strategies and configures vault allocations (requires vault management permissions).
         </p>
       </div>
 
-      {/* Strategy Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div className="bg-gray-800 p-4 rounded-lg">
-          <div className="text-sm text-gray-400 mb-1">Strategy 1</div>
-          <div className="font-bold">Ajna Lending</div>
-          <div className="text-sm text-gray-400">CREATOR/WETH</div>
-          <div className="mt-2 text-xs text-gray-500">
-            Permissionless lending, 5-15% APY
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="bg-gray-900/60 border border-white/10 rounded-lg p-4 space-y-3">
+          <div className="text-xs text-gray-400 uppercase tracking-wider">Contracts</div>
+          <div className="space-y-2 text-sm">
+            <div>
+              <div className="text-gray-400">StrategyDeploymentBatcher</div>
+              <input
+                value={batcherAddress}
+                onChange={(e) => setBatcherAddress(e.target.value)}
+                placeholder="0x..."
+                className="mt-1 w-full bg-black/40 border border-white/10 rounded px-3 py-2 font-mono text-xs"
+              />
+              {!CONTRACTS.strategyDeploymentBatcher && (
+                <div className="mt-1 text-xs text-amber-400">
+                  Missing `VITE_STRATEGY_DEPLOYMENT_BATCHER`. Set it in Vercel envs for production.
+                </div>
+              )}
+            </div>
+            <div>
+              <div className="text-gray-400">Quote token (default USDC)</div>
+              <input
+                value={quoteToken}
+                onChange={(e) => setQuoteToken(e.target.value)}
+                className="mt-1 w-full bg-black/40 border border-white/10 rounded px-3 py-2 font-mono text-xs"
+              />
+            </div>
+            <div>
+              <div className="text-gray-400">Ajna ERC20 factory</div>
+              <input
+                value={ajnaFactory}
+                onChange={(e) => setAjnaFactory(e.target.value)}
+                className="mt-1 w-full bg-black/40 border border-white/10 rounded px-3 py-2 font-mono text-xs"
+              />
+            </div>
           </div>
         </div>
-        
-        <div className="bg-gray-800 p-4 rounded-lg">
-          <div className="text-sm text-gray-400 mb-1">Strategy 2</div>
-          <div className="font-bold">Charm LP #1</div>
-          <div className="text-sm text-gray-400">CREATOR/WETH</div>
-          <div className="mt-2 text-xs text-gray-500">
-            Automated V3 LP, 10-50% APY
-          </div>
-        </div>
-        
-        <div className="bg-gray-800 p-4 rounded-lg">
-          <div className="text-sm text-gray-400 mb-1">Strategy 3</div>
-          <div className="font-bold">Charm LP #2</div>
-          <div className="text-sm text-gray-400">CREATOR/USDC</div>
-          <div className="mt-2 text-xs text-gray-500">
-            Stable pair LP, 5-20% APY
+
+        <div className="bg-gray-900/60 border border-white/10 rounded-lg p-4 space-y-3">
+          <div className="text-xs text-gray-400 uppercase tracking-wider">Parameters</div>
+          <div className="space-y-2 text-sm">
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <div className="text-gray-400">Charm weight (bps)</div>
+                <input
+                  value={charmWeightBps}
+                  onChange={(e) => setCharmWeightBps(Number(e.target.value))}
+                  className="mt-1 w-full bg-black/40 border border-white/10 rounded px-3 py-2 font-mono text-xs"
+                />
+              </div>
+              <div>
+                <div className="text-gray-400">Ajna weight (bps)</div>
+                <input
+                  value={ajnaWeightBps}
+                  onChange={(e) => setAjnaWeightBps(Number(e.target.value))}
+                  className="mt-1 w-full bg-black/40 border border-white/10 rounded px-3 py-2 font-mono text-xs"
+                />
+              </div>
+            </div>
+
+            <div>
+              <div className="text-gray-400">Minimum idle (underlying tokens)</div>
+              <input
+                value={minimumIdle}
+                onChange={(e) => setMinimumIdle(e.target.value)}
+                className="mt-1 w-full bg-black/40 border border-white/10 rounded px-3 py-2 font-mono text-xs"
+              />
+              <div className="mt-1 text-xs text-gray-500">Parsed with {tokenDecimals} decimals.</div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <div className="text-gray-400">V3 fee tier</div>
+                <input
+                  value={v3FeeTier}
+                  onChange={(e) => setV3FeeTier(Number(e.target.value))}
+                  className="mt-1 w-full bg-black/40 border border-white/10 rounded px-3 py-2 font-mono text-xs"
+                />
+              </div>
+              <div>
+                <div className="text-gray-400">initialSqrtPriceX96</div>
+                <input
+                  value={initialSqrtPriceX96}
+                  onChange={(e) => setInitialSqrtPriceX96(e.target.value)}
+                  className="mt-1 w-full bg-black/40 border border-white/10 rounded px-3 py-2 font-mono text-xs"
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <div className="text-gray-400">Charm vault name</div>
+                <input
+                  value={charmVaultName}
+                  onChange={(e) => setCharmVaultName(e.target.value)}
+                  className="mt-1 w-full bg-black/40 border border-white/10 rounded px-3 py-2 text-xs"
+                />
+              </div>
+              <div>
+                <div className="text-gray-400">Charm vault symbol</div>
+                <input
+                  value={charmVaultSymbol}
+                  onChange={(e) => setCharmVaultSymbol(e.target.value)}
+                  className="mt-1 w-full bg-black/40 border border-white/10 rounded px-3 py-2 text-xs"
+                />
+              </div>
+            </div>
           </div>
         </div>
       </div>
 
-      {/* Allocation Display */}
-      <div className="bg-gray-800 p-4 rounded-lg">
-        <div className="text-sm text-gray-400 mb-3">Vault Allocation</div>
-        <div className="space-y-2 text-sm">
-          <div className="flex justify-between">
-            <span>Ajna Lending</span>
-            <span className="font-mono">25%</span>
+      {predicted && (
+        <div className="bg-gray-900/60 border border-white/10 rounded-lg p-4">
+          <div className="text-xs text-gray-400 uppercase tracking-wider mb-2">Predicted addresses (next deployment)</div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-2 font-mono text-xs">
+            <div>
+              <div className="text-gray-400">Charm vault</div>
+              <div className="break-all">{predicted.charmVault}</div>
+            </div>
+            <div>
+              <div className="text-gray-400">Charm strategy</div>
+              <div className="break-all">{predicted.creatorCharmStrategy}</div>
+            </div>
+            <div>
+              <div className="text-gray-400">Ajna strategy</div>
+              <div className="break-all">{predicted.ajnaStrategy}</div>
+            </div>
           </div>
-          <div className="flex justify-between">
-            <span>Charm WETH LP</span>
-            <span className="font-mono">25%</span>
-          </div>
-          <div className="flex justify-between">
-            <span>Charm USDC LP</span>
-            <span className="font-mono">25%</span>
-          </div>
-          <div className="flex justify-between">
-            <span>Idle (Liquidity)</span>
-            <span className="font-mono">25%</span>
-          </div>
+          <div className="mt-2 text-xs text-gray-500">Batcher nonce used: {predicted.nonce.toString()}</div>
         </div>
-      </div>
+      )}
 
-      {/* Deploy Button */}
+      {error && <div className="bg-red-500/10 border border-red-500/20 text-red-300 rounded p-3 text-sm">{error}</div>}
+
       <button
-        onClick={deployAllStrategies}
-        disabled={isLoading || !address}
-        className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white font-bold py-3 px-6 rounded-lg transition-colors"
+        onClick={deployAndConfigure}
+        disabled={!canSubmit || isSubmitting}
+        className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-gray-700 disabled:cursor-not-allowed text-white font-semibold py-3 px-6 rounded-lg transition-colors"
       >
-        {isCalculating && '⏳ Calculating optimal parameters...'}
-        {isPending && '📝 Waiting for wallet approval...'}
-        {isConfirming && '⏳ Deploying strategies...'}
-        {!isLoading && '🚀 Deploy All Strategies (1-Click)'}
+        {isSubmitting ? 'Submitting…' : 'Deploy + Configure Strategies'}
       </button>
 
-      {/* AA Badge */}
-      {isSmartWallet && (
-        <div className="flex items-center gap-2 text-xs text-green-400 bg-green-400/10 p-3 rounded-lg">
-          <span>✅</span>
-          <span>Smart Wallet detected - using Account Abstraction for optimized deployment</span>
+      {bundleId && (
+        <div className="text-xs text-gray-400">
+          Bundle/tx id: <span className="font-mono break-all">{bundleId}</span>
         </div>
       )}
 
-      {/* Success Message */}
-      {isSuccess && (
-        <div className="bg-green-600/20 border border-green-600 text-green-400 p-4 rounded-lg text-sm">
-          <div className="font-bold mb-1">✅ Strategies Deployed Successfully!</div>
-          <div>All 3 strategies are now active and earning yield.</div>
-        </div>
-      )}
-
-      {/* Info */}
-      <div className="text-xs text-gray-500">
-        <p>• One transaction deploys and configures all strategies</p>
-        <p>• Optimal Ajna bucket calculated from CREATOR/ZORA V4 pool</p>
-        <p>• Estimated gas: ~5.5M units (~$15-30 on Base)</p>
+      <div className="text-xs text-gray-500 space-y-1">
+        <p>• If your wallet supports EIP-5792 atomic batching, this can run as a single atomic bundle.</p>
+        <p>• If batching is unavailable, it will fall back to sequential transactions.</p>
+        {isSmartWallet ? <p>• Coinbase Smart Wallet detected.</p> : null}
       </div>
     </div>
-  );
+  )
 }
-
-// ABI for StrategyDeploymentBatcher
-const StrategyDeploymentBatcherABI = [
-  {
-    name: 'deployAllStrategies',
-    type: 'function',
-    stateMutability: 'nonpayable',
-    inputs: [{
-      name: 'params',
-      type: 'tuple',
-      components: [
-        { name: 'vault', type: 'address' },
-        { name: 'creatorToken', type: 'address' },
-        { name: 'ajnaFactory', type: 'address' },
-        { name: 'charmVault', type: 'address' },
-        { name: 'weth', type: 'address' },
-        { name: 'usdc', type: 'address' },
-        { name: 'zora', type: 'address' },
-        { name: 'uniswapV3Factory', type: 'address' },
-        { name: 'ajnaBucketIndex', type: 'uint256' },
-        { name: 'wethFee', type: 'uint24' },
-        { name: 'usdcFee', type: 'uint24' },
-        { name: 'ajnaWeight', type: 'uint256' },
-        { name: 'charmWethWeight', type: 'uint256' },
-        { name: 'charmUsdcWeight', type: 'uint256' },
-        { name: 'minimumIdle', type: 'uint256' },
-      ]
-    }],
-    outputs: [
-      { name: 'ajnaStrategy', type: 'address' },
-      { name: 'charmWethStrategy', type: 'address' },
-      { name: 'charmUsdcStrategy', type: 'address' }
-    ]
-  }
-] as const;

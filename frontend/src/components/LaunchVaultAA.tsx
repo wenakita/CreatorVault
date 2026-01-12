@@ -2,7 +2,7 @@
  * 🤖 ACCOUNT ABSTRACTION LAUNCH COMPONENT
  * 
  * This component enables ONE-SIGNATURE CCA launch using Account Abstraction.
- * Works with the deployed VaultActivationBatcher at 0x6d796554698f5Ddd74Ff20d745304096aEf93CB6
+ * Uses `CONTRACTS.vaultActivationBatcher` (set via `VITE_VAULT_ACTIVATION_BATCHER` in Vercel).
  */
 
 import { useState } from 'react';
@@ -14,9 +14,11 @@ import { encodeFunctionData, erc20Abi, parseEther, type Address, type Hex } from
 import { base } from 'wagmi/chains';
 import { motion } from 'framer-motion';
 import { Zap } from 'lucide-react';
+import { logger } from '@/lib/logger';
+import { CONTRACTS } from '@/config/contracts';
 
-// ✅ Deployed VaultActivationBatcher address
-const VAULT_ACTIVATION_BATCHER = '0x6d796554698f5Ddd74Ff20d745304096aEf93CB6' as Address;
+const VAULT_ACTIVATION_BATCHER = (CONTRACTS.vaultActivationBatcher ??
+  '0x0000000000000000000000000000000000000000') as Address;
 
 const VaultActivationBatcherABI = [
   {
@@ -68,6 +70,10 @@ export function LaunchVaultAA({
   async function launchWithAA() {
     if (!address) {
       setError('Please connect your wallet');
+      return;
+    }
+    if (VAULT_ACTIVATION_BATCHER === '0x0000000000000000000000000000000000000000') {
+      setError('Vault activation batcher is not configured. Set VITE_VAULT_ACTIVATION_BATCHER.');
       return;
     }
 
@@ -133,12 +139,12 @@ export function LaunchVaultAA({
         return;
       } catch (e) {
         // fall back
-        console.warn('wallet_sendCalls failed, falling back to sequential txs:', e);
+        logger.warn('wallet_sendCalls failed, falling back to sequential txs', e);
       }
 
       // Fallback: Send transactions sequentially (EOA-style).
       if (!walletClient) throw new Error('Wallet not ready');
-      console.log('⚠️ Falling back to sequential transactions');
+      logger.info('Falling back to sequential transactions');
 
       const approveTxHash = await walletClient.sendTransaction({
         account: address as any,
@@ -160,7 +166,7 @@ export function LaunchVaultAA({
       await publicClient?.waitForTransactionReceipt({ hash: launchTxHash as `0x${string}` });
 
     } catch (err: any) {
-      console.error('Launch failed:', err);
+      logger.error('Launch failed', err);
       setError(err.message || 'Launch failed');
     } finally {
       setLoading(false);

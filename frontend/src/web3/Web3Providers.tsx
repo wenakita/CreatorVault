@@ -9,6 +9,7 @@ import { PrivyProvider } from '@privy-io/react-auth'
 import { WagmiProvider as PrivyWagmiProvider } from '@privy-io/wagmi'
 
 import { wagmiConfig } from '@/config/wagmi'
+import { logger } from '@/lib/logger'
 
 // Polyfill Buffer for WalletConnect / Coinbase Wallet SDK.
 if (typeof window !== 'undefined') {
@@ -78,8 +79,7 @@ export function Web3Providers({ children }: { children: ReactNode }) {
   // Debug hint: if both are set but the URL does not contain the key, it's likely the wrong value was pasted
   // (CDP has multiple identifiers). We still respect the explicit URL override, but warn in dev.
   if (import.meta.env.DEV && cdpApiKey && cdpPaymasterUrl && !cdpPaymasterUrl.includes(cdpApiKey)) {
-    // eslint-disable-next-line no-console
-    console.warn(
+    logger.warn(
       '[Web3Providers] VITE_CDP_PAYMASTER_URL does not include VITE_CDP_API_KEY. This may indicate a mismatched CDP key vs paymaster URL.',
     )
   }

@@ -12,7 +12,8 @@ CREATE2 gives you **predictable addresses** for the per-creator vault stack, whi
 We deploy the stack via an **Account Abstraction batch** that uses a CREATE2 deployer and **versioned salts**.
 
 Primary implementation:
-- `frontend/src/components/DeployVaultAA.tsx`
+- `contracts/helpers/CreatorVaultBatcher.sol`
+- `frontend/src/pages/DeployVault.tsx` (calls `CreatorVaultBatcher` from the `/deploy` route)
 
 Supporting helpers:
 - `contracts/helpers/Create2Deployer.sol`
@@ -35,8 +36,7 @@ Salts are derived from (at minimum):
 ---
 
 ## 🔎 Where to run / inspect
-- **AA deploy (one signature)**: `frontend/src/components/DeployVaultAA.tsx`
-- **AA script runner**: `script/deploy-with-aa.ts`
+- **Deploy + launch (onchain)**: `/deploy` (`frontend/src/pages/DeployVault.tsx`)
 - **Onchain record of deployments**: `contracts/factories/CreatorOVaultFactory.sol`
 
 

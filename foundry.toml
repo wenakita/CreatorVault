@@ -14,6 +14,7 @@ remappings = [
     "@layerzerolabs/=node_modules/@layerzerolabs/",
     "@chainlink/=node_modules/@chainlink/",
     "@uniswap/v4-core/=node_modules/@uniswap/v4-core/",
+    "@uniswap/v4-periphery/=node_modules/@uniswap/v4-periphery/",
     "@uniswap/=node_modules/@uniswap/",
     "solidity-bytes-utils/=node_modules/solidity-bytes-utils/",
     "hardhat/=node_modules/hardhat/",

@@ -168,10 +168,10 @@ export AKITA_VAULT=0xA015954E2606d08967Aee3787456bB3A86a46A42
 # → Sets optimal bucket based on ZORA price
 
 # 3. Deploy Charm LP #1 (AKITA/WETH)
-# TODO: Create DEPLOY_AKITA_CHARM_WETH.sh
+# Pending: script DEPLOY_AKITA_CHARM_WETH.sh (not yet authored)
 
 # 4. Deploy Charm LP #2 (AKITA/USDC)
-# TODO: Create DEPLOY_AKITA_CHARM_USDC.sh
+# Pending: script DEPLOY_AKITA_CHARM_USDC.sh (not yet authored)
 
 # 5. Configure vault with all strategies
 cast send $AKITA_VAULT "addStrategy(address,uint256)" $AJNA_STRATEGY 100

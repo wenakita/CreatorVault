@@ -1,6 +1,8 @@
 // Guild.xyz API integration for Base Guild roles
 // Docs: https://github.com/guildxyz/guild.xyz
 
+import { logger } from './logger'
+
 const GUILD_API_BASE = 'https://api.guild.xyz/v2'
 
 export interface GuildRole {
@@ -50,14 +52,14 @@ export async function getGuildMemberships(address: string): Promise<GuildMembers
     )
 
     if (!response.ok) {
-      console.error('Guild API error:', response.status, response.statusText)
+      logger.error('Guild API error', { status: response.status, statusText: response.statusText })
       return []
     }
 
     const data = await response.json()
     return data || []
   } catch (error) {
-    console.error('Failed to fetch Guild memberships:', error)
+    logger.error('Failed to fetch Guild memberships', error)
     return []
   }
 }
@@ -125,7 +127,7 @@ export async function getBaseGuildStats(address: string): Promise<BaseGuildStats
 
     return stats
   } catch (error) {
-    console.error('Failed to fetch Base Guild stats:', error)
+    logger.error('Failed to fetch Base Guild stats', error)
     return { roles: [] }
   }
 }

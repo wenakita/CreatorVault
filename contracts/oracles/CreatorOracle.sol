@@ -22,9 +22,9 @@ import {TickMathCompat} from "../libraries/TickMathCompat.sol";
  * 
  * @dev ARCHITECTURE:
  *      Base (Hub):
- *      - Reads V4 pool TWAP (wsAKITA/ETH)
+ *      - Reads V4 pool TWAP (■AKITA/ETH)
  *      - Gets ETH/USD from Chainlink
- *      - Calculates wsAKITA/USD
+ *      - Calculates ■AKITA/USD
  *      - Broadcasts to all chains via LayerZero
  *      
  *      Remote Chains:
@@ -85,7 +85,7 @@ contract CreatorOracle is OApp {
     /// @notice Uniswap V4 PoolManager
     IPoolManager public poolManager;
     
-    /// @notice V4 pool key for wsAKITA/ETH
+    /// @notice V4 pool key for ■AKITA/ETH
     PoolKey public creatorPoolKey;
     
     /// @notice Whether V4 pool is configured
@@ -233,7 +233,7 @@ contract CreatorOracle is OApp {
      * @notice Deploy oracle for a Creator Coin
      * @param _registry CreatorRegistry address (same on all chains for deterministic addresses)
      * @param _chainlinkFeed Chainlink ETH/USD feed address
-     * @param _creatorSymbol Creator token symbol (e.g., "wsAKITA")
+     * @param _creatorSymbol Creator token symbol (e.g., "■AKITA")
      * @param _owner Owner address
      * 
      * @dev DETERMINISTIC DEPLOYMENT:
@@ -279,7 +279,7 @@ contract CreatorOracle is OApp {
     /**
      * @notice Configure V4 pool for TWAP observations
      * @param _poolManager Uniswap V4 PoolManager
-     * @param _poolKey Pool key for wsAKITA/ETH
+     * @param _poolKey Pool key for ■AKITA/ETH
      * @param _creatorIsToken0 Whether creator token is currency0
      */
     function setV4Pool(

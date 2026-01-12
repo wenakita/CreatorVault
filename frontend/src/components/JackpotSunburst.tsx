@@ -2,6 +2,7 @@ import { useRef, useEffect, useMemo, useState, useCallback } from 'react'
 import * as d3 from 'd3'
 import { Trophy, Flame, Building2, RotateCcw, ChevronRight } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
+import { toShareName, toShareSymbol } from '@/lib/tokenSymbols'
 
 interface HierarchyNode {
   name: string
@@ -23,10 +24,14 @@ interface JackpotSunburstProps {
   totalUsd?: number
 }
 
+const SHARE_SYMBOL_AKITA = toShareSymbol('AKITA')
+const SHARE_SYMBOL_CREATOR = toShareSymbol('CREATOR')
+const SHARE_SYMBOL_DAWG = toShareSymbol('DAWG')
+
 const DEFAULT_TOKENS: JackpotToken[] = [
-  { symbol: 'wsAKITA', name: 'Wrapped Staked AKITA', value: 280, color: '#f97316' },
-  { symbol: 'wsCREATOR', name: 'Wrapped Staked CREATOR', value: 50, color: '#a855f7' },
-  { symbol: 'wsDAWG', name: 'Wrapped Staked DAWG', value: 20, color: '#06b6d4' },
+  { symbol: SHARE_SYMBOL_AKITA, name: toShareName('AKITA'), value: 280, color: '#f97316' },
+  { symbol: SHARE_SYMBOL_CREATOR, name: toShareName('CREATOR'), value: 50, color: '#a855f7' },
+  { symbol: SHARE_SYMBOL_DAWG, name: toShareName('DAWG'), value: 20, color: '#06b6d4' },
 ]
 
 export function JackpotSunburst({
