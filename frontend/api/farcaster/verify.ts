@@ -22,7 +22,7 @@ type VerifyBody = { message?: string; signature?: string }
 type VerifyResponse = { fid: number }
 
 const relay = 'https://relay.farcaster.xyz'
-const rpcUrl = (process.env.FARCASTER_AUTH_RPC_URL || '').trim() || undefined
+const rpcUrl = (process.env.FARCASTER_AUTH_RPC_URL || '').trim() || 'https://mainnet.optimism.io'
 const appClient = createAppClient({
   relay,
   ethereum: viemConnector(rpcUrl),
