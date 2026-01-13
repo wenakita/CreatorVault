@@ -75,8 +75,8 @@ function ConnectButtonWeb3Wagmi({ autoConnect = false }: { autoConnect?: boolean
   // - WalletConnect (QR) fallback
   const preferredConnector =
     (miniApp.isMiniApp ? miniAppConnector : null) ??
-    (isRabbyPresent ? rabbyConnector : null) ??
     walletConnectConnector ??
+    rabbyConnector ??
     connectors[0]
 
   const connectBestEffort = useCallback(async () => {
@@ -86,8 +86,9 @@ function ConnectButtonWeb3Wagmi({ autoConnect = false }: { autoConnect?: boolean
     const ordered = uniqueConnectors([
       // Prefer Mini App connector inside Mini Apps.
       miniApp.isMiniApp ? miniAppConnector : null,
-      // Prefer Rabby when present on the open web.
-      !miniApp.isMiniApp && isRabbyPresent ? rabbyConnector : null,
+      // Always try Rabby first on web (fast timeout). If it isn't installed, this usually fails fast.
+      // This avoids false negatives when wallet injection detection is flaky.
+      !miniApp.isMiniApp ? rabbyConnector : null,
       // Universal fallback (QR).
       !miniApp.isMiniApp ? walletConnectConnector : null,
       preferredConnector,
@@ -103,7 +104,7 @@ function ConnectButtonWeb3Wagmi({ autoConnect = false }: { autoConnect?: boolean
         //   In that case we want to auto-fallback to WalletConnect instead of staying "Connecting…" forever.
         const timeoutMs =
           !miniApp.isMiniApp && (id === 'rabby' || id.toLowerCase().includes('metamask'))
-            ? 12_000
+            ? 3_000
             : // WalletConnect often requires user action (scan QR / confirm) so give it more time.
               !miniApp.isMiniApp && id.toLowerCase().includes('walletconnect')
               ? 90_000
