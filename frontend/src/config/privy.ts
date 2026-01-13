@@ -68,8 +68,14 @@ export function getPrivyRuntime(): PrivyRuntime {
   const origin = typeof window !== 'undefined' ? window.location.origin : null
   const allowedOrigins = parseAllowedOrigins(import.meta.env.VITE_PRIVY_ALLOWED_ORIGINS as string | undefined)
 
+  // Privy can hard-fail on some browsers/adblockers due to CSP + 3p iframe settings.
+  // Make it explicitly opt-in so normal connectors (injected/Coinbase/WalletConnect) remain available.
+  const explicitEnable = String(import.meta.env.VITE_PRIVY_ENABLED ?? '').trim().toLowerCase()
+  const privyExplicitlyEnabled = explicitEnable === '1' || explicitEnable === 'true' || explicitEnable === 'yes'
+
   const enabled =
     Boolean(appId) &&
+    privyExplicitlyEnabled &&
     (Boolean(import.meta.env.DEV) || (typeof origin === 'string' && originIsAllowed(origin, allowedOrigins)))
 
   return { appId, enabled, origin, allowedOrigins }

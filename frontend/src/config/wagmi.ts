@@ -1,10 +1,8 @@
 import { http, fallback, createConfig as createWagmiConfig } from 'wagmi'
 import { base } from 'wagmi/chains'
-import { coinbaseWallet, injected } from 'wagmi/connectors'
+import { coinbaseWallet, injected, walletConnect } from 'wagmi/connectors'
 import { farcasterMiniApp } from '@farcaster/miniapp-wagmi-connector'
-import { createConfig as createPrivyConfig } from '@privy-io/wagmi'
 import { coinbaseSmartWallet } from '@/web3/connectors/coinbaseSmartWallet'
-import { getPrivyRuntime } from './privy'
 
 /**
  * Base RPC notes:
@@ -26,15 +24,34 @@ const baseRpcUrls = (() => {
   return [...DEFAULT_BASE_RPCS]
 })()
 
-const privyEnabled = getPrivyRuntime().enabled
-const createConfig = privyEnabled ? createPrivyConfig : createWagmiConfig
+/**
+ * WalletConnect
+ * - `projectId` is PUBLIC (safe to expose), but you should restrict Allowed Origins in WalletConnect Cloud.
+ * - If you rotate the project id, set `VITE_WALLETCONNECT_PROJECT_ID` in Vercel.
+ */
+const DEFAULT_WALLETCONNECT_PROJECT_ID = 'bc3dfd319b4a0ecaa25cdee7e36bd0c4'
+const walletConnectProjectId = (
+  (import.meta.env.VITE_WALLETCONNECT_PROJECT_ID as string | undefined)?.trim() || DEFAULT_WALLETCONNECT_PROJECT_ID
+).trim()
 
-export const wagmiConfig = createConfig({
+const walletConnectMetadata = {
+  name: 'Creator Vaults',
+  description: 'Creator coin vaults on Base.',
+  url: typeof window !== 'undefined' ? window.location.origin : 'https://erc4626.fun',
+  icons: ['https://erc4626.fun/pwa-512.png'] as string[],
+}
+
+export const wagmiConfig = createWagmiConfig({
   chains: [base],
   connectors: [
     // Base app / Farcaster Mini App connector (when available).
     farcasterMiniApp(),
     injected(),
+    walletConnect({
+      projectId: walletConnectProjectId,
+      metadata: walletConnectMetadata,
+      showQrModal: true,
+    }),
     // Coinbase Smart Wallet (SCW) connector: forces Smart Wallet accounts only.
     // This is required for paymaster-backed `wallet_sendCalls`.
     coinbaseSmartWallet({ appName: 'Creator Vaults' }),
@@ -44,6 +61,8 @@ export const wagmiConfig = createConfig({
       preference: 'all',
     }),
   ],
+  // Avoid multi-injected provider discovery issues (MetaMask/Rabby conflicts, etc).
+  multiInjectedProviderDiscovery: false,
   transports: {
     [base.id]: fallback(
       baseRpcUrls.map((url) =>

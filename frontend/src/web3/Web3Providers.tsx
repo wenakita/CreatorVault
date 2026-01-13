@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react'
-import { Buffer } from 'buffer'
+// Use the browser-safe Buffer shim (Vite can externalize Node built-ins like `buffer`).
+import { Buffer } from 'buffer/'
 import { OnchainKitProvider } from '@coinbase/onchainkit'
 import { WagmiProvider } from 'wagmi'
 import { base } from 'wagmi/chains'

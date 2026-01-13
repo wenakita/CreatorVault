@@ -9,7 +9,10 @@ import { Web3Context, type Web3Status } from './Web3Context'
 type Web3ProvidersComponent = ComponentType<{ children: ReactNode }>
 
 function routeNeedsWeb3(pathname: string): boolean {
-  return pathname !== '/'
+  // We want wallet connect to be 1-click on every route (including Home).
+  // Keeping Web3 providers mounted avoids "click once to load web3, click again to connect" UX.
+  void pathname
+  return true
 }
 
 function FullPageLoading() {
@@ -48,15 +51,13 @@ export function Web3Gate({ children }: { children: ReactNode }) {
         const { sdk } = await import('@farcaster/miniapp-sdk')
         const inMini = await sdk.isInMiniApp().catch(() => false)
 
-        // Base Preview sometimes fails `isInMiniApp()` but still expects a `ready()` call.
-        // Calling `ready()` outside a Mini App should safely reject; we ignore errors.
-        const readyOk = await sdk.actions.ready().then(
-          () => true,
-          () => false,
-        )
+        // Always call `ready()` (best-effort). Do NOT treat it as a Mini App detection signal:
+        // some environments may resolve the promise even when not embedded, which would incorrectly
+        // force Web3 to load on every page.
+        sdk.actions.ready().catch(() => {})
 
         if (cancelled) return
-        setIsMiniApp(Boolean(inMini || readyOk))
+        setIsMiniApp(Boolean(inMini))
       } catch {
         // ignore
       }

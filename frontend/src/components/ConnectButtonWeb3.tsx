@@ -27,22 +27,21 @@ function ConnectButtonWeb3Wagmi({ autoConnect = false }: { autoConnect?: boolean
     const name = String((c as any)?.name ?? '').toLowerCase()
     return id.includes('miniapp') || name.includes('farcaster') || name.includes('mini app')
   })
-  const privyConnector = connectors.find((c) => {
-    const id = String(c.id ?? '').toLowerCase()
-    const name = String((c as any)?.name ?? '').toLowerCase()
-    return id.includes('privy') || name.includes('privy')
-  })
-  const coinbaseSmartWalletConnector = connectors.find((c) => c.id === 'coinbaseSmartWallet')
   const coinbaseConnector = connectors.find((c) => c.id === 'coinbaseWalletSDK' || c.name?.toLowerCase().includes('coinbase'))
   const injectedConnector = connectors.find((c) => c.id === 'injected')
+  const walletConnectConnector = connectors.find((c) => String(c.id) === 'walletConnect' || String(c.name ?? '').toLowerCase().includes('walletconnect'))
+  const hasInjectedProvider = typeof window !== 'undefined' && Boolean((window as any)?.ethereum)
 
   // In the Base app / Farcaster Mini App, prefer the mini app connector (no wallet-brand UX).
-  // On the open web, prefer Coinbase Smart Wallet when available (enables gas-free 1-click).
+  // On the open web, default to the most universal path:
+  // - Browser wallet (injected) if present
+  // - Otherwise WalletConnect (QR)
   const preferredConnector =
     (miniApp.isMiniApp ? miniAppConnector : null) ??
-    privyConnector ??
-    coinbaseSmartWalletConnector ??
+    (hasInjectedProvider ? injectedConnector : null) ??
+    walletConnectConnector ??
     coinbaseConnector ??
+    injectedConnector ??
     connectors[0]
 
   // Best-effort: preserve a single "Connect Wallet" click when Web3 is lazily enabled.
@@ -253,88 +252,20 @@ function ConnectButtonWeb3Wagmi({ autoConnect = false }: { autoConnect?: boolean
   }
 
   return (
-    <div className="relative">
     <button
-        onClick={() => setShowMenu(!showMenu)}
-      disabled={isPending}
-        className="btn-accent disabled:opacity-50 flex items-center gap-2"
+      type="button"
+      disabled={isPending || !preferredConnector}
+      onClick={() => {
+        if (!preferredConnector) return
+        // Keep the UX 1-click: pick the best connector automatically.
+        connect({ connector: preferredConnector })
+      }}
+      className="btn-accent disabled:opacity-50 flex items-center gap-2"
+      title={preferredConnector ? `Connect with ${preferredConnector.name}` : 'No wallet connector available'}
     >
-        <Wallet className="w-4 h-4" />
-      <span className="label">{isPending ? 'Connecting...' : 'Connect Wallet'}</span>
-        {coinbaseSmartWalletConnector || coinbaseConnector || injectedConnector ? <ChevronDown className="w-3 h-3 text-zinc-600" /> : null}
-      </button>
-
-      <AnimatePresence>
-        {showMenu && !isPending && (
-          <>
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="fixed inset-0 z-40"
-              onClick={() => setShowMenu(false)}
-            />
-            <motion.div
-              initial={{ opacity: 0, y: -10 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -10 }}
-              className="absolute right-0 top-full mt-4 w-64 card p-3 z-50 space-y-2"
-            >
-              {coinbaseSmartWalletConnector ? (
-                <button
-                  onClick={() => {
-                    connect({ connector: coinbaseSmartWalletConnector })
-                    setShowMenu(false)
-                  }}
-                  className="w-full text-left py-3 px-4 hover:bg-zinc-950 transition-colors"
-                >
-                  <span className="label block mb-1">Coinbase Smart Wallet</span>
-                  <span className="text-xs text-zinc-600">Gas-free 1-click (recommended)</span>
-                </button>
-              ) : null}
-
-              {coinbaseConnector ? (
-                <button
-                  onClick={() => {
-                    connect({ connector: coinbaseConnector })
-                    setShowMenu(false)
-                  }}
-                  className="w-full text-left py-3 px-4 hover:bg-zinc-950 transition-colors"
-                >
-                  <span className="label block mb-1">Coinbase Wallet</span>
-                  <span className="text-xs text-zinc-600">Coinbase wallet app / extension</span>
-                </button>
-              ) : null}
-
-              {injectedConnector ? (
-                <button
-                  onClick={() => {
-                    connect({ connector: injectedConnector })
-                    setShowMenu(false)
-                  }}
-                  className="w-full text-left py-3 px-4 hover:bg-zinc-950 transition-colors"
-                >
-                  <span className="label block mb-1">Browser Wallet</span>
-                  <span className="text-xs text-zinc-600">MetaMask / Rabby / Brave</span>
-                </button>
-              ) : null}
-
-              {!coinbaseConnector && !injectedConnector ? (
-                <button
-                  onClick={() => {
-                    if (preferredConnector) connect({ connector: preferredConnector })
-                    setShowMenu(false)
-                  }}
-                  className="w-full text-left py-3 px-4 hover:bg-zinc-950 transition-colors"
-                >
-                  <span className="label block">Connect</span>
+      <Wallet className="w-4 h-4" />
+      <span className="label">{isPending ? 'Connecting…' : 'Connect Wallet'}</span>
     </button>
-              ) : null}
-            </motion.div>
-          </>
-        )}
-      </AnimatePresence>
-    </div>
   )
 }
 
@@ -608,8 +539,18 @@ export function ConnectButtonWeb3({ autoConnect = false }: { autoConnect?: boole
   const privyEnabled = getPrivyRuntime().enabled
 
   return privyEnabled ? (
-    <ConnectButtonWeb3Privy autoConnect={autoConnect} />
+    <ConnectButtonWeb3PrivyWithFallback autoConnect={autoConnect} />
   ) : (
     <ConnectButtonWeb3Wagmi autoConnect={autoConnect} />
   )
+}
+
+function ConnectButtonWeb3PrivyWithFallback({ autoConnect = false }: { autoConnect?: boolean }) {
+  const { ready: privyReady } = usePrivy()
+
+  // If Privy isn't ready (blocked by CSP/adblock/3p iframe settings), do NOT dead-end the user.
+  // Fall back to normal wagmi connectors (WalletConnect/injected/Coinbase).
+  if (!privyReady) return <ConnectButtonWeb3Wagmi autoConnect={autoConnect} />
+
+  return <ConnectButtonWeb3Privy autoConnect={autoConnect} />
 }

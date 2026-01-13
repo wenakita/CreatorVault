@@ -131,12 +131,15 @@ export default defineConfig(({ command }) => ({
   resolve: {
     alias: {
       '@': resolve(__dirname, './src'),
+      // Wallet SDKs expect `buffer` to exist; map Node built-in to the browser shim.
+      buffer: 'buffer/',
     },
   },
   define: {
     global: 'globalThis',
   },
   optimizeDeps: {
+    include: ['buffer'],
     esbuildOptions: {
       define: {
         global: 'globalThis',
