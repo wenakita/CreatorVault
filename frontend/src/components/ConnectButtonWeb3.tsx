@@ -33,7 +33,14 @@ function ConnectButtonWeb3Wagmi({ autoConnect = false }: { autoConnect?: boolean
   const coinbaseConnector = connectors.find((c) => c.id === 'coinbaseWalletSDK' || c.name?.toLowerCase().includes('coinbase'))
   const injectedConnector = connectors.find((c) => c.id === 'injected')
   const walletConnectConnector = connectors.find((c) => String(c.id) === 'walletConnect' || String(c.name ?? '').toLowerCase().includes('walletconnect'))
-  const hasInjectedProvider = typeof window !== 'undefined' && Boolean((window as any)?.ethereum)
+  const injectedProvider = typeof window !== 'undefined' ? (window as any)?.ethereum : null
+  const hasInjectedProvider = Boolean(injectedProvider)
+  // If multiple wallets are installed, `window.ethereum` can be an aggregator/shim and connectors may hang.
+  // In that case, prefer WalletConnect (stable) over guessing which injected provider to use.
+  const hasMultipleInjectedProviders =
+    Boolean(injectedProvider) &&
+    Array.isArray((injectedProvider as any)?.providers) &&
+    ((injectedProvider as any).providers as any[]).length > 1
 
   // In the Base app / Farcaster Mini App, prefer the mini app connector (no wallet-brand UX).
   // On the open web, default to the most universal path:
@@ -41,7 +48,7 @@ function ConnectButtonWeb3Wagmi({ autoConnect = false }: { autoConnect?: boolean
   // - Otherwise WalletConnect (QR)
   const preferredConnector =
     (miniApp.isMiniApp ? miniAppConnector : null) ??
-    (hasInjectedProvider ? injectedConnector : null) ??
+    (hasInjectedProvider && !hasMultipleInjectedProviders ? injectedConnector : null) ??
     walletConnectConnector ??
     coinbaseConnector ??
     injectedConnector ??
@@ -107,7 +114,7 @@ function ConnectButtonWeb3Wagmi({ autoConnect = false }: { autoConnect?: boolean
       // Prefer Mini App connector inside Mini Apps.
       miniApp.isMiniApp ? miniAppConnector : null,
       // Prefer injected when present (desktop wallets).
-      !miniApp.isMiniApp && hasInjectedProvider ? injectedConnector : null,
+      !miniApp.isMiniApp && hasInjectedProvider && !hasMultipleInjectedProviders ? injectedConnector : null,
       // Reliable fallback when injected is broken or not present.
       !miniApp.isMiniApp ? walletConnectConnector : null,
       coinbaseConnector,
