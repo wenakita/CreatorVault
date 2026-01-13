@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { Menu } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
@@ -25,67 +25,6 @@ function isActivePath(pathname: string, item: NavItem): boolean {
   return prefixes.some((p) => (p === '/' ? pathname === '/' : pathname === p || pathname.startsWith(`${p}/`)))
 }
 
-function ErcCreator4626Wordmark({ className = '' }: { className?: string }) {
-  const [expanded, setExpanded] = useState(false)
-
-  useEffect(() => {
-    const reduce =
-      typeof window !== 'undefined' &&
-      typeof window.matchMedia === 'function' &&
-      window.matchMedia('(prefers-reduced-motion: reduce)').matches
-    if (reduce) return
-
-    const sequence = [
-      { next: true, delay: 2200 }, // expand
-      { next: false, delay: 3200 }, // contract
-    ]
-
-    let timeoutId: ReturnType<typeof setTimeout> | null = null
-    const run = (idx: number) => {
-      const step = sequence[idx % sequence.length]
-      timeoutId = setTimeout(() => {
-        setExpanded(step.next)
-        run(idx + 1)
-      }, step.delay)
-    }
-
-    run(0)
-    return () => {
-      if (timeoutId) clearTimeout(timeoutId)
-    }
-  }, [])
-
-  return (
-    <span className={['inline-flex items-baseline select-none tracking-[0.08em]', className].join(' ')}>
-      <span className="font-sans font-semibold text-white">ERC</span>
-
-      <span
-        className="overflow-hidden transition-all duration-700 ease-[cubic-bezier(0.25,1,0.5,1)] flex justify-center relative mx-0.5"
-        style={{ maxWidth: expanded ? '3.4em' : '0.65em' }}
-        aria-hidden="true"
-      >
-        <span
-          className={`absolute inset-0 flex items-center justify-center font-mono text-brand-primary transition-all duration-500 transform ${
-            expanded ? 'opacity-0 scale-50 rotate-90' : 'opacity-100 scale-100 rotate-0'
-          }`}
-        >
-          -
-        </span>
-
-        <span
-          className={`block font-sans font-semibold text-white whitespace-nowrap transition-all duration-700 transform ${
-            expanded ? 'opacity-100 translate-y-0 blur-0' : 'opacity-0 translate-y-full blur-sm'
-          }`}
-        >
-          reator
-        </span>
-      </span>
-
-      <span className="font-doto font-bold text-brand-primary drop-shadow-[0_0_12px_rgba(0,82,255,0.35)]">4626</span>
-    </span>
-  )
-}
-
 export function VaultNavBar() {
   const location = useLocation()
   const [isHovered, setIsHovered] = useState<number | null>(null)
@@ -100,7 +39,15 @@ export function VaultNavBar() {
         <Link to="/" className="flex items-center gap-4 group cursor-pointer">
           <Logo showText={false} width={40} height={40} />
           <div className="flex flex-col justify-center">
-            <ErcCreator4626Wordmark className="text-sm text-white font-medium transition-colors duration-300" />
+            <span className="text-sm tracking-[0.1em] text-white font-medium transition-colors duration-300 leading-none">
+              <span className="font-mono uppercase">erc</span>
+              <span className="text-transparent bg-clip-text bg-gradient-to-r from-brand-primary to-brand-accent ml-1">
+                4626
+              </span>
+            </span>
+            <span className="mt-1 text-[9px] tracking-[0.22em] uppercase text-zinc-600 leading-none">
+              Creator Vaults
+            </span>
           </div>
         </Link>
 
