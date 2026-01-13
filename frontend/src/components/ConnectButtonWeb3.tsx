@@ -1,7 +1,7 @@
 import { type Connector, useAccount, useConnect, useDisconnect, useSignMessage, useSwitchChain } from 'wagmi'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Wallet, ChevronDown, AlertCircle } from 'lucide-react'
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { base } from 'wagmi/chains'
 import { usePrivy, useWallets } from '@privy-io/react-auth'
 import { useSetActiveWallet } from '@privy-io/wagmi'
@@ -9,9 +9,39 @@ import { useMiniAppContext } from '@/hooks'
 import { getPrivyRuntime } from '@/config/privy'
 import { logger } from '@/lib/logger'
 
+function uniqueConnectors(list: Array<Connector | null | undefined>): Connector[] {
+  const out: Connector[] = []
+  const seen = new Set<string>()
+  for (const c of list) {
+    if (!c) continue
+    const id = String(c.id ?? c.name ?? '')
+    if (!id) continue
+    if (seen.has(id)) continue
+    seen.add(id)
+    out.push(c)
+  }
+  return out
+}
+
+function withTimeout<T>(p: Promise<T>, ms: number): Promise<T> {
+  return new Promise((resolve, reject) => {
+    const t = setTimeout(() => reject(new Error('timeout')), ms)
+    p.then(
+      (v) => {
+        clearTimeout(t)
+        resolve(v)
+      },
+      (e) => {
+        clearTimeout(t)
+        reject(e)
+      },
+    )
+  })
+}
+
 function ConnectButtonWeb3Wagmi({ autoConnect = false }: { autoConnect?: boolean }) {
   const { address, isConnected, chain } = useAccount()
-  const { connect, connectAsync, connectors, isPending, reset } = useConnect()
+  const { connectAsync, connectors, isPending, reset } = useConnect()
   const { disconnect } = useDisconnect()
   const { switchChain } = useSwitchChain()
   const { signMessageAsync } = useSignMessage()
@@ -19,7 +49,6 @@ function ConnectButtonWeb3Wagmi({ autoConnect = false }: { autoConnect?: boolean
   const [showMenu, setShowMenu] = useState(false)
   const [copied, setCopied] = useState(false)
   const [connectError, setConnectError] = useState<string | null>(null)
-  const [pendingSince, setPendingSince] = useState<number | null>(null)
   const [authAddress, setAuthAddress] = useState<string | null>(null)
   const [authBusy, setAuthBusy] = useState(false)
   const [authError, setAuthError] = useState<string | null>(null)
@@ -42,78 +71,25 @@ function ConnectButtonWeb3Wagmi({ autoConnect = false }: { autoConnect?: boolean
 
   // In the Base app / Farcaster Mini App, prefer the mini app connector (no wallet-brand UX).
   // On the open web, default to the most universal path:
-  // - WalletConnect (QR) (most reliable across environments)
-  // - Rabby (if installed) as an explicit option
+  // - Rabby (if installed)
+  // - WalletConnect (QR) fallback
   const preferredConnector =
     (miniApp.isMiniApp ? miniAppConnector : null) ??
-    walletConnectConnector ??
     (isRabbyPresent ? rabbyConnector : null) ??
-    rabbyConnector ??
+    walletConnectConnector ??
     connectors[0]
 
-  function uniqueConnectors(list: Array<Connector | null | undefined>): Connector[] {
-    const out: Connector[] = []
-    const seen = new Set<string>()
-    for (const c of list) {
-      if (!c) continue
-      const id = String(c.id ?? c.name ?? '')
-      if (!id) continue
-      if (seen.has(id)) continue
-      seen.add(id)
-      out.push(c)
-    }
-    return out
-  }
-
-  function withTimeout<T>(p: Promise<T>, ms: number): Promise<T> {
-    return new Promise((resolve, reject) => {
-      const t = setTimeout(() => reject(new Error('timeout')), ms)
-      p.then(
-        (v) => {
-          clearTimeout(t)
-          resolve(v)
-        },
-        (e) => {
-          clearTimeout(t)
-          reject(e)
-        },
-      )
-    })
-  }
-
-  // If a connector gets stuck (some injected wallets never resolve/reject), don't let the UI hang forever.
-  useEffect(() => {
-    if (isPending) {
-      if (pendingSince === null) setPendingSince(Date.now())
-      return
-    }
-    setPendingSince(null)
-  }, [isPending, pendingSince])
-
-  useEffect(() => {
-    if (!isPending) return
-    if (pendingSince === null) return
-
-    const elapsed = Date.now() - pendingSince
-    if (elapsed < 20_000) return
-
-    // Reset the mutation state so the user can retry (and we can fall back to WalletConnect).
-    reset()
-    setConnectError('Timed out — click Connect Wallet again')
-    setPendingSince(null)
-  }, [isPending, pendingSince, reset])
-
-  async function connectBestEffort() {
+  const connectBestEffort = useCallback(async () => {
     if (!preferredConnector) return
     setConnectError(null)
 
     const ordered = uniqueConnectors([
       // Prefer Mini App connector inside Mini Apps.
       miniApp.isMiniApp ? miniAppConnector : null,
-      // Reliable fallback (QR).
-      !miniApp.isMiniApp ? walletConnectConnector : null,
-      // Rabby as explicit desktop extension option.
+      // Prefer Rabby when present on the open web.
       !miniApp.isMiniApp && isRabbyPresent ? rabbyConnector : null,
+      // Universal fallback (QR).
+      !miniApp.isMiniApp ? walletConnectConnector : null,
       preferredConnector,
       ...connectors,
     ])
@@ -161,21 +137,17 @@ function ConnectButtonWeb3Wagmi({ autoConnect = false }: { autoConnect?: boolean
     }
 
     setConnectError('Unable to connect with available wallets')
-  }
-
-  async function connectRabbyDirect() {
-    if (!rabbyConnector) return
-    setConnectError(null)
-    try {
-      await withTimeout(connectAsync({ connector: rabbyConnector }), 12_000)
-    } catch (e: unknown) {
-      const msg = e instanceof Error ? e.message : String(e)
-      const name = typeof (e as any)?.name === 'string' ? String((e as any).name) : ''
-      logger.warn('[ConnectButtonWeb3] rabby connect failed', { connector: { id: rabbyConnector.id, name: rabbyConnector.name }, name, msg })
-      reset()
-      setConnectError('Failed to connect with Rabby')
-    }
-  }
+  }, [
+    connectAsync,
+    connectors,
+    isRabbyPresent,
+    miniApp.isMiniApp,
+    miniAppConnector,
+    preferredConnector,
+    rabbyConnector,
+    reset,
+    walletConnectConnector,
+  ])
 
   // Best-effort: preserve a single "Connect Wallet" click when Web3 is lazily enabled.
   useEffect(() => {
@@ -184,10 +156,11 @@ function ConnectButtonWeb3Wagmi({ autoConnect = false }: { autoConnect?: boolean
     if (!preferredConnector) return
 
     // Re-attempt if the preferred connector changes (e.g. once Mini App detection resolves).
-    if (hasAutoConnected.current === preferredConnector.id) return
-    hasAutoConnected.current = preferredConnector.id
-    connect({ connector: preferredConnector })
-  }, [autoConnect, connect, isConnected, preferredConnector])
+    const key = `${String(preferredConnector.id)}:${miniApp.isMiniApp === true ? 'mini' : 'web'}:${isRabbyPresent ? 'rabby' : 'wc'}`
+    if (hasAutoConnected.current === key) return
+    hasAutoConnected.current = key
+    void connectBestEffort()
+  }, [autoConnect, connectBestEffort, isConnected, isRabbyPresent, miniApp.isMiniApp, preferredConnector])
 
   // Check if on wrong network
   const isWrongNetwork = isConnected && chain?.id !== base.id
@@ -386,35 +359,22 @@ function ConnectButtonWeb3Wagmi({ autoConnect = false }: { autoConnect?: boolean
 
   return (
     <div className="flex flex-col items-end gap-1">
-      <div className="flex items-center gap-2">
-        <button
-          type="button"
-          disabled={isPending || !preferredConnector}
-          onClick={() => void connectBestEffort()}
-          className="btn-accent disabled:opacity-50 flex items-center gap-2"
-          title={
-            connectError
-              ? connectError
-              : preferredConnector
-                ? `Connect with ${preferredConnector.name}`
-                : 'No wallet connector available'
-          }
-        >
-          <Wallet className="w-4 h-4" />
-          <span className="label">{isPending ? 'Connecting…' : 'Connect Wallet'}</span>
-        </button>
-        {isRabbyPresent && rabbyConnector && !miniApp.isMiniApp ? (
-          <button
-            type="button"
-            disabled={isPending}
-            onClick={() => void connectRabbyDirect()}
-            className="rounded-lg border border-zinc-800 bg-black/40 px-3 py-2 text-[11px] text-zinc-300 hover:text-white hover:border-zinc-700 transition-colors disabled:opacity-50"
-            title="Connect with Rabby"
-          >
-            Rabby
-          </button>
-        ) : null}
-      </div>
+      <button
+        type="button"
+        disabled={isPending || !preferredConnector}
+        onClick={() => void connectBestEffort()}
+        className="btn-accent disabled:opacity-50 flex items-center gap-2"
+        title={
+          connectError
+            ? connectError
+            : preferredConnector
+              ? `Connect with ${preferredConnector.name}`
+              : 'No wallet connector available'
+        }
+      >
+        <Wallet className="w-4 h-4" />
+        <span className="label">{isPending ? 'Connecting…' : 'Connect Wallet'}</span>
+      </button>
       {connectError ? <div className="text-[10px] text-zinc-500">{connectError}</div> : null}
     </div>
   )
