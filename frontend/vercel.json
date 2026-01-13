@@ -6,14 +6,32 @@
   "outputDirectory": "dist",
   "headers": [
     {
+      "source": "/assets/(.*)",
+      "headers": [{ "key": "Cache-Control", "value": "public, max-age=31536000, immutable" }]
+    },
+    {
+      "source": "/",
+      "headers": [{ "key": "Cache-Control", "value": "no-store" }]
+    },
+    {
+      "source": "/index.html",
+      "headers": [{ "key": "Cache-Control", "value": "no-store" }]
+    },
+    {
+      "source": "/manifest.json",
+      "headers": [{ "key": "Cache-Control", "value": "no-store" }]
+    },
+    {
       "source": "/.well-known/farcaster.json",
       "headers": [{ "key": "Cache-Control", "value": "no-store" }]
     }
   ],
-  "rewrites": [
-    {
-      "source": "/(.*)",
-      "destination": "/index.html"
-    }
+  "routes": [
+    { "src": "/api/(.*)", "dest": "/api/$1" },
+    { "handle": "filesystem" },
+    // If a hashed asset is missing (stale HTML), do NOT serve index.html (text/html) for it.
+    // Returning a 404 prevents "module script got text/html" and works with our reload-on-preloadError guard.
+    { "src": "/assets/(.*)", "status": 404 },
+    { "src": "/(.*)", "dest": "/index.html" }
   ]
 }

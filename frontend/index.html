@@ -15,6 +15,49 @@
     <meta name="description" content="Deposit creator coins into vaults. Earn from trading fees. Everyone earns together." />
     <meta name="base:app_id" content="695a49dc4d3a403912ed8ca5" />
     <meta name="fc:miniapp" content='{"version":"1","imageUrl":"https://erc4626.fun/miniapp-hero.png","button":{"title":"Open","action":{"type":"launch_miniapp","name":"Creator Vaults","url":"https://erc4626.fun"}}}' />
+    <script>
+      ;(() => {
+        // Stale-chunk recovery:
+        // When a user has an old cached HTML that references old hashed assets, module imports can fail with
+        // "Expected a JavaScript module but got text/html" (because the SPA fallback serves index.html).
+        // Reload once with a cache-buster so the browser fetches the latest HTML + asset graph.
+        const host = window.location.hostname
+        if (host === 'localhost' || host === '127.0.0.1') return
+
+        const KEY = 'cv:reload-on-chunk-fail:v1'
+        function reloadOnce() {
+          try {
+            if (sessionStorage.getItem(KEY)) return
+            sessionStorage.setItem(KEY, '1')
+          } catch {
+            // ignore
+          }
+
+          try {
+            const url = new URL(window.location.href)
+            url.searchParams.set('_r', Date.now().toString(36))
+            window.location.replace(url.toString())
+          } catch {
+            window.location.reload()
+          }
+        }
+
+        // Vite dispatches this event when modulepreload fails.
+        window.addEventListener('vite:preloadError', () => reloadOnce())
+
+        // Generic safety net for browsers that don't emit the preload event.
+        window.addEventListener('unhandledrejection', (event) => {
+          const msg = String((event && event.reason && (event.reason.message || event.reason)) || '')
+          if (
+            msg.includes('Failed to fetch dynamically imported module') ||
+            msg.includes('Importing a module script failed') ||
+            msg.includes('Expected a JavaScript-or-Wasm module script')
+          ) {
+            reloadOnce()
+          }
+        })
+      })()
+    </script>
     <script type="module">
       // Farcaster/Base Mini App: signal "ready" ASAP so Base Preview can validate it.
       // Outside a Mini App this safely no-ops (promise rejects).
