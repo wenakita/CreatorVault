@@ -64,8 +64,19 @@ export async function getDb(): Promise<DbPool | null> {
         try {
           if (typeof createPool === 'function') {
             const pool = createPool({ connectionString: cs })
-            cachedDb = pool
-            return cachedDb
+            // Some drivers only surface "invalid_connection_string" on first query.
+            // If this happens, fall back to createClient() below.
+            try {
+              await pool.sql`SELECT 1;`
+              cachedDb = pool
+              return cachedDb
+            } catch (e: any) {
+              const msg = e?.message ? String(e.message) : ''
+              const isDirectOnly =
+                msg.toLowerCase().includes('invalid_connection_string') && msg.toLowerCase().includes('direct connection')
+              if (!isDirectOnly) throw e
+              console.warn('Pool connection string appears to be direct-only; falling back to createClient')
+            }
           }
         } catch (e: any) {
           const msg = e?.message ? String(e.message) : ''
