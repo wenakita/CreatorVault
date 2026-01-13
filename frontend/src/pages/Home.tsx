@@ -101,35 +101,10 @@ export function Home() {
                 <span className="text-uniswap">Uniswap</span>
               </div>
               <p className="text-zinc-500 text-lg font-light leading-relaxed">
-                A simple launch flow that turns your creator coin into a vault that can earn from market activity.
+                Minimum deposit is <span className="font-mono text-zinc-200">50,000,000 TOKEN</span>. In the default launch,
+                this mints <span className="font-mono text-brand-primary">50,000,000 {SHARE_TOKEN}</span> and runs a{' '}
+                <span className="text-uniswap">Uniswap CCA</span> auction before the vault deploys the deposit across strategies.
               </p>
-
-              <div className="space-y-4">
-                <div className="text-[10px] uppercase tracking-[0.2em] text-zinc-600">How it works</div>
-                <ol className="space-y-3 text-sm text-zinc-600 font-light leading-relaxed">
-                  <li className="flex gap-3">
-                    <span className="mt-0.5 font-mono text-brand-primary">1</span>
-                    <span>
-                      Deposit <span className="font-mono text-zinc-200">50,000,000 TOKEN</span> (minimum) to initialize the vault and mint{' '}
-                      <span className="font-mono text-brand-primary">50,000,000 {SHARE_TOKEN}</span>.
-                    </span>
-                  </li>
-                  <li className="flex gap-3">
-                    <span className="mt-0.5 font-mono text-brand-primary">2</span>
-                    <span>
-                      <span className="font-mono text-brand-primary">25,000,000 {SHARE_TOKEN}</span> is auctioned via{' '}
-                      <span className="text-uniswap">Uniswap CCA</span>, and{' '}
-                      <span className="font-mono text-brand-primary">25,000,000 {SHARE_TOKEN}</span> goes to the creator.
-                    </span>
-                  </li>
-                  <li className="flex gap-3">
-                    <span className="mt-0.5 font-mono text-brand-primary">3</span>
-                    <span>
-                      The deposited <span className="font-mono text-zinc-200">50,000,000 TOKEN</span> stays in the vault and is deployed across strategies.
-                    </span>
-                  </li>
-                </ol>
-              </div>
               <Link to="/launch" className="btn-accent inline-block">
                 Create Vault <ArrowRight className="w-4 h-4 inline ml-2" />
               </Link>
@@ -142,21 +117,36 @@ export function Home() {
               transition={{ duration: 0.8, delay: 0.4 }}
               className="space-y-0"
             >
-              <div className="data-row">
-                <span className="label">CCA Duration</span>
-                <div className="value mono">7 Days</div>
-              </div>
-              <div className="data-row">
-                <span className="label">Min Deposit</span>
-                <div className="value mono">50,000,000 TOKEN</div>
-              </div>
-              <div className="data-row">
-                <span className="label">Minted</span>
-                <div className="value mono text-brand-primary">{`50,000,000 ${SHARE_TOKEN}`}</div>
-              </div>
-              <div className="data-row border-none">
-                <span className="label">Fair Launch</span>
-                <div className="value mono text-uniswap drop-shadow-[0_0_20px_rgba(255,0,122,0.35)]">100%</div>
+              <div className="rounded-2xl border border-zinc-900/70 bg-black/30 backdrop-blur-sm p-6">
+                <div className="text-[10px] uppercase tracking-[0.2em] text-zinc-600">Default launch mechanics</div>
+
+                <div className="mt-6 space-y-0">
+                  <div className="data-row">
+                    <span className="label">Minimum deposit</span>
+                    <div className="value mono">50,000,000 TOKEN</div>
+                  </div>
+                  <div className="data-row">
+                    <span className="label">Minted shares</span>
+                    <div className="value mono text-brand-primary">{`50,000,000 ${SHARE_TOKEN}`}</div>
+                  </div>
+                  <div className="data-row">
+                    <span className="label">Uniswap CCA auction</span>
+                    <div className="value mono">25,000,000 {SHARE_TOKEN}</div>
+                  </div>
+                  <div className="data-row">
+                    <span className="label">Creator allocation</span>
+                    <div className="value mono">25,000,000 {SHARE_TOKEN}</div>
+                  </div>
+                  <div className="data-row border-none">
+                    <span className="label">Fair Launch</span>
+                    <div className="value mono text-uniswap drop-shadow-[0_0_20px_rgba(255,0,122,0.35)]">100%</div>
+                  </div>
+                </div>
+
+                <div className="mt-4 text-xs text-zinc-600 font-light">
+                  <span className="font-mono text-zinc-400">TOKEN</span> = creator coin ·{' '}
+                  <span className="font-mono text-zinc-400">{SHARE_TOKEN}</span> = vault share token
+                </div>
               </div>
             </motion.div>
           </div>
@@ -174,7 +164,7 @@ export function Home() {
             className="mb-20"
           >
             <span className="label">Vault Strategies</span>
-            <h2 className="headline text-5xl mt-6">How the vault earns</h2>
+            <h2 className="headline text-5xl mt-6">Deploy across on-chain strategies</h2>
             <p className="text-zinc-600 text-sm font-light max-w-xl mt-4">
               Deployed across liquidity, lending, and a reserve—designed to capture fees and yield.
             </p>
