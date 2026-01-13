@@ -11,7 +11,7 @@ import { logger } from '@/lib/logger'
 
 function ConnectButtonWeb3Wagmi({ autoConnect = false }: { autoConnect?: boolean }) {
   const { address, isConnected, chain } = useAccount()
-  const { connect, connectAsync, connectors, isPending } = useConnect()
+  const { connect, connectAsync, connectors, isPending, reset } = useConnect()
   const { disconnect } = useDisconnect()
   const { switchChain } = useSwitchChain()
   const { signMessageAsync } = useSignMessage()
@@ -19,6 +19,7 @@ function ConnectButtonWeb3Wagmi({ autoConnect = false }: { autoConnect?: boolean
   const [showMenu, setShowMenu] = useState(false)
   const [copied, setCopied] = useState(false)
   const [connectError, setConnectError] = useState<string | null>(null)
+  const [pendingSince, setPendingSince] = useState<number | null>(null)
   const [authAddress, setAuthAddress] = useState<string | null>(null)
   const [authBusy, setAuthBusy] = useState(false)
   const [authError, setAuthError] = useState<string | null>(null)
@@ -60,6 +61,44 @@ function ConnectButtonWeb3Wagmi({ autoConnect = false }: { autoConnect?: boolean
     return out
   }
 
+  function withTimeout<T>(p: Promise<T>, ms: number): Promise<T> {
+    return new Promise((resolve, reject) => {
+      const t = setTimeout(() => reject(new Error('timeout')), ms)
+      p.then(
+        (v) => {
+          clearTimeout(t)
+          resolve(v)
+        },
+        (e) => {
+          clearTimeout(t)
+          reject(e)
+        },
+      )
+    })
+  }
+
+  // If a connector gets stuck (some injected wallets never resolve/reject), don't let the UI hang forever.
+  useEffect(() => {
+    if (isPending) {
+      if (pendingSince === null) setPendingSince(Date.now())
+      return
+    }
+    setPendingSince(null)
+  }, [isPending, pendingSince])
+
+  useEffect(() => {
+    if (!isPending) return
+    if (pendingSince === null) return
+
+    const elapsed = Date.now() - pendingSince
+    if (elapsed < 20_000) return
+
+    // Reset the mutation state so the user can retry (and we can fall back to WalletConnect).
+    reset()
+    setConnectError('Timed out — click Connect Wallet again')
+    setPendingSince(null)
+  }, [isPending, pendingSince, reset])
+
   async function connectBestEffort() {
     if (!preferredConnector) return
     setConnectError(null)
@@ -78,17 +117,39 @@ function ConnectButtonWeb3Wagmi({ autoConnect = false }: { autoConnect?: boolean
 
     for (const c of ordered) {
       try {
-        await connectAsync({ connector: c })
+        const id = String(c.id ?? '')
+
+        // Wallet UX nuance:
+        // - Injected wallets may "hang" if the extension/provider is in a bad state.
+        //   In that case we want to auto-fallback to WalletConnect instead of staying "Connecting…" forever.
+        const timeoutMs =
+          !miniApp.isMiniApp && id === 'injected'
+            ? 12_000
+            : // WalletConnect often requires user action (scan QR / confirm) so give it more time.
+              !miniApp.isMiniApp && id.toLowerCase().includes('walletconnect')
+              ? 90_000
+              : 30_000
+
+        await withTimeout(connectAsync({ connector: c }), timeoutMs)
         return
       } catch (e: unknown) {
         const msg = e instanceof Error ? e.message : String(e)
         const name = typeof (e as any)?.name === 'string' ? String((e as any).name) : ''
         logger.warn('[ConnectButtonWeb3] connect failed', { connector: { id: c.id, name: c.name }, name, msg })
 
+        // Reset mutation state so we can attempt the next connector immediately.
+        reset()
+
         // If the user explicitly rejected the request, don't immediately open another modal.
         if (name.toLowerCase().includes('userrejected') || msg.toLowerCase().includes('user rejected')) {
           setConnectError('Connection rejected')
           return
+        }
+
+        // Timeouts should fall through to try the next connector (usually WalletConnect).
+        if (msg.toLowerCase().includes('timeout')) {
+          setConnectError('No wallet response — trying another method…')
+          continue
         }
 
         // Try next connector.
