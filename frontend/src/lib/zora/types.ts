@@ -93,6 +93,12 @@ export type ZoraProfile = {
   bio?: string
   username?: string
   website?: string
+  socialAccounts?: {
+    twitter?: { username?: string; displayName?: string; followerCount?: number; id?: string | null } | null
+    farcaster?: { username?: string; displayName?: string; followerCount?: number; id?: string | null } | null
+    instagram?: { username?: string; displayName?: string; followerCount?: number; id?: string | null } | null
+    tiktok?: { username?: string; displayName?: string; followerCount?: number; id?: string | null } | null
+  } | null
   avatar?: {
     small?: string
     medium?: string

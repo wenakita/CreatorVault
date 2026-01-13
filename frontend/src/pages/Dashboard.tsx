@@ -15,7 +15,7 @@ import { useDexscreenerTokenStatsBatch } from '@/lib/dexscreener/hooks'
 import type { DexscreenerTokenStats } from '@/lib/dexscreener/client'
 import { computeCreatorScore } from '@/lib/reputation/creatorScore'
 import { getTalentSocials, type CreatorSocials } from '@/lib/talent-api'
-import { useZoraCoin, useZoraExplore, useZoraTopCreators } from '@/lib/zora/hooks'
+import { useZoraExplore, useZoraProfile, useZoraTopCreators } from '@/lib/zora/hooks'
 import type { ZoraCoin } from '@/lib/zora/types'
 
 const TikTokIcon = ({ className }: { className?: string }) => (
@@ -242,7 +242,8 @@ function ZoraCoinRow({
   const image = coin.mediaContent?.previewImage?.medium || coin.mediaContent?.previewImage?.small
   const symbol = coin.symbol ? String(coin.symbol) : 'COIN'
   const name = coin.name ? String(coin.name) : symbol
-  const creatorHandle = coin.creatorProfile?.handle ? `@${coin.creatorProfile.handle}` : null
+  const creatorHandleRaw = coin.creatorProfile?.handle ? String(coin.creatorProfile.handle) : null
+  const creatorHandle = creatorHandleRaw ? `@${creatorHandleRaw}` : null
   const creatorAddr = coin.creatorAddress ? String(coin.creatorAddress) : undefined
   const creatorLabel = creatorHandle ?? shortAddress(creatorAddr) ?? null
 
@@ -311,36 +312,79 @@ function ZoraCoinRow({
   const mediaMime = coin.mediaContent?.mimeType ? String(coin.mediaContent.mimeType).toLowerCase() : ''
   const isVideoContent = isContentCoin && mediaMime.startsWith('video/')
 
-  const coinAddr = (() => {
-    const raw = coin.address ? String(coin.address) : ''
-    return raw && isAddress(raw) ? (raw as Address) : null
-  })()
-
   const creatorAddrFromList = creatorAddr && isAddress(creatorAddr) ? creatorAddr : null
-  const [socialsOpen, setSocialsOpen] = useState(false)
+  const creatorAddrLc = creatorAddrFromList ? creatorAddrFromList.toLowerCase() : null
 
-  const shouldResolveCreator = socialsOpen && !creatorAddrFromList && Boolean(coinAddr)
-  const { data: zoraCoinDetails, isFetching: zoraCoinFetching } = useZoraCoin(
-    shouldResolveCreator ? (coinAddr as Address) : undefined,
-  )
+  const zoraProfileIdentifier =
+    creatorHandleRaw && creatorHandleRaw.trim().length > 0 ? creatorHandleRaw.trim() : creatorAddrFromList ?? undefined
 
-  const resolvedCreatorAddress = (() => {
-    if (creatorAddrFromList) return creatorAddrFromList
-    const c = zoraCoinDetails ?? null
-    const candidates = [c?.creatorAddress, c?.payoutRecipientAddress]
-    for (const v of candidates) {
-      const raw = v ? String(v) : ''
-      if (raw && isAddress(raw)) return raw
+  const { data: zoraProfile, isFetching: zoraProfileFetching } = useZoraProfile(zoraProfileIdentifier)
+
+  function fmtFollowersCount(n?: number | null): string | null {
+    if (typeof n !== 'number' || !Number.isFinite(n) || n <= 0) return null
+    try {
+      return Intl.NumberFormat('en-US', { notation: 'compact', maximumFractionDigits: 1 }).format(n)
+    } catch {
+      return Intl.NumberFormat('en-US', { maximumFractionDigits: 0 }).format(n)
     }
-    return null
+  }
+
+  function socialUrl(kind: 'twitter' | 'farcaster' | 'instagram' | 'tiktok', username: string): string {
+    const u = String(username || '').replace(/^@/, '').trim()
+    if (!u) return ''
+    if (kind === 'twitter') return `https://x.com/${u}`
+    if (kind === 'farcaster') return `https://warpcast.com/${u}`
+    if (kind === 'instagram') return `https://instagram.com/${u}`
+    return `https://www.tiktok.com/@${u}`
+  }
+
+  const zoraSocialItems = (() => {
+    const accounts = zoraProfile?.socialAccounts ?? null
+    if (!accounts) return []
+
+    const items: Array<{ key: string; url: string; title: string; icon: JSX.Element }> = []
+    const iconClassName = 'h-3.5 w-3.5'
+
+    const push = (kind: 'twitter' | 'farcaster' | 'instagram' | 'tiktok') => {
+      const account = (accounts as any)?.[kind] ?? null
+      const username = typeof account?.username === 'string' ? account.username : ''
+      const url = socialUrl(kind, username)
+      if (!url) return
+      const followers = fmtFollowersCount(typeof account?.followerCount === 'number' ? account.followerCount : null)
+      const titleBase =
+        kind === 'twitter' ? 'Twitter' : kind === 'farcaster' ? 'Farcaster' : kind === 'instagram' ? 'Instagram' : 'TikTok'
+      const title = followers ? `${titleBase} · ${followers} followers` : titleBase
+
+      items.push({
+        key: kind,
+        url,
+        title,
+        icon:
+          kind === 'twitter' ? (
+            <Twitter className={iconClassName} />
+          ) : kind === 'farcaster' ? (
+            <FarcasterIcon className={iconClassName} />
+          ) : kind === 'instagram' ? (
+            <Instagram className={iconClassName} />
+          ) : (
+            <TikTokIcon className={iconClassName} />
+          ),
+      })
+    }
+
+    push('farcaster')
+    push('twitter')
+    push('instagram')
+    push('tiktok')
+
+    return items
   })()
 
-  const creatorAddrLc = resolvedCreatorAddress ? resolvedCreatorAddress.toLowerCase() : null
-
-  const { data: talentSocials, isFetching: socialsFetching } = useQuery({
+  // Fallback to Talent if Zora profile doesn't have socials for this creator.
+  const { data: talentSocials } = useQuery({
     queryKey: ['talent', 'socials', creatorAddrLc],
     queryFn: async () => getTalentSocials(creatorAddrLc as string),
-    enabled: socialsOpen && Boolean(creatorAddrLc),
+    enabled: !zoraProfileFetching && zoraSocialItems.length === 0 && Boolean(creatorAddrLc),
     staleTime: 1000 * 60 * 60, // 1h
   })
 
@@ -354,39 +398,22 @@ function ZoraCoinRow({
   }
 
   const socialButtons = (() => {
-    if (!socialsOpen) return null
-    const socials: CreatorSocials | null = talentSocials ?? null
-    if (!socials) return null
-    const iconClassName = 'h-3.5 w-3.5'
-    const items: Array<{ key: string; url: string; title: string; icon: JSX.Element }> = []
-    if (typeof socials.farcaster === 'string' && socials.farcaster.trim().length > 0)
-      items.push({
-        key: 'farcaster',
-        url: socials.farcaster,
-        title: 'Farcaster',
-        icon: <FarcasterIcon className={iconClassName} />,
-      })
-    if (typeof socials.twitter === 'string' && socials.twitter.trim().length > 0)
-      items.push({
-        key: 'twitter',
-        url: socials.twitter,
-        title: 'Twitter',
-        icon: <Twitter className={iconClassName} />,
-      })
-    if (typeof socials.instagram === 'string' && socials.instagram.trim().length > 0)
-      items.push({
-        key: 'instagram',
-        url: socials.instagram,
-        title: 'Instagram',
-        icon: <Instagram className={iconClassName} />,
-      })
-    if (typeof socials.tiktok === 'string' && socials.tiktok.trim().length > 0)
-      items.push({
-        key: 'tiktok',
-        url: socials.tiktok,
-        title: 'TikTok',
-        icon: <TikTokIcon className={iconClassName} />,
-      })
+    const items: Array<{ key: string; url: string; title: string; icon: JSX.Element }> = [...zoraSocialItems]
+
+    if (items.length === 0) {
+      const socials: CreatorSocials | null = talentSocials ?? null
+      if (socials) {
+        const iconClassName = 'h-3.5 w-3.5'
+        if (typeof socials.farcaster === 'string' && socials.farcaster.trim().length > 0)
+          items.push({ key: 'farcaster', url: socials.farcaster, title: 'Farcaster', icon: <FarcasterIcon className={iconClassName} /> })
+        if (typeof socials.twitter === 'string' && socials.twitter.trim().length > 0)
+          items.push({ key: 'twitter', url: socials.twitter, title: 'Twitter', icon: <Twitter className={iconClassName} /> })
+        if (typeof socials.instagram === 'string' && socials.instagram.trim().length > 0)
+          items.push({ key: 'instagram', url: socials.instagram, title: 'Instagram', icon: <Instagram className={iconClassName} /> })
+        if (typeof socials.tiktok === 'string' && socials.tiktok.trim().length > 0)
+          items.push({ key: 'tiktok', url: socials.tiktok, title: 'TikTok', icon: <TikTokIcon className={iconClassName} /> })
+      }
+    }
 
     if (items.length === 0) return null
 
@@ -411,25 +438,6 @@ function ZoraCoinRow({
       </div>
     )
   })()
-
-  const canToggleSocials = Boolean(creatorAddrFromList || coinAddr)
-  const socialToggle = canToggleSocials ? (
-    <button
-      type="button"
-      onClick={(e) => {
-        e.preventDefault()
-        e.stopPropagation()
-        setSocialsOpen((v) => !v)
-      }}
-      className={`hidden sm:inline-flex h-7 w-7 rounded-full border border-white/10 bg-black/20 text-[10px] font-mono uppercase tracking-[0.12em] text-zinc-500 hover:text-zinc-200 hover:border-white/20 transition-opacity flex items-center justify-center ${
-        socialsOpen ? 'opacity-100' : 'opacity-60'
-      }`}
-      title={socialsOpen ? 'Hide socials' : 'Show socials'}
-      aria-label={socialsOpen ? 'Hide socials' : 'Show socials'}
-    >
-      {socialsOpen && (socialsFetching || zoraCoinFetching) ? '…' : '@'}
-    </button>
-  ) : null
 
   const volPct =
     analytics && analytics.maxVolume24h > 0 && Number.isFinite(volumeWindow)
@@ -557,7 +565,6 @@ function ZoraCoinRow({
                     {symbolDisplay}
                   </div>
                 ) : null}
-                {socialToggle}
                 {socialButtons}
                 {canTrade ? (
                   <button
