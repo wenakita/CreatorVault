@@ -1,6 +1,9 @@
 import { Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { ArrowRight } from 'lucide-react'
+import { SHARE_SYMBOL_PREFIX } from '@/lib/tokenSymbols'
+
+const SHARE_TOKEN = `${SHARE_SYMBOL_PREFIX}TOKEN`
 
 export function Home() {
   return (
@@ -98,8 +101,35 @@ export function Home() {
                 <span className="text-uniswap">Uniswap</span>
               </div>
               <p className="text-zinc-500 text-lg font-light leading-relaxed">
-                Create a vault for your coin, run a fair CCA auction, and start earning with your community
+                A simple launch flow that turns your creator coin into a vault that can earn from market activity.
               </p>
+
+              <div className="space-y-4">
+                <div className="text-[10px] uppercase tracking-[0.2em] text-zinc-600">How it works</div>
+                <ol className="space-y-3 text-sm text-zinc-600 font-light leading-relaxed">
+                  <li className="flex gap-3">
+                    <span className="mt-0.5 font-mono text-brand-primary">1</span>
+                    <span>
+                      Deposit <span className="font-mono text-zinc-200">50,000,000 TOKEN</span> (minimum) to initialize the vault and mint{' '}
+                      <span className="font-mono text-brand-primary">50,000,000 {SHARE_TOKEN}</span>.
+                    </span>
+                  </li>
+                  <li className="flex gap-3">
+                    <span className="mt-0.5 font-mono text-brand-primary">2</span>
+                    <span>
+                      <span className="font-mono text-brand-primary">25,000,000 {SHARE_TOKEN}</span> is auctioned via{' '}
+                      <span className="text-uniswap">Uniswap CCA</span>, and{' '}
+                      <span className="font-mono text-brand-primary">25,000,000 {SHARE_TOKEN}</span> goes to the creator.
+                    </span>
+                  </li>
+                  <li className="flex gap-3">
+                    <span className="mt-0.5 font-mono text-brand-primary">3</span>
+                    <span>
+                      The deposited <span className="font-mono text-zinc-200">50,000,000 TOKEN</span> stays in the vault and is deployed across strategies.
+                    </span>
+                  </li>
+                </ol>
+              </div>
               <Link to="/launch" className="btn-accent inline-block">
                 Create Vault <ArrowRight className="w-4 h-4 inline ml-2" />
               </Link>
@@ -118,7 +148,11 @@ export function Home() {
               </div>
               <div className="data-row">
                 <span className="label">Min Deposit</span>
-                <div className="value mono">50M Tokens</div>
+                <div className="value mono">50,000,000 TOKEN</div>
+              </div>
+              <div className="data-row">
+                <span className="label">Minted</span>
+                <div className="value mono text-brand-primary">{`50,000,000 ${SHARE_TOKEN}`}</div>
               </div>
               <div className="data-row border-none">
                 <span className="label">Fair Launch</span>
@@ -139,8 +173,11 @@ export function Home() {
             transition={{ duration: 0.8 }}
             className="mb-20"
           >
-            <span className="label">Multi-Strategy Allocation</span>
-            <h2 className="headline text-5xl mt-6">Automated Yield</h2>
+            <span className="label">Vault Strategies</span>
+            <h2 className="headline text-5xl mt-6">How the vault earns</h2>
+            <p className="text-zinc-600 text-sm font-light max-w-xl mt-4">
+              Deployed across liquidity, lending, and a reserve—designed to capture fees and yield.
+            </p>
           </motion.div>
 
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-px bg-zinc-900">
@@ -194,9 +231,9 @@ export function Home() {
             className="space-y-6"
           >
             <span className="label">FAQ</span>
-            <h2 className="headline text-5xl mt-2">Want the details?</h2>
+            <h2 className="headline text-5xl mt-2">See the full walkthrough</h2>
             <p className="text-zinc-600 text-sm font-light max-w-xl">
-              Read the step-by-step “How it works” walkthrough.
+              Minimum deposit → Uniswap CCA → vault strategies.
             </p>
             <div>
               <Link to="/faq/how-it-works" className="btn-primary inline-block">
