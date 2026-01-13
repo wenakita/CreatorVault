@@ -1,7 +1,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 
 import { type ApiEnvelope, handleOptions, setCors, setNoStore } from '../auth/_shared.js'
-import { db, isDbConfigured, ensureCreatorAccessSchema } from '../_lib/postgres.js'
+import { ensureCreatorAccessSchema, getDb, getDbInitError, isDbConfigured } from '../_lib/postgres.js'
 
 type DebugResponse = {
   ok: boolean
@@ -26,10 +26,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(405).json({ success: false, error: 'Method not allowed' } satisfies ApiEnvelope<never>)
   }
 
-  if (!isDbConfigured() || !db) {
+  const db = isDbConfigured() ? await getDb() : null
+  if (!db) {
     return res.status(500).json({
       success: false,
-      error: 'Database not configured',
+      error: getDbInitError() || 'Database not configured',
     } satisfies ApiEnvelope<never>)
   }
 

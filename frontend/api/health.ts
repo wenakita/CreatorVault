@@ -1,7 +1,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 
 import { type ApiEnvelope, handleOptions, setCors, setNoStore } from './auth/_shared.js'
-import { db, isDbConfigured } from './_lib/postgres.js'
+import { getDb, getDbInitError, isDbConfigured } from './_lib/postgres.js'
 
 declare const process: { env: Record<string, string | undefined> }
 
@@ -21,8 +21,11 @@ type HealthResponse = {
   }
 }
 
-async function checkDb(): Promise<{ ok: boolean; latencyMs: number | null; error: string | null }> {
-  if (!db) return { ok: false, latencyMs: null, error: 'Database not configured' }
+async function checkDb(db: { sql: (strings: TemplateStringsArray, ...values: any[]) => Promise<any> }): Promise<{
+  ok: boolean
+  latencyMs: number | null
+  error: string | null
+}> {
   const start = Date.now()
   try {
     await db.sql`SELECT 1;`
@@ -43,14 +46,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   const dbConfigured = isDbConfigured()
-  const dbStatus = dbConfigured ? await checkDb() : { ok: false, latencyMs: null, error: 'Database not configured' }
+  const db = await getDb()
+  const dbStatus = db
+    ? await checkDb(db)
+    : { ok: false, latencyMs: null, error: getDbInitError() || 'Database not configured' }
 
   const supabaseUrl = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL || ''
   const supabaseAnon = process.env.VITE_SUPABASE_ANON_KEY || ''
   const supabaseServiceRole = process.env.SUPABASE_SERVICE_ROLE_KEY || ''
 
   const data: HealthResponse = {
-    ok: dbConfigured ? dbStatus.ok : false,
+    ok: Boolean(db) ? dbStatus.ok : false,
     time: new Date().toISOString(),
     db: {
       configured: dbConfigured,

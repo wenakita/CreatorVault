@@ -1,7 +1,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 
 import { type ApiEnvelope, handleOptions, readJsonBody, setCors, setNoStore } from '../../auth/_shared.js'
-import { db, isDbConfigured } from '../../_lib/postgres.js'
+import { getDb, isDbConfigured } from '../../_lib/postgres.js'
 import { getSupabaseAdmin, isSupabaseAdminConfigured } from '../../_lib/supabaseAdmin.js'
 import { getSessionAddress, isAdminAddress } from '../../_lib/session.js'
 
@@ -75,7 +75,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
   }
 
-  if (!isDbConfigured() || !db) {
+  const db = isDbConfigured() ? await getDb() : null
+  if (!db) {
     return res.status(500).json({ success: false, error: 'Database not configured' } satisfies ApiEnvelope<never>)
   }
 

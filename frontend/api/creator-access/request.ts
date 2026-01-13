@@ -7,7 +7,7 @@ import {
   setCors,
   setNoStore,
 } from '../auth/_shared.js'
-import { db, ensureCreatorAccessSchema, isDbConfigured } from '../_lib/postgres.js'
+import { ensureCreatorAccessSchema, getDb, isDbConfigured } from '../_lib/postgres.js'
 import { getSessionAddress } from '../_lib/session.js'
 
 type RequestBody = {
@@ -38,7 +38,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(401).json({ success: false, error: 'Sign in required' } satisfies ApiEnvelope<never>)
   }
 
-  if (!isDbConfigured() || !db) {
+  const db = isDbConfigured() ? await getDb() : null
+  if (!db) {
     return res.status(500).json({ success: false, error: 'Database not configured' } satisfies ApiEnvelope<never>)
   }
 

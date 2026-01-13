@@ -1,7 +1,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 
 import { type ApiEnvelope, handleOptions, setCors, setNoStore } from './auth/_shared.js'
-import { db, ensureCreatorAccessSchema, isDbConfigured } from './_lib/postgres.js'
+import { ensureCreatorAccessSchema, getDb, getDbInitError, isDbConfigured } from './_lib/postgres.js'
 
 declare const process: { env: Record<string, string | undefined> }
 
@@ -74,8 +74,10 @@ async function resolveCoinParties(coin: `0x${string}`): Promise<{ creator: `0x${
   }
 }
 
-async function dbIsAllowlisted(addresses: string[]): Promise<boolean> {
-  if (!db) return false
+async function dbIsAllowlisted(
+  db: { sql: (strings: TemplateStringsArray, ...values: any[]) => Promise<{ rows: any[] }> },
+  addresses: string[],
+): Promise<boolean> {
   if (addresses.length === 0) return false
   await ensureCreatorAccessSchema()
 
@@ -114,8 +116,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (payoutRecipient) addressesToCheck.push(payoutRecipient)
 
   if (isDbConfigured()) {
+    const db = await getDb()
+    if (!db) {
+      return res
+        .status(503)
+        .json({ success: false, error: getDbInitError() || 'Database unavailable' } satisfies ApiEnvelope<never>)
+    }
     const mode: AllowlistMode = 'enforced'
-    const allowed = await dbIsAllowlisted(addressesToCheck)
+    const allowed = await dbIsAllowlisted(db, addressesToCheck)
     return res.status(200).json({
       success: true,
       data: {

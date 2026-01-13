@@ -1,7 +1,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 
 import { type ApiEnvelope, handleOptions, setCors, setNoStore } from '../auth/_shared.js'
-import { db, ensureCreatorAccessSchema, isDbConfigured } from '../_lib/postgres.js'
+import { ensureCreatorAccessSchema, getDb, isDbConfigured } from '../_lib/postgres.js'
 import { getSessionAddress } from '../_lib/session.js'
 
 type CreatorAccessStatus =
@@ -35,7 +35,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(200).json({ success: true, data: null } satisfies ApiEnvelope<CreatorAccessStatus>)
   }
 
-  if (!isDbConfigured() || !db) {
+  const db = isDbConfigured() ? await getDb() : null
+  if (!db) {
     return res.status(200).json({
       success: true,
       data: { address: sessionAddress, approved: false, request: null } satisfies Exclude<CreatorAccessStatus, null>,

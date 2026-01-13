@@ -1,5 +1,3 @@
-import { createPool } from '@vercel/postgres'
-
 declare const process: { env: Record<string, string | undefined> }
 
 function isProbablyPostgresUrl(value: string | null | undefined): boolean {
@@ -22,26 +20,62 @@ function getConnectionString(): string | null {
   return null
 }
 
-const connectionString = getConnectionString()
+type DbPool = { sql: (strings: TemplateStringsArray, ...values: any[]) => Promise<{ rows: any[] }> }
 
-let pool: ReturnType<typeof createPool> | null = null
-try {
-  pool = connectionString ? createPool({ connectionString }) : null
-} catch (err) {
-  // Don't crash the whole function bundle if a misconfigured env var sneaks in.
-  console.error('Failed to initialize Postgres pool', err)
-  pool = null
+let cachedDb: DbPool | null = null
+let initError: string | null = null
+let initPromise: Promise<DbPool | null> | null = null
+
+/**
+ * Returns true if a Postgres connection string appears to be configured in env.
+ * Note: this doesn't guarantee connectivity.
+ */
+export function isDbConfigured(): boolean {
+  return Boolean(getConnectionString())
 }
 
-export const db = pool
+export function getDbInitError(): string | null {
+  return initError
+}
 
-export function isDbConfigured(): boolean {
-  return db !== null
+export async function getDb(): Promise<DbPool | null> {
+  if (cachedDb) return cachedDb
+  if (initError) return null
+  const connectionString = getConnectionString()
+  if (!connectionString) return null
+
+  if (!initPromise) {
+    initPromise = (async () => {
+      try {
+        const mod: any = await import('@vercel/postgres')
+        const createPool: any = mod?.createPool
+        if (typeof createPool !== 'function') {
+          initError = 'Missing createPool export from @vercel/postgres'
+          return null
+        }
+
+        // Re-read env at init time (still deterministic in serverless).
+        const cs = getConnectionString()
+        if (!cs) return null
+
+        const pool = createPool({ connectionString: cs })
+        cachedDb = pool
+        return cachedDb
+      } catch (err) {
+        initError = err instanceof Error ? err.message : 'Failed to initialize Postgres pool'
+        console.error('Failed to initialize Postgres pool', err)
+        return null
+      }
+    })()
+  }
+
+  return await initPromise
 }
 
 let creatorAccessSchemaEnsured = false
 
 export async function ensureCreatorAccessSchema(): Promise<void> {
+  const db = await getDb()
   if (!db) return
   if (creatorAccessSchemaEnsured) return
   creatorAccessSchemaEnsured = true
