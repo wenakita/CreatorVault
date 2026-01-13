@@ -1,8 +1,7 @@
 import { http, fallback, createConfig as createWagmiConfig } from 'wagmi'
 import { base } from 'wagmi/chains'
-import { coinbaseWallet, injected, walletConnect } from 'wagmi/connectors'
+import { injected, walletConnect } from 'wagmi/connectors'
 import { farcasterMiniApp } from '@farcaster/miniapp-wagmi-connector'
-import { coinbaseSmartWallet } from '@/web3/connectors/coinbaseSmartWallet'
 
 /**
  * Base RPC notes:
@@ -46,19 +45,12 @@ export const wagmiConfig = createWagmiConfig({
   connectors: [
     // Base app / Farcaster Mini App connector (when available).
     farcasterMiniApp(),
-    injected(),
+    // Prefer Rabby explicitly (avoids multi-wallet `window.ethereum` conflicts and gives users a clear "Rabby" option).
+    injected({ target: 'rabby' }),
     walletConnect({
       projectId: walletConnectProjectId,
       metadata: walletConnectMetadata,
       showQrModal: true,
-    }),
-    // Coinbase Smart Wallet (SCW) connector: forces Smart Wallet accounts only.
-    // This is required for paymaster-backed `wallet_sendCalls`.
-    coinbaseSmartWallet({ appName: 'Creator Vaults' }),
-    coinbaseWallet({
-      appName: 'Creator Vaults',
-      // Don’t force Smart Wallet UX; allow users to connect with whatever wallet they have access to.
-      preference: 'all',
     }),
   ],
   // Avoid multi-injected provider discovery issues (MetaMask/Rabby conflicts, etc).

@@ -4,31 +4,33 @@
   "installCommand": "pnpm install --frozen-lockfile",
   "framework": "vite",
   "outputDirectory": "dist",
-  "headers": [
+  "routes": [
+    { "src": "/api/(.*)", "dest": "/api/$1" },
     {
-      "source": "/assets/(.*)",
-      "headers": [{ "key": "Cache-Control", "value": "public, max-age=31536000, immutable" }]
+      "src": "/assets/(.*)",
+      "headers": { "cache-control": "public, max-age=31536000, immutable" },
+      "dest": "/assets/$1"
     },
     {
-      "source": "/",
-      "headers": [{ "key": "Cache-Control", "value": "no-store" }]
+      "src": "/.well-known/farcaster.json",
+      "headers": { "cache-control": "no-store" },
+      "dest": "/.well-known/farcaster.json"
     },
     {
-      "source": "/index.html",
-      "headers": [{ "key": "Cache-Control", "value": "no-store" }]
+      "src": "/manifest.json",
+      "headers": { "cache-control": "no-store" },
+      "dest": "/manifest.json"
     },
     {
-      "source": "/manifest.json",
-      "headers": [{ "key": "Cache-Control", "value": "no-store" }]
+      "src": "/",
+      "headers": { "cache-control": "no-store" },
+      "dest": "/index.html"
     },
+    { "handle": "filesystem" },
     {
-      "source": "/.well-known/farcaster.json",
-      "headers": [{ "key": "Cache-Control", "value": "no-store" }]
+      "src": "/(.*)",
+      "headers": { "cache-control": "no-store" },
+      "dest": "/index.html"
     }
-  ],
-  "rewrites": [
-    { "source": "/api/(.*)", "destination": "/api/$1" },
-    { "source": "/assets/(.*)", "destination": "/assets/$1" },
-    { "source": "/(.*)", "destination": "/index.html" }
   ]
 }

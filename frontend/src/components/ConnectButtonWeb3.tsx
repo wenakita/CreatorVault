@@ -30,28 +30,25 @@ function ConnectButtonWeb3Wagmi({ autoConnect = false }: { autoConnect?: boolean
     const name = String((c as any)?.name ?? '').toLowerCase()
     return id.includes('miniapp') || name.includes('farcaster') || name.includes('mini app')
   })
-  const coinbaseConnector = connectors.find((c) => c.id === 'coinbaseWalletSDK' || c.name?.toLowerCase().includes('coinbase'))
-  const injectedConnector = connectors.find((c) => c.id === 'injected')
   const walletConnectConnector = connectors.find((c) => String(c.id) === 'walletConnect' || String(c.name ?? '').toLowerCase().includes('walletconnect'))
+  const rabbyConnector = connectors.find((c) => String(c.id ?? '').toLowerCase() === 'rabby' || String(c.name ?? '').toLowerCase().includes('rabby'))
+
   const injectedProvider = typeof window !== 'undefined' ? (window as any)?.ethereum : null
-  const hasInjectedProvider = Boolean(injectedProvider)
-  // If multiple wallets are installed, `window.ethereum` can be an aggregator/shim and connectors may hang.
-  // In that case, prefer WalletConnect (stable) over guessing which injected provider to use.
-  const hasMultipleInjectedProviders =
+  const isRabbyPresent =
     Boolean(injectedProvider) &&
-    Array.isArray((injectedProvider as any)?.providers) &&
-    ((injectedProvider as any).providers as any[]).length > 1
+    (Boolean((injectedProvider as any)?.isRabby) ||
+      (Array.isArray((injectedProvider as any)?.providers) &&
+        ((injectedProvider as any).providers as any[]).some((p) => Boolean(p?.isRabby))))
 
   // In the Base app / Farcaster Mini App, prefer the mini app connector (no wallet-brand UX).
   // On the open web, default to the most universal path:
-  // - Browser wallet (injected) if present
+  // - Rabby (if installed)
   // - Otherwise WalletConnect (QR)
   const preferredConnector =
     (miniApp.isMiniApp ? miniAppConnector : null) ??
-    (hasInjectedProvider && !hasMultipleInjectedProviders ? injectedConnector : null) ??
+    (isRabbyPresent ? rabbyConnector : null) ??
     walletConnectConnector ??
-    coinbaseConnector ??
-    injectedConnector ??
+    rabbyConnector ??
     connectors[0]
 
   function uniqueConnectors(list: Array<Connector | null | undefined>): Connector[] {
@@ -113,11 +110,10 @@ function ConnectButtonWeb3Wagmi({ autoConnect = false }: { autoConnect?: boolean
     const ordered = uniqueConnectors([
       // Prefer Mini App connector inside Mini Apps.
       miniApp.isMiniApp ? miniAppConnector : null,
-      // Prefer injected when present (desktop wallets).
-      !miniApp.isMiniApp && hasInjectedProvider && !hasMultipleInjectedProviders ? injectedConnector : null,
-      // Reliable fallback when injected is broken or not present.
+      // Prefer Rabby when present (desktop extension).
+      !miniApp.isMiniApp && isRabbyPresent ? rabbyConnector : null,
+      // Reliable fallback (QR).
       !miniApp.isMiniApp ? walletConnectConnector : null,
-      coinbaseConnector,
       preferredConnector,
       ...connectors,
     ])
@@ -127,10 +123,10 @@ function ConnectButtonWeb3Wagmi({ autoConnect = false }: { autoConnect?: boolean
         const id = String(c.id ?? '')
 
         // Wallet UX nuance:
-        // - Injected wallets may "hang" if the extension/provider is in a bad state.
+        // - Extension wallets may "hang" if the provider is in a bad state.
         //   In that case we want to auto-fallback to WalletConnect instead of staying "Connecting…" forever.
         const timeoutMs =
-          !miniApp.isMiniApp && id === 'injected'
+          !miniApp.isMiniApp && (id === 'rabby' || id.toLowerCase().includes('metamask'))
             ? 12_000
             : // WalletConnect often requires user action (scan QR / confirm) so give it more time.
               !miniApp.isMiniApp && id.toLowerCase().includes('walletconnect')
