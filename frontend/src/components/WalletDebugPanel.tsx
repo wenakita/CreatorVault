@@ -41,6 +41,29 @@ export function WalletDebugPanel() {
 
   const [copied, setCopied] = useState(false)
 
+  const injected = useMemo(() => {
+    if (typeof window === 'undefined') {
+      return { hasEthereum: false, hasProvidersArray: false, providersCount: 0, isRabby: false, isMetaMask: false, isCoinbaseWallet: false }
+    }
+    const eth = (window as any)?.ethereum
+    const providers = Array.isArray(eth?.providers) ? (eth.providers as any[]) : []
+    const isRabby =
+      Boolean(eth?.isRabby) || (providers.length > 0 && providers.some((p) => Boolean(p?.isRabby)))
+    const isMetaMask =
+      Boolean(eth?.isMetaMask) || (providers.length > 0 && providers.some((p) => Boolean(p?.isMetaMask)))
+    const isCoinbaseWallet =
+      Boolean(eth?.isCoinbaseWallet) || (providers.length > 0 && providers.some((p) => Boolean(p?.isCoinbaseWallet)))
+
+    return {
+      hasEthereum: Boolean(eth),
+      hasProvidersArray: Array.isArray(eth?.providers),
+      providersCount: providers.length,
+      isRabby,
+      isMetaMask,
+      isCoinbaseWallet,
+    }
+  }, [])
+
   const privy = getPrivyRuntime()
   const privyConfigured = Boolean(privy.appId)
   const privyEnabled = privy.enabled
@@ -86,6 +109,7 @@ export function WalletDebugPanel() {
         address,
         connector: { id: connectorId, name: connectorName },
         chain: { id: chain?.id ?? null, name: chain?.name ?? null },
+        injected,
         privy: {
           configured: privyConfigured,
           enabled: privyEnabled,
@@ -103,6 +127,7 @@ export function WalletDebugPanel() {
     chain?.name,
     connectorId,
     connectorName,
+    injected,
     farcaster.canQuickAuth,
     farcaster.canSiwf,
     farcaster.error,
@@ -174,6 +199,14 @@ export function WalletDebugPanel() {
         <DebugRow k="farcaster" v={farcasterSummary} />
         <DebugRow k="siwe" v={siweSummary} />
         <DebugRow k="wallet" v={isConnected && address ? shortAddress(address) : accountStatus} />
+        <DebugRow
+          k="injected"
+          v={
+            injected.hasEthereum
+              ? `eth=yes · rabby=${injected.isRabby ? 'yes' : 'no'} · mm=${injected.isMetaMask ? 'yes' : 'no'} · cb=${injected.isCoinbaseWallet ? 'yes' : 'no'} · providers=${injected.providersCount}`
+              : 'eth=no'
+          }
+        />
         <DebugRow k="connector" v={`${connectorName} (${connectorId})`} />
         <DebugRow k="chain" v={chainSummary} />
         <DebugRow k="privy" v={privyEnabled ? 'enabled' : privyConfigured ? 'configured (disabled)' : 'not configured'} />
