@@ -8,14 +8,21 @@ function isProbablyPostgresUrl(value: string | null | undefined): boolean {
 
 function getConnectionString(): string | null {
   const fromDatabaseUrl = process.env.DATABASE_URL
-  // Only accept actual Postgres connection strings; it's common for other providers to set DATABASE_URL.
-  if (isProbablyPostgresUrl(fromDatabaseUrl)) return fromDatabaseUrl.trim()
+  // In production on Vercel, do NOT read DATABASE_URL here.
+  // - Many projects set DATABASE_URL for external providers (e.g. Supabase) that are incompatible with @vercel/postgres.
+  // - Vercel Postgres sets POSTGRES_URL / POSTGRES_URL_NON_POOLING automatically.
+  // We still allow DATABASE_URL for local dev.
+  const isVercel = Boolean(process.env.VERCEL) || Boolean(process.env.VERCEL_ENV)
+  if (!isVercel) {
+    // Only accept actual Postgres connection strings; it's common for other providers to set DATABASE_URL.
+    if (isProbablyPostgresUrl(fromDatabaseUrl)) return (fromDatabaseUrl ?? '').trim()
+  }
 
   const fromVercelPool = process.env.POSTGRES_URL
-  if (isProbablyPostgresUrl(fromVercelPool)) return fromVercelPool.trim()
+  if (isProbablyPostgresUrl(fromVercelPool)) return (fromVercelPool ?? '').trim()
 
   const fromVercelDirect = process.env.POSTGRES_URL_NON_POOLING
-  if (isProbablyPostgresUrl(fromVercelDirect)) return fromVercelDirect.trim()
+  if (isProbablyPostgresUrl(fromVercelDirect)) return (fromVercelDirect ?? '').trim()
 
   return null
 }

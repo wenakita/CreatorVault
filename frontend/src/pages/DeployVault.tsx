@@ -2247,181 +2247,6 @@ export function DeployVault() {
                         . Only the coin creator or current payout recipient can deploy this vault.
                       </div>
                     )}
-
-                    {/* Vault configuration */}
-                    <div className="pt-4 border-t border-zinc-900/50 space-y-3">
-                      <div className="label">Contracts deployed</div>
-
-                      <div className="rounded-2xl border border-white/5 bg-[#080808]/60 backdrop-blur-2xl overflow-hidden divide-y divide-white/5">
-                        <div className="px-4 py-2 text-[10px] uppercase tracking-wide text-zinc-500 bg-white/[0.02]">
-                          Core stack
-                        </div>
-
-                        <ExplainerRow
-                          icon={
-                            <div className="w-14 h-14 rounded-full bg-black/30 border border-white/5 shadow-[inset_0_0_24px_rgba(0,0,0,0.9)] flex items-center justify-center text-zinc-500">
-                              <Lock className="w-5 h-5" />
-                            </div>
-                          }
-                          label="Vault token"
-                          title={`${derivedVaultName || '—'} (${derivedVaultSymbol || '—'})`}
-                          contractName="CreatorOVault"
-                          note="Core vault that holds creator coin deposits and mints shares."
-                          metaLine={
-                            <>
-                              <span className="font-mono text-zinc-400">ERC-4626</span>
-                              {' · '}
-                              <span className="inline-flex items-center gap-1.5 text-zinc-400">
-                                <img
-                                  src="/protocols/layerzero.svg"
-                                  alt=""
-                                  aria-hidden="true"
-                                  loading="lazy"
-                                  className="w-3.5 h-3.5 opacity-90"
-                                />
-                                LayerZero
-                              </span>
-                              {' · '}
-                              <span className="inline-flex items-center gap-1.5 text-zinc-400">
-                                <img
-                                  src="/protocols/yearn.svg"
-                                  alt=""
-                                  aria-hidden="true"
-                                  loading="lazy"
-                                  className="w-3.5 h-3.5 opacity-90"
-                                />
-                                Yearn v3
-                              </span>
-                            </>
-                          }
-                        />
-
-                        <ExplainerRow
-                          icon={
-                            tokenIsValid ? (
-                              <DerivedTokenIcon
-                                tokenAddress={creatorToken as `0x${string}`}
-                                symbol={underlyingSymbolUpper || 'TOKEN'}
-                                variant="share"
-                                size="lg"
-                              />
-                            ) : null
-                          }
-                          label="Share token"
-                          title={`${derivedShareName || '—'} (${derivedShareSymbol || '—'})`}
-                          contractName="CreatorShareOFT"
-                          note="Wrapped vault shares token (wsToken) used for routing fees."
-                          metaLine={
-                            <>
-                              <span className="inline-flex items-center gap-1.5 text-zinc-400">
-                                <img
-                                  src="/protocols/layerzero.svg"
-                                  alt=""
-                                  aria-hidden="true"
-                                  loading="lazy"
-                                  className="w-3.5 h-3.5 opacity-90"
-                                />
-                                LayerZero OFT
-                              </span>
-                            </>
-                          }
-                        />
-
-                        <ExplainerRow
-                          icon={
-                            <div className="w-8 h-8 flex items-center justify-center text-zinc-600">
-                              <Layers className="w-4 h-4" />
-                            </div>
-                          }
-                          label="Wrapper"
-                          title="Vault Wrapper"
-                          contractName="CreatorOVaultWrapper"
-                          note="Wraps/unlocks vault shares into the wsToken."
-                        />
-
-                        <ExplainerRow
-                          icon={
-                            <div className="w-8 h-8 flex items-center justify-center text-zinc-600">
-                              <BarChart3 className="w-4 h-4" />
-                            </div>
-                          }
-                          label="Gauge controller"
-                          title="Fees & incentives"
-                          contractName="CreatorGaugeController"
-                          note="Routes fees (burn / lottery / voters) and manages gauges."
-                        />
-
-                        <ExplainerRow
-                          icon={
-                            <div className="w-8 h-8 flex items-center justify-center text-zinc-600">
-                              <Rocket className="w-4 h-4" />
-                            </div>
-                          }
-                          label="Launch strategy"
-                          title={
-                            <a
-                              href="https://cca.uniswap.org"
-                              target="_blank"
-                              rel="noreferrer"
-                              className="inline-block max-w-full hover:text-white transition-colors underline underline-offset-4 decoration-white/15 hover:decoration-white/30"
-                              title="Open cca.uniswap.org"
-                            >
-                              Uniswap Continuous Clearing Auction
-                            </a>
-                          }
-                          contractName="CCALaunchStrategy"
-                          note="Runs Uniswap’s Continuous Clearing Auction (CCA) for fair price discovery."
-                          metaLine={
-                            <>
-                              <span className="inline-flex items-center gap-1.5 text-zinc-400">
-                                <img
-                                  src="/protocols/uniswap.png"
-                                  alt=""
-                                  aria-hidden="true"
-                                  loading="lazy"
-                                  className="w-3.5 h-3.5 opacity-90"
-                                />
-                                Uniswap
-                              </span>
-                            </>
-                          }
-                        />
-
-                        <ExplainerRow
-                          icon={
-                            <div className="w-8 h-8 flex items-center justify-center text-zinc-600">
-                              <ShieldCheck className="w-4 h-4" />
-                            </div>
-                          }
-                          label="Oracle"
-                          title="Price oracle"
-                          contractName="CreatorOracle"
-                          note="Price oracle used by the auction and strategies."
-                          metaLine={
-                            <>
-                              <span className="inline-flex items-center gap-1.5 text-zinc-400">
-                                <img
-                                  src="/protocols/chainlink.svg"
-                                  alt=""
-                                  aria-hidden="true"
-                                  loading="lazy"
-                                  className="w-3.5 h-3.5 opacity-90"
-                                />
-                                Chainlink
-                              </span>
-                            </>
-                          }
-                        />
-
-                        <div className="px-4 py-2 text-[10px] uppercase tracking-wide text-zinc-500 bg-white/[0.02]">
-                          Yield strategies (post-auction)
-                        </div>
-                        <div className="px-4 py-3 text-[12px] text-zinc-500">
-                          Yield strategies are deployed after launch (post-auction) to keep the initial deployment deterministic and compatible with
-                          wallet simulation.
-                        </div>
-                      </div>
-                    </div>
                   </div>
                 ) : (
                   <div className="text-sm text-red-400/80">Could not read token. Is this a valid ERC-20?</div>
@@ -2934,6 +2759,184 @@ export function DeployVault() {
                 <div className="text-[10px] text-zinc-700">Tip: after deploying, use the vault address shown in the Deploy details panel.</div>
               )}
             </div>
+
+            {/* Contracts (details) */}
+            <details className="card rounded-xl p-8">
+              <summary className="flex items-center justify-between gap-4 cursor-pointer list-none">
+                <div className="label">Contracts</div>
+                <div className="text-[10px] text-zinc-600">View</div>
+              </summary>
+
+              <div className="mt-6 rounded-2xl border border-white/5 bg-[#080808]/60 backdrop-blur-2xl overflow-hidden divide-y divide-white/5">
+                <div className="px-4 py-2 text-[10px] uppercase tracking-wide text-zinc-500 bg-white/[0.02]">
+                  Core stack
+                </div>
+
+                <ExplainerRow
+                  icon={
+                    <div className="w-14 h-14 rounded-full bg-black/30 border border-white/5 shadow-[inset_0_0_24px_rgba(0,0,0,0.9)] flex items-center justify-center text-zinc-500">
+                      <Lock className="w-5 h-5" />
+                    </div>
+                  }
+                  label="Vault token"
+                  title={`${derivedVaultName || '—'} (${derivedVaultSymbol || '—'})`}
+                  contractName="CreatorOVault"
+                  note="Core vault that holds creator coin deposits and mints shares."
+                  metaLine={
+                    <>
+                      <span className="font-mono text-zinc-400">ERC-4626</span>
+                      {' · '}
+                      <span className="inline-flex items-center gap-1.5 text-zinc-400">
+                        <img
+                          src="/protocols/layerzero.svg"
+                          alt=""
+                          aria-hidden="true"
+                          loading="lazy"
+                          className="w-3.5 h-3.5 opacity-90"
+                        />
+                        LayerZero
+                      </span>
+                      {' · '}
+                      <span className="inline-flex items-center gap-1.5 text-zinc-400">
+                        <img
+                          src="/protocols/yearn.svg"
+                          alt=""
+                          aria-hidden="true"
+                          loading="lazy"
+                          className="w-3.5 h-3.5 opacity-90"
+                        />
+                        Yearn v3
+                      </span>
+                    </>
+                  }
+                />
+
+                <ExplainerRow
+                  icon={
+                    tokenIsValid ? (
+                      <DerivedTokenIcon
+                        tokenAddress={creatorToken as `0x${string}`}
+                        symbol={underlyingSymbolUpper || 'TOKEN'}
+                        variant="share"
+                        size="lg"
+                      />
+                    ) : null
+                  }
+                  label="Share token"
+                  title={`${derivedShareName || '—'} (${derivedShareSymbol || '—'})`}
+                  contractName="CreatorShareOFT"
+                  note="Wrapped vault shares token (wsToken) used for routing fees."
+                  metaLine={
+                    <>
+                      <span className="inline-flex items-center gap-1.5 text-zinc-400">
+                        <img
+                          src="/protocols/layerzero.svg"
+                          alt=""
+                          aria-hidden="true"
+                          loading="lazy"
+                          className="w-3.5 h-3.5 opacity-90"
+                        />
+                        LayerZero OFT
+                      </span>
+                    </>
+                  }
+                />
+
+                <ExplainerRow
+                  icon={
+                    <div className="w-8 h-8 flex items-center justify-center text-zinc-600">
+                      <Layers className="w-4 h-4" />
+                    </div>
+                  }
+                  label="Wrapper"
+                  title="Vault Wrapper"
+                  contractName="CreatorOVaultWrapper"
+                  note="Wraps/unlocks vault shares into the wsToken."
+                />
+
+                <ExplainerRow
+                  icon={
+                    <div className="w-8 h-8 flex items-center justify-center text-zinc-600">
+                      <BarChart3 className="w-4 h-4" />
+                    </div>
+                  }
+                  label="Gauge controller"
+                  title="Fees & incentives"
+                  contractName="CreatorGaugeController"
+                  note="Routes fees (burn / lottery / voters) and manages gauges."
+                />
+
+                <ExplainerRow
+                  icon={
+                    <div className="w-8 h-8 flex items-center justify-center text-zinc-600">
+                      <Rocket className="w-4 h-4" />
+                    </div>
+                  }
+                  label="Launch strategy"
+                  title={
+                    <a
+                      href="https://cca.uniswap.org"
+                      target="_blank"
+                      rel="noreferrer"
+                      className="inline-block max-w-full hover:text-white transition-colors underline underline-offset-4 decoration-white/15 hover:decoration-white/30"
+                      title="Open cca.uniswap.org"
+                    >
+                      Uniswap Continuous Clearing Auction
+                    </a>
+                  }
+                  contractName="CCALaunchStrategy"
+                  note="Runs Uniswap’s Continuous Clearing Auction (CCA) for fair price discovery."
+                  metaLine={
+                    <>
+                      <span className="inline-flex items-center gap-1.5 text-zinc-400">
+                        <img
+                          src="/protocols/uniswap.png"
+                          alt=""
+                          aria-hidden="true"
+                          loading="lazy"
+                          className="w-3.5 h-3.5 opacity-90"
+                        />
+                        Uniswap
+                      </span>
+                    </>
+                  }
+                />
+
+                <ExplainerRow
+                  icon={
+                    <div className="w-8 h-8 flex items-center justify-center text-zinc-600">
+                      <ShieldCheck className="w-4 h-4" />
+                    </div>
+                  }
+                  label="Oracle"
+                  title="Price oracle"
+                  contractName="CreatorOracle"
+                  note="Price oracle used by the auction and strategies."
+                  metaLine={
+                    <>
+                      <span className="inline-flex items-center gap-1.5 text-zinc-400">
+                        <img
+                          src="/protocols/chainlink.svg"
+                          alt=""
+                          aria-hidden="true"
+                          loading="lazy"
+                          className="w-3.5 h-3.5 opacity-90"
+                        />
+                        Chainlink
+                      </span>
+                    </>
+                  }
+                />
+
+                <div className="px-4 py-2 text-[10px] uppercase tracking-wide text-zinc-500 bg-white/[0.02]">
+                  Yield strategies (post-auction)
+                </div>
+                <div className="px-4 py-3 text-[12px] text-zinc-500">
+                  Yield strategies are deployed after launch (post-auction) to keep the initial deployment deterministic and compatible with wallet
+                  simulation.
+                </div>
+              </div>
+            </details>
           </div>
         </div>
       </div>

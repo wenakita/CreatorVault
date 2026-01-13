@@ -2,6 +2,7 @@ import type { VercelRequest, VercelResponse } from '@vercel/node'
 
 import { type ApiEnvelope, handleOptions, readJsonBody, setCors, setNoStore } from '../../auth/_shared.js'
 import { ensureCreatorAccessSchema, getDb, isDbConfigured } from '../../_lib/postgres.js'
+import { getSupabaseAdmin, isSupabaseAdminConfigured } from '../../_lib/supabaseAdmin.js'
 import { getSessionAddress, isAdminAddress } from '../../_lib/session.js'
 
 type ApproveBody = {
@@ -32,16 +33,66 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(403).json({ success: false, error: 'Admin only' } satisfies ApiEnvelope<never>)
   }
 
-  const db = isDbConfigured() ? await getDb() : null
-  if (!db) {
-    return res.status(500).json({ success: false, error: 'Database not configured' } satisfies ApiEnvelope<never>)
-  }
-
   const body = await readJsonBody<ApproveBody>(req)
   const requestId = typeof body?.requestId === 'number' && Number.isFinite(body.requestId) ? Math.floor(body.requestId) : NaN
   const note = typeof body?.note === 'string' ? body.note.slice(0, 4000) : null
   if (!Number.isFinite(requestId) || requestId <= 0) {
     return res.status(400).json({ success: false, error: 'Invalid requestId' } satisfies ApiEnvelope<never>)
+  }
+
+  if (isSupabaseAdminConfigured()) {
+    try {
+      const supabase = getSupabaseAdmin()
+      const now = new Date().toISOString()
+
+      const r = await supabase
+        .from('creator_access_requests')
+        .select('wallet_address')
+        .eq('id', requestId)
+        .limit(1)
+      if (r.error) throw new Error(r.error.message)
+      const wallet = Array.isArray(r.data) ? (r.data[0] as any)?.wallet_address : (r.data as any)?.wallet_address
+      const walletLc = wallet ? String(wallet).toLowerCase() : ''
+      if (!walletLc) {
+        return res.status(404).json({ success: false, error: 'Request not found' } satisfies ApiEnvelope<never>)
+      }
+
+      const allowPayload: Record<string, any> = {
+        address: walletLc,
+        approved_by: admin,
+        approved_at: now,
+        revoked_at: null,
+      }
+      if (typeof note === 'string') allowPayload.note = note
+
+      const up = await supabase.from('creator_allowlist').upsert(allowPayload, { onConflict: 'address' })
+      if (up.error) throw new Error(up.error.message)
+
+      const u = await supabase
+        .from('creator_access_requests')
+        .update({
+          status: 'approved',
+          reviewed_at: now,
+          reviewed_by: admin,
+          decision_note: note,
+          updated_at: now,
+        })
+        .eq('id', requestId)
+      if (u.error) throw new Error(u.error.message)
+
+      return res.status(200).json({
+        success: true,
+        data: { requestId, wallet: walletLc, approved: true } satisfies ApproveResponse,
+      } satisfies ApiEnvelope<ApproveResponse>)
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : 'Supabase approve failed'
+      return res.status(500).json({ success: false, error: msg } satisfies ApiEnvelope<never>)
+    }
+  }
+
+  const db = isDbConfigured() ? await getDb() : null
+  if (!db) {
+    return res.status(500).json({ success: false, error: 'Database not configured' } satisfies ApiEnvelope<never>)
   }
 
   await ensureCreatorAccessSchema()

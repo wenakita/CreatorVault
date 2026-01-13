@@ -2,6 +2,7 @@ import type { VercelRequest, VercelResponse } from '@vercel/node'
 
 import { type ApiEnvelope, handleOptions, setCors, setNoStore } from './auth/_shared.js'
 import { ensureCreatorAccessSchema, getDb, getDbInitError, isDbConfigured } from './_lib/postgres.js'
+import { getSupabaseAdmin, isSupabaseAdminConfigured } from './_lib/supabaseAdmin.js'
 
 declare const process: { env: Record<string, string | undefined> }
 
@@ -91,6 +92,23 @@ async function dbIsAllowlisted(
   return false
 }
 
+async function supabaseIsAllowlisted(addresses: string[]): Promise<boolean> {
+  const addrs = (addresses ?? [])
+    .map((a) => (typeof a === 'string' ? a.trim().toLowerCase() : ''))
+    .filter((a) => isAddressLike(a))
+  if (addrs.length === 0) return false
+
+  const supabase = getSupabaseAdmin()
+  const res = await supabase
+    .from('creator_allowlist')
+    .select('address')
+    .in('address', addrs)
+    .is('revoked_at', null)
+    .limit(1)
+  if (res.error) throw new Error(res.error.message)
+  return Array.isArray(res.data) && res.data.length > 0
+}
+
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   setCors(res)
   setNoStore(res)
@@ -114,6 +132,20 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (address) addressesToCheck.push(address)
   if (creator) addressesToCheck.push(creator)
   if (payoutRecipient) addressesToCheck.push(payoutRecipient)
+
+  if (isSupabaseAdminConfigured()) {
+    try {
+      const mode: AllowlistMode = 'enforced'
+      const allowed = await supabaseIsAllowlisted(addressesToCheck)
+      return res.status(200).json({
+        success: true,
+        data: { address, coin, creator, payoutRecipient, mode, allowed } satisfies CreatorAllowlistResponse,
+      } satisfies ApiEnvelope<CreatorAllowlistResponse>)
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : 'Supabase allowlist check failed'
+      return res.status(500).json({ success: false, error: msg } satisfies ApiEnvelope<never>)
+    }
+  }
 
   if (isDbConfigured()) {
     const db = await getDb()
