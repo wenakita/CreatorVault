@@ -49,8 +49,9 @@ export async function getDb(): Promise<DbPool | null> {
       try {
         const mod: any = await import('@vercel/postgres')
         const createPool: any = mod?.createPool
-        if (typeof createPool !== 'function') {
-          initError = 'Missing createPool export from @vercel/postgres'
+        const createClient: any = mod?.createClient
+        if (typeof createPool !== 'function' && typeof createClient !== 'function') {
+          initError = 'Missing createPool/createClient exports from @vercel/postgres'
           return null
         }
 
@@ -58,8 +59,33 @@ export async function getDb(): Promise<DbPool | null> {
         const cs = getConnectionString()
         if (!cs) return null
 
-        const pool = createPool({ connectionString: cs })
-        cachedDb = pool
+        // Prefer pooled connections when possible (recommended for serverless),
+        // but fall back to a direct client if the provided connection string is direct-only.
+        try {
+          if (typeof createPool === 'function') {
+            const pool = createPool({ connectionString: cs })
+            cachedDb = pool
+            return cachedDb
+          }
+        } catch (e: any) {
+          const msg = e?.message ? String(e.message) : ''
+          // fall through to createClient
+          console.warn('createPool failed, trying createClient', msg)
+        }
+
+        if (typeof createClient !== 'function') {
+          initError = 'createPool failed and createClient is unavailable'
+          return null
+        }
+
+        const client = createClient({ connectionString: cs })
+        try {
+          if (typeof client?.connect === 'function') await client.connect()
+        } catch (e) {
+          // ignore connect errors here; first query will surface it.
+        }
+
+        cachedDb = client
         return cachedDb
       } catch (err) {
         initError = err instanceof Error ? err.message : 'Failed to initialize Postgres pool'
