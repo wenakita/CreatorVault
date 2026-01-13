@@ -268,11 +268,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
           const args = (l as any).args
             ? (l as any).args
-            : (decodeEventLog({
+            : ((decodeEventLog({
                 abi: [coinMarketRewardsV4Event],
                 data: l.data,
                 topics: l.topics,
-              }).args as any)
+              }) as any).args as any)
 
           const logCurrency = String(args.currency).toLowerCase()
           const logRecipient = String(args.payoutRecipient).toLowerCase()

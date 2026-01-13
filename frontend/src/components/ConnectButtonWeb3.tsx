@@ -1,4 +1,4 @@
-import { useAccount, useConnect, useDisconnect, useSignMessage, useSwitchChain } from 'wagmi'
+import { type Connector, useAccount, useConnect, useDisconnect, useSignMessage, useSwitchChain } from 'wagmi'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Wallet, ChevronDown, AlertCircle } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
@@ -7,16 +7,18 @@ import { usePrivy, useWallets } from '@privy-io/react-auth'
 import { useSetActiveWallet } from '@privy-io/wagmi'
 import { useMiniAppContext } from '@/hooks'
 import { getPrivyRuntime } from '@/config/privy'
+import { logger } from '@/lib/logger'
 
 function ConnectButtonWeb3Wagmi({ autoConnect = false }: { autoConnect?: boolean }) {
   const { address, isConnected, chain } = useAccount()
-  const { connect, connectors, isPending } = useConnect()
+  const { connect, connectAsync, connectors, isPending } = useConnect()
   const { disconnect } = useDisconnect()
   const { switchChain } = useSwitchChain()
   const { signMessageAsync } = useSignMessage()
   const miniApp = useMiniAppContext()
   const [showMenu, setShowMenu] = useState(false)
   const [copied, setCopied] = useState(false)
+  const [connectError, setConnectError] = useState<string | null>(null)
   const [authAddress, setAuthAddress] = useState<string | null>(null)
   const [authBusy, setAuthBusy] = useState(false)
   const [authError, setAuthError] = useState<string | null>(null)
@@ -43,6 +45,59 @@ function ConnectButtonWeb3Wagmi({ autoConnect = false }: { autoConnect?: boolean
     coinbaseConnector ??
     injectedConnector ??
     connectors[0]
+
+  function uniqueConnectors(list: Array<Connector | null | undefined>): Connector[] {
+    const out: Connector[] = []
+    const seen = new Set<string>()
+    for (const c of list) {
+      if (!c) continue
+      const id = String(c.id ?? c.name ?? '')
+      if (!id) continue
+      if (seen.has(id)) continue
+      seen.add(id)
+      out.push(c)
+    }
+    return out
+  }
+
+  async function connectBestEffort() {
+    if (!preferredConnector) return
+    setConnectError(null)
+
+    const ordered = uniqueConnectors([
+      // Prefer Mini App connector inside Mini Apps.
+      miniApp.isMiniApp ? miniAppConnector : null,
+      // Prefer injected when present (desktop wallets).
+      !miniApp.isMiniApp && hasInjectedProvider ? injectedConnector : null,
+      // Reliable fallback when injected is broken or not present.
+      !miniApp.isMiniApp ? walletConnectConnector : null,
+      coinbaseConnector,
+      preferredConnector,
+      ...connectors,
+    ])
+
+    for (const c of ordered) {
+      try {
+        await connectAsync({ connector: c })
+        return
+      } catch (e: unknown) {
+        const msg = e instanceof Error ? e.message : String(e)
+        const name = typeof (e as any)?.name === 'string' ? String((e as any).name) : ''
+        logger.warn('[ConnectButtonWeb3] connect failed', { connector: { id: c.id, name: c.name }, name, msg })
+
+        // If the user explicitly rejected the request, don't immediately open another modal.
+        if (name.toLowerCase().includes('userrejected') || msg.toLowerCase().includes('user rejected')) {
+          setConnectError('Connection rejected')
+          return
+        }
+
+        // Try next connector.
+        continue
+      }
+    }
+
+    setConnectError('Unable to connect with available wallets')
+  }
 
   // Best-effort: preserve a single "Connect Wallet" click when Web3 is lazily enabled.
   useEffect(() => {
@@ -252,20 +307,25 @@ function ConnectButtonWeb3Wagmi({ autoConnect = false }: { autoConnect?: boolean
   }
 
   return (
-    <button
-      type="button"
-      disabled={isPending || !preferredConnector}
-      onClick={() => {
-        if (!preferredConnector) return
-        // Keep the UX 1-click: pick the best connector automatically.
-        connect({ connector: preferredConnector })
-      }}
-      className="btn-accent disabled:opacity-50 flex items-center gap-2"
-      title={preferredConnector ? `Connect with ${preferredConnector.name}` : 'No wallet connector available'}
-    >
-      <Wallet className="w-4 h-4" />
-      <span className="label">{isPending ? 'Connecting…' : 'Connect Wallet'}</span>
-    </button>
+    <div className="flex flex-col items-end gap-1">
+      <button
+        type="button"
+        disabled={isPending || !preferredConnector}
+        onClick={() => void connectBestEffort()}
+        className="btn-accent disabled:opacity-50 flex items-center gap-2"
+        title={
+          connectError
+            ? connectError
+            : preferredConnector
+              ? `Connect with ${preferredConnector.name}`
+              : 'No wallet connector available'
+        }
+      >
+        <Wallet className="w-4 h-4" />
+        <span className="label">{isPending ? 'Connecting…' : 'Connect Wallet'}</span>
+      </button>
+      {connectError ? <div className="text-[10px] text-zinc-500">{connectError}</div> : null}
+    </div>
   )
 }
 

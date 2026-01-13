@@ -25,7 +25,7 @@ const relay = 'https://relay.farcaster.xyz'
 const rpcUrl = (process.env.FARCASTER_AUTH_RPC_URL || '').trim() || 'https://mainnet.optimism.io'
 const appClient = createAppClient({
   relay,
-  ethereum: viemConnector(rpcUrl),
+  ethereum: viemConnector({ rpcUrl }),
 })
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
@@ -46,7 +46,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   const body = await readJsonBody<VerifyBody>(req)
   const message = typeof body?.message === 'string' ? body.message : ''
-  const signature = typeof body?.signature === 'string' ? body.signature : ''
+  const signatureRaw = typeof body?.signature === 'string' ? body.signature : ''
+  const signature = signatureRaw.startsWith('0x') ? (signatureRaw as `0x${string}`) : null
   if (!message || !signature) {
     return res.status(400).json({ success: false, error: 'Missing message or signature' } satisfies ApiEnvelope<never>)
   }

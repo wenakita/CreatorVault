@@ -49,7 +49,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       const rows = Array.isArray(q.data) ? q.data : []
       const wallets = rows
         .map((r: any) => (r?.wallet_address ? String(r.wallet_address).toLowerCase() : ''))
-        .filter((w) => w.length > 0)
+        .filter((w: string) => w.length > 0)
 
       const allowRes =
         wallets.length > 0
