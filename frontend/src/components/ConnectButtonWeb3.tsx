@@ -42,12 +42,12 @@ function ConnectButtonWeb3Wagmi({ autoConnect = false }: { autoConnect?: boolean
 
   // In the Base app / Farcaster Mini App, prefer the mini app connector (no wallet-brand UX).
   // On the open web, default to the most universal path:
-  // - Rabby (if installed)
-  // - Otherwise WalletConnect (QR)
+  // - WalletConnect (QR) (most reliable across environments)
+  // - Rabby (if installed) as an explicit option
   const preferredConnector =
     (miniApp.isMiniApp ? miniAppConnector : null) ??
-    (isRabbyPresent ? rabbyConnector : null) ??
     walletConnectConnector ??
+    (isRabbyPresent ? rabbyConnector : null) ??
     rabbyConnector ??
     connectors[0]
 
@@ -110,10 +110,10 @@ function ConnectButtonWeb3Wagmi({ autoConnect = false }: { autoConnect?: boolean
     const ordered = uniqueConnectors([
       // Prefer Mini App connector inside Mini Apps.
       miniApp.isMiniApp ? miniAppConnector : null,
-      // Prefer Rabby when present (desktop extension).
-      !miniApp.isMiniApp && isRabbyPresent ? rabbyConnector : null,
       // Reliable fallback (QR).
       !miniApp.isMiniApp ? walletConnectConnector : null,
+      // Rabby as explicit desktop extension option.
+      !miniApp.isMiniApp && isRabbyPresent ? rabbyConnector : null,
       preferredConnector,
       ...connectors,
     ])
@@ -161,6 +161,20 @@ function ConnectButtonWeb3Wagmi({ autoConnect = false }: { autoConnect?: boolean
     }
 
     setConnectError('Unable to connect with available wallets')
+  }
+
+  async function connectRabbyDirect() {
+    if (!rabbyConnector) return
+    setConnectError(null)
+    try {
+      await withTimeout(connectAsync({ connector: rabbyConnector }), 12_000)
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : String(e)
+      const name = typeof (e as any)?.name === 'string' ? String((e as any).name) : ''
+      logger.warn('[ConnectButtonWeb3] rabby connect failed', { connector: { id: rabbyConnector.id, name: rabbyConnector.name }, name, msg })
+      reset()
+      setConnectError('Failed to connect with Rabby')
+    }
   }
 
   // Best-effort: preserve a single "Connect Wallet" click when Web3 is lazily enabled.
@@ -372,22 +386,35 @@ function ConnectButtonWeb3Wagmi({ autoConnect = false }: { autoConnect?: boolean
 
   return (
     <div className="flex flex-col items-end gap-1">
-      <button
-        type="button"
-        disabled={isPending || !preferredConnector}
-        onClick={() => void connectBestEffort()}
-        className="btn-accent disabled:opacity-50 flex items-center gap-2"
-        title={
-          connectError
-            ? connectError
-            : preferredConnector
-              ? `Connect with ${preferredConnector.name}`
-              : 'No wallet connector available'
-        }
-      >
-        <Wallet className="w-4 h-4" />
-        <span className="label">{isPending ? 'Connecting…' : 'Connect Wallet'}</span>
-      </button>
+      <div className="flex items-center gap-2">
+        <button
+          type="button"
+          disabled={isPending || !preferredConnector}
+          onClick={() => void connectBestEffort()}
+          className="btn-accent disabled:opacity-50 flex items-center gap-2"
+          title={
+            connectError
+              ? connectError
+              : preferredConnector
+                ? `Connect with ${preferredConnector.name}`
+                : 'No wallet connector available'
+          }
+        >
+          <Wallet className="w-4 h-4" />
+          <span className="label">{isPending ? 'Connecting…' : 'Connect Wallet'}</span>
+        </button>
+        {isRabbyPresent && rabbyConnector && !miniApp.isMiniApp ? (
+          <button
+            type="button"
+            disabled={isPending}
+            onClick={() => void connectRabbyDirect()}
+            className="rounded-lg border border-zinc-800 bg-black/40 px-3 py-2 text-[11px] text-zinc-300 hover:text-white hover:border-zinc-700 transition-colors disabled:opacity-50"
+            title="Connect with Rabby"
+          >
+            Rabby
+          </button>
+        ) : null}
+      </div>
       {connectError ? <div className="text-[10px] text-zinc-500">{connectError}</div> : null}
     </div>
   )
