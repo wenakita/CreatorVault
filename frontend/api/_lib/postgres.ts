@@ -2,22 +2,38 @@ import { createPool } from '@vercel/postgres'
 
 declare const process: { env: Record<string, string | undefined> }
 
+function isProbablyPostgresUrl(value: string | null | undefined): boolean {
+  const v = typeof value === 'string' ? value.trim() : ''
+  if (!v) return false
+  return /^postgres(ql)?:\/\//i.test(v)
+}
+
 function getConnectionString(): string | null {
   const fromDatabaseUrl = process.env.DATABASE_URL
-  if (fromDatabaseUrl && fromDatabaseUrl.trim().length > 0) return fromDatabaseUrl.trim()
+  // Only accept actual Postgres connection strings; it's common for other providers to set DATABASE_URL.
+  if (isProbablyPostgresUrl(fromDatabaseUrl)) return fromDatabaseUrl.trim()
 
   const fromVercelPool = process.env.POSTGRES_URL
-  if (fromVercelPool && fromVercelPool.trim().length > 0) return fromVercelPool.trim()
+  if (isProbablyPostgresUrl(fromVercelPool)) return fromVercelPool.trim()
 
   const fromVercelDirect = process.env.POSTGRES_URL_NON_POOLING
-  if (fromVercelDirect && fromVercelDirect.trim().length > 0) return fromVercelDirect.trim()
+  if (isProbablyPostgresUrl(fromVercelDirect)) return fromVercelDirect.trim()
 
   return null
 }
 
 const connectionString = getConnectionString()
 
-export const db = connectionString ? createPool({ connectionString }) : null
+let pool: ReturnType<typeof createPool> | null = null
+try {
+  pool = connectionString ? createPool({ connectionString }) : null
+} catch (err) {
+  // Don't crash the whole function bundle if a misconfigured env var sneaks in.
+  console.error('Failed to initialize Postgres pool', err)
+  pool = null
+}
+
+export const db = pool
 
 export function isDbConfigured(): boolean {
   return db !== null
