@@ -77,6 +77,15 @@
   .cinematic-section::after {
     @apply bottom-0;
   }
+
+  /* Optional: remove the top/bottom letterbox divider for specific section joins */
+  .cinematic-section.no-divider-top::before {
+    content: none;
+  }
+
+  .cinematic-section.no-divider-bottom::after {
+    content: none;
+  }
   
   /* Data Row Style */
   .data-row {

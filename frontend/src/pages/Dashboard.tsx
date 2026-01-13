@@ -994,7 +994,7 @@ export function Dashboard() {
       </div>
 
       {/* Hero */}
-      <section className="cinematic-section py-0 sm:py-0 lg:py-0">
+      <section className="cinematic-section no-divider-bottom py-0 sm:py-0 lg:py-0">
         <motion.div
           initial={{ opacity: 0, y: 30 }}
           animate={{ opacity: 1, y: 0 }}
@@ -1006,7 +1006,7 @@ export function Dashboard() {
       </section>
 
       {/* Vaults */}
-      <section className="cinematic-section">
+      <section className="cinematic-section no-divider-top">
         <div className="max-w-6xl mx-auto px-6">
           <motion.div
             initial={{ opacity: 0 }}
