@@ -29,8 +29,6 @@
   "routes": [
     { "src": "/api/(.*)", "dest": "/api/$1" },
     { "handle": "filesystem" },
-    // If a hashed asset is missing (stale HTML), do NOT serve index.html (text/html) for it.
-    // Returning a 404 prevents "module script got text/html" and works with our reload-on-preloadError guard.
     { "src": "/assets/(.*)", "status": 404 },
     { "src": "/(.*)", "dest": "/index.html" }
   ]
