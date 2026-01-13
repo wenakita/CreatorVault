@@ -386,7 +386,6 @@ const PERMIT2_SIGNATURE_TRANSFER_ABI = [
               { name: 'amount', type: 'uint256' },
             ],
           },
-          { name: 'spender', type: 'address' },
           { name: 'nonce', type: 'uint256' },
           { name: 'deadline', type: 'uint256' },
         ],
@@ -1051,6 +1050,7 @@ function DeployVaultBatcher({
 
       const depositAmount = MIN_FIRST_DEPOSIT
       const auctionSteps = encodeUniswapCcaLinearSteps(DEFAULT_CCA_DURATION_BLOCKS)
+      const payoutForDeploy = (currentPayoutRecipient ?? expectedGauge) as Address
 
       // Ensure Permit2 address matches the batcher config (defensive).
       const permit2 = (await publicClient.readContract({
@@ -1133,7 +1133,7 @@ function DeployVaultBatcher({
 
           const permitSig = (await walletClient.signTypedData({
             account: (walletClient as any).account,
-            domain: { name: 'Permit2', chainId: base.id, verifyingContract: permit2 },
+            domain: { name: 'Permit2', version: '1', chainId: base.id, verifyingContract: permit2 },
             types: {
               TokenPermissions: [
                 { name: 'token', type: 'address' },
@@ -1162,7 +1162,7 @@ function DeployVaultBatcher({
               abi: PERMIT2_SIGNATURE_TRANSFER_ABI,
               functionName: 'permitTransferFrom',
               args: [
-                { permitted: { token: creatorToken, amount: shortfall }, spender: owner, nonce, deadline },
+                { permitted: { token: creatorToken, amount: shortfall }, nonce, deadline },
                 { to: owner, requestedAmount: shortfall },
                 connected,
                 permitSig,
@@ -1214,7 +1214,7 @@ function DeployVaultBatcher({
               creatorToken,
               owner,
               owner,
-              ZERO_ADDRESS,
+              payoutForDeploy,
               vaultName,
               vaultSymbol,
               shareName,
@@ -1375,7 +1375,7 @@ function DeployVaultBatcher({
 
           const permitSig = (await walletClient.signTypedData({
             account: (walletClient as any).account,
-            domain: { name: 'Permit2', chainId: base.id, verifyingContract: permit2 },
+            domain: { name: 'Permit2', version: '1', chainId: base.id, verifyingContract: permit2 },
             types: {
               TokenPermissions: [
                 { name: 'token', type: 'address' },
@@ -1504,7 +1504,7 @@ function DeployVaultBatcher({
 
         const signature = (await walletClient.signTypedData({
           account: (walletClient as any).account,
-          domain: { name: 'Permit2', chainId: base.id, verifyingContract: permit2 },
+          domain: { name: 'Permit2', version: '1', chainId: base.id, verifyingContract: permit2 },
           types: {
             TokenPermissions: [
               { name: 'token', type: 'address' },
@@ -1535,7 +1535,7 @@ function DeployVaultBatcher({
               creatorToken,
               owner,
               owner, // creatorTreasury
-              ZERO_ADDRESS, // payoutRecipient is set by the wallet call above (when needed)
+              payoutForDeploy,
               vaultName,
               vaultSymbol,
               shareName,
@@ -1609,7 +1609,7 @@ function DeployVaultBatcher({
             creatorToken,
             owner,
             owner,
-            ZERO_ADDRESS,
+            payoutForDeploy,
             vaultName,
             vaultSymbol,
             shareName,
