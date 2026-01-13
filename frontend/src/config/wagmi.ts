@@ -4,6 +4,7 @@ import { coinbaseWallet, injected } from 'wagmi/connectors'
 import { farcasterMiniApp } from '@farcaster/miniapp-wagmi-connector'
 import { createConfig as createPrivyConfig } from '@privy-io/wagmi'
 import { coinbaseSmartWallet } from '@/web3/connectors/coinbaseSmartWallet'
+import { getPrivyRuntime } from './privy'
 
 /**
  * Base RPC notes:
@@ -25,8 +26,7 @@ const baseRpcUrls = (() => {
   return [...DEFAULT_BASE_RPCS]
 })()
 
-const privyAppId = (import.meta.env.VITE_PRIVY_APP_ID as string | undefined)?.trim()
-const privyEnabled = Boolean(privyAppId && privyAppId.length > 0)
+const privyEnabled = getPrivyRuntime().enabled
 const createConfig = privyEnabled ? createPrivyConfig : createWagmiConfig
 
 export const wagmiConfig = createConfig({

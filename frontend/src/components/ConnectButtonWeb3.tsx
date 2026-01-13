@@ -6,6 +6,7 @@ import { base } from 'wagmi/chains'
 import { usePrivy, useWallets } from '@privy-io/react-auth'
 import { useSetActiveWallet } from '@privy-io/wagmi'
 import { useMiniAppContext } from '@/hooks'
+import { getPrivyRuntime } from '@/config/privy'
 
 function ConnectButtonWeb3Wagmi({ autoConnect = false }: { autoConnect?: boolean }) {
   const { address, isConnected, chain } = useAccount()
@@ -604,8 +605,7 @@ function ConnectButtonWeb3Privy({ autoConnect = false }: { autoConnect?: boolean
 }
 
 export function ConnectButtonWeb3({ autoConnect = false }: { autoConnect?: boolean }) {
-  const privyAppId = (import.meta.env.VITE_PRIVY_APP_ID as string | undefined)?.trim()
-  const privyEnabled = Boolean(privyAppId && privyAppId.length > 0)
+  const privyEnabled = getPrivyRuntime().enabled
 
   return privyEnabled ? (
     <ConnectButtonWeb3Privy autoConnect={autoConnect} />

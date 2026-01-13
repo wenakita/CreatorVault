@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { AnimatePresence, motion } from 'framer-motion'
-import { ArrowRight, ChevronDown, Search, X } from 'lucide-react'
+import { ArrowRight, ChevronDown, Search, ShieldCheck, X } from 'lucide-react'
 import { SHARE_SYMBOL_PREFIX } from '@/lib/tokenSymbols'
 
 type FaqItem = {
@@ -529,6 +529,30 @@ const FAQ_SECTIONS: FaqSection[] = [
               <li>Open the vault page and verify the auction panel loads (if configured)</li>
               <li>Share the vault link with your community</li>
             </ul>
+            <div className="rounded-xl border border-white/10 bg-black/30 p-5 space-y-3">
+              <div className="flex items-center justify-between gap-4">
+                <div className="label">Status</div>
+                <Link to="/status" className="text-[10px] text-zinc-600 hover:text-zinc-300 transition-colors whitespace-nowrap">
+                  Open
+                </Link>
+              </div>
+              <div className="text-sm text-zinc-200 flex items-center gap-2">
+                <ShieldCheck className="w-4 h-4 text-emerald-300" />
+                Verification checks
+              </div>
+              <div className="text-xs text-zinc-600 max-w-prose">
+                Verify your vault wiring on Base and generate a shareable report. If a fix is available, it requires an owner transaction.
+              </div>
+              <Link
+                to="/status"
+                className="w-full sm:w-auto inline-flex items-center justify-center gap-2 rounded-lg bg-black/30 border border-zinc-900/60 px-5 py-3 text-sm text-zinc-200 hover:text-white hover:border-white/10 transition-colors"
+              >
+                Open status checks
+              </Link>
+              <div className="text-[10px] text-zinc-700">
+                Tip: you can paste your vault address on the Status page (or use <span className="font-mono">/status?vault=0x…</span>).
+              </div>
+            </div>
             <p className="text-zinc-600">
               If something is miswired and you’re the owner, fix actions appear on the Status page.
             </p>

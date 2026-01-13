@@ -6,6 +6,11 @@ type MiniAppContext = {
 }
 
 export function useMiniAppContext() {
+  // NOTE:
+  // `sdk.context` is useful for UX (e.g. showing @username), but it is NOT an authoritative identity oracle.
+  // For any irreversible / security-sensitive action, verify identity server-side:
+  // - Farcaster: use `useFarcasterAuth()` (Quick Auth / SIWF) which returns a server-trustable `fid`.
+  // - App auth: use SIWE (`useSiweAuth`) for creator-access/admin only.
   const [isMiniApp, setIsMiniApp] = useState<boolean | null>(null)
   const [context, setContext] = useState<MiniAppContext | null>(null)
 

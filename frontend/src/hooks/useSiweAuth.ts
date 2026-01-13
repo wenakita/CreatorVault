@@ -7,6 +7,13 @@ type ApiEnvelope<T> = { success: boolean; data?: T; error?: string }
 type MeResponse = { address: string } | null
 
 export function useSiweAuth() {
+  // IMPORTANT:
+  // This hook implements an app-local SIWE session ("Sign in with Ethereum") used for:
+  // - creator access requests (/api/creator-access/*)
+  // - admin gating (/api/admin/*)
+  //
+  // It is NOT a Farcaster identity signal. Do not treat `isSignedIn` as equivalent to a verified Farcaster FID.
+  // Farcaster identity verification lives in `useFarcasterAuth()` (/api/farcaster/*).
   const { address, isConnected } = useAccount()
   const { signMessageAsync } = useSignMessage()
 

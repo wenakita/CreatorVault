@@ -9,28 +9,13 @@ import { PrivyProvider } from '@privy-io/react-auth'
 import { WagmiProvider as PrivyWagmiProvider } from '@privy-io/wagmi'
 
 import { wagmiConfig } from '@/config/wagmi'
+import { getPrivyRuntime } from '@/config/privy'
 import { logger } from '@/lib/logger'
+import { WalletDebugPanel } from '@/components/WalletDebugPanel'
 
-// Polyfill Buffer for WalletConnect / Coinbase Wallet SDK.
+// Polyfill Buffer for Coinbase Wallet SDK (and some wallet adapters).
 if (typeof window !== 'undefined') {
   ;(window as any).Buffer = Buffer
-
-  // Suppress wallet injection conflicts (multiple extensions trying to inject window.ethereum)
-  const originalDefineProperty = Object.defineProperty
-  Object.defineProperty = function (obj: any, prop: string, descriptor: PropertyDescriptor) {
-    if (prop === 'ethereum' && obj === window) {
-      try {
-        return originalDefineProperty.call(this, obj, prop, {
-          ...descriptor,
-          configurable: true, // Allow redefinition
-        })
-      } catch {
-        // If it fails, just return the existing property
-        return obj[prop]
-      }
-    }
-    return originalDefineProperty.call(this, obj, prop, descriptor)
-  }
 }
 
 function MiniAppAutoConnect() {
@@ -73,8 +58,9 @@ export function Web3Providers({ children }: { children: ReactNode }) {
   // - If you want to force a specific paymaster/bundler endpoint, set `VITE_CDP_PAYMASTER_URL`.
   const cdpApiKey = import.meta.env.VITE_CDP_API_KEY as string | undefined
   const cdpPaymasterUrl = import.meta.env.VITE_CDP_PAYMASTER_URL as string | undefined
-  const privyAppId = import.meta.env.VITE_PRIVY_APP_ID as string | undefined
-  const privyEnabled = Boolean(privyAppId && privyAppId.trim().length > 0)
+  const privy = getPrivyRuntime()
+  const privyEnabled = privy.enabled
+  const privyAppId = privy.appId
 
   // Debug hint: if both are set but the URL does not contain the key, it's likely the wrong value was pasted
   // (CDP has multiple identifiers). We still respect the explicit URL override, but warn in dev.
@@ -97,6 +83,7 @@ export function Web3Providers({ children }: { children: ReactNode }) {
         }}
       >
         <MiniAppAutoConnect />
+        <WalletDebugPanel />
         {children}
       </OnchainKitProvider>
     </ActiveWagmiProvider>

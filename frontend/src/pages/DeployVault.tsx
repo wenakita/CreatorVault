@@ -27,6 +27,7 @@ import { ConnectButton } from '@/components/ConnectButton'
 import { DerivedTokenIcon } from '@/components/DerivedTokenIcon'
 import { RequestCreatorAccess } from '@/components/RequestCreatorAccess'
 import { CONTRACTS } from '@/config/contracts'
+import { getPrivyRuntime } from '@/config/privy'
 import { useSiweAuth } from '@/hooks/useSiweAuth'
 import { useCreatorAllowlist, useFarcasterAuth, useMiniAppContext } from '@/hooks'
 import { useZoraCoin, useZoraProfile } from '@/lib/zora/hooks'
@@ -313,12 +314,43 @@ const COINBASE_SMART_WALLET_OWNER_ABI = [
   },
 ] as const
 
-const CREATOR_COIN_ADMIN_ABI = [
+// Coinbase Smart Wallet (v1) has an EntryPoint v0.6 constant + MultiOwnable owner tracking.
+// Use these reads as a positive/cheap preflight before attempting executeBatch.
+const COINBASE_SMART_WALLET_PREFLIGHT_ABI = [
   {
     type: 'function',
-    name: 'setPayoutRecipient',
-    stateMutability: 'nonpayable',
-    inputs: [{ name: 'recipient', type: 'address' }],
+    name: 'entryPoint',
+    stateMutability: 'view',
+    inputs: [],
+    outputs: [{ type: 'address' }],
+  },
+  {
+    type: 'function',
+    name: 'ownerCount',
+    stateMutability: 'view',
+    inputs: [],
+    outputs: [{ type: 'uint256' }],
+  },
+] as const
+
+const COINBASE_ENTRYPOINT_V06 = '0x5FF137D4b0FDCD49DcA30c7CF57E578a026d2789' as const
+
+const COINBASE_SMART_WALLET_EXECUTE_BATCH_ABI = [
+  {
+    type: 'function',
+    name: 'executeBatch',
+    stateMutability: 'payable',
+    inputs: [
+      {
+        name: 'calls',
+        type: 'tuple[]',
+        components: [
+          { name: 'target', type: 'address' },
+          { name: 'value', type: 'uint256' },
+          { name: 'data', type: 'bytes' },
+        ],
+      },
+    ],
     outputs: [],
   },
 ] as const
@@ -333,6 +365,44 @@ const PERMIT2_VIEW_ABI = [
       { name: 'wordPos', type: 'uint256' },
     ],
     outputs: [{ type: 'uint256' }],
+  },
+] as const
+
+const PERMIT2_SIGNATURE_TRANSFER_ABI = [
+  {
+    type: 'function',
+    name: 'permitTransferFrom',
+    stateMutability: 'nonpayable',
+    inputs: [
+      {
+        name: 'permit',
+        type: 'tuple',
+        components: [
+          {
+            name: 'permitted',
+            type: 'tuple',
+            components: [
+              { name: 'token', type: 'address' },
+              { name: 'amount', type: 'uint256' },
+            ],
+          },
+          { name: 'spender', type: 'address' },
+          { name: 'nonce', type: 'uint256' },
+          { name: 'deadline', type: 'uint256' },
+        ],
+      },
+      {
+        name: 'transferDetails',
+        type: 'tuple',
+        components: [
+          { name: 'to', type: 'address' },
+          { name: 'requestedAmount', type: 'uint256' },
+        ],
+      },
+      { name: 'owner', type: 'address' },
+      { name: 'signature', type: 'bytes' },
+    ],
+    outputs: [],
   },
 ] as const
 
@@ -746,6 +816,9 @@ function PrivySmartWalletConnect({ target }: { target: Address }) {
 function DeployVaultBatcher({
   creatorToken,
   owner,
+  connectedWalletAddress,
+  executeBatchEligible = false,
+  depositSymbol,
   shareSymbol,
   shareName,
   vaultSymbol,
@@ -757,6 +830,9 @@ function DeployVaultBatcher({
 }: {
   creatorToken: Address
   owner: Address
+  connectedWalletAddress: Address | null
+  executeBatchEligible?: boolean
+  depositSymbol: string
   shareSymbol: string
   shareName: string
   vaultSymbol: string
@@ -770,11 +846,76 @@ function DeployVaultBatcher({
   const { data: walletClient } = useWalletClient({ chainId: base.id })
   const { sendCallsAsync } = useSendCalls()
 
+  const formatDeposit = (raw?: bigint): string => {
+    if (raw === undefined) return '—'
+    const s = formatUnits(raw, 18)
+    const n = Number(s)
+    if (Number.isFinite(n)) return n.toLocaleString(undefined, { maximumFractionDigits: 2 })
+    return s
+  }
+
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [txId, setTxId] = useState<string | null>(null)
+  const [approveBusy, setApproveBusy] = useState(false)
+  const [approveError, setApproveError] = useState<string | null>(null)
+  const [approveTxId, setApproveTxId] = useState<string | null>(null)
 
   const batcherAddress = (CONTRACTS.creatorVaultBatcher ?? null) as Address | null
+
+  const connectedLc = connectedWalletAddress ? connectedWalletAddress.toLowerCase() : ''
+  const ownerLc = owner.toLowerCase()
+  const isExecuteBatchPath = executeBatchEligible && connectedLc.length > 0 && connectedLc !== ownerLc
+
+  const permit2FromConfig = useMemo(() => {
+    const p = String(CONTRACTS.permit2 ?? '')
+    return isAddress(p) ? (p as Address) : null
+  }, [])
+  const { data: permit2FromBatcher } = useReadContract({
+    address: batcherAddress ? (batcherAddress as `0x${string}`) : undefined,
+    abi: CREATOR_VAULT_BATCHER_ABI,
+    functionName: 'permit2',
+    query: { enabled: Boolean(batcherAddress && isExecuteBatchPath) },
+  })
+  const permit2Address = useMemo(() => {
+    const p = permit2FromBatcher ? String(permit2FromBatcher) : ''
+    if (isAddress(p)) return p as Address
+    return permit2FromConfig
+  }, [permit2FromBatcher, permit2FromConfig])
+
+  const { data: smartWalletTokenBalance } = useReadContract({
+    address: creatorToken as `0x${string}`,
+    abi: erc20Abi,
+    functionName: 'balanceOf',
+    args: [owner as `0x${string}`],
+    query: { enabled: Boolean(isExecuteBatchPath) },
+  })
+
+  const { data: connectedTokenBalanceForTopUp } = useReadContract({
+    address: creatorToken as `0x${string}`,
+    abi: erc20Abi,
+    functionName: 'balanceOf',
+    args: [((connectedWalletAddress ?? ZERO_ADDRESS) as Address) as `0x${string}`],
+    query: { enabled: Boolean(isExecuteBatchPath && connectedWalletAddress) },
+  })
+
+  const { data: connectedPermit2Allowance, refetch: refetchConnectedPermit2Allowance } = useReadContract({
+    address: creatorToken as `0x${string}`,
+    abi: erc20Abi,
+    functionName: 'allowance',
+    args: [
+      ((connectedWalletAddress ?? ZERO_ADDRESS) as Address) as `0x${string}`,
+      ((permit2Address ?? ZERO_ADDRESS) as Address) as `0x${string}`,
+    ],
+    query: { enabled: Boolean(isExecuteBatchPath && connectedWalletAddress && permit2Address) },
+  })
+
+  const executeBatchShortfall = useMemo(() => {
+    if (!isExecuteBatchPath) return null
+    if (typeof smartWalletTokenBalance !== 'bigint') return null
+    if (smartWalletTokenBalance >= MIN_FIRST_DEPOSIT) return 0n
+    return MIN_FIRST_DEPOSIT - smartWalletTokenBalance
+  }, [isExecuteBatchPath, smartWalletTokenBalance])
 
   const codeIds = useMemo(() => {
     return {
@@ -920,15 +1061,198 @@ function DeployVaultBatcher({
 
       const isOperatorSubmit = connected.toLowerCase() !== owner.toLowerCase()
 
+      // We treat payoutRecipient wiring as identity-critical. Do not auto-mutate it during deploy.
+      // If it is mismatched, require the user to fix it explicitly first.
+      if (payoutMismatch) {
+        throw new Error(`Payout recipient mismatch. Set payoutRecipient to ${expectedGauge} before deploying.`)
+      }
+
+      // =================================
+      // Smart wallet executeBatch path (EOA owner submits, SW executes)
+      // =================================
+      if (isOperatorSubmit && isExecuteBatchPath) {
+        // Determine how much the smart wallet needs to be topped up (if any).
+        const smartWalletBalance = (await publicClient.readContract({
+          address: creatorToken,
+          abi: erc20Abi,
+          functionName: 'balanceOf',
+          args: [owner],
+        })) as bigint
+
+        const shortfall = smartWalletBalance >= depositAmount ? 0n : depositAmount - smartWalletBalance
+
+        const calls: { target: Address; value: bigint; data: Hex }[] = []
+
+        // If the smart wallet is unfunded, pull the exact shortfall from the connected EOA via Permit2.
+        if (shortfall > 0n) {
+          const eoaBalance = (await publicClient.readContract({
+            address: creatorToken,
+            abi: erc20Abi,
+            functionName: 'balanceOf',
+            args: [connected],
+          })) as bigint
+          if (eoaBalance < shortfall) {
+            throw new Error(
+              `Your wallet needs at least ${formatDeposit(shortfall)} ${depositSymbol} to top up the creator smart wallet.`,
+            )
+          }
+
+          const eoaPermit2Allowance = (await publicClient.readContract({
+            address: creatorToken,
+            abi: erc20Abi,
+            functionName: 'allowance',
+            args: [connected, permit2],
+          })) as bigint
+          if (eoaPermit2Allowance < shortfall) {
+            throw new Error(
+              `Approve Permit2 before deploying (required to pull ${formatDeposit(shortfall)} ${depositSymbol} into the smart wallet).`,
+            )
+          }
+
+          // Pick a one-time unordered nonce from Permit2 word 0 (nonce = wordPos*256 + bitPos).
+          const bitmap = (await publicClient.readContract({
+            address: permit2,
+            abi: PERMIT2_VIEW_ABI,
+            functionName: 'nonceBitmap',
+            args: [connected, 0n],
+          })) as bigint
+
+          let bitPos = -1
+          for (let i = 0; i < 256; i++) {
+            const used = (bitmap >> BigInt(i)) & 1n
+            if (used === 0n) {
+              bitPos = i
+              break
+            }
+          }
+          if (bitPos < 0) throw new Error('Permit2 nonce bitmap is full (word 0).')
+          const wordPos = 0n
+          const nonce = (wordPos << 8n) | BigInt(bitPos)
+
+          const deadline = BigInt(Math.floor(Date.now() / 1000) + 60 * 10) // 10 minutes
+
+          const permitSig = (await walletClient.signTypedData({
+            account: (walletClient as any).account,
+            domain: { name: 'Permit2', chainId: base.id, verifyingContract: permit2 },
+            types: {
+              TokenPermissions: [
+                { name: 'token', type: 'address' },
+                { name: 'amount', type: 'uint256' },
+              ],
+              PermitTransferFrom: [
+                { name: 'permitted', type: 'TokenPermissions' },
+                { name: 'spender', type: 'address' },
+                { name: 'nonce', type: 'uint256' },
+                { name: 'deadline', type: 'uint256' },
+              ],
+            },
+            primaryType: 'PermitTransferFrom',
+            message: {
+              permitted: { token: creatorToken, amount: shortfall },
+              spender: owner, // smart wallet will call Permit2 inside executeBatch
+              nonce,
+              deadline,
+            },
+          })) as Hex
+
+          calls.push({
+            target: permit2,
+            value: 0n,
+            data: encodeFunctionData({
+              abi: PERMIT2_SIGNATURE_TRANSFER_ABI,
+              functionName: 'permitTransferFrom',
+              args: [
+                { permitted: { token: creatorToken, amount: shortfall }, spender: owner, nonce, deadline },
+                { to: owner, requestedAmount: shortfall },
+                connected,
+                permitSig,
+              ],
+            }),
+          })
+        }
+
+        // Ensure the smart wallet has approved the batcher to pull the full depositAmount.
+        const swAllowanceToBatcher = (await publicClient.readContract({
+          address: creatorToken,
+          abi: erc20Abi,
+          functionName: 'allowance',
+          args: [owner, batcherAddress],
+        })) as bigint
+
+        if (swAllowanceToBatcher < depositAmount) {
+          // Some tokens require setting allowance to 0 before raising it.
+          if (swAllowanceToBatcher !== 0n) {
+            calls.push({
+              target: creatorToken,
+              value: 0n,
+              data: encodeFunctionData({
+                abi: erc20Abi,
+                functionName: 'approve',
+                args: [batcherAddress, 0n],
+              }),
+            })
+          }
+          calls.push({
+            target: creatorToken,
+            value: 0n,
+            data: encodeFunctionData({
+              abi: erc20Abi,
+              functionName: 'approve',
+              args: [batcherAddress, depositAmount],
+            }),
+          })
+        }
+
+        // Finally: owner-only deploy executed from the smart wallet.
+        calls.push({
+          target: batcherAddress,
+          value: 0n,
+          data: encodeFunctionData({
+            abi: CREATOR_VAULT_BATCHER_ABI,
+            functionName: 'deployAndLaunch',
+            args: [
+              creatorToken,
+              owner,
+              owner,
+              ZERO_ADDRESS,
+              vaultName,
+              vaultSymbol,
+              shareName,
+              shareSymbol,
+              deploymentVersion,
+              depositAmount,
+              DEFAULT_AUCTION_PERCENT,
+              DEFAULT_REQUIRED_RAISE_WEI,
+              DEFAULT_FLOOR_PRICE_Q96_ALIGNED,
+              auctionSteps,
+              codeIds,
+            ],
+          }),
+        })
+
+        const executeBatchData = encodeFunctionData({
+          abi: COINBASE_SMART_WALLET_EXECUTE_BATCH_ABI,
+          functionName: 'executeBatch',
+          args: [calls],
+        })
+
+        const hash = await walletClient.sendTransaction({
+          account: (walletClient as any).account,
+          chain: base as any,
+          to: owner,
+          data: executeBatchData,
+          value: 0n,
+        })
+        await publicClient.waitForTransactionReceipt({ hash })
+        setTxId(hash)
+        onSuccess(expected)
+        return
+      }
+
       // =================================
       // Operator-submit flow (requires an identity-signed DeployAuthorization)
       // =================================
       if (isOperatorSubmit) {
-        if (payoutMismatch) {
-          throw new Error(
-            `Payout recipient mismatch. The identity wallet must set payoutRecipient to ${expectedGauge} before an operator can deploy.`,
-          )
-        }
         if (!operatorPackage) {
           throw new Error('Missing deploy authorization package (identity-signed).')
         }
@@ -1135,17 +1459,6 @@ function DeployVaultBatcher({
 
       const calls: { to: Address; data: Hex; value?: bigint }[] = []
 
-      if (payoutMismatch) {
-        calls.push({
-          to: creatorToken,
-          data: encodeFunctionData({
-            abi: CREATOR_COIN_ADMIN_ABI,
-            functionName: 'setPayoutRecipient',
-            args: [expectedGauge],
-          }),
-        })
-      }
-
       // ===========================
       // Permit2-first path
       // ===========================
@@ -1279,16 +1592,6 @@ function DeployVaultBatcher({
       // Approve fallback path
       // ===========================
       const fallbackCalls: { to: Address; data: Hex; value?: bigint }[] = []
-      if (payoutMismatch) {
-        fallbackCalls.push({
-          to: creatorToken,
-          data: encodeFunctionData({
-            abi: CREATOR_COIN_ADMIN_ABI,
-            functionName: 'setPayoutRecipient',
-            args: [expectedGauge],
-          }),
-        })
-      }
       fallbackCalls.push({
         to: creatorToken,
         data: encodeFunctionData({
@@ -1355,19 +1658,168 @@ function DeployVaultBatcher({
     }
   }
 
-  const disabled = busy || expectedQuery.isLoading || !expected
+  const executeBatchFunding = useMemo(() => {
+    if (!isExecuteBatchPath) {
+      return { ready: true, needsPermit2Approval: false, shortfall: 0n as bigint }
+    }
+
+    if (typeof executeBatchShortfall !== 'bigint') {
+      return { ready: false, needsPermit2Approval: false, shortfall: null as bigint | null }
+    }
+
+    if (executeBatchShortfall === 0n) {
+      return { ready: true, needsPermit2Approval: false, shortfall: 0n as bigint }
+    }
+
+    // needs top-up
+    if (typeof connectedTokenBalanceForTopUp !== 'bigint') {
+      return { ready: false, needsPermit2Approval: false, shortfall: executeBatchShortfall }
+    }
+    if (connectedTokenBalanceForTopUp < executeBatchShortfall) {
+      return { ready: false, needsPermit2Approval: false, shortfall: executeBatchShortfall }
+    }
+    if (!permit2Address) {
+      return { ready: false, needsPermit2Approval: false, shortfall: executeBatchShortfall }
+    }
+    if (typeof connectedPermit2Allowance !== 'bigint') {
+      return { ready: false, needsPermit2Approval: false, shortfall: executeBatchShortfall }
+    }
+    if (connectedPermit2Allowance < executeBatchShortfall) {
+      return { ready: false, needsPermit2Approval: true, shortfall: executeBatchShortfall }
+    }
+    return { ready: true, needsPermit2Approval: false, shortfall: executeBatchShortfall }
+  }, [connectedPermit2Allowance, connectedTokenBalanceForTopUp, executeBatchShortfall, isExecuteBatchPath, permit2Address])
+
+  const approvePermit2 = async () => {
+    setApproveError(null)
+    setApproveTxId(null)
+
+    try {
+      if (!walletClient) throw new Error('Wallet not ready')
+      if (!publicClient) throw new Error('Network client not ready')
+      if (!connectedWalletAddress) throw new Error('Wallet not ready')
+      if (!permit2Address) throw new Error('Permit2 is not configured')
+      if (typeof executeBatchFunding.shortfall !== 'bigint' || executeBatchFunding.shortfall <= 0n) {
+        throw new Error('No Permit2 approval is required right now.')
+      }
+
+      setApproveBusy(true)
+
+      const currentAllowance = (await publicClient.readContract({
+        address: creatorToken,
+        abi: erc20Abi,
+        functionName: 'allowance',
+        args: [connectedWalletAddress, permit2Address],
+      })) as bigint
+
+      if (currentAllowance >= executeBatchFunding.shortfall) {
+        await refetchConnectedPermit2Allowance()
+        return
+      }
+
+      // Some ERC20s require setting allowance to 0 before raising it.
+      if (currentAllowance !== 0n) {
+        const hash0 = await walletClient.sendTransaction({
+          account: (walletClient as any).account,
+          chain: base as any,
+          to: creatorToken,
+          data: encodeFunctionData({
+            abi: erc20Abi,
+            functionName: 'approve',
+            args: [permit2Address, 0n],
+          }),
+          value: 0n,
+        })
+        await publicClient.waitForTransactionReceipt({ hash: hash0 })
+      }
+
+      const hash = await walletClient.sendTransaction({
+        account: (walletClient as any).account,
+        chain: base as any,
+        to: creatorToken,
+        data: encodeFunctionData({
+          abi: erc20Abi,
+          functionName: 'approve',
+          args: [permit2Address, executeBatchFunding.shortfall],
+        }),
+        value: 0n,
+      })
+      await publicClient.waitForTransactionReceipt({ hash })
+      setApproveTxId(hash)
+      await refetchConnectedPermit2Allowance()
+    } catch (e: any) {
+      setApproveError(e?.message || 'Permit2 approval failed')
+    } finally {
+      setApproveBusy(false)
+    }
+  }
+
+  const disabled =
+    busy ||
+    expectedQuery.isLoading ||
+    !expected ||
+    payoutMismatch ||
+    (isExecuteBatchPath && !executeBatchFunding.ready)
 
   return (
     <div className="space-y-3">
       {payoutMismatch ? (
         <div className="text-[11px] text-amber-300/80">
-          Payout recipient is not set to the expected gauge controller. Deploy will update it to{' '}
-          <span className="font-mono text-amber-200">{shortAddress(expectedGauge!)}</span>.
+          Payout recipient mismatch. Set payoutRecipient to{' '}
+          <span className="font-mono text-amber-200">{shortAddress(expectedGauge!)}</span> before deploying.
+        </div>
+      ) : null}
+
+      {isExecuteBatchPath ? (
+        <div className="rounded-lg border border-white/5 bg-black/20 p-4 space-y-2">
+          <div className="text-[11px] text-zinc-400">
+            You’re an onchain owner of the creator smart wallet{' '}
+            <span className="font-mono text-zinc-200">{shortAddress(owner)}</span>. Deploy will execute through it.
+          </div>
+
+          {typeof smartWalletTokenBalance === 'bigint' ? (
+            <div className="text-[11px] text-zinc-500">
+              Smart wallet balance: <span className="text-zinc-200 font-mono">{formatDeposit(smartWalletTokenBalance)}</span> {depositSymbol}
+            </div>
+          ) : (
+            <div className="text-[11px] text-zinc-600">Checking smart wallet balance…</div>
+          )}
+
+          {typeof executeBatchShortfall === 'bigint' && executeBatchShortfall > 0n ? (
+            <>
+              <div className="text-[11px] text-zinc-500">
+                Shortfall: <span className="text-zinc-200 font-mono">{formatDeposit(executeBatchShortfall)}</span> {depositSymbol} (will be pulled
+                from your wallet via Permit2)
+              </div>
+              {typeof connectedTokenBalanceForTopUp === 'bigint' ? (
+                <div className="text-[11px] text-zinc-500">
+                  Your balance: <span className="text-zinc-200 font-mono">{formatDeposit(connectedTokenBalanceForTopUp)}</span> {depositSymbol}
+                </div>
+              ) : (
+                <div className="text-[11px] text-zinc-600">Checking your balance…</div>
+              )}
+            </>
+          ) : null}
+
+          {executeBatchFunding.needsPermit2Approval ? (
+            <div className="pt-2 space-y-2">
+              <div className="text-[11px] text-amber-300/80">One-time step: approve Permit2 so we can top up the smart wallet.</div>
+              <button type="button" onClick={() => void approvePermit2()} disabled={approveBusy} className="btn-accent w-full">
+                {approveBusy ? 'Approving…' : 'Approve Permit2'}
+              </button>
+              {approveError ? <div className="text-[11px] text-red-400/90">{approveError}</div> : null}
+              {approveTxId ? (
+                <div className="text-[11px] text-zinc-500">
+                  Approved: <span className="font-mono text-zinc-300 break-all">{approveTxId}</span>
+                </div>
+              ) : null}
+            </div>
+          ) : null}
         </div>
       ) : null}
 
       <button type="button" onClick={() => void submit()} disabled={disabled} className="btn-accent w-full rounded-lg">
-        {busy ? 'Deploying…' : '1‑Click Deploy (AA)'}
+        {busy ? 'Deploying…' : isExecuteBatchPath ? 'Deploy via Smart Wallet' : '1‑Click Deploy (AA)'}
       </button>
 
       {error ? <div className="text-[11px] text-red-400/90">{error}</div> : null}
@@ -1387,9 +1839,8 @@ export function DeployVault() {
   const [creatorToken, setCreatorToken] = useState('')
   const [showAdvanced, setShowAdvanced] = useState(false)
   const [deploymentVersion, setDeploymentVersion] = useState<'v1' | 'v2' | 'v3'>('v3')
-  const [lastDeployedVault, setLastDeployedVault] = useState<Address | null>(null)
   const [operatorDeployPackageJson, setOperatorDeployPackageJson] = useState('')
-  const privyEnabled = Boolean((import.meta.env.VITE_PRIVY_APP_ID as string | undefined)?.trim())
+  const privyEnabled = getPrivyRuntime().enabled
 
   const [searchParams] = useSearchParams()
   const prefillToken = useMemo(() => searchParams.get('token') ?? '', [searchParams])
@@ -1800,7 +2251,73 @@ export function DeployVault() {
     query: { enabled: tokenIsValid && !!canonicalIdentityAddress && isAddress(String(CONTRACTS.permit2 ?? '')) },
   })
 
-  const creatorAllowlistQuery = useCreatorAllowlist(tokenIsValid ? { coin: creatorToken } : undefined)
+  // ============================================================
+  // Smart-wallet executeBatch eligibility (EOA owner → deploy via SW)
+  // ============================================================
+  const operatorModeForIdentity =
+    !!connectedWalletAddress &&
+    !!canonicalIdentityAddress &&
+    connectedWalletAddress.toLowerCase() !== canonicalIdentityAddress.toLowerCase()
+
+  const canonicalIdentityBytecodeQuery = useQuery({
+    queryKey: ['bytecode', 'canonicalIdentity', creatorToken, canonicalIdentityAddress],
+    enabled: !!publicClient && !!canonicalIdentityAddress,
+    queryFn: async () => {
+      return await publicClient!.getBytecode({ address: canonicalIdentityAddress as Address })
+    },
+    staleTime: 60_000,
+    retry: 0,
+  })
+
+  const canonicalIdentityIsContract = useMemo(() => {
+    if (!canonicalIdentityAddress) return false
+    const code = canonicalIdentityBytecodeQuery.data
+    return !!code && code !== '0x'
+  }, [canonicalIdentityAddress, canonicalIdentityBytecodeQuery.data])
+
+  const smartWalletEntryPointQuery = useReadContract({
+    address: canonicalIdentityIsContract ? (canonicalIdentityAddress as `0x${string}`) : undefined,
+    abi: COINBASE_SMART_WALLET_PREFLIGHT_ABI,
+    functionName: 'entryPoint',
+    query: {
+      enabled: canonicalIdentityIsContract && operatorModeForIdentity,
+      retry: false,
+    },
+  })
+
+  const smartWalletOwnerForCanonicalQuery = useReadContract({
+    address: canonicalIdentityIsContract ? (canonicalIdentityAddress as `0x${string}`) : undefined,
+    abi: COINBASE_SMART_WALLET_OWNER_ABI,
+    functionName: 'isOwnerAddress',
+    args: [(connectedWalletAddress ?? ZERO_ADDRESS) as `0x${string}`],
+    query: {
+      enabled: canonicalIdentityIsContract && operatorModeForIdentity && !!connectedWalletAddress,
+      retry: false,
+    },
+  })
+
+  const smartWalletPreflightOk = useMemo(() => {
+    const ep = smartWalletEntryPointQuery.data ? String(smartWalletEntryPointQuery.data) : ''
+    return isAddress(ep) && ep.toLowerCase() === COINBASE_ENTRYPOINT_V06.toLowerCase()
+  }, [smartWalletEntryPointQuery.data])
+
+  const executeBatchEligible =
+    operatorModeForIdentity &&
+    canonicalIdentityIsContract &&
+    smartWalletPreflightOk &&
+    smartWalletOwnerForCanonicalQuery.data === true
+
+  // Creator access gate:
+  // - include the connected wallet (for smart-wallet-owned coins, this may be the only EOA we can approve)
+  // - include the coin (so we can also allowlist creator/payoutRecipient)
+  const creatorAllowlistQuery = useCreatorAllowlist(
+    connectedWalletAddress || tokenIsValid
+      ? {
+          address: connectedWalletAddress ?? null,
+          coin: tokenIsValid ? creatorToken : null,
+        }
+      : undefined,
+  )
   const allowlistMode = creatorAllowlistQuery.data?.mode
   const allowlistEnforced = allowlistMode === 'enforced'
   const isAllowlistedCreator = creatorAllowlistQuery.data?.allowed === true
@@ -1998,7 +2515,7 @@ export function DeployVault() {
     tokenIsValid,
   ])
 
-  const isAuthorizedDeployerOrOperator = isAuthorizedDeployer || operatorPackageValidation.valid
+  const isAuthorizedDeployerOrOperator = isAuthorizedDeployer || operatorPackageValidation.valid || executeBatchEligible
 
   const funderHasMinDeposit = useMemo(() => {
     if (!operatorPackageValidation.operatorMode) return walletHasMinDeposit
@@ -2013,6 +2530,8 @@ export function DeployVault() {
     return typeof identityPermit2Allowance === 'bigint' && identityPermit2Allowance >= MIN_FIRST_DEPOSIT
   }, [identityPermit2Allowance])
 
+  const fundingGateOk = executeBatchEligible || funderHasMinDeposit
+
   const canDeploy =
     tokenIsValid &&
     !!zoraCoin &&
@@ -2025,9 +2544,9 @@ export function DeployVault() {
     !!derivedVaultName &&
     !!derivedVaultSymbol &&
     !!connectedWalletAddress &&
-    funderHasMinDeposit &&
+    fundingGateOk &&
     batcherConfigured &&
-    (!identity.blockingReason || operatorPackageValidation.valid) &&
+    (!identity.blockingReason || operatorPackageValidation.valid || executeBatchEligible) &&
     // Identity-funded operator deploys require the identity to have pre-approved Permit2 for the token.
     (!operatorPackageValidation.operatorMode ||
       operatorPackageValidation.fundingModel !== 0 ||
@@ -2486,6 +3005,13 @@ export function DeployVault() {
                             You’re connected via <span className="text-white font-mono">{smartWalletConnectionHint.connectorName}</span> as{' '}
                             <span className="text-white font-mono">{shortAddress(String(address ?? ''))}</span>.
                           </div>
+                          {smartWalletOwnerQuery.data === true ? (
+                            <div className="text-emerald-300/90 text-xs">
+                              Owner verified — you can deploy while staying connected to this wallet. Deployment will execute through the smart wallet.
+                            </div>
+                          ) : smartWalletOwnerQuery.isLoading ? (
+                            <div className="text-amber-300/70 text-xs">Verifying onchain ownership…</div>
+                          ) : null}
                           <div>
                             To deploy, you must connect with an <span className="text-white">onchain owner</span> of the coin owner wallet.
                             Connecting “Coinbase Smart Wallet” may show a different smart wallet address if you’re in a different Coinbase account.
@@ -2513,8 +3039,17 @@ export function DeployVault() {
 
                     <div className="text-xs text-zinc-600 space-y-3">
                       <div>
-                        Deployment executes onchain from your <span className="text-white">connected wallet</span>. It must hold the first{' '}
-                        <span className="text-white font-medium">50,000,000 {underlyingSymbolUpper || 'TOKENS'}</span> deposit.
+                        {executeBatchEligible ? (
+                          <>
+                            You’re an onchain owner of the creator smart wallet. Deploy will execute <span className="text-white">through</span> it.
+                            If the smart wallet is underfunded, we’ll pull the shortfall from your connected wallet via Permit2 (one-time approval).
+                          </>
+                        ) : (
+                          <>
+                            Deployment executes onchain from your <span className="text-white">connected wallet</span>. It must hold the first{' '}
+                            <span className="text-white font-medium">50,000,000 {underlyingSymbolUpper || 'TOKENS'}</span> deposit.
+                          </>
+                        )}
                       </div>
 
                       {tokenIsValid ? (
@@ -2563,6 +3098,17 @@ export function DeployVault() {
                 >
                   Connect wallet to deploy
                 </button>
+              ) : !tokenIsValid && creatorAllowlistQuery.isLoading ? (
+                <button
+                  disabled
+                  className="w-full py-4 bg-black/30 border border-zinc-900/60 rounded-lg text-zinc-600 text-sm cursor-not-allowed"
+                >
+                  Checking creator access…
+                </button>
+              ) : !tokenIsValid && creatorAllowlistQuery.isError ? (
+                <RequestCreatorAccess />
+              ) : !tokenIsValid && allowlistEnforced && !isAllowlistedCreator ? (
+                <RequestCreatorAccess />
               ) : tokenIsValid && zoraCoin && String(zoraCoin.coinType ?? '').toUpperCase() !== 'CREATOR' ? (
                 <button
                   disabled
@@ -2596,7 +3142,7 @@ export function DeployVault() {
                       : 'Authorized only: connect the coin’s creator or payout recipient wallet to deploy'
                   )}
                 </button>
-              ) : tokenIsValid && zoraCoin && identity.blockingReason && !operatorPackageValidation.valid ? (
+              ) : tokenIsValid && zoraCoin && identity.blockingReason && !operatorPackageValidation.valid && !executeBatchEligible ? (
                 <div className="p-4 bg-amber-500/10 border border-amber-500/20 rounded-lg space-y-2">
                   <div className="text-amber-300/90 text-sm font-medium">Identity mismatch</div>
                   <div className="text-amber-300/70 text-xs leading-relaxed">{identity.blockingReason}</div>
@@ -2649,14 +3195,19 @@ export function DeployVault() {
                 >
                   Deployment is not configured (missing CreatorVaultBatcher address)
                 </button>
-              ) : tokenIsValid && zoraCoin && operatorPackageValidation.operatorMode && operatorPackageValidation.fundingModel === 0 && !identityHasPermit2Approval ? (
+              ) : tokenIsValid &&
+                zoraCoin &&
+                operatorPackageValidation.operatorMode &&
+                operatorPackageValidation.fundingModel === 0 &&
+                !identityHasPermit2Approval &&
+                !executeBatchEligible ? (
                 <button
                   disabled
                   className="w-full py-4 bg-black/30 border border-zinc-900/60 rounded-lg text-zinc-600 text-sm cursor-not-allowed"
                 >
                   Identity wallet must approve Permit2 for this token before an operator can deploy
                 </button>
-              ) : tokenIsValid && zoraCoin && !funderHasMinDeposit ? (
+              ) : tokenIsValid && zoraCoin && !funderHasMinDeposit && !executeBatchEligible ? (
                 <button
                   disabled
                   className="w-full py-4 bg-black/30 border border-zinc-900/60 rounded-lg text-zinc-600 text-sm cursor-not-allowed"
@@ -2682,6 +3233,9 @@ export function DeployVault() {
                   <DeployVaultBatcher
                     creatorToken={creatorToken as Address}
                     owner={identity.canonicalIdentity.address as Address}
+                    connectedWalletAddress={connectedWalletAddress}
+                    executeBatchEligible={executeBatchEligible}
+                    depositSymbol={underlyingSymbolUpper || 'TOKENS'}
                     shareSymbol={derivedShareSymbol}
                     shareName={derivedShareName}
                     vaultSymbol={derivedVaultSymbol}
@@ -2689,7 +3243,7 @@ export function DeployVault() {
                     deploymentVersion={deploymentVersion}
                     currentPayoutRecipient={payoutRecipient}
                     operatorPackage={operatorPackageValidation.valid ? operatorPackage : null}
-                    onSuccess={(a) => setLastDeployedVault(a.vault)}
+                    onSuccess={() => {}}
                   />
                 </>
               ) : (
@@ -2707,57 +3261,6 @@ export function DeployVault() {
                 <p>Advanced: v3 is the default. v1 is admin-only.</p>
                 <p>For best results, use a smart wallet that supports `wallet_sendCalls` batching.</p>
               </div>
-            </div>
-
-            {/* Status */}
-            <div className="card rounded-xl p-8 space-y-4">
-              <div className="flex items-center justify-between gap-4">
-                <div className="label">Status</div>
-                <Link
-                  to="/status"
-                  className="text-[10px] text-zinc-600 hover:text-zinc-300 transition-colors whitespace-nowrap"
-                >
-                  Open
-                </Link>
-              </div>
-
-              <div className="flex items-start justify-between gap-6">
-                <div className="space-y-2">
-                  <div className="text-sm text-zinc-200 flex items-center gap-2">
-                    <ShieldCheck className="w-4 h-4 text-emerald-300" />
-                    Verification checks
-                  </div>
-                  <div className="text-xs text-zinc-600 max-w-prose">
-                    Verify your vault wiring on Base and generate a shareable report. If a fix is available, it requires an owner transaction.
-                  </div>
-                </div>
-              </div>
-
-              <div className="flex flex-col sm:flex-row gap-3">
-                <Link
-                  to="/status"
-                  className="w-full sm:w-auto inline-flex items-center justify-center gap-2 rounded-lg bg-black/30 border border-zinc-900/60 px-5 py-3 text-sm text-zinc-200 hover:text-white hover:border-white/10 transition-colors"
-                >
-                  Open status checks
-                </Link>
-
-                {lastDeployedVault ? (
-                  <Link
-                    to={`/status?vault=${encodeURIComponent(lastDeployedVault)}`}
-                    className="w-full sm:w-auto btn-accent rounded-lg px-5 py-3 text-sm text-center"
-                  >
-                    Verify this vault
-                  </Link>
-                ) : null}
-              </div>
-
-              {lastDeployedVault ? (
-                <div className="text-[10px] text-zinc-700">
-                  Vault: <span className="font-mono break-all text-zinc-500">{lastDeployedVault}</span>
-                </div>
-              ) : (
-                <div className="text-[10px] text-zinc-700">Tip: after deploying, use the vault address shown in the Deploy details panel.</div>
-              )}
             </div>
 
             {/* Contracts (details) */}
