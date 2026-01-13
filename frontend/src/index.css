@@ -84,10 +84,6 @@
   }
   
   /* Accent Glows - Selective, not everywhere */
-  .glow-purple {
-    text-shadow: 0 0 40px rgba(168, 85, 247, 0.4);
-  }
-  
   .glow-cyan {
     text-shadow: 0 0 40px rgba(34, 211, 238, 0.4);
   }

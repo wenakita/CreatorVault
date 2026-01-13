@@ -28,8 +28,7 @@ import { DerivedTokenIcon } from '@/components/DerivedTokenIcon'
 import { RequestCreatorAccess } from '@/components/RequestCreatorAccess'
 import { CONTRACTS } from '@/config/contracts'
 import { useSiweAuth } from '@/hooks/useSiweAuth'
-import { useCreatorAllowlist } from '@/hooks'
-import { useMiniAppContext } from '@/hooks'
+import { useCreatorAllowlist, useFarcasterAuth, useMiniAppContext } from '@/hooks'
 import { useZoraCoin, useZoraProfile } from '@/lib/zora/hooks'
 import { fetchCoinMarketRewardsByCoinFromApi } from '@/lib/onchain/coinMarketRewardsByCoin'
 import { getFarcasterUserByFid } from '@/lib/neynar-api'
@@ -1405,16 +1404,42 @@ export function DeployVault() {
   const myProfileQuery = useZoraProfile(address)
   const myProfile = myProfileQuery.data
   const miniApp = useMiniAppContext()
-  const farcasterProfileQuery = useZoraProfile(miniApp.username ?? undefined)
+  const farcasterAuth = useFarcasterAuth()
+
+  // `sdk.context.*` is untrusted. Prefer verified Farcaster auth (Quick Auth / SIWF) when available.
+  const farcasterFidForLookup = useMemo(() => {
+    if (typeof farcasterAuth.fid === 'number' && farcasterAuth.fid > 0) return farcasterAuth.fid
+    if (typeof miniApp.fid === 'number' && miniApp.fid > 0) return miniApp.fid
+    return null
+  }, [farcasterAuth.fid, miniApp.fid])
+
   const farcasterIdentityQuery = useQuery({
-    queryKey: ['farcasterIdentity', miniApp.fid ?? 'none'],
-    enabled: typeof miniApp.fid === 'number' && miniApp.fid > 0,
+    queryKey: ['farcasterIdentity', farcasterFidForLookup ?? 'none'],
+    enabled: typeof farcasterFidForLookup === 'number' && farcasterFidForLookup > 0,
     queryFn: async () => {
-      return await getFarcasterUserByFid(miniApp.fid as number)
+      return await getFarcasterUserByFid(farcasterFidForLookup as number)
     },
     staleTime: 60_000,
     retry: 0,
   })
+
+  const verifiedFarcasterUsername = useMemo(() => {
+    if (typeof farcasterAuth.fid !== 'number' || farcasterAuth.fid <= 0) return null
+    const u = farcasterIdentityQuery.data?.username
+    if (typeof u !== 'string') return null
+    const trimmed = u.trim()
+    return trimmed.length > 0 ? trimmed : null
+  }, [farcasterAuth.fid, farcasterIdentityQuery.data?.username])
+
+  const farcasterUsernameForZoraLookup = useMemo(() => {
+    // Prefer verified username (derived from verified fid); otherwise use untrusted context for suggestion-only.
+    const ctx = typeof miniApp.username === 'string' ? miniApp.username.trim() : ''
+    const fallback = typeof farcasterIdentityQuery.data?.username === 'string' ? farcasterIdentityQuery.data.username.trim() : ''
+    const out = verifiedFarcasterUsername || ctx || fallback
+    return out && out.length > 0 ? out : null
+  }, [verifiedFarcasterUsername, miniApp.username, farcasterIdentityQuery.data?.username])
+
+  const farcasterProfileQuery = useZoraProfile(farcasterUsernameForZoraLookup ?? undefined)
 
   const farcasterCustodyAddress = useMemo(() => {
     const v = farcasterIdentityQuery.data?.custodyAddress ? String(farcasterIdentityQuery.data.custodyAddress) : ''
@@ -1503,18 +1528,18 @@ export function DeployVault() {
     autofillRef.current.tokenFor = addressLc
   }, [isConnected, addressLc, prefillToken, creatorToken, detectedCreatorCoin])
 
-  // Mini App fallback: if we have Farcaster context but no connected wallet-based prefill,
-  // try prefilling from the Farcaster username → Zora profile lookup.
+  // Mini App fallback (verified): only prefill from Farcaster-derived data once we have a verified session.
+  // `sdk.context.*` is suggestion-only and should not trigger irreversible defaults.
   useEffect(() => {
     if (prefillToken) return
     if (creatorToken.trim().length > 0) return
-    if (!miniApp.username) return
+    if (!verifiedFarcasterUsername) return
     if (!detectedCreatorCoinFromFarcaster) return
-    const key = `miniapp:${miniApp.username.toLowerCase()}`
+    const key = `miniapp:${verifiedFarcasterUsername.toLowerCase()}`
     if (autofillRef.current.tokenFor === key) return
     setCreatorToken(detectedCreatorCoinFromFarcaster)
     autofillRef.current.tokenFor = key
-  }, [prefillToken, creatorToken, miniApp.username, detectedCreatorCoinFromFarcaster])
+  }, [prefillToken, creatorToken, verifiedFarcasterUsername, detectedCreatorCoinFromFarcaster])
 
   const tokenIsValid = isAddress(creatorToken)
 
@@ -2027,11 +2052,11 @@ export function DeployVault() {
             <motion.div
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
-              className="rounded-xl bg-gradient-to-br from-uniswap/5 to-purple-500/5 border border-uniswap/10 p-6"
+              className="rounded-xl bg-gradient-to-br from-brand-primary/10 to-brand-accent/5 border border-brand-primary/20 p-6"
             >
               <div className="flex items-start gap-4">
-                <div className="flex-shrink-0 w-10 h-10 rounded-full bg-uniswap/10 flex items-center justify-center">
-                  <Rocket className="w-5 h-5 text-uniswap" />
+                <div className="flex-shrink-0 w-10 h-10 rounded-full bg-brand-primary/10 flex items-center justify-center">
+                  <Rocket className="w-5 h-5 text-brand-primary" />
                 </div>
                 <div className="flex-1 min-w-0">
                   <h3 className="text-white text-sm font-medium mb-1">1-Click Deployment</h3>
@@ -2041,15 +2066,15 @@ export function DeployVault() {
                   </p>
                   <div className="flex flex-wrap gap-2">
                     <span className="inline-flex items-center gap-1.5 text-[10px] text-zinc-400 bg-black/40 border border-white/5 rounded-full px-2.5 py-1">
-                      <ShieldCheck className="w-3 h-3 text-uniswap" />
+                      <ShieldCheck className="w-3 h-3 text-brand-primary" />
                       Optional gas sponsorship
                     </span>
                     <span className="inline-flex items-center gap-1.5 text-[10px] text-zinc-400 bg-black/40 border border-white/5 rounded-full px-2.5 py-1">
-                      <BarChart3 className="w-3 h-3 text-uniswap" />
+                      <BarChart3 className="w-3 h-3 text-brand-primary" />
                       Atomic batch execution
                     </span>
                     <span className="inline-flex items-center gap-1.5 text-[10px] text-zinc-400 bg-black/40 border border-white/5 rounded-full px-2.5 py-1">
-                      <Lock className="w-3 h-3 text-uniswap" />
+                      <Lock className="w-3 h-3 text-brand-primary" />
                       EIP-5792 smart wallet batching
                     </span>
                   </div>
@@ -2084,7 +2109,7 @@ export function DeployVault() {
                             loading="lazy"
                           />
                         ) : (
-                          <div className="w-14 h-14 rounded-full bg-gradient-to-br from-cyan-500/20 to-purple-500/20 flex items-center justify-center text-sm font-medium text-cyan-400">
+                          <div className="w-14 h-14 rounded-full bg-gradient-to-br from-brand-primary/20 to-brand-accent/20 flex items-center justify-center text-sm font-medium text-brand-accent">
                             {String(baseSymbol).slice(0, 2).toUpperCase()}
                           </div>
                         )}
@@ -2434,6 +2459,26 @@ export function DeployVault() {
               {/* Creator Coin */}
               <div className="space-y-2">
                 <label className="label">Creator Coin</label>
+
+                {miniApp.isMiniApp && farcasterAuth.status !== 'verified' && farcasterAuth.canSiwf !== false ? (
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="text-[11px] text-zinc-600">
+                      Verify Farcaster to enable Mini App autofill.
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => void farcasterAuth.signIn()}
+                      disabled={farcasterAuth.status === 'loading'}
+                      className="text-[10px] text-zinc-600 hover:text-zinc-200 transition-colors disabled:opacity-60"
+                      title="Requests a Sign in With Farcaster credential (no transaction)"
+                    >
+                      {farcasterAuth.status === 'loading' ? 'Verifying…' : 'Verify'}
+                    </button>
+                  </div>
+                ) : null}
+                {miniApp.isMiniApp && farcasterAuth.status === 'error' && farcasterAuth.error ? (
+                  <div className="text-[11px] text-red-400/80">{farcasterAuth.error}</div>
+                ) : null}
 
                 {!isConnected ? (
                   tokenIsValid ? (

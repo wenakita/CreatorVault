@@ -161,9 +161,9 @@ export function ActivateAkita() {
                 </p>
               </div>
               
-              <div className="p-3 rounded-lg bg-purple-500/10 border border-purple-500/20 text-xs space-y-2">
-                <p className="text-purple-300 font-medium">✓ {SHARE_SYMBOL} Trading Pool (Created Post-Auction):</p>
-                <p className="text-purple-400/80">
+              <div className="p-3 rounded-lg bg-brand-primary/10 border border-brand-primary/20 text-xs space-y-2">
+                <p className="text-brand-300 font-medium">✓ {SHARE_SYMBOL} Trading Pool (Created Post-Auction):</p>
+                <p className="text-brand-400/80">
                   {SHARE_SYMBOL}/ETH on Uniswap V4 · 0.3% fee tier · 6.9% hook tax for jackpot & burns
                 </p>
               </div>

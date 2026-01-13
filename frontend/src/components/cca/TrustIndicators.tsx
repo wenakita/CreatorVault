@@ -30,9 +30,9 @@ export function TrustIndicators({ strategyAddress, auctionAddress }: TrustIndica
       icon: Lock,
       label: 'Non-Custodial',
       status: 'You control your funds',
-      color: 'text-purple-400',
-      bgColor: 'bg-purple-500/10',
-      borderColor: 'border-purple-500/20',
+      color: 'text-brand-accent',
+      bgColor: 'bg-brand-primary/10',
+      borderColor: 'border-brand-primary/20',
     },
   ]
 

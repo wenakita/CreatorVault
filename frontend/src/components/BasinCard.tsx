@@ -1,18 +1,55 @@
 import { ReactNode } from 'react'
 import { motion } from 'framer-motion'
 
+type BasinCardAccent = 'cyan' | 'mint' | 'copper' | 'brand'
+
 interface BasinCardProps {
   label?: string
   title: string
   children: ReactNode
   tag?: string
   className?: string
-  accent?: 'blue' | 'purple'
+  accent?: BasinCardAccent
 }
 
-const accentColors = {
-  blue: 'border-t-blue-500',
-  purple: 'border-t-purple-500',
+const accentStyles: Record<
+  BasinCardAccent,
+  {
+    borderTop: string
+    hoverBorder: string
+    markerBg: string
+    markerText: string
+    titleRule: string
+  }
+> = {
+  brand: {
+    borderTop: 'border-t-brand-primary',
+    hoverBorder: 'hover:border-brand-primary/30',
+    markerBg: 'bg-brand-primary',
+    markerText: 'text-brand-300',
+    titleRule: 'bg-brand-primary',
+  },
+  cyan: {
+    borderTop: 'border-t-tension-cyan',
+    hoverBorder: 'hover:border-tension-cyan/30',
+    markerBg: 'bg-tension-cyan',
+    markerText: 'text-tension-cyan',
+    titleRule: 'bg-tension-cyan',
+  },
+  mint: {
+    borderTop: 'border-t-magma-mint',
+    hoverBorder: 'hover:border-magma-mint/30',
+    markerBg: 'bg-magma-mint',
+    markerText: 'text-magma-mint',
+    titleRule: 'bg-magma-mint',
+  },
+  copper: {
+    borderTop: 'border-t-copper-bright',
+    hoverBorder: 'hover:border-copper-bright/30',
+    markerBg: 'bg-copper-bright',
+    markerText: 'text-copper-bright',
+    titleRule: 'bg-copper-bright',
+  },
 }
 
 export function BasinCard({ 
@@ -20,16 +57,16 @@ export function BasinCard({
   title, 
   children, 
   tag,
-  accent = 'purple',
+  accent = 'brand',
   className = '' 
 }: BasinCardProps) {
   return (
     <motion.div
       className={`
         relative bg-basalt border border-basalt-light 
-        ${accentColors[accent]} border-t-4
+        ${accentStyles[accent].borderTop} border-t-4
         overflow-hidden transition-all duration-300
-        hover:border-purple-500/30 hover:-translate-y-1
+        ${accentStyles[accent].hoverBorder} hover:-translate-y-1
         shadow-void
         ${className}
       `}
@@ -51,8 +88,8 @@ export function BasinCard({
         {/* Label */}
         {label && (
           <div className="flex items-center gap-2 mb-3">
-            <div className="w-1.5 h-1.5 bg-purple-500 rounded-full" />
-            <span className="text-[11px] font-mono uppercase tracking-[0.3em] text-purple-400">
+            <div className={`w-1.5 h-1.5 ${accentStyles[accent].markerBg} rounded-full`} />
+            <span className={`text-[11px] font-mono uppercase tracking-[0.3em] ${accentStyles[accent].markerText}`}>
               {label}
             </span>
           </div>
@@ -60,7 +97,7 @@ export function BasinCard({
 
         {/* Title */}
         <h2 className="flex items-center gap-4 text-2xl font-bold tracking-tight mb-6">
-          <span className="w-5 h-0.5 bg-purple-500" />
+          <span className={`w-5 h-0.5 ${accentStyles[accent].titleRule}`} />
           {title}
         </h2>
 

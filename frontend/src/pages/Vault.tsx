@@ -285,13 +285,13 @@ export function Vault() {
                     href={`https://basescan.org/address/${wrapperAddress}`}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="inline-flex items-center justify-center gap-2 rounded-full bg-black/20 border border-white/5 px-5 py-3 text-xs text-zinc-300 hover:text-white hover:border-white/10 transition-colors"
+                    className="btn-primary inline-flex items-center justify-center gap-2 rounded-full px-5 py-3 text-xs"
                   >
                     View wrapper <ExternalLink className="w-3 h-3" />
                   </a>
                   <Link
                     to={`/status?vault=${encodeURIComponent(AKITA.vault)}`}
-                    className="inline-flex items-center justify-center gap-2 rounded-full bg-black/20 border border-white/5 px-5 py-3 text-xs text-zinc-300 hover:text-white hover:border-white/10 transition-colors"
+                    className="btn-primary inline-flex items-center justify-center gap-2 rounded-full px-5 py-3 text-xs"
                     title="Verification checks"
                   >
                     Status checks <ShieldCheck className="w-3 h-3 text-emerald-300" />
@@ -356,7 +356,7 @@ export function Vault() {
                 </div>
                 <div className="bg-[#080808]/70 backdrop-blur-xl p-5 sm:p-8 space-y-3 sm:space-y-4">
                   <span className="label">Global Jackpot</span>
-                  <div className="value mono text-2xl sm:text-3xl glow-purple">—</div>
+                  <div className="value mono text-2xl sm:text-3xl glow-brand">—</div>
                 </div>
                 <div className="bg-[#080808]/70 backdrop-blur-xl p-5 sm:p-8 space-y-3 sm:space-y-4">
                   <span className="label">Trade Fee</span>

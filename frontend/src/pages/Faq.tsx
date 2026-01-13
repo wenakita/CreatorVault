@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { AnimatePresence, motion } from 'framer-motion'
 import { ArrowRight, ChevronDown, Search, X } from 'lucide-react'
+import { SHARE_SYMBOL_PREFIX } from '@/lib/tokenSymbols'
 
 type FaqItem = {
   id: string
@@ -29,7 +30,7 @@ function ExternalLink({
       href={href}
       target="_blank"
       rel="noreferrer"
-      className="text-cyan-400 hover:text-cyan-300 underline underline-offset-4"
+      className="text-brand-accent hover:text-brand-400 underline underline-offset-4"
     >
       {children}
     </a>
@@ -37,10 +38,12 @@ function ExternalLink({
 }
 
 const surface =
-  'bg-[#080808]/70 backdrop-blur-2xl border border-white/5 ring-1 ring-white/5 rounded-2xl shadow-[0_30px_80px_rgba(0,0,0,0.6)]'
+  'glass-card ring-1 ring-white/5 shadow-[0_30px_80px_rgba(0,0,0,0.6)]'
 
 const surfaceInteractive =
   'transition-colors hover:border-white/10 hover:ring-white/10'
+
+const SHARE_TOKEN = `${SHARE_SYMBOL_PREFIX}TOKEN`
 
 function FaqAccordionItem({
   item,
@@ -111,11 +114,12 @@ const FAQ_SECTIONS: FaqSection[] = [
         answer: (
           <>
             <p>
-              Creator Vaults is a set of onchain contracts that let a creator coin act like a “vault share token.”
-              You deposit the creator coin into its vault and receive a wrapped share token (shown as <span className="mono">wsTOKEN</span>).
+              <span className="text-brand-accent">Creator Vaults</span> is a set of onchain contracts that let a creator coin act like a “vault share token.”
+              You deposit the creator coin into its vault and receive a wrapped share token (shown as{' '}
+              <span className="mono text-brand-accent">{SHARE_TOKEN}</span>).
             </p>
             <p>
-              Holding <span className="mono">wsTOKEN</span> represents a pro‑rata claim on the vault’s assets and whatever the vault earns
+              Holding <span className="mono text-brand-accent">{SHARE_TOKEN}</span> represents a pro‑rata claim on the vault’s assets and whatever the vault earns
               (fees + strategy results). Nothing here is a guaranteed yield product.
             </p>
           </>
@@ -123,12 +127,12 @@ const FAQ_SECTIONS: FaqSection[] = [
       },
       {
         id: 'what-is-wstoken',
-        question: 'What is wsTOKEN?',
+        question: `What is ${SHARE_TOKEN}?`,
         search: 'ws token share token shares redeem burn',
         answer: (
           <>
             <p>
-              <span className="mono">wsTOKEN</span> is the vault’s share token. It’s designed to be transferable and usable across the app
+              <span className="mono text-brand-accent">{SHARE_TOKEN}</span> is the vault’s share token. It’s designed to be transferable and usable across the app
               like a “receipt” for your vault position.
             </p>
             <p>
@@ -160,11 +164,11 @@ const FAQ_SECTIONS: FaqSection[] = [
         answer: (
           <>
             <p>
-              Use the <Link to="/dashboard" className="text-cyan-400 hover:text-cyan-300 underline underline-offset-4">Dashboard</Link> for discovery,
+              Use the <Link to="/dashboard" className="text-brand-accent hover:text-brand-400 underline underline-offset-4">Dashboard</Link> for discovery,
               and each <span className="mono">/vault/:address</span> page for details.
             </p>
             <p>
-              For wiring / health checks, use the <Link to="/status" className="text-cyan-400 hover:text-cyan-300 underline underline-offset-4">Status</Link> page.
+              For wiring / health checks, use the <Link to="/status" className="text-brand-accent hover:text-brand-400 underline underline-offset-4">Status</Link> page.
               “Fix actions” appear when the connected wallet is the onchain owner.
             </p>
           </>
@@ -195,7 +199,7 @@ const FAQ_SECTIONS: FaqSection[] = [
         answer: (
           <>
             <p>
-              When you deposit the creator coin into its vault, the vault mints you <span className="mono">wsTOKEN</span> shares.
+              When you deposit the creator coin into its vault, the vault mints you <span className="mono text-brand-accent">{SHARE_TOKEN}</span> shares.
               Those shares represent your ownership percentage of the vault.
             </p>
             <p>
@@ -212,7 +216,7 @@ const FAQ_SECTIONS: FaqSection[] = [
         answer: (
           <>
             <p>
-              You withdraw by burning <span className="mono">wsTOKEN</span> shares to redeem the underlying creator coin from the vault.
+              You withdraw by burning <span className="mono text-brand-accent">{SHARE_TOKEN}</span> shares to redeem the underlying creator coin from the vault.
             </p>
             <p>
               Withdrawals depend on available liquidity. If capital is deployed into external strategies, the vault may need to unwind positions first.
@@ -238,7 +242,7 @@ const FAQ_SECTIONS: FaqSection[] = [
       },
       {
         id: 'share-price',
-        question: 'Why does the wsTOKEN exchange rate change?',
+        question: `Why does the ${SHARE_TOKEN} exchange rate change?`,
         search: 'exchange rate share price',
         answer: (
           <p>
@@ -249,12 +253,12 @@ const FAQ_SECTIONS: FaqSection[] = [
       },
       {
         id: 'transfer-bridge',
-        question: 'Can I transfer / bridge wsTOKEN?',
+        question: `Can I transfer / bridge ${SHARE_TOKEN}?`,
         search: 'transfer bridge layerzero oft',
         answer: (
           <>
             <p>
-              <span className="mono">wsTOKEN</span> is designed to be transferable like a normal token. Some deployments also support omnichain transfers
+              <span className="mono text-brand-accent">{SHARE_TOKEN}</span> is designed to be transferable like a normal token. Some deployments also support omnichain transfers
               via OFT-style bridging.
             </p>
             <p className="text-zinc-600">
@@ -699,7 +703,7 @@ export function Faq() {
                   <Link to="/faq/how-it-works" className="flex items-center justify-between gap-4 rounded-xl px-3 py-3 hover:bg-white/[0.03] transition-colors">
                     <div className="space-y-1">
                       <div className="text-white font-light">How it works</div>
-                      <div className="text-xs text-zinc-600 font-light">Deposit → wsTOKEN → earn → redeem</div>
+                      <div className="text-xs text-zinc-600 font-light">Deposit → {SHARE_TOKEN} → earn → redeem</div>
                     </div>
                     <ArrowRight className="w-4 h-4 text-zinc-600" />
                   </Link>
@@ -816,7 +820,7 @@ export function Faq() {
                   <div className="headline text-2xl">No matches</div>
                   <p className="text-zinc-600 text-sm font-light mt-3">
                     Try a different keyword, or start with{' '}
-                    <Link to="/faq/how-it-works" className="text-cyan-400 hover:text-cyan-300 underline underline-offset-4">
+                    <Link to="/faq/how-it-works" className="text-brand-accent hover:text-brand-400 underline underline-offset-4">
                       How it works
             </Link>
                     .
@@ -861,6 +865,25 @@ export function Faq() {
               )}
             </div>
           </div>
+        </div>
+      </section>
+
+      {/* Bottom CTA */}
+      <section className="cinematic-section">
+        <div className="max-w-3xl mx-auto px-4 sm:px-6 text-center space-y-12">
+          <motion.div
+            initial={{ opacity: 0 }}
+            whileInView={{ opacity: 1 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.8 }}
+          >
+            <h2 className="headline text-4xl sm:text-5xl lg:text-6xl mb-8">
+              Ready to start earning?
+            </h2>
+            <Link to="/dashboard" className="btn-accent inline-block">
+              Browse Vaults <ArrowRight className="w-4 h-4 inline ml-2" />
+            </Link>
+          </motion.div>
         </div>
       </section>
     </div>

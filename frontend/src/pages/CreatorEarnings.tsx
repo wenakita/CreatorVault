@@ -428,7 +428,7 @@ export function CreatorEarnings() {
                             loading="lazy"
                           />
                         ) : (
-                          <div className="w-10 h-10 rounded-full bg-gradient-to-br from-cyan-500/20 to-purple-500/20 border border-zinc-800 flex items-center justify-center text-xs font-medium text-cyan-400">
+                          <div className="w-10 h-10 rounded-full bg-gradient-to-br from-brand-primary/20 to-brand-accent/20 border border-zinc-800 flex items-center justify-center text-xs font-medium text-brand-accent">
                             {(profile as any)?.handle
                               ? String((profile as any).handle).slice(0, 2).toUpperCase()
                               : String(activeIdentifier).startsWith('0x')

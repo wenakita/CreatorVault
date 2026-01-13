@@ -3,10 +3,13 @@ import { motion } from 'framer-motion'
 import { ArrowLeft, ArrowRight } from 'lucide-react'
 import { TokenImage } from '@/components/TokenImage'
 import { AKITA } from '@/config/contracts'
+import { SHARE_SYMBOL_PREFIX } from '@/lib/tokenSymbols'
+
+const SHARE_TOKEN = `${SHARE_SYMBOL_PREFIX}TOKEN`
 
 export function FaqHowItWorks() {
   const surface =
-    'bg-[#080808]/70 backdrop-blur-2xl border border-white/5 ring-1 ring-white/5 rounded-2xl shadow-[0_30px_80px_rgba(0,0,0,0.6)]'
+    'glass-card ring-1 ring-white/5 shadow-[0_30px_80px_rgba(0,0,0,0.6)]'
 
   return (
     <div className="relative">
@@ -32,8 +35,9 @@ export function FaqHowItWorks() {
               <span className="label">FAQ</span>
               <h1 className="headline text-4xl sm:text-6xl mt-4">How it works</h1>
               <p className="text-zinc-500 text-sm sm:text-base font-light mt-4 max-w-2xl">
-                The short version: deposit a creator coin → receive a vault share token (<span className="mono">wsTOKEN</span>) → the vault earns fees and
-                runs strategies → you can redeem by burning <span className="mono">wsTOKEN</span>.
+                The short version: deposit a creator coin → receive a vault share token (
+                <span className="mono text-brand-accent">{SHARE_TOKEN}</span>) → the vault earns fees and runs strategies → you can redeem by burning{' '}
+                <span className="mono text-brand-accent">{SHARE_TOKEN}</span>.
               </p>
             </div>
 
@@ -45,7 +49,7 @@ export function FaqHowItWorks() {
                     <span className="label">Step 01</span>
                     <h2 className="text-2xl text-white font-light">Deposit</h2>
                     <p className="text-zinc-600 text-sm font-light">
-                      Deposit the creator coin into its vault. You receive <span className="mono">wsTOKEN</span> shares.
+                      Deposit the creator coin into its vault. You receive <span className="mono text-brand-accent">{SHARE_TOKEN}</span> shares.
                     </p>
                   </div>
                 </div>
@@ -65,7 +69,7 @@ export function FaqHowItWorks() {
                     <span className="label">Step 03</span>
                     <h2 className="text-2xl text-white font-light">Redeem</h2>
                     <p className="text-zinc-600 text-sm font-light">
-                      Burn <span className="mono">wsTOKEN</span> to redeem the underlying creator coin from the vault.
+                      Burn <span className="mono text-brand-accent">{SHARE_TOKEN}</span> to redeem the underlying creator coin from the vault.
                     </p>
                   </div>
                 </div>
@@ -81,7 +85,7 @@ export function FaqHowItWorks() {
                   <TokenImage tokenAddress={AKITA.token as `0x${string}`} symbol="AKITA" size="md" isWrapped />
                 </div>
                 <p className="text-zinc-600 text-sm font-light leading-relaxed">
-                  You deposit the creator coin and receive <span className="mono">wsTOKEN</span>. Your ownership is represented by shares, not a fixed “1:1.”
+                  You deposit the creator coin and receive <span className="mono text-brand-accent">{SHARE_TOKEN}</span>. Your ownership is represented by shares, not a fixed “1:1.”
                   As vault assets change, the share price changes.
                 </p>
               </div>
@@ -104,10 +108,10 @@ export function FaqHowItWorks() {
                   New vaults can use a Uniswap Continuous Clearing Auction (CCA) to bootstrap fair price discovery and initial liquidity.
                 </p>
                 <div className="flex flex-col gap-2">
-                  <Link to="/dashboard" className="text-cyan-400 hover:text-cyan-300 underline underline-offset-4 text-sm">
+                  <Link to="/dashboard" className="text-brand-accent hover:text-brand-400 underline underline-offset-4 text-sm">
                     Explore vaults
                   </Link>
-                  <Link to="/faq" className="text-cyan-400 hover:text-cyan-300 underline underline-offset-4 text-sm">
+                  <Link to="/faq" className="text-brand-accent hover:text-brand-400 underline underline-offset-4 text-sm">
                     Read the full FAQ
                   </Link>
                 </div>
@@ -119,7 +123,7 @@ export function FaqHowItWorks() {
               <div className="mt-4 space-y-3 text-sm text-zinc-500 font-light leading-relaxed">
                 <p>
                   If you’re about to deploy or bid, verify contracts and configuration on the{' '}
-                  <Link to="/status" className="text-cyan-400 hover:text-cyan-300 underline underline-offset-4">
+                  <Link to="/status" className="text-brand-accent hover:text-brand-400 underline underline-offset-4">
                     Status
                   </Link>{' '}
                   page first.

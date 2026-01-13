@@ -1,8 +1,8 @@
-import { http, fallback } from 'wagmi'
+import { http, fallback, createConfig as createWagmiConfig } from 'wagmi'
 import { base } from 'wagmi/chains'
 import { coinbaseWallet, injected } from 'wagmi/connectors'
 import { farcasterMiniApp } from '@farcaster/miniapp-wagmi-connector'
-import { createConfig } from '@privy-io/wagmi'
+import { createConfig as createPrivyConfig } from '@privy-io/wagmi'
 import { coinbaseSmartWallet } from '@/web3/connectors/coinbaseSmartWallet'
 
 /**
@@ -24,6 +24,10 @@ const baseRpcUrls = (() => {
   if (env) return [env, ...DEFAULT_BASE_RPCS]
   return [...DEFAULT_BASE_RPCS]
 })()
+
+const privyAppId = (import.meta.env.VITE_PRIVY_APP_ID as string | undefined)?.trim()
+const privyEnabled = Boolean(privyAppId && privyAppId.length > 0)
+const createConfig = privyEnabled ? createPrivyConfig : createWagmiConfig
 
 export const wagmiConfig = createConfig({
   chains: [base],

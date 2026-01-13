@@ -366,7 +366,7 @@ export function CcaAuctionPanel({
                   href="https://cca.uniswap.org"
                   target="_blank"
                   rel="noreferrer"
-                  className="text-cyan-400 hover:text-cyan-300 underline underline-offset-4 decoration-cyan-400/30 hover:decoration-cyan-300/40 transition-colors"
+                  className="text-uniswap hover:text-uniswap/90 underline underline-offset-4 decoration-uniswap/30 hover:decoration-uniswap/40 transition-colors"
                 >
                   Uniswap CCA
                 </a>
@@ -381,10 +381,10 @@ export function CcaAuctionPanel({
 
           <div className="flex flex-wrap gap-2">
             <Link 
-              to={`/auction/bid/${ccaStrategy}`} 
+              to="/auction-demo"
               className="btn-primary text-sm whitespace-nowrap hover:scale-105 transition-transform"
             >
-              View full auction
+              View Demo
             </Link>
             {isGraduated && (
               <Link 
@@ -584,7 +584,7 @@ export function CcaAuctionPanel({
                     <motion.button
                       className={`px-4 py-2 text-xs font-medium tracking-wide transition-all ${
                         mode === 'advanced'
-                          ? 'bg-purple-500/20 border border-purple-500/40 text-purple-300'
+                          ? 'bg-brand-primary/20 border border-brand-primary/40 text-brand-300'
                           : 'bg-transparent border border-zinc-800 text-zinc-500 hover:text-zinc-300'
                       }`}
                       onClick={() => setMode('advanced')}
@@ -678,7 +678,7 @@ export function CcaAuctionPanel({
                         <div className="space-y-2">
                           <label className="label flex items-center justify-between">
                             <span>Max Price (ETH per {wsSymbol})</span>
-                            <span className="text-[9px] text-purple-400">CUSTOM</span>
+                            <span className="text-[9px] text-brand-400">CUSTOM</span>
                           </label>
                           <div className="relative">
                             <input
@@ -688,7 +688,7 @@ export function CcaAuctionPanel({
                                 setLocalError(null)
                               }}
                               placeholder={clearingPriceText}
-                              className="bg-black/60 border border-purple-500/20 focus:border-purple-500/50 text-white text-xl px-4 py-4 w-full transition-colors font-mono focus:outline-none"
+                              className="bg-black/60 border border-brand-primary/20 focus:border-brand-primary/50 text-white text-xl px-4 py-4 w-full transition-colors font-mono focus:outline-none"
                               inputMode="decimal"
                             />
                           </div>
@@ -721,7 +721,7 @@ export function CcaAuctionPanel({
                         <div className="space-y-2">
                           <label className="label">Effective Max Price</label>
                           <div className="bg-black/80 border border-white/5 rounded-lg p-4 h-[72px] flex flex-col justify-center">
-                            <div className="value mono text-2xl text-purple-400">
+                            <div className="value mono text-2xl text-brand-400">
                               {maxPriceText} ETH
                             </div>
                             <div className="text-zinc-600 text-[10px] font-light mt-1">

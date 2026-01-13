@@ -7,7 +7,17 @@ import React, { useEffect, useState } from 'react'
 // 3: Transform to "VAULT" (Glitch/Impact)
 // 4: Final "CREATOR VAULT"
 
-export const VaultExplainer: React.FC = () => {
+export interface VaultExplainerProps {
+  className?: string
+  minHeightClassName?: string
+  variant?: 'card' | 'hero'
+}
+
+export const VaultExplainer: React.FC<VaultExplainerProps> = ({
+  className = '',
+  minHeightClassName = 'min-h-[320px]',
+  variant = 'card',
+}) => {
   const [step, setStep] = useState(0);
 
   useEffect(() => {
@@ -51,8 +61,24 @@ export const VaultExplainer: React.FC = () => {
     transformStyle: 'preserve-3d',
   }
 
+  const isHero = variant === 'hero'
+  const containerClassName = [
+    'relative w-full overflow-hidden transition-all duration-1000 group',
+    minHeightClassName,
+    'flex flex-col items-center justify-center',
+    isHero ? 'rounded-none border-0 bg-transparent backdrop-blur-none p-0' : 'rounded-2xl border border-white/10 bg-vault-card/80 backdrop-blur-xl p-8 md:p-16',
+    className,
+  ].join(' ')
+
+  const contentClassName = [
+    'relative z-10 flex flex-col items-center justify-center text-center w-full',
+    isHero ? 'max-w-6xl mx-auto px-6 py-8 md:py-16' : '',
+  ].join(' ')
+
   return (
-    <div className="relative w-full overflow-hidden rounded-2xl border border-white/10 bg-vault-card/80 backdrop-blur-xl p-8 md:p-16 transition-all duration-1000 group min-h-[320px] flex flex-col items-center justify-center">
+    <div
+      className={containerClassName}
+    >
       {/* --- Ambient Background Effects --- */}
       <div className="absolute inset-0 pointer-events-none opacity-20">
         <div className="absolute top-0 left-1/4 w-[1px] h-full bg-gradient-to-b from-transparent via-white/10 to-transparent"></div>
@@ -63,7 +89,7 @@ export const VaultExplainer: React.FC = () => {
       <div className="absolute top-0 left-0 w-full h-full bg-[linear-gradient(to_bottom,transparent_0%,rgba(0,82,255,0.03)_50%,transparent_100%)] bg-[length:100%_200%] animate-scan pointer-events-none"></div>
 
       {/* --- Main Content Container --- */}
-      <div className="relative z-10 flex flex-col items-center justify-center text-center w-full">
+      <div className={contentClassName}>
         
         {/* Status Indicator (Top) */}
         <div className="absolute top-0 -translate-y-12 mb-8 inline-flex items-center gap-3 px-4 py-1.5 rounded-full border border-white/10 bg-white/5 backdrop-blur-md transition-opacity duration-500 opacity-60 hover:opacity-100">

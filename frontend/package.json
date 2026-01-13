@@ -8,21 +8,26 @@
     "build": "vite build",
     "lint": "eslint . --ext ts,tsx --max-warnings 0",
     "typecheck": "tsc --noEmit",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "generate:brand-icons": "node scripts/generate-brand-icons.mjs",
+    "capture:miniapp-screens": "node scripts/capture-miniapp-screenshots.mjs"
   },
   "dependencies": {
+    "@coinbase/cdp-sdk": "^1.40.1",
     "@coinbase/onchainkit": "^0.38.10",
     "@coinbase/wallet-sdk": "^4.3.7",
-    "@coinbase/cdp-sdk": "^1.40.1",
+    "@farcaster/auth-client": "^0.7.0",
     "@farcaster/miniapp-sdk": "^0.2.1",
     "@farcaster/miniapp-wagmi-connector": "^1.1.0",
+    "@farcaster/quick-auth": "^0.0.8",
     "@privy-io/react-auth": "^1.83.1",
     "@privy-io/wagmi": "^0.1.0",
     "@supabase/supabase-js": "^2.49.1",
     "@tanstack/react-query": "^5.62.0",
     "@types/d3": "^7.4.3",
-    "@vitejs/plugin-react": "^4.3.4",
     "@vercel/postgres": "^0.10.0",
+    "@vitejs/plugin-react": "^4.3.4",
+    "@wagmi/core": "^2.14.1",
     "@zoralabs/coins-sdk": "0.2.1",
     "@zoralabs/protocol-deployments": "^0.6.4",
     "autoprefixer": "^10.4.20",
@@ -38,8 +43,7 @@
     "tailwindcss": "^3.4.16",
     "viem": "^2.21.54",
     "vite": "^6.0.3",
-    "wagmi": "^2.14.1",
-    "@wagmi/core": "^2.14.1"
+    "wagmi": "^2.14.1"
   },
   "devDependencies": {
     "@types/node": "^22.10.2",
@@ -50,6 +54,8 @@
     "eslint": "^9.16.0",
     "eslint-plugin-react-hooks": "^5.1.0",
     "eslint-plugin-react-refresh": "^0.4.16",
+    "playwright": "^1.57.0",
+    "pngjs": "^7.0.0",
     "typescript": "^5.7.2"
   },
   "pnpm": {

@@ -1,14 +1,15 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630" fill="none">
   <defs>
     <radialGradient id="bg" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(420 170) rotate(55) scale(1200 900)">
-      <stop stop-color="#1C1C1C"/>
-      <stop offset="0.35" stop-color="#0B0B0B"/>
+      <stop stop-color="#141414"/>
+      <stop offset="0.45" stop-color="#070707"/>
       <stop offset="1" stop-color="#000000"/>
     </radialGradient>
-    <linearGradient id="gold" x1="330" y1="160" x2="900" y2="520" gradientUnits="userSpaceOnUse">
-      <stop stop-color="#F7D680"/>
-      <stop offset="0.45" stop-color="#C7A24C"/>
-      <stop offset="1" stop-color="#7A5C1E"/>
+    <linearGradient id="cv-stroke" x1="240" y1="120" x2="520" y2="500" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#D6DCE8" />
+      <stop offset="45%" stop-color="#8492B0" />
+      <stop offset="80%" stop-color="#0052FF" />
+      <stop offset="100%" stop-color="#0033CC" />
     </linearGradient>
     <linearGradient id="glass" x1="280" y1="120" x2="920" y2="540" gradientUnits="userSpaceOnUse">
       <stop stop-color="rgba(255,255,255,0.10)"/>
@@ -20,7 +21,7 @@
   <rect width="1200" height="630" fill="url(#bg)"/>
 
   <!-- subtle grid -->
-  <g opacity="0.12" stroke="rgba(255,255,255,0.08)">
+  <g opacity="0.10" stroke="rgba(255,255,255,0.08)">
     <path d="M0 120H1200" />
     <path d="M0 240H1200" />
     <path d="M0 360H1200" />
@@ -32,11 +33,9 @@
     <path d="M1000 0V630" />
   </g>
 
-  <!-- hero orb -->
-  <circle cx="360" cy="330" r="168" fill="url(#gold)" opacity="0.95"/>
-  <circle cx="360" cy="330" r="174" stroke="rgba(255,255,255,0.20)" stroke-width="2"/>
-  <circle cx="360" cy="330" r="148" stroke="rgba(0,0,0,0.40)" stroke-width="18" opacity="0.35"/>
-  <path d="M250 250c55-70 155-85 230-40" stroke="rgba(255,255,255,0.18)" stroke-width="10" stroke-linecap="round"/>
+  <!-- blue-outline mark -->
+  <rect x="206" y="176" width="308" height="308" rx="54" fill="none" stroke="url(#cv-stroke)" stroke-width="30" opacity="0.14" stroke-linejoin="round" />
+  <rect x="206" y="176" width="308" height="308" rx="54" fill="none" stroke="url(#cv-stroke)" stroke-width="16" stroke-linejoin="round" />
 
   <!-- glass panel -->
   <rect x="520" y="180" width="560" height="270" rx="24" fill="url(#glass)" stroke="rgba(255,255,255,0.10)"/>
@@ -44,13 +43,13 @@
   <rect x="540" y="235" width="420" height="8" rx="4" fill="rgba(255,255,255,0.14)"/>
   <rect x="540" y="255" width="380" height="8" rx="4" fill="rgba(255,255,255,0.10)"/>
 
-  <rect x="540" y="300" width="160" height="44" rx="22" fill="rgba(255,255,255,0.10)" stroke="rgba(255,255,255,0.14)"/>
+  <rect x="540" y="300" width="160" height="44" rx="22" fill="rgba(0,82,255,0.12)" stroke="rgba(0,82,255,0.28)"/>
   <rect x="712" y="300" width="170" height="44" rx="22" fill="rgba(255,255,255,0.06)" stroke="rgba(255,255,255,0.10)"/>
 
-  <rect x="540" y="372" width="270" height="16" rx="8" fill="rgba(247,214,128,0.35)"/>
+  <rect x="540" y="372" width="270" height="16" rx="8" fill="rgba(0,82,255,0.30)"/>
   <rect x="540" y="404" width="420" height="10" rx="5" fill="rgba(255,255,255,0.12)"/>
 
-  <!-- title (as vector path-less text using system font; acceptable for preview) -->
+  <!-- title (system font text for preview) -->
   <text x="520" y="155" fill="rgba(255,255,255,0.86)" font-family="Inter, ui-sans-serif, system-ui" font-size="34" font-weight="300">
     Creator Vaults
   </text>

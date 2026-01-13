@@ -6,3 +6,4 @@ export type { VaultVote, EpochInfo, VotingPowerInfo } from './useVaultGaugeVotin
 export { useCreatorAllowlist } from './useCreatorAllowlist'
 export type { CreatorAllowlistMode, CreatorAllowlistStatus } from './useCreatorAllowlist'
 export { useMiniAppContext } from './useMiniAppContext'
+export { useFarcasterAuth } from './useFarcasterAuth'

@@ -76,9 +76,9 @@ export function SolanaConnect({ onConnect, className = '' }: SolanaConnectProps)
         className={`flex items-center gap-3 ${className}`}
       >
         {/* Solana badge */}
-        <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-purple-500/10 border border-purple-500/30">
-          <div className="w-2 h-2 rounded-full bg-purple-500" />
-          <span className="text-sm font-mono text-purple-400">{formatAddress(publicKey)}</span>
+        <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-brand-primary/10 border border-brand-primary/30">
+          <div className="w-2 h-2 rounded-full bg-brand-primary" />
+          <span className="text-sm font-mono text-brand-300">{formatAddress(publicKey)}</span>
         </div>
         
         <button
@@ -95,7 +95,7 @@ export function SolanaConnect({ onConnect, className = '' }: SolanaConnectProps)
     <motion.button
       onClick={connectWallet}
       disabled={isConnecting}
-      className={`flex items-center gap-2 px-4 py-2.5 rounded-xl bg-gradient-to-r from-purple-600 to-purple-500 text-white font-medium hover:from-purple-500 hover:to-purple-400 disabled:opacity-50 ${className}`}
+      className={`flex items-center gap-2 px-4 py-2.5 rounded-xl bg-gradient-to-r from-brand-600 to-brand-500 text-white font-medium hover:from-brand-500 hover:to-brand-400 disabled:opacity-50 ${className}`}
       whileHover={{ scale: 1.02 }}
       whileTap={{ scale: 0.98 }}
       transition={{ duration: 0.12, ease: baseEase }}
@@ -146,8 +146,8 @@ export function SolanaBridgeCard({ publicKey, onBridge }: SolanaBridgeCardProps)
   if (!publicKey) {
     return (
       <div className="glass-card p-6 text-center space-y-4">
-        <div className="w-12 h-12 rounded-xl bg-purple-500/10 flex items-center justify-center mx-auto">
-          <Wallet className="w-6 h-6 text-purple-500" />
+        <div className="w-12 h-12 rounded-xl bg-brand-primary/10 flex items-center justify-center mx-auto">
+          <Wallet className="w-6 h-6 text-brand-primary" />
         </div>
         <h3 className="font-semibold">Bridge from Solana</h3>
         <p className="text-surface-400 text-sm">
@@ -168,7 +168,7 @@ export function SolanaBridgeCard({ publicKey, onBridge }: SolanaBridgeCardProps)
       {/* Header */}
       <div className="flex items-center justify-between">
         <h3 className="font-semibold flex items-center gap-2">
-          <ArrowLeftRight className="w-5 h-5 text-purple-500" />
+          <ArrowLeftRight className="w-5 h-5 text-brand-primary" />
           Bridge from Solana
         </h3>
         <a
@@ -219,8 +219,8 @@ export function SolanaBridgeCard({ publicKey, onBridge }: SolanaBridgeCardProps)
       </div>
 
       {/* Info box */}
-      <div className="p-3 rounded-lg bg-purple-500/5 border border-purple-500/20 text-sm">
-        <p className="text-purple-300">
+      <div className="p-3 rounded-lg bg-brand-primary/5 border border-brand-primary/20 text-sm">
+        <p className="text-brand-300">
           {action === 'lottery' && 'Bridge SOL → Swap for wsToken → Enter lottery automatically!'}
           {action === 'cca' && 'Bridge SOL → Submit bid to CCA auction for fair token distribution'}
           {action === 'deposit' && 'Bridge SOL → Swap for Creator Coin → Deposit into vault'}
@@ -248,7 +248,7 @@ export function SolanaBridgeCard({ publicKey, onBridge }: SolanaBridgeCardProps)
 
       {/* Flow explainer */}
       <div className="flex items-center justify-center gap-2 text-xs text-surface-500">
-        <span className="px-2 py-1 rounded bg-purple-500/10 text-purple-400">Solana</span>
+        <span className="px-2 py-1 rounded bg-surface-900/50 text-surface-300">Solana</span>
         <span>→</span>
         <span className="px-2 py-1 rounded bg-brand-500/10 text-brand-400">Base</span>
         <span>→</span>

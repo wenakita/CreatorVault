@@ -311,8 +311,14 @@ function extractSocials(profile: any): Record<string, string> {
         case 'farcaster':
           socials.farcaster = `https://warpcast.com/${identifier}`
           break
+        case 'instagram':
+          socials.instagram = `https://instagram.com/${identifier}`
+          break
         case 'tiktok':
           socials.tiktok = `https://tiktok.com/@${identifier}`
+          break
+        case 'youtube':
+          socials.youtube = `https://youtube.com/@${identifier}`
           break
       }
     }
@@ -393,11 +399,103 @@ function extractSocialAccounts(profile: any): SocialAccount[] {
  */
 export async function getTalentSocials(walletAddress: string): Promise<CreatorSocials> {
   try {
-    // Fetch the full profile (which includes socials)
-    const profile = await getTalentPassport(walletAddress)
-    return profile?.socials || {}
+    const qs = new URLSearchParams({ id: walletAddress, account_source: 'wallet' })
+    const response = await fetch(`${TALENT_API_BASE}/socials?${qs.toString()}`, {
+      headers: {
+        'X-API-KEY': TALENT_API_KEY,
+        Accept: 'application/json',
+      },
+    })
+
+    if (!response.ok) {
+      logger.error('[Talent] Failed to fetch socials', { status: response.status, statusText: response.statusText })
+      return {}
+    }
+
+    const data = await response.json()
+    const socialsArr = Array.isArray(data?.socials) ? data.socials : []
+
+    const out: CreatorSocials = {}
+    for (const item of socialsArr) {
+      const source = typeof item?.source === 'string' ? String(item.source).toLowerCase() : ''
+      const profileUrl = typeof item?.profile_url === 'string' ? String(item.profile_url) : null
+      const handleRaw = typeof item?.handle === 'string' ? String(item.handle) : null
+      const accountUsername = typeof item?.account?.username === 'string' ? String(item.account.username) : null
+      const accountIdentifier = typeof item?.account?.identifier === 'string' ? String(item.account.identifier) : null
+      const handle = (handleRaw ?? accountUsername ?? accountIdentifier ?? '').replace(/^@/, '').trim()
+
+      const putIfMissing = (key: keyof CreatorSocials, url: string | null, fallback: string | null) => {
+        if (out[key]) return
+        if (url && url.trim().length > 0) {
+          out[key] = url.trim()
+          return
+        }
+        if (fallback && fallback.trim().length > 0) {
+          out[key] = fallback.trim()
+        }
+      }
+
+      if (source === 'twitter' || source === 'x') {
+        putIfMissing('twitter', profileUrl, handle ? `https://x.com/${handle}` : null)
+      } else if (source === 'farcaster') {
+        putIfMissing('farcaster', profileUrl, handle ? `https://warpcast.com/${handle}` : null)
+      } else if (source === 'instagram') {
+        putIfMissing('instagram', profileUrl, handle ? `https://instagram.com/${handle}` : null)
+      } else if (source === 'tiktok') {
+        putIfMissing('tiktok', profileUrl, handle ? `https://tiktok.com/@${handle}` : null)
+      } else if (source === 'youtube') {
+        putIfMissing('youtube', profileUrl, handle ? `https://youtube.com/@${handle}` : null)
+      } else if (source === 'github') {
+        putIfMissing('github', profileUrl, handle ? `https://github.com/${handle}` : null)
+      } else if (source === 'linkedin') {
+        putIfMissing('linkedin', profileUrl, handle ? `https://linkedin.com/in/${handle}` : null)
+      }
+    }
+
+    return out
   } catch (error) {
     logger.error('[Talent] Failed to fetch socials:', error)
+    return {}
+  }
+}
+
+/**
+ * Batch fetch socials for many wallets in one Talent search request.
+ *
+ * Returns a map keyed by lowercase wallet address -> socials urls.
+ */
+export async function getTalentSocialsBatch(walletAddresses: string[]): Promise<Record<string, CreatorSocials>> {
+  const uniq = Array.from(
+    new Set(
+      (walletAddresses ?? [])
+        .map((a) => (typeof a === 'string' ? a.trim().toLowerCase() : ''))
+        .filter((a) => a.length > 0),
+    ),
+  )
+
+  // Keep this bounded for UI usage; we can always raise later.
+  const MAX = 60
+  const addrs = uniq.slice(0, MAX)
+  if (addrs.length === 0) return {}
+
+  try {
+    // /socials is per-identifier (no batch API). Use limited concurrency.
+    const out: Record<string, CreatorSocials> = {}
+    const queue = [...addrs]
+    const concurrency = Math.min(4, queue.length)
+
+    const workers = Array.from({ length: concurrency }).map(async () => {
+      while (queue.length > 0) {
+        const addr = queue.shift()
+        if (!addr) continue
+        out[addr] = await getTalentSocials(addr)
+      }
+    })
+
+    await Promise.all(workers)
+    return out
+  } catch (error) {
+    logger.error('[Talent] Failed to batch fetch socials:', error)
     return {}
   }
 }
@@ -430,7 +528,7 @@ export function formatTalentScore(score: number): string {
  * Get score color based on value
  */
 export function getScoreColor(score: number): string {
-  if (score >= 80) return 'text-purple-400'
+  if (score >= 80) return 'text-brand-400'
   if (score >= 60) return 'text-cyan-400'
   if (score >= 40) return 'text-green-400'
   if (score >= 20) return 'text-amber-400'

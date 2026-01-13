@@ -24,8 +24,8 @@ export function CreatorVaultLogo({ size = 64, className = "", animated = false }
     >
       <defs>
         <linearGradient id="cvGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-          <stop offset="0%" stopColor="#A855F7"/>
-          <stop offset="100%" stopColor="#7C3AED"/>
+          <stop offset="0%" stopColor="#0052FF"/>
+          <stop offset="100%" stopColor="#0033CC"/>
         </linearGradient>
         <filter id="cvGlow" x="-50%" y="-50%" width="200%" height="200%">
           <feGaussianBlur stdDeviation="4" result="coloredBlur"/>
@@ -57,13 +57,13 @@ export function CreatorVaultLogoFull({ size = 256, className = "" }: { size?: nu
     >
       <defs>
         <linearGradient id="vaultGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-          <stop offset="0%" stopColor="#A855F7"/>
-          <stop offset="50%" stopColor="#8B5CF6"/>
-          <stop offset="100%" stopColor="#7C3AED"/>
+          <stop offset="0%" stopColor="#0052FF"/>
+          <stop offset="50%" stopColor="#3B82F6"/>
+          <stop offset="100%" stopColor="#0033CC"/>
         </linearGradient>
         <linearGradient id="innerGlow" x1="0%" y1="0%" x2="100%" y2="100%">
-          <stop offset="0%" stopColor="#C084FC"/>
-          <stop offset="100%" stopColor="#A855F7"/>
+          <stop offset="0%" stopColor="#60A5FA"/>
+          <stop offset="100%" stopColor="#0052FF"/>
         </linearGradient>
         <filter id="glowFull" x="-50%" y="-50%" width="200%" height="200%">
           <feGaussianBlur stdDeviation="8" result="coloredBlur"/>
@@ -76,7 +76,7 @@ export function CreatorVaultLogoFull({ size = 256, className = "" }: { size?: nu
       
       <circle cx="256" cy="256" r="240" fill="#0a0a0a" stroke="url(#vaultGradient)" strokeWidth="4"/>
       <circle cx="256" cy="256" r="200" fill="none" stroke="url(#vaultGradient)" strokeWidth="3" opacity="0.6"/>
-      <circle cx="256" cy="256" r="160" fill="none" stroke="#A855F7" strokeWidth="1" opacity="0.3" strokeDasharray="20 10"/>
+      <circle cx="256" cy="256" r="160" fill="none" stroke="#0052FF" strokeWidth="1" opacity="0.3" strokeDasharray="20 10"/>
       
       <g filter="url(#glowFull)">
         <rect x="196" y="196" width="120" height="120" rx="16" fill="url(#vaultGradient)" transform="rotate(45 256 256)"/>
@@ -85,12 +85,12 @@ export function CreatorVaultLogoFull({ size = 256, className = "" }: { size?: nu
         <rect x="248" y="240" width="16" height="40" fill="#0a0a0a"/>
       </g>
       
-      <circle cx="136" cy="136" r="8" fill="#A855F7" opacity="0.5"/>
-      <circle cx="376" cy="136" r="8" fill="#A855F7" opacity="0.5"/>
-      <circle cx="136" cy="376" r="8" fill="#A855F7" opacity="0.5"/>
-      <circle cx="376" cy="376" r="8" fill="#A855F7" opacity="0.5"/>
+      <circle cx="136" cy="136" r="8" fill="#0052FF" opacity="0.5"/>
+      <circle cx="376" cy="136" r="8" fill="#0052FF" opacity="0.5"/>
+      <circle cx="136" cy="376" r="8" fill="#0052FF" opacity="0.5"/>
+      <circle cx="376" cy="376" r="8" fill="#0052FF" opacity="0.5"/>
       
-      <text x="256" y="420" textAnchor="middle" fontFamily="Inter, system-ui, sans-serif" fontSize="48" fontWeight="300" fill="#A855F7" letterSpacing="8">CV</text>
+      <text x="256" y="420" textAnchor="middle" fontFamily="Inter, system-ui, sans-serif" fontSize="48" fontWeight="300" fill="#0052FF" letterSpacing="8">CV</text>
     </svg>
   );
 }

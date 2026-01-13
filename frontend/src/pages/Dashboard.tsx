@@ -4,20 +4,31 @@ import { motion } from 'framer-motion'
 import { useAccount } from 'wagmi'
 import { isAddress, type Address } from 'viem'
 import { base } from 'viem/chains'
-import { useIsFetching, useQueryClient } from '@tanstack/react-query'
-import { Play, RotateCw } from 'lucide-react'
+import { useIsFetching, useQuery, useQueryClient } from '@tanstack/react-query'
+import { Instagram, Play, RotateCw, Twitter } from 'lucide-react'
 import { AKITA } from '../config/contracts'
 import { VaultCard } from '@/components/brand/VaultCard'
 import { CoinTradeModal } from '@/components/market/CoinTradeModal'
 import { VaultExplainer } from '@/components/VaultExplainer'
-import { TechScramble } from '@/components/TechScramble'
-import { TextScramble } from '@/components/brand/TextScramble'
 import { useDebankTotalBalanceBatch } from '@/lib/debank/hooks'
 import { useDexscreenerTokenStatsBatch } from '@/lib/dexscreener/hooks'
 import type { DexscreenerTokenStats } from '@/lib/dexscreener/client'
 import { computeCreatorScore } from '@/lib/reputation/creatorScore'
-import { useZoraExplore, useZoraTopCreators } from '@/lib/zora/hooks'
+import { getTalentSocials, type CreatorSocials } from '@/lib/talent-api'
+import { useZoraCoin, useZoraExplore, useZoraTopCreators } from '@/lib/zora/hooks'
 import type { ZoraCoin } from '@/lib/zora/types'
+
+const TikTokIcon = ({ className }: { className?: string }) => (
+  <svg className={className} viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+    <path d="M19.59 6.69a4.83 4.83 0 01-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 01-5.2 1.74 2.89 2.89 0 012.31-4.64 2.93 2.93 0 01.88.13V9.4a6.84 6.84 0 00-1-.05A6.33 6.33 0 005 20.1a6.34 6.34 0 0010.86-4.43v-7a8.16 8.16 0 004.77 1.52v-3.4a4.85 4.85 0 01-1-.1z" />
+  </svg>
+)
+
+const FarcasterIcon = ({ className }: { className?: string }) => (
+  <svg className={className} viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+    <path d="M21.5 5.5v13h-2v-13h2zm-6 0v13h-2v-7h-3v7h-2v-13h2v5h3v-5h2zm-11 0v13h-2v-13h2z" />
+  </svg>
+)
 
 const vaults = [
   {
@@ -300,6 +311,126 @@ function ZoraCoinRow({
   const mediaMime = coin.mediaContent?.mimeType ? String(coin.mediaContent.mimeType).toLowerCase() : ''
   const isVideoContent = isContentCoin && mediaMime.startsWith('video/')
 
+  const coinAddr = (() => {
+    const raw = coin.address ? String(coin.address) : ''
+    return raw && isAddress(raw) ? (raw as Address) : null
+  })()
+
+  const creatorAddrFromList = creatorAddr && isAddress(creatorAddr) ? creatorAddr : null
+  const [socialsOpen, setSocialsOpen] = useState(false)
+
+  const shouldResolveCreator = socialsOpen && !creatorAddrFromList && Boolean(coinAddr)
+  const { data: zoraCoinDetails, isFetching: zoraCoinFetching } = useZoraCoin(
+    shouldResolveCreator ? (coinAddr as Address) : undefined,
+  )
+
+  const resolvedCreatorAddress = (() => {
+    if (creatorAddrFromList) return creatorAddrFromList
+    const c = zoraCoinDetails ?? null
+    const candidates = [c?.creatorAddress, c?.payoutRecipientAddress]
+    for (const v of candidates) {
+      const raw = v ? String(v) : ''
+      if (raw && isAddress(raw)) return raw
+    }
+    return null
+  })()
+
+  const creatorAddrLc = resolvedCreatorAddress ? resolvedCreatorAddress.toLowerCase() : null
+
+  const { data: talentSocials, isFetching: socialsFetching } = useQuery({
+    queryKey: ['talent', 'socials', creatorAddrLc],
+    queryFn: async () => getTalentSocials(creatorAddrLc as string),
+    enabled: socialsOpen && Boolean(creatorAddrLc),
+    staleTime: 1000 * 60 * 60, // 1h
+  })
+
+  function openExternal(url: string) {
+    if (!url) return
+    try {
+      window.open(url, '_blank', 'noopener,noreferrer')
+    } catch {
+      // ignore
+    }
+  }
+
+  const socialButtons = (() => {
+    if (!socialsOpen) return null
+    const socials: CreatorSocials | null = talentSocials ?? null
+    if (!socials) return null
+    const iconClassName = 'h-3.5 w-3.5'
+    const items: Array<{ key: string; url: string; title: string; icon: JSX.Element }> = []
+    if (typeof socials.farcaster === 'string' && socials.farcaster.trim().length > 0)
+      items.push({
+        key: 'farcaster',
+        url: socials.farcaster,
+        title: 'Farcaster',
+        icon: <FarcasterIcon className={iconClassName} />,
+      })
+    if (typeof socials.twitter === 'string' && socials.twitter.trim().length > 0)
+      items.push({
+        key: 'twitter',
+        url: socials.twitter,
+        title: 'Twitter',
+        icon: <Twitter className={iconClassName} />,
+      })
+    if (typeof socials.instagram === 'string' && socials.instagram.trim().length > 0)
+      items.push({
+        key: 'instagram',
+        url: socials.instagram,
+        title: 'Instagram',
+        icon: <Instagram className={iconClassName} />,
+      })
+    if (typeof socials.tiktok === 'string' && socials.tiktok.trim().length > 0)
+      items.push({
+        key: 'tiktok',
+        url: socials.tiktok,
+        title: 'TikTok',
+        icon: <TikTokIcon className={iconClassName} />,
+      })
+
+    if (items.length === 0) return null
+
+    return (
+      <div className="hidden sm:flex items-center gap-1.5 flex-shrink-0">
+        {items.slice(0, 4).map((it) => (
+          <button
+            key={it.key}
+            type="button"
+            onClick={(e) => {
+              e.preventDefault()
+              e.stopPropagation()
+              openExternal(it.url)
+            }}
+            className="h-7 w-7 rounded-full border border-white/10 bg-black/20 text-zinc-500 hover:text-zinc-200 hover:border-white/20 transition-colors flex items-center justify-center"
+            title={it.title}
+            aria-label={it.title}
+          >
+            {it.icon}
+          </button>
+        ))}
+      </div>
+    )
+  })()
+
+  const canToggleSocials = Boolean(creatorAddrFromList || coinAddr)
+  const socialToggle = canToggleSocials ? (
+    <button
+      type="button"
+      onClick={(e) => {
+        e.preventDefault()
+        e.stopPropagation()
+        setSocialsOpen((v) => !v)
+      }}
+      className={`hidden sm:inline-flex h-7 w-7 rounded-full border border-white/10 bg-black/20 text-[10px] font-mono uppercase tracking-[0.12em] text-zinc-500 hover:text-zinc-200 hover:border-white/20 transition-opacity flex items-center justify-center ${
+        socialsOpen ? 'opacity-100' : 'opacity-60'
+      }`}
+      title={socialsOpen ? 'Hide socials' : 'Show socials'}
+      aria-label={socialsOpen ? 'Hide socials' : 'Show socials'}
+    >
+      {socialsOpen && (socialsFetching || zoraCoinFetching) ? '…' : '@'}
+    </button>
+  ) : null
+
   const volPct =
     analytics && analytics.maxVolume24h > 0 && Number.isFinite(volumeWindow)
       ? Math.max(0, Math.min(1, volumeWindow / analytics.maxVolume24h))
@@ -329,14 +460,12 @@ function ZoraCoinRow({
     return formatPercentSigned(deltaVal / prev)
   })()
   const deltaClass =
-    Number.isFinite(deltaVal) && deltaVal !== 0 ? (deltaVal > 0 ? 'text-emerald-400' : 'text-rose-400') : 'text-zinc-200'
+    Number.isFinite(deltaVal) && deltaVal !== 0 ? (deltaVal > 0 ? 'text-emerald-400' : 'text-rose-400') : 'text-zinc-500'
 
   const ch1h = typeof dex?.change1h === 'number' && Number.isFinite(dex.change1h) ? dex.change1h : NaN
-  const ch24h = typeof dex?.change24h === 'number' && Number.isFinite(dex.change24h) ? dex.change24h : NaN
   const ch6h = typeof dex?.change6h === 'number' && Number.isFinite(dex.change6h) ? dex.change6h : NaN
 
   const ch1hText = Number.isFinite(ch1h) ? formatPercentSigned(ch1h) ?? '—' : '—'
-  const ch24hText = Number.isFinite(ch24h) ? formatPercentSigned(ch24h) ?? '—' : '—'
   const ch6hText = Number.isFinite(ch6h) ? formatPercentSigned(ch6h) ?? '—' : '—'
 
   const changeClass = (v: number) =>
@@ -361,7 +490,7 @@ function ZoraCoinRow({
       case 'VOLUME':
         return volText
       case 'CHANGE_24H':
-        return ch24hText
+        return deltaPctText ?? '—'
       default:
         return mcapText
     }
@@ -384,7 +513,7 @@ function ZoraCoinRow({
                   loading="lazy"
                 />
               ) : (
-                <div className={`w-9 h-9 rounded-full bg-gradient-to-br from-cyan-500/20 to-purple-500/20 flex items-center justify-center text-xs font-medium text-cyan-400 ${contentAvatarRingClass}`}>
+                <div className={`w-9 h-9 rounded-full bg-gradient-to-br from-brand-primary/20 to-brand-accent/20 flex items-center justify-center text-xs font-medium text-brand-accent ${contentAvatarRingClass}`}>
                   {symbol.slice(0, 2).toUpperCase()}
                 </div>
               )}
@@ -392,7 +521,7 @@ function ZoraCoinRow({
               {/* Video indicator */}
               {isVideoContent ? (
                 <div
-                  className="absolute -top-0.5 -right-0.5 w-4 h-4 rounded-full overflow-hidden bg-black border border-zinc-900 ring-1 ring-purple-500/30 ring-offset-0 flex items-center justify-center text-zinc-200"
+                  className="absolute -top-0.5 -right-0.5 w-4 h-4 rounded-full overflow-hidden bg-black border border-zinc-900 ring-1 ring-brand-primary/30 ring-offset-0 flex items-center justify-center text-zinc-200"
                   title="Video content"
                 >
                   <Play className="w-2.5 h-2.5" />
@@ -428,6 +557,8 @@ function ZoraCoinRow({
                     {symbolDisplay}
                   </div>
                 ) : null}
+                {socialToggle}
+                {socialButtons}
                 {canTrade ? (
                   <button
                     type="button"
@@ -547,22 +678,22 @@ function ZoraCoinRow({
           </div>
 
           <div className="hidden sm:block sm:col-span-2 lg:col-span-1 text-right">
-            <div className={`text-sm font-mono tabular-nums ${changeClass(ch24h)}`}>{ch24hText}</div>
+            <div
+              className={`text-sm font-mono tabular-nums ${deltaClass}`}
+              title={deltaText !== '—' ? `Mcap 24h: ${deltaText}${deltaPctText ? ` (${deltaPctText})` : ''}` : 'Mcap 24h'}
+            >
+              {deltaPctText ?? '—'}
+            </div>
           </div>
 
           <div className="hidden sm:block sm:col-span-2 lg:col-span-1 text-right">
-            <div className="text-sm font-mono tabular-nums text-zinc-200">{volText}</div>
-            {analytics ? (
-              <div className="mt-1 text-[10px] text-zinc-600 font-mono tabular-nums">fees: {feesText}</div>
-            ) : null}
+            <div className="text-sm font-mono tabular-nums text-zinc-200">{mcapText}</div>
           </div>
 
           <div className={`hidden sm:block ${showScore ? 'sm:col-span-2 lg:col-span-2' : 'sm:col-span-4 lg:col-span-3'} text-right`}>
-            <div className="text-sm font-mono tabular-nums text-zinc-200">{mcapText}</div>
-            {analytics && timeframe === '24H' && deltaPctText ? (
-              <div className={`mt-1 text-[10px] font-mono tabular-nums ${deltaClass} opacity-70`}>
-                <span className="opacity-70">Mcap 24h:</span> {deltaText} <span className="opacity-70">({deltaPctText})</span>
-              </div>
+            <div className="text-sm font-mono tabular-nums text-zinc-200">{volText}</div>
+            {analytics ? (
+              <div className="mt-1 text-[10px] text-zinc-600 font-mono tabular-nums">fees: {feesText}</div>
             ) : null}
           </div>
 
@@ -586,15 +717,15 @@ function ZoraCoinRow({
           <div className="mt-3 grid grid-cols-12 items-center gap-3 text-[10px] text-zinc-600">
             <div className="hidden sm:block sm:col-span-4" />
             <div className="col-span-12 sm:col-span-4 flex items-center gap-2">
-              <span>VOL</span>
+              <span>MCAP</span>
               <div className="relative h-1.5 flex-1 bg-zinc-900 rounded-full overflow-hidden">
-                <div className="absolute inset-y-0 left-0 bg-cyan-500/60" style={{ width: `${Math.round((volPct ?? 0) * 100)}%` }} />
+                <div className="absolute inset-y-0 left-0 bg-brand-primary/60" style={{ width: `${Math.round((mcapPct ?? 0) * 100)}%` }} />
               </div>
             </div>
             <div className="col-span-12 sm:col-span-4 flex items-center gap-2">
-              <span>MCAP</span>
+              <span>VOL</span>
               <div className="relative h-1.5 flex-1 bg-zinc-900 rounded-full overflow-hidden">
-                <div className="absolute inset-y-0 left-0 bg-purple-500/60" style={{ width: `${Math.round((mcapPct ?? 0) * 100)}%` }} />
+                <div className="absolute inset-y-0 left-0 bg-cyan-500/60" style={{ width: `${Math.round((volPct ?? 0) * 100)}%` }} />
               </div>
             </div>
           </div>
@@ -616,7 +747,7 @@ export function Dashboard() {
 
   const { address: viewerAddress } = useAccount()
   const [tradeCoin, setTradeCoin] = useState<ZoraCoin | null>(null)
-  const [showAnalytics, setShowAnalytics] = useState(false)
+  const [showAnalytics, setShowAnalytics] = useState(true)
   const [showScore, setShowScore] = useState(false)
   // Default to All so the first view feels like a true market leaderboard.
   const [typeFilter, setTypeFilter] = useState<CoinTypeFilter>('ALL')
@@ -782,8 +913,19 @@ export function Dashboard() {
           return Number.isFinite(v) ? v : -Infinity
         }
         case 'CHANGE_24H': {
-          const ch = typeof dex?.change24h === 'number' ? dex.change24h : NaN
-          return Number.isFinite(ch) ? ch : NaN
+          const deltaVal = coin.marketCapDelta24h ? Number(coin.marketCapDelta24h) : NaN
+          if (!Number.isFinite(deltaVal)) return -Infinity
+          const z = num(coin.marketCap)
+          const mcap =
+            Number.isFinite(z)
+              ? z
+              : typeof dex?.marketCapUsd === 'number' && Number.isFinite(dex.marketCapUsd)
+                ? dex.marketCapUsd
+                : NaN
+          if (!Number.isFinite(mcap)) return -Infinity
+          const prev = mcap - deltaVal
+          if (!Number.isFinite(prev) || prev <= 0) return -Infinity
+          return deltaVal / prev
         }
         default:
           return -Infinity
@@ -840,37 +982,25 @@ export function Dashboard() {
       <CoinTradeModal coin={tradeCoin} open={Boolean(tradeCoin)} onClose={() => setTradeCoin(null)} />
       {/* Particle atmosphere */}
       <div className="particles">
-        <div className="absolute top-1/4 left-1/3 w-px h-px bg-purple-500 rounded-full" style={{ animation: 'particle-float 8s ease-in-out infinite' }} />
+        <div className="absolute top-1/4 left-1/3 w-px h-px bg-brand-primary rounded-full" style={{ animation: 'particle-float 8s ease-in-out infinite' }} />
         <div className="absolute top-1/2 right-1/4 w-px h-px bg-cyan-500 rounded-full" style={{ animation: 'particle-float 10s ease-in-out infinite', animationDelay: '2s' }} />
       </div>
 
-      {/* Header */}
-      <section className="cinematic-section">
-        <div className="max-w-6xl mx-auto px-6">
-          <motion.div
-            initial={{ opacity: 0, y: 30 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8 }}
-            className="space-y-6"
-          >
-            <TechScramble text="Vault Marketplace" className="label" duration={500} />
-            <h1 className="headline text-7xl lg:text-8xl leading-[1.05]">
-              <TextScramble text="Creator Vaults" speed={0.9} />
-            </h1>
-            <p className="text-zinc-500 text-xl font-light max-w-2xl">
-              Deposit creator coins · Earn yield · Grow together
-            </p>
-          </motion.div>
-        </div>
+      {/* Hero */}
+      <section className="cinematic-section py-0 sm:py-0 lg:py-0">
+        <motion.div
+          initial={{ opacity: 0, y: 30 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.8 }}
+          className="w-full"
+        >
+          <VaultExplainer variant="hero" minHeightClassName="min-h-screen" />
+        </motion.div>
       </section>
 
       {/* Vaults */}
       <section className="cinematic-section">
         <div className="max-w-6xl mx-auto px-6">
-          <div className="mb-16">
-            <VaultExplainer />
-          </div>
-
           <motion.div
             initial={{ opacity: 0 }}
             whileInView={{ opacity: 1 }}
@@ -917,7 +1047,7 @@ export function Dashboard() {
                 onClick={() => setShowAnalytics((v) => !v)}
                 className="text-xs text-zinc-600 hover:text-zinc-400 transition-colors"
               >
-                {showAnalytics ? 'Hide analytics' : 'Show analytics'}
+                {showAnalytics ? 'Hide fees' : 'Show fees'}
               </button>
 
               <button
@@ -958,10 +1088,10 @@ export function Dashboard() {
                   Zora Coins (Base)
                 </div>
                 <div className="text-sm text-zinc-600">
-                  See what’s moving right now. Sort by market cap, volume, or 24h change.
+                  See what’s moving right now. Sort by market cap, 24h market cap change, or volume.
                 </div>
               </div>
-              <div className="flex items-center gap-3 overflow-x-auto whitespace-nowrap pb-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+              <div className="flex flex-wrap items-center gap-3">
                 <CoinTypeFilterPills value={typeFilter} onChange={setTypeFilter} />
                 <div className="flex-none inline-flex items-center gap-0.5 rounded-full border border-zinc-900/70 bg-black/30 p-0.5 backdrop-blur-sm">
                     <button
@@ -1003,7 +1133,7 @@ export function Dashboard() {
                       aria-label="Sort coins"
                     >
                       <option value="MARKET_CAP">Market cap</option>
-                      <option value="CHANGE_24H">24h change</option>
+                      <option value="CHANGE_24H">Mcap 24h</option>
                       <option value="VOLUME">Volume ({timeframeLabel(timeframe)})</option>
                     </select>
                     <div className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-zinc-500 text-[10px]">
@@ -1054,7 +1184,7 @@ export function Dashboard() {
                           case 'MARKET_CAP':
                             return 'Mcap'
                           case 'CHANGE_24H':
-                            return '24h'
+                            return 'Mcap 24h'
                           case 'VOLUME':
                             return `Vol ${timeframeLabel(timeframe)}`
                           default:
@@ -1093,25 +1223,9 @@ export function Dashboard() {
                       className={`hidden sm:block sm:col-span-2 lg:col-span-1 text-right hover:text-zinc-300 transition-colors ${
                         sortKey === 'CHANGE_24H' ? 'text-zinc-300' : ''
                       }`}
-                      title="24h price change"
+                      title="24h market cap change"
                     >
-                      24h{sortKey === 'CHANGE_24H' ? ` ${sortDir === 'desc' ? '↓' : '↑'}` : ''}
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() => {
-                        if (sortKey === 'VOLUME') setSortDir((d) => (d === 'desc' ? 'asc' : 'desc'))
-                        else {
-                          setSortKey('VOLUME')
-                          setSortDir('desc')
-                        }
-                      }}
-                      className={`hidden sm:block sm:col-span-2 lg:col-span-1 text-right hover:text-zinc-300 transition-colors ${
-                        sortKey === 'VOLUME' ? 'text-zinc-300' : ''
-                      }`}
-                    >
-                      Vol {timeframeLabel(timeframe)}{sortKey === 'VOLUME' ? ` ${sortDir === 'desc' ? '↓' : '↑'}` : ''}
+                      Mcap 24h{sortKey === 'CHANGE_24H' ? ` ${sortDir === 'desc' ? '↓' : '↑'}` : ''}
                     </button>
 
                     <button
@@ -1123,11 +1237,27 @@ export function Dashboard() {
                           setSortDir('desc')
                         }
                       }}
-                      className={`hidden sm:block ${showScore ? 'sm:col-span-2 lg:col-span-2' : 'sm:col-span-4 lg:col-span-3'} text-right hover:text-zinc-300 transition-colors ${
+                      className={`hidden sm:block sm:col-span-2 lg:col-span-1 text-right hover:text-zinc-300 transition-colors ${
                         sortKey === 'MARKET_CAP' ? 'text-zinc-300' : ''
                       }`}
                     >
                       Mcap{sortKey === 'MARKET_CAP' ? ` ${sortDir === 'desc' ? '↓' : '↑'}` : ''}
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (sortKey === 'VOLUME') setSortDir((d) => (d === 'desc' ? 'asc' : 'desc'))
+                        else {
+                          setSortKey('VOLUME')
+                          setSortDir('desc')
+                        }
+                      }}
+                      className={`hidden sm:block ${showScore ? 'sm:col-span-2 lg:col-span-2' : 'sm:col-span-4 lg:col-span-3'} text-right hover:text-zinc-300 transition-colors ${
+                        sortKey === 'VOLUME' ? 'text-zinc-300' : ''
+                      }`}
+                    >
+                      Vol {timeframeLabel(timeframe)}{sortKey === 'VOLUME' ? ` ${sortDir === 'desc' ? '↓' : '↑'}` : ''}
                     </button>
 
                     <div className="hidden lg:block lg:col-span-1 text-right">

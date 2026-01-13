@@ -181,7 +181,7 @@ export function LaunchVaultAA({
         disabled={loading || !address}
         whileHover={{ scale: loading ? 1 : 1.02 }}
         whileTap={{ scale: loading ? 1 : 0.98 }}
-        className="w-full relative group overflow-hidden bg-gradient-to-r from-purple-600 to-cyan-500 
+        className="w-full relative group overflow-hidden bg-blue-gradient 
                    px-8 py-4 rounded font-light tracking-widest uppercase text-sm disabled:opacity-50 
                    disabled:cursor-not-allowed transition-all duration-300"
       >
@@ -236,7 +236,7 @@ export function LaunchVaultAA({
       )}
 
       {/* Info */}
-      <div className="p-4 bg-purple-500/5 border border-purple-500/10 rounded">
+      <div className="p-4 bg-brand-primary/5 border border-brand-primary/10 rounded">
         <div className="flex items-center justify-between gap-4 mb-2">
           <p className="text-xs text-gray-400 uppercase tracking-wider">WHAT HAPPENS</p>
           <Link to="/faq/how-it-works" className="text-xs text-cyan-400 hover:underline">

@@ -68,96 +68,6 @@ export function Home() {
         </div>
       </section>
 
-      {/* FAQ Teaser */}
-      <section className="cinematic-section">
-        <div className="max-w-5xl mx-auto px-6">
-          <motion.div
-            initial={{ opacity: 0 }}
-            whileInView={{ opacity: 1 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.8 }}
-            className="space-y-6"
-          >
-            <span className="label">FAQ</span>
-            <h2 className="headline text-5xl mt-2">Want the details?</h2>
-            <p className="text-zinc-600 text-sm font-light max-w-xl">
-              Read the step-by-step “How it works” walkthrough.
-            </p>
-            <div>
-              <Link to="/faq/how-it-works" className="btn-primary inline-block">
-                How it works <ArrowRight className="w-4 h-4 inline ml-2" />
-              </Link>
-            </div>
-          </motion.div>
-        </div>
-      </section>
-
-      {/* Strategies - Terminal Display */}
-      <section className="cinematic-section bg-zinc-950/20">
-        <div className="max-w-5xl mx-auto px-6">
-          <motion.div
-            initial={{ opacity: 0 }}
-            whileInView={{ opacity: 1 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.8 }}
-            className="mb-20"
-          >
-            <span className="label">Multi-Strategy Allocation</span>
-            <h2 className="headline text-5xl mt-6">Automated Yield</h2>
-          </motion.div>
-
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-px bg-zinc-900">
-            <motion.div
-              initial={{ opacity: 0 }}
-              whileInView={{ opacity: 1 }}
-              viewport={{ once: true }}
-              transition={{ duration: 0.4 }}
-              className="bg-black p-8 space-y-4"
-            >
-              <span className="label">Uniswap V3</span>
-              <div className="value mono text-4xl glow-brand">25%</div>
-              <div className="text-zinc-600 text-xs font-light">WETH LP</div>
-            </motion.div>
-
-            <motion.div
-              initial={{ opacity: 0 }}
-              whileInView={{ opacity: 1 }}
-              viewport={{ once: true }}
-              transition={{ duration: 0.4, delay: 0.1 }}
-              className="bg-black p-8 space-y-4"
-            >
-              <span className="label">Stable Pair</span>
-              <div className="value mono text-4xl glow-brand">25%</div>
-              <div className="text-zinc-600 text-xs font-light">USDC LP</div>
-            </motion.div>
-
-            <motion.div
-              initial={{ opacity: 0 }}
-              whileInView={{ opacity: 1 }}
-              viewport={{ once: true }}
-              transition={{ duration: 0.4, delay: 0.2 }}
-              className="bg-black p-8 space-y-4"
-            >
-              <span className="label">Ajna Protocol</span>
-              <div className="value mono text-4xl glow-brand">25%</div>
-              <div className="text-zinc-600 text-xs font-light">Lending</div>
-            </motion.div>
-
-            <motion.div
-              initial={{ opacity: 0 }}
-              whileInView={{ opacity: 1 }}
-              viewport={{ once: true }}
-              transition={{ duration: 0.4, delay: 0.3 }}
-              className="bg-black p-8 space-y-4"
-            >
-              <span className="label">Reserve</span>
-              <div className="value mono text-4xl">25%</div>
-              <div className="text-zinc-600 text-xs font-light">Idle</div>
-            </motion.div>
-          </div>
-        </div>
-      </section>
-
       {/* For Creators - Minimal CTA */}
       <section className="cinematic-section">
         <div className="max-w-5xl mx-auto px-6">
@@ -175,6 +85,18 @@ export function Home() {
                 <br />
                 <span className="glow-brand">Vault</span>
               </h2>
+              <div className="inline-flex items-center gap-2 text-[10px] uppercase tracking-[0.2em] text-zinc-600">
+                <span>Powered by</span>
+                <img
+                  src="/protocols/uniswap.svg"
+                  alt="Uniswap"
+                  width={16}
+                  height={16}
+                  className="w-4 h-4 opacity-80"
+                  loading="lazy"
+                />
+                <span className="text-uniswap">Uniswap</span>
+              </div>
               <p className="text-zinc-500 text-lg font-light leading-relaxed">
                 Create a vault for your coin, run a fair CCA auction, and start earning with your community
               </p>
@@ -200,28 +122,87 @@ export function Home() {
               </div>
               <div className="data-row border-none">
                 <span className="label">Fair Launch</span>
-                <div className="value mono text-cyan-400">100%</div>
+                <div className="value mono text-uniswap drop-shadow-[0_0_20px_rgba(255,0,122,0.35)]">100%</div>
               </div>
             </motion.div>
           </div>
         </div>
       </section>
 
-      {/* Final CTA - Minimal */}
-      <section className="cinematic-section">
-        <div className="max-w-3xl mx-auto px-6 text-center space-y-12">
+      {/* Strategies - Terminal Display */}
+      <section className="cinematic-section bg-zinc-950/20">
+        <div className="max-w-5xl mx-auto px-6">
           <motion.div
             initial={{ opacity: 0 }}
             whileInView={{ opacity: 1 }}
             viewport={{ once: true }}
             transition={{ duration: 0.8 }}
+            className="mb-20"
           >
-            <h2 className="headline text-6xl lg:text-7xl mb-8">
-              Ready to start earning?
-            </h2>
-            <Link to="/dashboard" className="btn-accent inline-block">
-              Browse Vaults <ArrowRight className="w-4 h-4 inline ml-2" />
-            </Link>
+            <span className="label">Multi-Strategy Allocation</span>
+            <h2 className="headline text-5xl mt-6">Automated Yield</h2>
+          </motion.div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-px bg-zinc-900">
+            <motion.div
+              initial={{ opacity: 0 }}
+              whileInView={{ opacity: 1 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.4 }}
+              className="bg-black p-8 space-y-4"
+            >
+              <span className="label">CREATOR/USDC LP</span>
+              <div className="value mono text-4xl glow-brand">69%</div>
+              <div className="text-zinc-600 text-xs font-light">Liquidity</div>
+            </motion.div>
+
+            <motion.div
+              initial={{ opacity: 0 }}
+              whileInView={{ opacity: 1 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.4, delay: 0.1 }}
+              className="bg-black p-8 space-y-4"
+            >
+              <span className="label">Ajna</span>
+              <div className="value mono text-4xl glow-brand">21.39%</div>
+              <div className="text-zinc-600 text-xs font-light">Lending</div>
+            </motion.div>
+
+            <motion.div
+              initial={{ opacity: 0 }}
+              whileInView={{ opacity: 1 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.4, delay: 0.2 }}
+              className="bg-black p-8 space-y-4"
+            >
+              <span className="label">Reserve</span>
+              <div className="value mono text-4xl">9.61%</div>
+              <div className="text-zinc-600 text-xs font-light">Idle</div>
+            </motion.div>
+          </div>
+        </div>
+      </section>
+
+      {/* FAQ Teaser */}
+      <section className="cinematic-section">
+        <div className="max-w-5xl mx-auto px-6">
+          <motion.div
+            initial={{ opacity: 0 }}
+            whileInView={{ opacity: 1 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.8 }}
+            className="space-y-6"
+          >
+            <span className="label">FAQ</span>
+            <h2 className="headline text-5xl mt-2">Want the details?</h2>
+            <p className="text-zinc-600 text-sm font-light max-w-xl">
+              Read the step-by-step “How it works” walkthrough.
+            </p>
+            <div>
+              <Link to="/faq/how-it-works" className="btn-primary inline-block">
+                How it works <ArrowRight className="w-4 h-4 inline ml-2" />
+              </Link>
+            </div>
           </motion.div>
         </div>
       </section>

@@ -234,7 +234,7 @@ export function Launch() {
           <button
             type="button"
             onClick={() => navigate('/dashboard')}
-            className="inline-flex items-center justify-center gap-2 px-5 py-3 rounded-xl bg-white/5 hover:bg-white/10 text-white transition-colors"
+            className="btn-primary inline-flex items-center justify-center gap-2 rounded-xl px-5 py-3"
           >
             Back to Vaults
             <ArrowRight className="w-4 h-4" />
@@ -256,7 +256,7 @@ export function Launch() {
           <button
             type="button"
             onClick={() => navigate('/dashboard')}
-            className="inline-flex items-center justify-center gap-2 px-5 py-3 rounded-xl bg-white/5 hover:bg-white/10 text-white transition-colors"
+            className="btn-primary inline-flex items-center justify-center gap-2 rounded-xl px-5 py-3"
           >
             Back to Vaults
             <ArrowRight className="w-4 h-4" />

@@ -1,25 +1,25 @@
+import { useId } from 'react'
 import { motion } from 'framer-motion'
+
+export type ManifoldBackgroundVariant = 'default' | 'cyan' | 'copper'
 
 interface ManifoldBackgroundProps {
   opacity?: number
-  variant?: 'default' | 'purple' | 'blue'
+  variant?: ManifoldBackgroundVariant
 }
 
-const gradients = {
+const gradients: Record<ManifoldBackgroundVariant, { start: string; end: string }> = {
   default: {
-    id: 'grad-default',
-    start: '#3B82F6',
-    end: '#A855F7',
+    start: '#0052FF',
+    end: '#3B82F6',
   },
-  purple: {
-    id: 'grad-purple',
-    start: '#A855F7',
-    end: '#7C3AED',
+  cyan: {
+    start: '#00f2ff',
+    end: '#0044ff',
   },
-  blue: {
-    id: 'grad-blue',
-    start: '#3B82F6',
-    end: '#1D4ED8',
+  copper: {
+    start: '#f59e0b',
+    end: '#4a3321',
   },
 }
 
@@ -27,7 +27,10 @@ export function ManifoldBackground({
   opacity = 0.15,
   variant = 'default' 
 }: ManifoldBackgroundProps) {
+  const rawId = useId()
+  const stableId = rawId.replace(/:/g, '')
   const gradient = gradients[variant]
+  const gradientId = `manifold-${stableId}-${variant}`
 
   return (
     <motion.svg
@@ -39,7 +42,7 @@ export function ManifoldBackground({
       transition={{ duration: 1 }}
     >
       <defs>
-        <linearGradient id={gradient.id} x1="0%" y1="0%" x2="100%" y2="100%">
+        <linearGradient id={gradientId} x1="0%" y1="0%" x2="100%" y2="100%">
           <stop offset="0%" style={{ stopColor: gradient.start, stopOpacity: 1 }} />
           <stop offset="100%" style={{ stopColor: gradient.end, stopOpacity: 1 }} />
         </linearGradient>
@@ -49,7 +52,7 @@ export function ManifoldBackground({
       <motion.path
         d="M100,500 Q250,100 500,500 T900,500"
         fill="none"
-        stroke={`url(#${gradient.id})`}
+        stroke={`url(#${gradientId})`}
         strokeWidth="0.5"
         initial={{ pathLength: 0 }}
         animate={{ pathLength: 1 }}
@@ -58,7 +61,7 @@ export function ManifoldBackground({
       <motion.path
         d="M100,550 Q250,150 500,550 T900,550"
         fill="none"
-        stroke={`url(#${gradient.id})`}
+        stroke={`url(#${gradientId})`}
         strokeWidth="0.5"
         initial={{ pathLength: 0 }}
         animate={{ pathLength: 1 }}
@@ -67,7 +70,7 @@ export function ManifoldBackground({
       <motion.path
         d="M100,450 Q250,50 500,450 T900,450"
         fill="none"
-        stroke={`url(#${gradient.id})`}
+        stroke={`url(#${gradientId})`}
         strokeWidth="0.5"
         initial={{ pathLength: 0 }}
         animate={{ pathLength: 1 }}
