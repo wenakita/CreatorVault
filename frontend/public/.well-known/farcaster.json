@@ -23,6 +23,8 @@
     ],
     "requiredCapabilities": [
       "actions.ready",
+      "actions.signIn",
+      "quickAuth.fetch",
       "wallet.getEthereumProvider"
     ],
     "primaryCategory": "finance",
