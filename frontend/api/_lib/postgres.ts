@@ -20,6 +20,15 @@ function getConnectionString(): string | null {
   return null
 }
 
+function withRequiredSsl(connectionString: string): string {
+  const cs = (connectionString ?? '').trim()
+  if (!cs) return cs
+  const lower = cs.toLowerCase()
+  if (lower.includes('sslmode=')) return cs
+  if (lower.includes('localhost') || lower.includes('127.0.0.1')) return cs
+  return `${cs}${cs.includes('?') ? '&' : '?'}sslmode=require`
+}
+
 type DbPool = { sql: (strings: TemplateStringsArray, ...values: any[]) => Promise<{ rows: any[] }> }
 
 let cachedDb: DbPool | null = null
@@ -56,7 +65,8 @@ export async function getDb(): Promise<DbPool | null> {
         }
 
         // Re-read env at init time (still deterministic in serverless).
-        const cs = getConnectionString()
+        const csRaw = getConnectionString()
+        const cs = csRaw ? withRequiredSsl(csRaw) : null
         if (!cs) return null
 
         // Prefer pooled connections when possible (recommended for serverless),
