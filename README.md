@@ -460,11 +460,11 @@ CreatorVault/
 ```solidity
 // Via Factory (or use web UI at erc4626.fun/deploy)
 (address vault, address wrapper, address shareOFT) = factory.deployCreatorVault(
-    0x5b67...75,                      // Your Creator Coin address
-    "MyToken Omnichain Vault",        // Vault name
-    "sMYTOKEN",                       // Vault symbol
-    "MyToken Share Token",            // OFT name
-    "wsMYTOKEN",                      // OFT symbol
+    0x5b67...75,                       // Your Creator Coin address
+    "TOKEN Vault",                     // Vault name
+    "▢TOKEN",                         // Vault symbol
+    "TOKEN Share",                    // OFT name
+    "■TOKEN",                         // OFT symbol
     "base",                           // Chain prefix
     msg.sender                        // Your address (revenue recipient)
 );
