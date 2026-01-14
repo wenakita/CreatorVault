@@ -122,6 +122,11 @@ WHY_*.md
 docs/yearn/
 vanity-generator/
 
+# Local notes / scratch (keep out of repo)
+farcasterllm.txt
+docs/integrations/notes.md
+docs/takopi/
+
 # Test and development files (keep local)
 bsc-production-ready.json
 eagle-vanity-data.json
