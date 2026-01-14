@@ -1,8 +1,10 @@
 # CreatorVault
 
-**Omnichain Vault Platform for Creator Coins** - One-click deployment of cross-chain yield vaults with gamified incentives powered by **Uniswap CCA**, **LayerZero V2**, and **Chainlink VRF**.
+**Zora coin + Smart Wallet + Farcaster identity + Base groupchats = the creator economy OS on Base.**
 
-CreatorVault enables any creator to deploy institutional-grade **ERC-4626 vault** infrastructure for their Coinbase Creator Coin. Each vault includes cross-chain **LayerZero OFT** shares, pluggable **yield strategies**, and a **6.9% trading-fee lottery** (on all DEX trades) for community engagement - all deployed in a single gas-free transaction via **EIP-4337** account abstraction.
+CreatorVault is the **Base-native creator finance layer** that turns **Zora Creator Coins (Coinbase Creator Coins)** into composable, onchain “creator economies” with FriendTech-like loops: discover → take action → share → engage. In one click, creators deploy institutional-grade **ERC-4626 vault** infrastructure (Yearn V3 architecture) with cross-chain **LayerZero V2 OFT** shares, pluggable **yield strategies**, and a **6.9% trading-fee lottery** (on all DEX trades) powered by **Chainlink VRF** — launched via **Uniswap CCA** and executed through **EIP-4337** account abstraction (optimized for Coinbase Smart Wallet / AA). The app pairs this finance layer with an aggregator UX that uses **Farcaster identity** signals, and is designed to extend into **Base group chats** for community coordination and gating.
+
+**Elevator pitch (one line):** CreatorVault unifies Zora coins, Smart Wallet AA execution, and Farcaster identity into a Base-native vault + incentive layer for creator economies.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Solidity](https://img.shields.io/badge/Solidity-0.8.20-363636)](https://docs.soliditylang.org/)
@@ -91,7 +93,13 @@ CreatorVault enables any creator to deploy institutional-grade **ERC-4626 vault*
 
 ## Architecture
 
-**CreatorVault consists of modular contracts deployed atomically in a single transaction:**
+CreatorVault’s architecture is built for **provenance, identity, and execution**:
+
+- **Provenance (Zora)**: Creator Coins and Content Coins are the discovery layer and identity anchor.
+- **Execution (Smart Wallet AA)**: creators can deploy and operate vault infrastructure via EIP-4337/EIP-5792-style batching.
+- **Social context (Farcaster → Base)**: Farcaster identity is used as a trust signal in the app, and Base group chats are the natural coordination surface.
+
+Onchain, CreatorVault consists of modular contracts deployed atomically in a single transaction:
 
 ### Core Contracts (Text Description of Data Flow)
 
