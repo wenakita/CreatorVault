@@ -12,10 +12,10 @@ import {
   erc20Abi,
   formatUnits,
   getCreate2Address,
+  hashTypedData,
   isAddress,
   keccak256,
   parseAbiParameters,
-  toBytes,
 } from 'viem'
 import { Link, useSearchParams } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
@@ -23,6 +23,7 @@ import { coinABI } from '@zoralabs/protocol-deployments'
 import { BarChart3, Layers, Lock, Rocket, ShieldCheck } from 'lucide-react'
 import { usePrivy, useWallets } from '@privy-io/react-auth'
 import { useSetActiveWallet } from '@privy-io/wagmi'
+import { useOnchainKit } from '@coinbase/onchainkit'
 import { ConnectButton } from '@/components/ConnectButton'
 import { DerivedTokenIcon } from '@/components/DerivedTokenIcon'
 import { RequestCreatorAccess } from '@/components/RequestCreatorAccess'
@@ -43,6 +44,13 @@ import {
   toVaultSymbol,
   underlyingSymbolUpper as deriveUnderlyingUpper,
 } from '@/lib/tokenSymbols'
+import {
+  buildDeployAuthorizationTypedData,
+  computeDeployParamsHash as computeParamsHashFromLib,
+  fetchDeployNonce,
+  preflightErc1271Signature,
+} from '@/lib/deploy/deployAuthorization'
+import { buildPermit2PermitTransferFrom } from '@/lib/deploy/permit2'
 
 const MIN_FIRST_DEPOSIT = 50_000_000n * 10n ** 18n
 const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000' as const
@@ -73,6 +81,21 @@ type ServerDeployResponse = {
 }
 
 const shortAddress = (addr: string) => `${addr.slice(0, 6)}…${addr.slice(-4)}`
+
+function identitySourceLabel(source: string): string {
+  switch (source) {
+    case 'zoraCoinCreatorAddress':
+      return 'Zora coin creator'
+    case 'farcasterCustody':
+      return 'Farcaster custody'
+    case 'zoraProfilePublicWallet':
+      return 'Zora profile public wallet'
+    case 'connectedWallet':
+      return 'Connected wallet'
+    default:
+      return source || 'unknown'
+  }
+}
 
 function encodeUniswapCcaLinearSteps(durationBlocks: bigint): Hex {
   const MPS = 10_000_000n
@@ -124,74 +147,6 @@ function predictCreate2Address(params: { create2Deployer: Address; salt: Hex; in
   return getCreate2Address({ from: params.create2Deployer, salt: params.salt, bytecodeHash })
 }
 
-function computeDeployParamsHash(params: {
-  creatorToken: Address
-  owner: Address
-  creatorTreasury: Address
-  payoutRecipient: Address
-  vaultName: string
-  vaultSymbol: string
-  shareName: string
-  shareSymbol: string
-  version: string
-  depositAmount: bigint
-  auctionPercent: number
-  requiredRaise: bigint
-  floorPriceQ96: bigint
-  auctionSteps: Hex
-  codeIds: {
-    vault: Hex
-    wrapper: Hex
-    shareOFT: Hex
-    gauge: Hex
-    cca: Hex
-    oracle: Hex
-    oftBootstrap: Hex
-  }
-  leftoverRecipient: Address
-  fundingModel: 0 | 1
-}): Hex {
-  const vaultNameHash = keccak256(toBytes(params.vaultName))
-  const vaultSymbolHash = keccak256(toBytes(params.vaultSymbol))
-  const shareNameHash = keccak256(toBytes(params.shareName))
-  const shareSymbolHash = keccak256(toBytes(params.shareSymbol))
-  const versionHash = keccak256(toBytes(params.version))
-  const auctionStepsHash = keccak256(params.auctionSteps)
-
-  const encoded = encodeAbiParameters(
-    parseAbiParameters(
-      'address, address, address, address, bytes32, bytes32, bytes32, bytes32, bytes32, uint256, uint8, uint128, uint256, bytes32, bytes32, bytes32, bytes32, bytes32, bytes32, bytes32, bytes32, address, uint8',
-    ),
-    [
-      params.creatorToken,
-      params.owner,
-      params.creatorTreasury,
-      params.payoutRecipient,
-      vaultNameHash,
-      vaultSymbolHash,
-      shareNameHash,
-      shareSymbolHash,
-      versionHash,
-      params.depositAmount,
-      params.auctionPercent,
-      params.requiredRaise,
-      params.floorPriceQ96,
-      auctionStepsHash,
-      params.codeIds.vault,
-      params.codeIds.wrapper,
-      params.codeIds.shareOFT,
-      params.codeIds.gauge,
-      params.codeIds.cca,
-      params.codeIds.oracle,
-      params.codeIds.oftBootstrap,
-      params.leftoverRecipient,
-      params.fundingModel,
-    ],
-  )
-
-  return keccak256(encoded)
-}
-
 type DeployAuthorization = {
   owner: Address
   operator: Address
@@ -200,100 +155,6 @@ type DeployAuthorization = {
   paramsHash: Hex
   nonce: bigint
   deadline: bigint
-}
-
-type Permit2PermitTransferFrom = {
-  permitted: { token: Address; amount: bigint }
-  nonce: bigint
-  deadline: bigint
-}
-
-type OperatorDeployPackage = {
-  auth: DeployAuthorization
-  authSig: Hex
-  // For identity-funded flow, include an identity-signed Permit2 permit.
-  permit2?: { permit: Permit2PermitTransferFrom; signature: Hex }
-}
-
-type OperatorDeployPackageParseResult =
-  | { ok: true; value: OperatorDeployPackage }
-  | { ok: false; error: string }
-
-function isHexString(value: unknown): value is Hex {
-  return typeof value === 'string' && /^0x[0-9a-fA-F]*$/.test(value)
-}
-
-function isBytes32(value: unknown): value is Hex {
-  return isHexString(value) && value.length === 66
-}
-
-function asBigInt(value: unknown): bigint | null {
-  try {
-    if (typeof value === 'bigint') return value
-    if (typeof value === 'number' && Number.isFinite(value)) return BigInt(Math.trunc(value))
-    if (typeof value === 'string' && value.trim() !== '') return BigInt(value)
-  } catch {
-    // ignore
-  }
-  return null
-}
-
-function parseOperatorDeployPackage(raw: string): OperatorDeployPackageParseResult {
-  if (!raw.trim()) return { ok: false, error: 'Paste a JSON authorization package.' }
-
-  let parsed: any
-  try {
-    parsed = JSON.parse(raw)
-  } catch {
-    return { ok: false, error: 'Invalid JSON.' }
-  }
-
-  const auth = parsed?.auth
-  const authSig = parsed?.authSig
-
-  const owner = isAddress(auth?.owner) ? (auth.owner as Address) : null
-  const operator = isAddress(auth?.operator) ? (auth.operator as Address) : null
-  const leftoverRecipient = isAddress(auth?.leftoverRecipient) ? (auth.leftoverRecipient as Address) : null
-  const fundingModelRaw = auth?.fundingModel
-  const fundingModel: 0 | 1 | null = fundingModelRaw === 0 || fundingModelRaw === 1 ? fundingModelRaw : null
-  const paramsHash = isBytes32(auth?.paramsHash) ? (auth.paramsHash as Hex) : null
-  const nonce = asBigInt(auth?.nonce)
-  const deadline = asBigInt(auth?.deadline)
-  const authSigHex = isHexString(authSig) ? (authSig as Hex) : null
-
-  if (!owner) return { ok: false, error: 'auth.owner must be an address.' }
-  if (!operator) return { ok: false, error: 'auth.operator must be an address.' }
-  if (!leftoverRecipient) return { ok: false, error: 'auth.leftoverRecipient must be an address.' }
-  if (fundingModel === null) return { ok: false, error: 'auth.fundingModel must be 0 (identity) or 1 (operator).' }
-  if (!paramsHash) return { ok: false, error: 'auth.paramsHash must be a bytes32 hex string.' }
-  if (nonce === null) return { ok: false, error: 'auth.nonce must be an integer (string/number).' }
-  if (deadline === null) return { ok: false, error: 'auth.deadline must be an integer timestamp (string/number).' }
-  if (!authSigHex) return { ok: false, error: 'authSig must be a hex string.' }
-
-  const permit2 = parsed?.permit2
-  let permit2Parsed: OperatorDeployPackage['permit2'] | undefined
-  if (permit2) {
-    const p = permit2?.permit
-    const sig = permit2?.signature
-    const token = isAddress(p?.permitted?.token) ? (p.permitted.token as Address) : null
-    const amount = asBigInt(p?.permitted?.amount)
-    const pNonce = asBigInt(p?.nonce)
-    const pDeadline = asBigInt(p?.deadline)
-    const sigHex = isHexString(sig) ? (sig as Hex) : null
-    if (!token || amount === null || pNonce === null || pDeadline === null || !sigHex) {
-      return { ok: false, error: 'permit2 must include { permit: { permitted: { token, amount }, nonce, deadline }, signature }.' }
-    }
-    permit2Parsed = { permit: { permitted: { token, amount }, nonce: pNonce, deadline: pDeadline }, signature: sigHex }
-  }
-
-  return {
-    ok: true,
-    value: {
-      auth: { owner, operator, leftoverRecipient, fundingModel, paramsHash, nonce, deadline },
-      authSig: authSigHex,
-      permit2: permit2Parsed,
-    },
-  }
 }
 
 async function fetchAdminAuth(): Promise<AdminAuthResponse> {
@@ -824,7 +685,6 @@ function DeployVaultBatcher({
   vaultName,
   deploymentVersion,
   currentPayoutRecipient,
-  operatorPackage,
   onSuccess,
 }: {
   creatorToken: Address
@@ -838,12 +698,20 @@ function DeployVaultBatcher({
   vaultName: string
   deploymentVersion: 'v1' | 'v2' | 'v3'
   currentPayoutRecipient: Address | null
-  operatorPackage?: OperatorDeployPackage | null
   onSuccess: (addresses: ServerDeployResponse['addresses']) => void
 }) {
   const publicClient = usePublicClient({ chainId: base.id })
   const { data: walletClient } = useWalletClient({ chainId: base.id })
   const { sendCallsAsync } = useSendCalls()
+  const { config: onchainKitConfig } = useOnchainKit()
+
+  // Optional gas sponsorship (EIP-4337 paymaster) for EIP-5792 `wallet_sendCalls`.
+  // See docs/aa/notes.md for the AA mental model (EntryPoint + bundler + paymaster).
+  const paymasterUrl = onchainKitConfig?.paymaster ?? null
+  const capabilities =
+    paymasterUrl && typeof paymasterUrl === 'string'
+      ? ({ paymasterService: { url: paymasterUrl } } as const)
+      : undefined
 
   const formatDeposit = (raw?: bigint): string => {
     if (raw === undefined) return '—'
@@ -1250,24 +1118,20 @@ function DeployVaultBatcher({
       }
 
       // =================================
-      // Operator-submit flow (requires an identity-signed DeployAuthorization)
+      // Operator-submit flow (in-app, no JSON)
       // =================================
       if (isOperatorSubmit) {
-        if (!operatorPackage) {
-          throw new Error('Missing deploy authorization package (identity-signed).')
-        }
-        if (operatorPackage.auth.owner.toLowerCase() !== owner.toLowerCase()) {
-          throw new Error('Authorization owner does not match the canonical identity for this deploy.')
-        }
-        if (operatorPackage.auth.operator.toLowerCase() !== connected.toLowerCase()) {
-          throw new Error('Authorization operator does not match your connected wallet.')
-        }
-        if (operatorPackage.auth.leftoverRecipient.toLowerCase() !== owner.toLowerCase()) {
-          throw new Error('Authorization leftoverRecipient must be the canonical identity wallet.')
+        // Operator mode only works when the canonical identity is a contract wallet that will accept
+        // this operator's signature via ERC-1271 (EIP-1271).
+        const ownerCode = await publicClient.getBytecode({ address: owner })
+        const ownerIsContract = Boolean(ownerCode && ownerCode !== '0x')
+        if (!ownerIsContract) {
+          throw new Error('Canonical identity is an EOA. Connect the canonical identity wallet to deploy.')
         }
 
-        const fundingModel = operatorPackage.auth.fundingModel
-        const expectedParamsHash = computeDeployParamsHash({
+        // Default to operator-funded for now (simplest, no identity-side Permit2 signing needed).
+        const fundingModel: 0 | 1 = 1
+        const paramsHash = computeParamsHashFromLib({
           creatorToken,
           owner,
           creatorTreasury: owner,
@@ -1287,145 +1151,119 @@ function DeployVaultBatcher({
           fundingModel,
         })
 
-        if (operatorPackage.auth.paramsHash.toLowerCase() !== expectedParamsHash.toLowerCase()) {
-          throw new Error('Authorization paramsHash does not match the current deploy parameters.')
+        const nonce = await fetchDeployNonce({ publicClient, batcher: batcherAddress, owner })
+        const authDeadline = BigInt(Math.floor(Date.now() / 1000) + 60 * 20)
+        const auth: DeployAuthorization = {
+          owner,
+          operator: connected,
+          leftoverRecipient: owner,
+          fundingModel,
+          paramsHash,
+          nonce,
+          deadline: authDeadline,
+        }
+
+        const authTypedData = buildDeployAuthorizationTypedData({
+          chainId: base.id,
+          verifyingContract: batcherAddress,
+          auth,
+        })
+
+        const authSig = (await walletClient.signTypedData({
+          account: (walletClient as any).account,
+          domain: authTypedData.domain,
+          types: authTypedData.types,
+          primaryType: authTypedData.primaryType,
+          message: authTypedData.message,
+        })) as Hex
+
+        const authDigest = hashTypedData({
+          domain: authTypedData.domain,
+          types: authTypedData.types,
+          primaryType: authTypedData.primaryType,
+          message: authTypedData.message,
+        })
+
+        const authOk = await preflightErc1271Signature({
+          publicClient,
+          contract: owner,
+          digest: authDigest,
+          signature: authSig,
+        })
+
+        if (!authOk) {
+          throw new Error(
+            'This wallet is not authorized to deploy for the canonical identity smart wallet. Connect an onchain owner of the identity wallet, or deploy from the identity wallet directly.',
+          )
         }
 
         const calls: { to: Address; data: Hex; value?: bigint }[] = []
 
-        if (fundingModel === 0) {
-          // Identity-funded: require identity-signed Permit2 payload to be provided.
-          if (!operatorPackage.permit2) {
-            throw new Error('Identity-funded deploy requires permit2 payload in the authorization package.')
-          }
+        // Operator-funded Permit2 (pulls deposit from the connected operator wallet).
+        const allowance = (await publicClient.readContract({
+          address: creatorToken,
+          abi: erc20Abi,
+          functionName: 'allowance',
+          args: [connected, permit2],
+        })) as bigint
+
+        if (allowance < depositAmount) {
           calls.push({
-            to: batcherAddress,
+            to: creatorToken,
             data: encodeFunctionData({
-              abi: CREATOR_VAULT_BATCHER_ABI,
-              functionName: 'deployAndLaunchWithPermit2AsOperatorIdentityFunded',
-              args: [
-                creatorToken,
-                owner,
-                owner,
-                ZERO_ADDRESS,
-                vaultName,
-                vaultSymbol,
-                shareName,
-                shareSymbol,
-                deploymentVersion,
-                depositAmount,
-                DEFAULT_AUCTION_PERCENT,
-                DEFAULT_REQUIRED_RAISE_WEI,
-                DEFAULT_FLOOR_PRICE_Q96_ALIGNED,
-                auctionSteps,
-                codeIds,
-                operatorPackage.auth,
-                operatorPackage.authSig,
-                {
-                  permitted: {
-                    token: operatorPackage.permit2.permit.permitted.token,
-                    amount: operatorPackage.permit2.permit.permitted.amount,
-                  },
-                  nonce: operatorPackage.permit2.permit.nonce,
-                  deadline: operatorPackage.permit2.permit.deadline,
-                },
-                operatorPackage.permit2.signature,
-              ],
-            }),
-          })
-        } else {
-          // Operator-funded: operator signs Permit2 now (or could provide it in the package).
-          const allowance = (await publicClient.readContract({
-            address: creatorToken,
-            abi: erc20Abi,
-            functionName: 'allowance',
-            args: [connected, permit2],
-          })) as bigint
-
-          if (allowance < depositAmount) {
-            calls.push({
-              to: creatorToken,
-              data: encodeFunctionData({
-                abi: erc20Abi,
-                functionName: 'approve',
-                args: [permit2, depositAmount],
-              }),
-            })
-          }
-
-          const bitmap = (await publicClient.readContract({
-            address: permit2,
-            abi: PERMIT2_VIEW_ABI,
-            functionName: 'nonceBitmap',
-            args: [connected, 0n],
-          })) as bigint
-
-          let bitPos = -1
-          for (let i = 0; i < 256; i++) {
-            const used = (bitmap >> BigInt(i)) & 1n
-            if (used === 0n) {
-              bitPos = i
-              break
-            }
-          }
-          if (bitPos < 0) throw new Error('Permit2 nonce bitmap is full (word 0).')
-
-          const nonce = (0n << 8n) | BigInt(bitPos)
-          const deadline = BigInt(Math.floor(Date.now() / 1000) + 60 * 20)
-
-          const permitSig = (await walletClient.signTypedData({
-            account: (walletClient as any).account,
-            domain: { name: 'Permit2', version: '1', chainId: base.id, verifyingContract: permit2 },
-            types: {
-              TokenPermissions: [
-                { name: 'token', type: 'address' },
-                { name: 'amount', type: 'uint256' },
-              ],
-              PermitTransferFrom: [
-                { name: 'permitted', type: 'TokenPermissions' },
-                { name: 'spender', type: 'address' },
-                { name: 'nonce', type: 'uint256' },
-                { name: 'deadline', type: 'uint256' },
-              ],
-            },
-            primaryType: 'PermitTransferFrom',
-            message: {
-              permitted: { token: creatorToken, amount: depositAmount },
-              spender: batcherAddress,
-              nonce,
-              deadline,
-            },
-          })) as Hex
-
-          calls.push({
-            to: batcherAddress,
-            data: encodeFunctionData({
-              abi: CREATOR_VAULT_BATCHER_ABI,
-              functionName: 'deployAndLaunchWithPermit2AsOperatorOperatorFunded',
-              args: [
-                creatorToken,
-                owner,
-                owner,
-                ZERO_ADDRESS,
-                vaultName,
-                vaultSymbol,
-                shareName,
-                shareSymbol,
-                deploymentVersion,
-                depositAmount,
-                DEFAULT_AUCTION_PERCENT,
-                DEFAULT_REQUIRED_RAISE_WEI,
-                DEFAULT_FLOOR_PRICE_Q96_ALIGNED,
-                auctionSteps,
-                codeIds,
-                operatorPackage.auth,
-                operatorPackage.authSig,
-                { permitted: { token: creatorToken, amount: depositAmount }, nonce, deadline },
-                permitSig,
-              ],
+              abi: erc20Abi,
+              functionName: 'approve',
+              args: [permit2, depositAmount],
             }),
           })
         }
+
+        const { permit, signTypedDataArgs } = await buildPermit2PermitTransferFrom({
+          publicClient,
+          permit2,
+          token: creatorToken,
+          amount: depositAmount,
+          owner: connected,
+          spender: batcherAddress,
+          ttlSeconds: 20 * 60,
+        })
+
+        const permitSig = (await walletClient.signTypedData({
+          account: (walletClient as any).account,
+          domain: signTypedDataArgs.domain,
+          types: signTypedDataArgs.types,
+          primaryType: signTypedDataArgs.primaryType,
+          message: signTypedDataArgs.message,
+        })) as Hex
+
+        calls.push({
+          to: batcherAddress,
+          data: encodeFunctionData({
+            abi: CREATOR_VAULT_BATCHER_ABI,
+            functionName: 'deployAndLaunchWithPermit2AsOperatorOperatorFunded',
+            args: [
+              creatorToken,
+              owner,
+              owner,
+              ZERO_ADDRESS,
+              vaultName,
+              vaultSymbol,
+              shareName,
+              shareSymbol,
+              deploymentVersion,
+              depositAmount,
+              DEFAULT_AUCTION_PERCENT,
+              DEFAULT_REQUIRED_RAISE_WEI,
+              DEFAULT_FLOOR_PRICE_Q96_ALIGNED,
+              auctionSteps,
+              codeIds,
+              auth,
+              authSig,
+              permit,
+              permitSig,
+            ],
+          }),
+        })
 
         try {
           const res = await sendCallsAsync({
@@ -1433,6 +1271,7 @@ function DeployVaultBatcher({
             account: connected,
             chainId: base.id,
             forceAtomic: true,
+            capabilities: capabilities as any,
           })
           setTxId(res.id)
           onSuccess(expected)
@@ -1560,6 +1399,7 @@ function DeployVaultBatcher({
             account: connected,
             chainId: base.id,
             forceAtomic: true,
+            capabilities: capabilities as any,
           })
           setTxId(res.id)
           onSuccess(expected)
@@ -1631,6 +1471,7 @@ function DeployVaultBatcher({
           account: connected,
           chainId: base.id,
           forceAtomic: true,
+          capabilities: capabilities as any,
         })
         setTxId(res.id)
         onSuccess(expected)
@@ -1819,7 +1660,13 @@ function DeployVaultBatcher({
       ) : null}
 
       <button type="button" onClick={() => void submit()} disabled={disabled} className="btn-accent w-full rounded-lg">
-        {busy ? 'Deploying…' : isExecuteBatchPath ? 'Deploy via Smart Wallet' : '1‑Click Deploy (AA)'}
+        {busy
+          ? 'Deploying…'
+          : isExecuteBatchPath
+            ? 'Deploy via Smart Wallet'
+            : connectedLc.length > 0 && connectedLc !== ownerLc
+              ? 'Deploy as Operator'
+              : '1‑Click Deploy (AA)'}
       </button>
 
       {error ? <div className="text-[11px] text-red-400/90">{error}</div> : null}
@@ -1839,7 +1686,6 @@ export function DeployVault() {
   const [creatorToken, setCreatorToken] = useState('')
   const [showAdvanced, setShowAdvanced] = useState(false)
   const [deploymentVersion, setDeploymentVersion] = useState<'v1' | 'v2' | 'v3'>('v3')
-  const [operatorDeployPackageJson, setOperatorDeployPackageJson] = useState('')
   const privyEnabled = getPrivyRuntime().enabled
 
   const [searchParams] = useSearchParams()
@@ -2235,22 +2081,6 @@ export function DeployVault() {
 
   const canonicalIdentityAddress = identity.canonicalIdentity.address
 
-  const { data: identityTokenBalance } = useReadContract({
-    address: tokenIsValid ? (creatorToken as `0x${string}`) : undefined,
-    abi: erc20Abi,
-    functionName: 'balanceOf',
-    args: [((canonicalIdentityAddress ?? ZERO_ADDRESS) as Address) as `0x${string}`],
-    query: { enabled: tokenIsValid && !!canonicalIdentityAddress },
-  })
-
-  const { data: identityPermit2Allowance } = useReadContract({
-    address: tokenIsValid ? (creatorToken as `0x${string}`) : undefined,
-    abi: erc20Abi,
-    functionName: 'allowance',
-    args: [((canonicalIdentityAddress ?? ZERO_ADDRESS) as Address) as `0x${string}`, (CONTRACTS.permit2 as Address) as `0x${string}`],
-    query: { enabled: tokenIsValid && !!canonicalIdentityAddress && isAddress(String(CONTRACTS.permit2 ?? '')) },
-  })
-
   // ============================================================
   // Smart-wallet executeBatch eligibility (EOA owner → deploy via SW)
   // ============================================================
@@ -2419,116 +2249,30 @@ export function DeployVault() {
     typeof connectedTokenBalance === 'bigint' && connectedTokenBalance >= MIN_FIRST_DEPOSIT
 
   const batcherConfigured = isAddress(String((CONTRACTS as any).creatorVaultBatcher ?? ''))
+  const operatorModeEligible = useMemo(() => {
+    return operatorModeForIdentity && canonicalIdentityIsContract
+  }, [canonicalIdentityIsContract, operatorModeForIdentity])
 
-  const operatorPackageParse = useMemo(() => parseOperatorDeployPackage(operatorDeployPackageJson), [operatorDeployPackageJson])
-  const operatorPackage: OperatorDeployPackage | null = operatorPackageParse.ok ? operatorPackageParse.value : null
-
-  const deployCodeIds = useMemo(() => {
-    return {
-      vault: keccak256(DEPLOY_BYTECODE.CreatorOVault as Hex),
-      wrapper: keccak256(DEPLOY_BYTECODE.CreatorOVaultWrapper as Hex),
-      shareOFT: keccak256(DEPLOY_BYTECODE.CreatorShareOFT as Hex),
-      gauge: keccak256(DEPLOY_BYTECODE.CreatorGaugeController as Hex),
-      cca: keccak256(DEPLOY_BYTECODE.CCALaunchStrategy as Hex),
-      oracle: keccak256(DEPLOY_BYTECODE.CreatorOracle as Hex),
-      oftBootstrap: keccak256(DEPLOY_BYTECODE.OFTBootstrapRegistry as Hex),
-    } as const
-  }, [])
-
-  const operatorPackageValidation = useMemo(() => {
-    if (!connectedWalletAddress || !canonicalIdentityAddress) {
-      return { operatorMode: false, valid: false, error: null as string | null, fundingModel: null as 0 | 1 | null }
+  const operatorMode = operatorModeForIdentity
+  const operatorDeployStatus = useMemo(() => {
+    if (!operatorMode) return { operatorMode: false, eligible: false, loading: false, message: null as string | null }
+    if (canonicalIdentityBytecodeQuery.isFetching) {
+      return { operatorMode: true, eligible: false, loading: true, message: 'Checking identity wallet…' }
     }
-
-    const operatorMode = connectedWalletAddress.toLowerCase() !== canonicalIdentityAddress.toLowerCase()
-    if (!operatorMode) {
-      return { operatorMode, valid: false, error: null as string | null, fundingModel: null as 0 | 1 | null }
+    if (!canonicalIdentityIsContract) {
+      return {
+        operatorMode: true,
+        eligible: false,
+        loading: false,
+        message: 'Canonical identity is an EOA (not a contract wallet). Connect the canonical identity wallet to deploy.',
+      }
     }
+    return { operatorMode: true, eligible: true, loading: false, message: null as string | null }
+  }, [canonicalIdentityBytecodeQuery.isFetching, canonicalIdentityIsContract, operatorMode])
 
-    if (!operatorPackageParse.ok) {
-      return { operatorMode, valid: false, error: operatorPackageParse.error, fundingModel: null as 0 | 1 | null }
-    }
+  const isAuthorizedDeployerOrOperator = isAuthorizedDeployer || executeBatchEligible || operatorModeEligible
 
-    if (!tokenIsValid) return { operatorMode, valid: false, error: 'Enter a valid token address.', fundingModel: null as 0 | 1 | null }
-    if (!derivedShareSymbol || !derivedShareName || !derivedVaultName || !derivedVaultSymbol) {
-      return { operatorMode, valid: false, error: 'Missing derived token metadata.', fundingModel: null as 0 | 1 | null }
-    }
-
-    const pkg = operatorPackageParse.value
-
-    if (pkg.auth.owner.toLowerCase() !== canonicalIdentityAddress.toLowerCase()) {
-      return { operatorMode, valid: false, error: 'Authorization owner does not match canonical identity.', fundingModel: null as 0 | 1 | null }
-    }
-    if (pkg.auth.operator.toLowerCase() !== connectedWalletAddress.toLowerCase()) {
-      return { operatorMode, valid: false, error: 'Authorization operator does not match your connected wallet.', fundingModel: null as 0 | 1 | null }
-    }
-    if (pkg.auth.leftoverRecipient.toLowerCase() !== canonicalIdentityAddress.toLowerCase()) {
-      return { operatorMode, valid: false, error: 'leftoverRecipient must be the canonical identity wallet.', fundingModel: null as 0 | 1 | null }
-    }
-
-    const now = BigInt(Math.floor(Date.now() / 1000))
-    if (pkg.auth.deadline <= now) {
-      return { operatorMode, valid: false, error: 'Authorization deadline is expired.', fundingModel: null as 0 | 1 | null }
-    }
-
-    const auctionSteps = encodeUniswapCcaLinearSteps(DEFAULT_CCA_DURATION_BLOCKS)
-    const expectedParamsHash = computeDeployParamsHash({
-      creatorToken: creatorToken as Address,
-      owner: canonicalIdentityAddress,
-      creatorTreasury: canonicalIdentityAddress,
-      payoutRecipient: ZERO_ADDRESS,
-      vaultName: derivedVaultName,
-      vaultSymbol: derivedVaultSymbol,
-      shareName: derivedShareName,
-      shareSymbol: derivedShareSymbol,
-      version: deploymentVersion,
-      depositAmount: MIN_FIRST_DEPOSIT,
-      auctionPercent: DEFAULT_AUCTION_PERCENT,
-      requiredRaise: DEFAULT_REQUIRED_RAISE_WEI,
-      floorPriceQ96: DEFAULT_FLOOR_PRICE_Q96_ALIGNED,
-      auctionSteps,
-      codeIds: deployCodeIds,
-      leftoverRecipient: canonicalIdentityAddress,
-      fundingModel: pkg.auth.fundingModel,
-    })
-
-    if (pkg.auth.paramsHash.toLowerCase() !== expectedParamsHash.toLowerCase()) {
-      return { operatorMode, valid: false, error: 'paramsHash does not match current deploy parameters.', fundingModel: null as 0 | 1 | null }
-    }
-
-    if (pkg.auth.fundingModel === 0 && !pkg.permit2) {
-      return { operatorMode, valid: false, error: 'Identity-funded deploy requires permit2 payload in the package.', fundingModel: 0 }
-    }
-
-    return { operatorMode, valid: true, error: null as string | null, fundingModel: pkg.auth.fundingModel }
-  }, [
-    canonicalIdentityAddress,
-    connectedWalletAddress,
-    creatorToken,
-    deployCodeIds,
-    deploymentVersion,
-    derivedShareName,
-    derivedShareSymbol,
-    derivedVaultName,
-    derivedVaultSymbol,
-    operatorPackageParse,
-    tokenIsValid,
-  ])
-
-  const isAuthorizedDeployerOrOperator = isAuthorizedDeployer || operatorPackageValidation.valid || executeBatchEligible
-
-  const funderHasMinDeposit = useMemo(() => {
-    if (!operatorPackageValidation.operatorMode) return walletHasMinDeposit
-    if (!operatorPackageValidation.valid) return false
-    if (operatorPackageValidation.fundingModel === 0) {
-      return typeof identityTokenBalance === 'bigint' && identityTokenBalance >= MIN_FIRST_DEPOSIT
-    }
-    return walletHasMinDeposit
-  }, [identityTokenBalance, operatorPackageValidation.fundingModel, operatorPackageValidation.operatorMode, operatorPackageValidation.valid, walletHasMinDeposit])
-
-  const identityHasPermit2Approval = useMemo(() => {
-    return typeof identityPermit2Allowance === 'bigint' && identityPermit2Allowance >= MIN_FIRST_DEPOSIT
-  }, [identityPermit2Allowance])
+  const funderHasMinDeposit = walletHasMinDeposit
 
   const fundingGateOk = executeBatchEligible || funderHasMinDeposit
 
@@ -2546,11 +2290,7 @@ export function DeployVault() {
     !!connectedWalletAddress &&
     fundingGateOk &&
     batcherConfigured &&
-    (!identity.blockingReason || operatorPackageValidation.valid || executeBatchEligible) &&
-    // Identity-funded operator deploys require the identity to have pre-approved Permit2 for the token.
-    (!operatorPackageValidation.operatorMode ||
-      operatorPackageValidation.fundingModel !== 0 ||
-      identityHasPermit2Approval)
+    (!identity.blockingReason || executeBatchEligible || operatorModeEligible)
 
   return (
     <div className="relative">
@@ -3074,6 +2814,38 @@ export function DeployVault() {
             <div className="card rounded-xl p-8 space-y-4">
               <div className="label">Deploy</div>
 
+              {isConnected && tokenIsValid && zoraCoin && canonicalIdentityAddress && connectedWalletAddress ? (
+                <div className="rounded-lg border border-white/5 bg-black/20 p-4 space-y-2">
+                  <div className="flex items-center justify-between gap-4">
+                    <div className="text-[11px] text-zinc-500">Canonical identity</div>
+                    <div className="text-[11px] font-mono text-zinc-200">{shortAddress(String(canonicalIdentityAddress))}</div>
+                  </div>
+                  <div className="flex items-center justify-between gap-4">
+                    <div className="text-[11px] text-zinc-500">Identity source</div>
+                    <div className="text-[11px] text-zinc-400">{identitySourceLabel(String(identity.canonicalIdentity.source))}</div>
+                  </div>
+                  <div className="flex items-center justify-between gap-4">
+                    <div className="text-[11px] text-zinc-500">Execution wallet</div>
+                    <div className="text-[11px] font-mono text-zinc-200">{shortAddress(String(connectedWalletAddress))}</div>
+                  </div>
+                  <div className="flex items-center justify-between gap-4">
+                    <div className="text-[11px] text-zinc-500">Deploy path</div>
+                    <div className="text-[11px] text-zinc-300">
+                      {connectedWalletAddress.toLowerCase() === canonicalIdentityAddress.toLowerCase()
+                        ? 'Direct (identity wallet)'
+                        : executeBatchEligible
+                          ? 'Smart Wallet (executeBatch)'
+                          : operatorModeEligible
+                            ? 'Operator (EIP-1271)'
+                            : '—'}
+                    </div>
+                  </div>
+                  <div className="text-[11px] text-zinc-700">
+                    Vault ownership will be set to the canonical identity. Your connected wallet only executes the transaction.
+                  </div>
+                </div>
+              ) : null}
+
               {isConnected && showAdvanced && !isSignedIn ? (
                 <div className="p-4 bg-amber-500/10 border border-amber-500/20 rounded-lg space-y-2">
                   <div className="text-amber-300/90 text-sm font-medium">Optional sign-in (admin tools)</div>
@@ -3132,47 +2904,34 @@ export function DeployVault() {
                     smartWalletOwnerQuery.isLoading ? (
                       'Verifying owner authorization…'
                     ) : (
-                      operatorPackageValidation.operatorMode
-                        ? 'Authorized only: paste an identity-signed deploy authorization, or connect the canonical identity wallet.'
+                      operatorMode
+                        ? 'Authorized only: connect the canonical identity wallet (or an onchain owner of the identity smart wallet).'
                         : 'Authorized only: connect the coin’s creator/payout wallet (or an owner wallet for the coin owner address).'
                     )
                   ) : (
-                    operatorPackageValidation.operatorMode
-                      ? 'Authorized only: paste an identity-signed deploy authorization, or connect the canonical identity wallet.'
+                    operatorMode
+                      ? 'Authorized only: connect the canonical identity wallet (or an onchain owner of the identity smart wallet).'
                       : 'Authorized only: connect the coin’s creator or payout recipient wallet to deploy'
                   )}
                 </button>
-              ) : tokenIsValid && zoraCoin && identity.blockingReason && !operatorPackageValidation.valid && !executeBatchEligible ? (
+              ) : tokenIsValid && zoraCoin && identity.blockingReason && !executeBatchEligible && !operatorModeEligible ? (
                 <div className="p-4 bg-amber-500/10 border border-amber-500/20 rounded-lg space-y-2">
                   <div className="text-amber-300/90 text-sm font-medium">Identity mismatch</div>
                   <div className="text-amber-300/70 text-xs leading-relaxed">{identity.blockingReason}</div>
                   <div className="pt-2 space-y-2">
-                    <div className="text-[11px] text-amber-300/70">
-                      If you’re using an execution wallet, paste an identity-signed deploy authorization package that binds identity + operator +
-                      deploy params.
-                    </div>
+                    {operatorDeployStatus.loading ? (
+                      <div className="text-[11px] text-amber-300/70">Checking canonical identity wallet type…</div>
+                    ) : operatorDeployStatus.message ? (
+                      <div className="text-[11px] text-amber-300/70">{operatorDeployStatus.message}</div>
+                    ) : (
+                      <div className="text-[11px] text-amber-300/70">Connect the canonical identity wallet to continue.</div>
+                    )}
                     {farcasterVerifiedEthAddresses.length > 0 ? (
                       <div className="text-[11px] text-amber-300/70">
                         Verified wallets (Farcaster, suggestion-only):{' '}
                         <span className="font-mono text-amber-200">
                           {farcasterVerifiedEthAddresses.map((a) => shortAddress(a)).join(', ')}
                         </span>
-                      </div>
-                    ) : null}
-                    <textarea
-                      value={operatorDeployPackageJson}
-                      onChange={(e) => setOperatorDeployPackageJson(e.target.value)}
-                      placeholder='{"auth":{...},"authSig":"0x...","permit2":{...}}'
-                      rows={6}
-                      className="w-full bg-black/40 border border-zinc-800 rounded-lg px-4 py-3 text-[11px] text-zinc-300 placeholder:text-zinc-700 outline-none font-mono"
-                    />
-                    {operatorPackageValidation.error ? (
-                      <div className="text-[11px] text-amber-300/80">{operatorPackageValidation.error}</div>
-                    ) : null}
-                    {operatorPackageParse.ok && operatorPackageValidation.operatorMode && !operatorPackageValidation.valid ? (
-                      <div className="text-[11px] text-amber-300/80">
-                        Tip: ensure the authorization was generated for this wallet ({shortAddress(String(connectedWalletAddress))}) and current
-                        deploy parameters.
                       </div>
                     ) : null}
                   </div>
@@ -3195,26 +2954,12 @@ export function DeployVault() {
                 >
                   Deployment is not configured (missing CreatorVaultBatcher address)
                 </button>
-              ) : tokenIsValid &&
-                zoraCoin &&
-                operatorPackageValidation.operatorMode &&
-                operatorPackageValidation.fundingModel === 0 &&
-                !identityHasPermit2Approval &&
-                !executeBatchEligible ? (
-                <button
-                  disabled
-                  className="w-full py-4 bg-black/30 border border-zinc-900/60 rounded-lg text-zinc-600 text-sm cursor-not-allowed"
-                >
-                  Identity wallet must approve Permit2 for this token before an operator can deploy
-                </button>
               ) : tokenIsValid && zoraCoin && !funderHasMinDeposit && !executeBatchEligible ? (
                 <button
                   disabled
                   className="w-full py-4 bg-black/30 border border-zinc-900/60 rounded-lg text-zinc-600 text-sm cursor-not-allowed"
                 >
-                  {operatorPackageValidation.operatorMode && operatorPackageValidation.fundingModel === 0
-                    ? `Identity wallet needs 50,000,000 ${underlyingSymbolUpper || 'TOKENS'} to deploy & launch`
-                    : `Your wallet needs 50,000,000 ${underlyingSymbolUpper || 'TOKENS'} to deploy & launch`}
+                  {`Your wallet needs 50,000,000 ${underlyingSymbolUpper || 'TOKENS'} to deploy & launch`}
                 </button>
               ) : canDeploy ? (
                 <>
@@ -3242,7 +2987,6 @@ export function DeployVault() {
                     vaultName={derivedVaultName}
                     deploymentVersion={deploymentVersion}
                     currentPayoutRecipient={payoutRecipient}
-                    operatorPackage={operatorPackageValidation.valid ? operatorPackage : null}
                     onSuccess={() => {}}
                   />
                 </>
