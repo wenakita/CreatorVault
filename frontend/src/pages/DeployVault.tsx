@@ -21,14 +21,11 @@ import { Link, useSearchParams } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { coinABI } from '@zoralabs/protocol-deployments'
 import { BarChart3, Layers, Lock, Rocket, ShieldCheck } from 'lucide-react'
-import { usePrivy, useWallets } from '@privy-io/react-auth'
-import { useSetActiveWallet } from '@privy-io/wagmi'
 import { useOnchainKit } from '@coinbase/onchainkit'
 import { ConnectButton } from '@/components/ConnectButton'
 import { DerivedTokenIcon } from '@/components/DerivedTokenIcon'
 import { RequestCreatorAccess } from '@/components/RequestCreatorAccess'
 import { CONTRACTS } from '@/config/contracts'
-import { getPrivyRuntime } from '@/config/privy'
 import { useSiweAuth } from '@/hooks/useSiweAuth'
 import { useCreatorAllowlist, useFarcasterAuth, useMiniAppContext } from '@/hooks'
 import { useZoraCoin, useZoraProfile } from '@/lib/zora/hooks'
@@ -612,63 +609,6 @@ function ExplainerRow({
       <div className="shrink-0 pt-[3px] text-[10px] leading-4 uppercase tracking-[0.34em] text-zinc-500/90 font-medium whitespace-nowrap text-right">
         {label}
       </div>
-    </div>
-  )
-}
-
-function PrivySmartWalletConnect({ target }: { target: Address }) {
-  const { ready, authenticated, login } = usePrivy()
-  const { wallets } = useWallets()
-  const { setActiveWallet } = useSetActiveWallet()
-  const [busy, setBusy] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-
-  const targetLc = target.toLowerCase()
-  const matchingWallet = useMemo(() => {
-    return wallets.find((w) => String((w as any)?.address ?? '').toLowerCase() === targetLc)
-  }, [targetLc, wallets])
-
-  useEffect(() => {
-    if (!matchingWallet) return
-    let cancelled = false
-    ;(async () => {
-      try {
-        await setActiveWallet(matchingWallet as any)
-        if (!cancelled) {
-          setBusy(false)
-          setError(null)
-        }
-      } catch {
-        if (!cancelled) {
-          setBusy(false)
-          setError('Failed to activate Privy smart wallet. Please try again.')
-        }
-      }
-    })()
-    return () => {
-      cancelled = true
-    }
-  }, [matchingWallet, setActiveWallet])
-
-  const onConnect = () => {
-    setError(null)
-    setBusy(true)
-    login()
-  }
-
-  const statusLine = matchingWallet
-    ? 'Privy smart wallet connected.'
-    : authenticated
-      ? `Signed in to Privy, but no wallet matches ${shortAddress(target)}.`
-      : 'Sign in to Privy to use the smart wallet.'
-
-  return (
-    <div className="space-y-2">
-      <button type="button" onClick={onConnect} disabled={!ready || busy} className="btn-accent w-full">
-        {busy ? 'Opening Privy…' : 'Connect Privy Smart Wallet'}
-      </button>
-      <div className="text-xs text-zinc-500">{statusLine}</div>
-      {error ? <div className="text-[11px] text-red-400/90">{error}</div> : null}
     </div>
   )
 }
@@ -1686,7 +1626,6 @@ export function DeployVault() {
   const [creatorToken, setCreatorToken] = useState('')
   const [showAdvanced, setShowAdvanced] = useState(false)
   const [deploymentVersion, setDeploymentVersion] = useState<'v1' | 'v2' | 'v3'>('v3')
-  const privyEnabled = getPrivyRuntime().enabled
 
   const [searchParams] = useSearchParams()
   const prefillToken = useMemo(() => searchParams.get('token') ?? '', [searchParams])
@@ -2773,7 +2712,6 @@ export function DeployVault() {
                             Connect Coinbase Smart Wallet (recommended)
                           </button>
                         ) : null}
-                        {privyEnabled && coinSmartWallet ? <PrivySmartWalletConnect target={coinSmartWallet} /> : null}
                       </div>
                     ) : null}
 

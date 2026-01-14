@@ -6,11 +6,8 @@ import { WagmiProvider } from 'wagmi'
 import { base } from 'wagmi/chains'
 import { useEffect, useRef } from 'react'
 import { useAccount, useConnect } from 'wagmi'
-import { PrivyProvider } from '@privy-io/react-auth'
-import { WagmiProvider as PrivyWagmiProvider } from '@privy-io/wagmi'
 
 import { wagmiConfig } from '@/config/wagmi'
-import { getPrivyRuntime } from '@/config/privy'
 import { logger } from '@/lib/logger'
 import { WalletDebugPanel } from '@/components/WalletDebugPanel'
 
@@ -59,9 +56,6 @@ export function Web3Providers({ children }: { children: ReactNode }) {
   // - If you want to force a specific paymaster/bundler endpoint, set `VITE_CDP_PAYMASTER_URL`.
   const cdpApiKey = import.meta.env.VITE_CDP_API_KEY as string | undefined
   const cdpPaymasterUrl = import.meta.env.VITE_CDP_PAYMASTER_URL as string | undefined
-  const privy = getPrivyRuntime()
-  const privyEnabled = privy.enabled
-  const privyAppId = privy.appId
 
   // Debug hint: if both are set but the URL does not contain the key, it's likely the wrong value was pasted
   // (CDP has multiple identifiers). We still respect the explicit URL override, but warn in dev.
@@ -71,10 +65,8 @@ export function Web3Providers({ children }: { children: ReactNode }) {
     )
   }
 
-  const ActiveWagmiProvider = privyEnabled ? PrivyWagmiProvider : WagmiProvider
-
   const content = (
-    <ActiveWagmiProvider config={wagmiConfig}>
+    <WagmiProvider config={wagmiConfig}>
       <OnchainKitProvider
         chain={base}
         apiKey={cdpApiKey}
@@ -87,23 +79,8 @@ export function Web3Providers({ children }: { children: ReactNode }) {
         <WalletDebugPanel />
         {children}
       </OnchainKitProvider>
-    </ActiveWagmiProvider>
+    </WagmiProvider>
   )
 
-  if (!privyEnabled) return content
-
-  return (
-    <PrivyProvider
-      appId={privyAppId as string}
-      config={{
-        embeddedWallets: {
-          ethereum: {
-            createOnLogin: 'users-without-wallets',
-          },
-        },
-      }}
-    >
-      {content}
-    </PrivyProvider>
-  )
+  return content
 }

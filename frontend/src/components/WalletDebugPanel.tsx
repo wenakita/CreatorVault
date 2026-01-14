@@ -6,7 +6,6 @@ import { CheckCircle2, Copy, XCircle } from 'lucide-react'
 import { useFarcasterAuth, useMiniAppContext } from '@/hooks'
 import { useSiweAuth } from '@/hooks/useSiweAuth'
 import { useWeb3 } from '@/web3/Web3Context'
-import { getPrivyRuntime } from '@/config/privy'
 
 function isDebugEnabled(search: string): boolean {
   const params = new URLSearchParams(search)
@@ -64,10 +63,6 @@ export function WalletDebugPanel() {
     }
   }, [])
 
-  const privy = getPrivyRuntime()
-  const privyConfigured = Boolean(privy.appId)
-  const privyEnabled = privy.enabled
-
   const connectorId = connector?.id ? String(connector.id) : '—'
   const connectorName = connector?.name ? String(connector.name) : '—'
 
@@ -110,12 +105,6 @@ export function WalletDebugPanel() {
         connector: { id: connectorId, name: connectorName },
         chain: { id: chain?.id ?? null, name: chain?.name ?? null },
         injected,
-        privy: {
-          configured: privyConfigured,
-          enabled: privyEnabled,
-          origin: privy.origin,
-          allowedOrigins: privy.allowedOrigins,
-        },
         availableConnectors,
       },
     }
@@ -140,10 +129,6 @@ export function WalletDebugPanel() {
     mini.fid,
     mini.isMiniApp,
     mini.username,
-    privy.allowedOrigins,
-    privy.origin,
-    privyConfigured,
-    privyEnabled,
     siwe.authAddress,
     siwe.error,
     siwe.isSignedIn,
@@ -209,7 +194,6 @@ export function WalletDebugPanel() {
         />
         <DebugRow k="connector" v={`${connectorName} (${connectorId})`} />
         <DebugRow k="chain" v={chainSummary} />
-        <DebugRow k="privy" v={privyEnabled ? 'enabled' : privyConfigured ? 'configured (disabled)' : 'not configured'} />
         <DebugRow k="connectors" v={availableConnectors} />
       </div>
     </div>
