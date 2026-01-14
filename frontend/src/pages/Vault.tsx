@@ -1,7 +1,9 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { motion } from 'framer-motion'
-import { useAccount, useReadContract, useWriteContract, useWaitForTransactionReceipt } from 'wagmi'
-import { formatUnits, parseUnits, erc20Abi, type Address } from 'viem'
+import { useAccount, usePublicClient, useReadContract, useWriteContract, useWaitForTransactionReceipt } from 'wagmi'
+import { useQuery } from '@tanstack/react-query'
+import { formatUnits, getAddress, isAddress, parseUnits, erc20Abi, type Address } from 'viem'
+import { base } from 'viem/chains'
 import {
   ArrowDownToLine,
   ArrowUpFromLine,
@@ -12,10 +14,11 @@ import {
 } from 'lucide-react'
 import { AKITA } from '../config/contracts'
 import { ConnectButton } from '../components/ConnectButton'
-import { Link } from 'react-router-dom'
+import { Link, useParams } from 'react-router-dom'
 import { CcaAuctionPanel } from '@/components/cca/CcaAuctionPanel'
 import { useTokenMetadata } from '@/hooks/useTokenMetadata'
 import { useZoraCoin } from '@/lib/zora/hooks'
+import { resolveCreatorVaultByAnyAddress } from '@/lib/onchain/creatorVaultResolve'
 import { OrbBorder } from '@/components/brand/OrbBorder'
 import { TokenOrb } from '@/components/brand/TokenOrb'
 import { SHARE_SYMBOL_PREFIX, toShareSymbol } from '@/lib/tokenSymbols'
@@ -49,8 +52,7 @@ const CCA_STRATEGY_ABI = [
 
 const tabs = ['Deposit', 'Withdraw'] as const
 type TabType = typeof tabs[number]
-
-const SHARE_SYMBOL = toShareSymbol('AKITA')
+const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000' as const
 
 function TokenAvatar({
   image,
@@ -89,49 +91,108 @@ function TokenAvatar({
 }
 
 export function Vault() {
+  const params = useParams()
+  const addressParamRaw = typeof params.address === 'string' ? params.address.trim() : ''
+  const addressParam = addressParamRaw && isAddress(addressParamRaw) ? (getAddress(addressParamRaw) as Address) : null
+
+  const akitaFallback = useMemo(() => {
+    if (!addressParam) return false
+    const lc = addressParam.toLowerCase()
+    return (
+      lc === String(AKITA.vault).toLowerCase() ||
+      lc === String(AKITA.wrapper).toLowerCase() ||
+      lc === String(AKITA.shareOFT).toLowerCase() ||
+      lc === String(AKITA.token).toLowerCase() ||
+      lc === String(AKITA.ccaStrategy).toLowerCase()
+    )
+  }, [addressParam])
+
+  const publicClient = usePublicClient({ chainId: base.id })
+  const { data: resolved, isLoading: resolveLoading, error: resolveError } = useQuery({
+    queryKey: ['creatorVaultResolve', base.id, addressParam ?? ''],
+    queryFn: async () => {
+      if (!publicClient || !addressParam) return null
+      return await resolveCreatorVaultByAnyAddress(publicClient, addressParam)
+    },
+    enabled: Boolean(publicClient && addressParam),
+    staleTime: 1000 * 60 * 10,
+    gcTime: 1000 * 60 * 60,
+  })
+
   const { address: userAddress, isConnected } = useAccount()
   const [activeTab, setActiveTab] = useState<TabType>('Deposit')
   const [amount, setAmount] = useState('')
 
-  const tokenAddress = AKITA.token
-  const wrapperAddress = AKITA.wrapper
-  const shareOFTAddress = AKITA.shareOFT
-  const ccaStrategy = AKITA.ccaStrategy
+  const tokenAddress = (resolved?.token ?? (akitaFallback ? (AKITA.token as Address) : null)) as Address | null
+  const wrapperAddress = (resolved?.info.wrapper ?? (akitaFallback ? (AKITA.wrapper as Address) : null)) as Address | null
+  const shareOFTAddress = (resolved?.info.shareOFT ?? (akitaFallback ? (AKITA.shareOFT as Address) : null)) as Address | null
+  const vaultAddress = (resolved?.info.vault ?? (akitaFallback ? (AKITA.vault as Address) : null)) as Address | null
+  const ccaStrategy = (resolved?.ccaStrategy ?? (akitaFallback ? (AKITA.ccaStrategy as Address) : null)) as Address | null
+
+  const underlyingSymbol = useMemo(() => {
+    const s = (resolved?.info.symbol ?? '').trim()
+    if (s) return s
+    return akitaFallback ? 'AKITA' : 'TOKEN'
+  }, [akitaFallback, resolved?.info.symbol])
+
+  const shareSymbol = useMemo(() => toShareSymbol(underlyingSymbol), [underlyingSymbol])
+
+  const tokenDecimalsEnabled = Boolean(tokenAddress)
+  const shareDecimalsEnabled = Boolean(shareOFTAddress)
+
+  const { data: tokenDecimals } = useReadContract({
+    address: (tokenAddress ?? ZERO_ADDRESS) as `0x${string}`,
+    abi: erc20Abi,
+    functionName: 'decimals',
+    query: { enabled: tokenDecimalsEnabled },
+  })
+
+  const { data: shareDecimals } = useReadContract({
+    address: (shareOFTAddress ?? ZERO_ADDRESS) as `0x${string}`,
+    abi: erc20Abi,
+    functionName: 'decimals',
+    query: { enabled: shareDecimalsEnabled },
+  })
+
+  const creatorDecimals = typeof tokenDecimals === 'number' ? tokenDecimals : 18
+  const shareTokenDecimals = typeof shareDecimals === 'number' ? shareDecimals : 18
 
   const { data: tokenBalance } = useReadContract({
-    address: tokenAddress as `0x${string}`,
+    address: (tokenAddress ?? ZERO_ADDRESS) as `0x${string}`,
     abi: erc20Abi,
     functionName: 'balanceOf',
     args: [userAddress!],
-    query: { enabled: !!userAddress },
+    query: { enabled: !!userAddress && Boolean(tokenAddress) },
   })
 
-  const { data: wsAkitaBalance } = useReadContract({
-    address: shareOFTAddress as `0x${string}`,
+  const { data: shareBalance } = useReadContract({
+    address: (shareOFTAddress ?? ZERO_ADDRESS) as `0x${string}`,
     abi: SHARE_OFT_ABI,
     functionName: 'balanceOf',
     args: [userAddress!],
-    query: { enabled: !!userAddress },
+    query: { enabled: !!userAddress && Boolean(shareOFTAddress) },
   })
 
-  const { data: totalWsAkita } = useReadContract({
-    address: shareOFTAddress as `0x${string}`,
+  const { data: totalShareSupply } = useReadContract({
+    address: (shareOFTAddress ?? ZERO_ADDRESS) as `0x${string}`,
     abi: SHARE_OFT_ABI,
     functionName: 'totalSupply',
+    query: { enabled: Boolean(shareOFTAddress) },
   })
 
   const { data: auctionStatus } = useReadContract({
-    address: ccaStrategy as `0x${string}`,
+    address: (ccaStrategy ?? ZERO_ADDRESS) as `0x${string}`,
     abi: CCA_STRATEGY_ABI,
     functionName: 'getAuctionStatus',
+    query: { enabled: Boolean(ccaStrategy) },
   })
 
   const { data: tokenAllowance } = useReadContract({
-    address: tokenAddress as `0x${string}`,
+    address: (tokenAddress ?? ZERO_ADDRESS) as `0x${string}`,
     abi: erc20Abi,
     functionName: 'allowance',
-    args: [userAddress!, wrapperAddress as `0x${string}`],
-    query: { enabled: !!userAddress && activeTab === 'Deposit' },
+    args: [userAddress!, (wrapperAddress ?? ZERO_ADDRESS) as `0x${string}`],
+    query: { enabled: !!userAddress && activeTab === 'Deposit' && Boolean(wrapperAddress) && Boolean(tokenAddress) },
   })
 
   const { writeContract: writeApprove, data: approveHash } = useWriteContract()
@@ -149,12 +210,12 @@ export function Vault() {
   const phaseLabel = isAuctionActive ? 'Auction Phase' : isGraduated ? 'Vault Active' : 'Not Launched'
 
   // Prefer Zora indexed preview image (fast), then onchain tokenURI metadata.
-  const { data: zoraCoin } = useZoraCoin(tokenAddress as Address)
+  const { data: zoraCoin } = useZoraCoin(tokenAddress ?? undefined)
   const zoraPreview =
     zoraCoin?.mediaContent?.previewImage?.medium ||
     zoraCoin?.mediaContent?.previewImage?.small ||
     undefined
-  const { imageUrl } = useTokenMetadata(tokenAddress as Address)
+  const { imageUrl } = useTokenMetadata(tokenAddress ?? undefined)
   const heroImage = zoraPreview || imageUrl || '/logo.svg'
 
   const formatAmount = (value: bigint, decimals: number = 18) => {
@@ -170,17 +231,17 @@ export function Vault() {
       address: tokenAddress as `0x${string}`,
       abi: erc20Abi,
       functionName: 'approve',
-      args: [wrapperAddress as `0x${string}`, parseUnits(amount, 18)],
+      args: [wrapperAddress as `0x${string}`, parseUnits(amount, creatorDecimals)],
     })
   }
 
   const handleDeposit = () => {
-    if (!amount || !wrapperAddress) return
+    if (!amount || !tokenAddress || !wrapperAddress) return
     writeDeposit({
       address: wrapperAddress as `0x${string}`,
       abi: WRAPPER_ABI,
       functionName: 'deposit',
-      args: [parseUnits(amount, 18)],
+      args: [parseUnits(amount, creatorDecimals)],
     })
   }
 
@@ -190,11 +251,75 @@ export function Vault() {
       address: wrapperAddress as `0x${string}`,
       abi: WRAPPER_ABI,
       functionName: 'withdraw',
-      args: [parseUnits(amount, 18)],
+      args: [parseUnits(amount, shareTokenDecimals)],
     })
   }
 
-  const needsApproval = activeTab === 'Deposit' && (!tokenAllowance || tokenAllowance < parseUnits(amount || '0', 18))
+  const needsApproval =
+    activeTab === 'Deposit' &&
+    Boolean(tokenAddress && wrapperAddress) &&
+    (!tokenAllowance || tokenAllowance < parseUnits(amount || '0', creatorDecimals))
+
+  const canResolve = Boolean(publicClient && addressParam)
+  const showResolveError = canResolve && !akitaFallback && Boolean(resolveError)
+  const showNotFound = canResolve && !akitaFallback && !resolveLoading && !resolved && !showResolveError
+
+  if (!addressParam) {
+    return (
+      <div className="relative pb-24 md:pb-0">
+        <section className="cinematic-section">
+          <div className="max-w-5xl mx-auto px-4 sm:px-6">
+            <div className="rounded-3xl border border-white/5 bg-[#080808]/50 backdrop-blur-2xl px-6 py-10 sm:p-10">
+              <span className="label">Vault</span>
+              <h1 className="headline text-3xl sm:text-5xl mt-4">Invalid vault address</h1>
+              <p className="text-zinc-600 text-sm font-light mt-4">Check the URL and try again.</p>
+              <div className="mt-8 flex flex-col sm:flex-row gap-3">
+                <Link to="/dashboard" className="btn-accent inline-flex items-center justify-center rounded-full px-5 py-3 text-xs">
+                  Back to Dashboard
+                </Link>
+              </div>
+            </div>
+          </div>
+        </section>
+      </div>
+    )
+  }
+
+  if (showResolveError || showNotFound) {
+    return (
+      <div className="relative pb-24 md:pb-0">
+        <section className="cinematic-section">
+          <div className="max-w-5xl mx-auto px-4 sm:px-6">
+            <div className="rounded-3xl border border-white/5 bg-[#080808]/50 backdrop-blur-2xl px-6 py-10 sm:p-10">
+              <span className="label">Vault</span>
+              <h1 className="headline text-3xl sm:text-5xl mt-4">
+                {showResolveError ? 'Could not load vault' : 'Vault not registered'}
+              </h1>
+              <p className="text-zinc-600 text-sm font-light mt-4">
+                {showResolveError
+                  ? 'We could not resolve this vault from the onchain registry right now.'
+                  : 'This address is not recognized by the onchain registry.'}
+              </p>
+              <div className="mt-3 text-[11px] font-mono text-zinc-600 break-all">{addressParam}</div>
+              <div className="mt-8 flex flex-col sm:flex-row gap-3">
+                <Link to="/dashboard" className="btn-accent inline-flex items-center justify-center rounded-full px-5 py-3 text-xs">
+                  Back to Dashboard
+                </Link>
+                <a
+                  href={`https://basescan.org/address/${addressParam}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="btn-primary inline-flex items-center justify-center gap-2 rounded-full px-5 py-3 text-xs"
+                >
+                  View on Basescan <ExternalLink className="w-3 h-3" />
+                </a>
+              </div>
+            </div>
+          </div>
+        </section>
+      </div>
+    )
+  }
 
   return (
     <div className="relative pb-24 md:pb-0">
@@ -233,7 +358,7 @@ export function Vault() {
                   <OrbBorder intensity={isUnlocked ? 'high' : 'medium'}>
                     <div className="w-full h-full p-[6px] bg-obsidian rounded-full">
                       <div className="w-full h-full rounded-full overflow-hidden relative shadow-[inset_0_0_20px_black]">
-                        <TokenOrb image={heroImage} isUnlocked={isUnlocked} symbol="AKITA" />
+                        <TokenOrb image={heroImage} isUnlocked={isUnlocked} symbol={underlyingSymbol} />
                       </div>
                     </div>
                   </OrbBorder>
@@ -264,12 +389,14 @@ export function Vault() {
                   <div className="min-w-0">
                     <span className="label mt-2 block">Creator Vault</span>
                     <h1 className="headline text-4xl sm:text-6xl mt-3">
-                      AKITA{' '}
+                      {underlyingSymbol}{' '}
                       <span className="text-transparent bg-clip-text bg-gradient-to-r from-brand-primary to-brand-accent italic">
                         Vault
                       </span>
                     </h1>
-                    <p className="text-zinc-600 text-sm font-light mono mt-3">AKITA → {SHARE_SYMBOL}</p>
+                    <p className="text-zinc-600 text-sm font-light mono mt-3">
+                      {underlyingSymbol} → {shareSymbol}
+                    </p>
                   </div>
 
                   <div className="shrink-0 hidden sm:flex flex-col items-end gap-3">
@@ -281,21 +408,25 @@ export function Vault() {
                 </div>
 
                 <div className="mt-6 flex flex-col sm:flex-row gap-3">
-                  <a
-                    href={`https://basescan.org/address/${wrapperAddress}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="btn-primary inline-flex items-center justify-center gap-2 rounded-full px-5 py-3 text-xs"
-                  >
-                    View wrapper <ExternalLink className="w-3 h-3" />
-                  </a>
-                  <Link
-                    to={`/status?vault=${encodeURIComponent(AKITA.vault)}`}
-                    className="btn-primary inline-flex items-center justify-center gap-2 rounded-full px-5 py-3 text-xs"
-                    title="Verification checks"
-                  >
-                    Status checks <ShieldCheck className="w-3 h-3 text-emerald-300" />
-                  </Link>
+                  {wrapperAddress ? (
+                    <a
+                      href={`https://basescan.org/address/${wrapperAddress}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="btn-primary inline-flex items-center justify-center gap-2 rounded-full px-5 py-3 text-xs"
+                    >
+                      View wrapper <ExternalLink className="w-3 h-3" />
+                    </a>
+                  ) : null}
+                  {vaultAddress ? (
+                    <Link
+                      to={`/status?vault=${encodeURIComponent(vaultAddress)}`}
+                      className="btn-primary inline-flex items-center justify-center gap-2 rounded-full px-5 py-3 text-xs"
+                      title="Verification checks"
+                    >
+                      Status checks <ShieldCheck className="w-3 h-3 text-emerald-300" />
+                    </Link>
+                  ) : null}
                   {canManageVault ? (
                     <a
                       href="#manage"
@@ -329,7 +460,7 @@ export function Vault() {
                   <div className="status-active mb-2">
                     <span className="label text-cyan-400">CCA Auction Active</span>
                   </div>
-                  <p className="text-zinc-500 text-sm font-light">Get {SHARE_SYMBOL} before anyone else</p>
+                  <p className="text-zinc-500 text-sm font-light">Get {shareSymbol} before anyone else</p>
                 </div>
               </div>
               <Link to={`/auction/bid/${ccaStrategy}`} className="btn-accent w-full sm:w-auto text-center">
@@ -348,7 +479,9 @@ export function Vault() {
               <div className="grid grid-cols-2 lg:grid-cols-4 gap-px bg-white/5">
                 <div className="bg-[#080808]/70 backdrop-blur-xl p-5 sm:p-8 space-y-3 sm:space-y-4">
                   <span className="label">Total Supply</span>
-                  <div className="value mono text-2xl sm:text-3xl">{totalWsAkita ? formatAmount(totalWsAkita) : '—'}</div>
+                  <div className="value mono text-2xl sm:text-3xl">
+                    {totalShareSupply ? formatAmount(totalShareSupply, shareTokenDecimals) : '—'}
+                  </div>
                 </div>
                 <div className="bg-[#080808]/70 backdrop-blur-xl p-5 sm:p-8 space-y-3 sm:space-y-4">
                   <span className="label">APY</span>
@@ -367,11 +500,17 @@ export function Vault() {
           ) : null}
 
           <div id="auction" className="mt-10">
-            <CcaAuctionPanel
-              ccaStrategy={ccaStrategy as Address}
-              wsSymbol={SHARE_SYMBOL}
-              vaultAddress={AKITA.vault as Address}
-            />
+            {ccaStrategy && vaultAddress ? (
+              <CcaAuctionPanel
+                ccaStrategy={ccaStrategy}
+                wsSymbol={shareSymbol}
+                vaultAddress={vaultAddress}
+              />
+            ) : (
+              <div className="rounded-2xl border border-white/5 bg-white/[0.03] p-6 text-sm text-zinc-600">
+                Auction panel is not available for this vault yet.
+              </div>
+            )}
           </div>
         </div>
       </section>
@@ -426,15 +565,15 @@ export function Vault() {
                     onClick={() =>
                       setAmount(
                         activeTab === 'Deposit'
-                          ? formatUnits(tokenBalance || 0n, 18)
-                          : formatUnits(wsAkitaBalance || 0n, 18)
+                          ? formatUnits(tokenBalance || 0n, creatorDecimals)
+                          : formatUnits(shareBalance || 0n, shareTokenDecimals)
                       )
                     }
                     className="label text-zinc-600 hover:text-cyan-400 transition-colors text-left sm:text-right"
                   >
                     Max: {activeTab === 'Deposit'
-                      ? formatAmount(tokenBalance || 0n)
-                      : formatAmount(wsAkitaBalance || 0n)}
+                      ? formatAmount(tokenBalance || 0n, creatorDecimals)
+                      : formatAmount(shareBalance || 0n, shareTokenDecimals)}
                   </button>
                 </div>
                 
@@ -449,7 +588,7 @@ export function Vault() {
                     className="input-field w-full text-4xl sm:text-5xl font-light text-center"
                   />
                   <div className="mt-4 text-center">
-                    <span className="label">{activeTab === 'Deposit' ? 'AKITA' : SHARE_SYMBOL}</span>
+                    <span className="label">{activeTab === 'Deposit' ? underlyingSymbol : shareSymbol}</span>
                   </div>
                 </div>
 
@@ -457,7 +596,7 @@ export function Vault() {
                   <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2 py-4 border-y border-zinc-900/50">
                     <span className="label">You Will Receive</span>
                     <div className="value mono text-lg sm:text-xl glow-cyan sm:text-right whitespace-nowrap">
-                      {amount} {activeTab === 'Deposit' ? SHARE_SYMBOL : 'AKITA'}
+                      {amount} {activeTab === 'Deposit' ? shareSymbol : underlyingSymbol}
                     </div>
                   </div>
                 )}
@@ -482,7 +621,7 @@ export function Vault() {
                     </>
                   ) : (
                     <>
-                      <span className="label">Approve AKITA</span>
+                      <span className="label">Approve {underlyingSymbol}</span>
                       <span className="text-xs text-zinc-600 block mt-1">Step 1 of 2</span>
                     </>
                   )}
@@ -521,14 +660,14 @@ export function Vault() {
                 <div className="card p-5 sm:p-8">
                   <div className="space-y-6">
                     <div className="grid grid-cols-[auto_minmax(0,1fr)_auto] gap-3 items-center">
-                      <TokenAvatar image={heroImage} symbol="AKITA" badge={SHARE_SYMBOL_PREFIX} />
+                      <TokenAvatar image={heroImage} symbol={underlyingSymbol} badge={SHARE_SYMBOL_PREFIX} />
                       <div className="min-w-0">
                         <div className="text-[10px] tracking-[0.34em] uppercase text-zinc-600">Vault token</div>
-                        <div className="text-sm text-zinc-200 mt-1 font-light truncate">{SHARE_SYMBOL}</div>
+                        <div className="text-sm text-zinc-200 mt-1 font-light truncate">{shareSymbol}</div>
                       </div>
                       <div className="text-right">
                         <div className="font-mono text-xl sm:text-2xl text-zinc-200 tabular-nums glow-cyan">
-                          {formatAmount(wsAkitaBalance || 0n)}
+                          {formatAmount(shareBalance || 0n, shareTokenDecimals)}
                         </div>
                         <div className="text-[10px] text-zinc-700 mt-1">Balance</div>
                       </div>
@@ -537,14 +676,14 @@ export function Vault() {
                     <div className="h-px bg-white/5" />
 
                     <div className="grid grid-cols-[auto_minmax(0,1fr)_auto] gap-3 items-center">
-                      <TokenAvatar image={heroImage} symbol="AKITA" />
+                      <TokenAvatar image={heroImage} symbol={underlyingSymbol} />
                       <div className="min-w-0">
                         <div className="text-[10px] tracking-[0.34em] uppercase text-zinc-600">Creator token</div>
-                        <div className="text-sm text-zinc-200 mt-1 font-light truncate">AKITA</div>
+                        <div className="text-sm text-zinc-200 mt-1 font-light truncate">{underlyingSymbol}</div>
                       </div>
                       <div className="text-right">
                         <div className="font-mono text-lg sm:text-xl text-zinc-200 tabular-nums">
-                          {formatAmount(tokenBalance || 0n)}
+                          {formatAmount(tokenBalance || 0n, creatorDecimals)}
                         </div>
                         <div className="text-[10px] text-zinc-700 mt-1">Balance</div>
                       </div>

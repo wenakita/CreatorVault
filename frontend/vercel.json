@@ -21,6 +21,31 @@
       "headers": { "cache-control": "no-store" },
       "continue": true
     },
+    {
+      "src": "/explore/(.*)",
+      "headers": { "x-robots-tag": "noindex, nofollow" },
+      "continue": true
+    },
+    {
+      "src": "/swap",
+      "headers": { "x-robots-tag": "noindex, nofollow" },
+      "continue": true
+    },
+    {
+      "src": "/positions",
+      "headers": { "x-robots-tag": "noindex, nofollow" },
+      "continue": true
+    },
+    {
+      "src": "/portfolio",
+      "headers": { "x-robots-tag": "noindex, nofollow" },
+      "continue": true
+    },
+    {
+      "src": "/dashboard",
+      "headers": { "x-robots-tag": "noindex, nofollow" },
+      "continue": true
+    },
     { "handle": "filesystem" },
     { "src": "/assets/(.*)", "status": 404 },
     {

@@ -1,16 +1,11 @@
 import { lazy } from 'react'
-import { Routes, Route } from 'react-router-dom'
+import { Routes, Route, Navigate } from 'react-router-dom'
 import { Layout } from './components/Layout'
 import { Home } from './pages/Home'
 
 const Launch = lazy(async () => {
   const m = await import('./pages/Launch')
   return { default: m.Launch }
-})
-
-const Dashboard = lazy(async () => {
-  const m = await import('./pages/Dashboard')
-  return { default: m.Dashboard }
 })
 
 const Vault = lazy(async () => {
@@ -88,6 +83,61 @@ const AuctionDemo = lazy(async () => {
   return { default: m.default }
 })
 
+const ExploreCreators = lazy(async () => {
+  const m = await import('./pages/ExploreCreators')
+  return { default: m.ExploreCreators }
+})
+
+const ExploreContent = lazy(async () => {
+  const m = await import('./pages/ExploreContent')
+  return { default: m.ExploreContent }
+})
+
+const ExploreTransactions = lazy(async () => {
+  const m = await import('./pages/ExploreTransactions')
+  return { default: m.ExploreTransactions }
+})
+
+const ExploreCreatorDetail = lazy(async () => {
+  const m = await import('./pages/ExploreCreatorDetail')
+  return { default: m.ExploreCreatorDetail }
+})
+
+const ExploreContentDetail = lazy(async () => {
+  const m = await import('./pages/ExploreContentDetail')
+  return { default: m.ExploreContentDetail }
+})
+
+const ExploreCreatorTransactions = lazy(async () => {
+  const m = await import('./pages/ExploreCreatorTransactions')
+  return { default: m.ExploreCreatorTransactions }
+})
+
+const ExploreContentTransactions = lazy(async () => {
+  const m = await import('./pages/ExploreContentTransactions')
+  return { default: m.ExploreContentTransactions }
+})
+
+const ExploreContentPoolAlias = lazy(async () => {
+  const m = await import('./pages/ExploreContentPoolAlias')
+  return { default: m.ExploreContentPoolAlias }
+})
+
+const Swap = lazy(async () => {
+  const m = await import('./pages/Swap')
+  return { default: m.Swap }
+})
+
+const Positions = lazy(async () => {
+  const m = await import('./pages/Positions')
+  return { default: m.Positions }
+})
+
+const Portfolio = lazy(async () => {
+  const m = await import('./pages/Portfolio')
+  return { default: m.Portfolio }
+})
+
 function App() {
   return (
     <>
@@ -97,6 +147,20 @@ function App() {
       <Routes>
         <Route element={<Layout />}>
           <Route path="/" element={<Home />} />
+          <Route path="/explore" element={<Navigate to="/explore/creators" replace />} />
+          <Route path="/explore/creators" element={<ExploreCreators />} />
+          <Route path="/explore/content" element={<ExploreContent />} />
+          <Route path="/explore/transactions" element={<ExploreTransactions />} />
+          <Route path="/explore/creators/:chain/:tokenAddress" element={<ExploreCreatorDetail />} />
+          <Route path="/explore/creators/:chain/:tokenAddress/transactions" element={<ExploreCreatorTransactions />} />
+          <Route path="/explore/content/:chain/:contentCoinAddress" element={<ExploreContentDetail />} />
+          <Route path="/explore/content/:chain/:contentCoinAddress/transactions" element={<ExploreContentTransactions />} />
+          <Route path="/explore/content/:chain/pool/:poolIdOrPoolKeyHash" element={<ExploreContentPoolAlias />} />
+          <Route path="/explore/tokens" element={<Navigate to="/explore/creators" replace />} />
+          <Route path="/explore/pools" element={<Navigate to="/explore/content" replace />} />
+          <Route path="/swap" element={<Swap />} />
+          <Route path="/positions" element={<Positions />} />
+          <Route path="/portfolio" element={<Portfolio />} />
           <Route path="/launch" element={<Launch />} />
           <Route path="/deploy" element={<DeployVault />} />
           <Route path="/coin/:address/manage" element={<CoinManage />} />
@@ -113,7 +177,7 @@ function App() {
           <Route path="/auction/bid/:address" element={<AuctionBid />} />
           <Route path="/complete-auction" element={<CompleteAuction />} />
           <Route path="/complete-auction/:strategy" element={<CompleteAuction />} />
-          <Route path="/dashboard" element={<Dashboard />} />
+          <Route path="/dashboard" element={<Navigate to="/explore/creators" replace />} />
           <Route path="/vault/:address" element={<Vault />} />
           <Route path="/auction-demo" element={<AuctionDemo />} />
         </Route>

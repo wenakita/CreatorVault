@@ -12,7 +12,7 @@ type MobileNavItem = {
 
 const navItems: MobileNavItem[] = [
   { path: '/', icon: Home, label: 'Home', activePrefixes: ['/'] },
-  { path: '/dashboard', icon: LayoutDashboard, label: 'Vaults', activePrefixes: ['/dashboard', '/vault'] },
+  { path: '/explore/creators', icon: LayoutDashboard, label: 'Explore', activePrefixes: ['/explore', '/dashboard'] },
   { path: '/deploy', icon: LayoutDashboard, label: 'Deploy', activePrefixes: ['/deploy', '/launch', '/status'] },
   { path: '/faq', icon: HelpCircle, label: 'FAQ', activePrefixes: ['/faq'] },
 ]

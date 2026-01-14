@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { useAccount } from 'wagmi'
+import { useAccount, usePublicClient } from 'wagmi'
 import { isAddress, type Address } from 'viem'
 import { base } from 'viem/chains'
 import { useIsFetching, useQuery, useQueryClient } from '@tanstack/react-query'
@@ -13,6 +13,7 @@ import { VaultExplainer } from '@/components/VaultExplainer'
 import { useDebankTotalBalanceBatch } from '@/lib/debank/hooks'
 import { useDexscreenerTokenStatsBatch } from '@/lib/dexscreener/hooks'
 import type { DexscreenerTokenStats } from '@/lib/dexscreener/client'
+import { fetchCreatorVaultIndex } from '@/lib/onchain/creatorVaultIndex'
 import { computeCreatorScore } from '@/lib/reputation/creatorScore'
 import { getTalentSocials, type CreatorSocials } from '@/lib/talent-api'
 import { useZoraExplore, useZoraProfile, useZoraTopCreators } from '@/lib/zora/hooks'
@@ -30,7 +31,7 @@ const FarcasterIcon = ({ className }: { className?: string }) => (
   </svg>
 )
 
-const vaults = [
+const FALLBACK_VAULTS = [
   {
     id: 'akita',
     name: 'AKITA',
@@ -753,6 +754,7 @@ export function Dashboard() {
   const isRefreshing = dashboardFetchCount > 0
 
   const { address: viewerAddress } = useAccount()
+  const publicClient = usePublicClient({ chainId: base.id })
   const [tradeCoin, setTradeCoin] = useState<ZoraCoin | null>(null)
   const [showAnalytics, setShowAnalytics] = useState(true)
   const [showScore, setShowScore] = useState(false)
@@ -767,6 +769,19 @@ export function Dashboard() {
   const [lastTradedPageInfo, setLastTradedPageInfo] = useState<{ hasNextPage?: boolean; endCursor?: string } | null>(
     null,
   )
+
+  const { data: registryVaults } = useQuery({
+    queryKey: ['creatorVaultIndex', base.id],
+    queryFn: async () => {
+      if (!publicClient) return []
+      return await fetchCreatorVaultIndex(publicClient)
+    },
+    enabled: Boolean(publicClient),
+    staleTime: 1000 * 60 * 10,
+    gcTime: 1000 * 60 * 60,
+  })
+
+  const vaults = registryVaults && registryVaults.length > 0 ? registryVaults : FALLBACK_VAULTS
 
   async function handleRefresh() {
     // Reset pagination so the “Load more” list starts fresh.

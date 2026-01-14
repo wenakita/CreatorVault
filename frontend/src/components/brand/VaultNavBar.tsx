@@ -14,7 +14,7 @@ type NavItem = {
 
 const NAV_ITEMS: NavItem[] = [
   { label: 'HOME', to: '/', activePrefixes: ['/'] },
-  { label: 'VAULTS', to: '/dashboard', activePrefixes: ['/dashboard', '/vault'] },
+  { label: 'EXPLORE', to: '/explore/creators', activePrefixes: ['/explore', '/dashboard'] },
   { label: 'DEPLOY', to: '/deploy', activePrefixes: ['/deploy', '/launch', '/status'] },
   { label: 'FAQ', to: '/faq', activePrefixes: ['/faq'] },
 ]

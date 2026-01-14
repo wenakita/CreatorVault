@@ -3,8 +3,8 @@
 
 import { logger } from './logger'
 
-const TALENT_API_KEY = import.meta.env.VITE_TALENT_API_KEY || 'a4ff9ba57e689ac0e22ed2b448986717329dae9b8f5b45344f4140e6a7e6'
-const TALENT_API_BASE = 'https://api.talentprotocol.com'
+// Talent is optional enrichment. We proxy via Vercel Functions so no API key ships to the browser.
+const TALENT_API_BASE = '/api/social/talent'
 
 export interface SocialAccount {
   platform: string
@@ -86,35 +86,8 @@ export interface CreatorSocials {
  */
 export async function getTalentPassport(walletAddress: string): Promise<TalentPassport | null> {
   try {
-    // Use the UNIFIED search endpoint with wallet address query
-    const query = {
-      walletAddresses: [walletAddress],
-      exactMatch: true // Case-insensitive exact match
-    }
-    
-    const sort = {
-      score: { order: 'desc' },
-      id: { order: 'desc' }
-    }
-    
-    // URL encode the parameters
-    const queryString = Object.entries({
-      query: JSON.stringify(query),
-      sort: JSON.stringify(sort),
-      page: '1',
-      per_page: '1'
-    })
-      .map(([key, val]) => `${key}=${encodeURIComponent(val)}`)
-      .join('&')
-    
     const response = await fetch(
-      `${TALENT_API_BASE}/search/advanced/profiles?${queryString}`,
-      {
-        headers: {
-          'X-API-KEY': TALENT_API_KEY,
-          'Accept': 'application/json',
-        },
-      }
+      `${TALENT_API_BASE}?mode=passport&address=${encodeURIComponent(walletAddress)}`,
     )
     
     if (!response.ok) {
@@ -122,10 +95,12 @@ export async function getTalentPassport(walletAddress: string): Promise<TalentPa
       return null
     }
     
-    const data = await response.json()
+    const envelope = await response.json()
+    const data = envelope?.data
+    const profiles = Array.isArray(data?.profiles) ? data.profiles : []
     // Extract the first profile from search results
-    if (data.profiles && data.profiles.length > 0) {
-      return mapProfileData(data.profiles[0])
+    if (profiles.length > 0) {
+      return mapProfileData(profiles[0])
     }
     
     logger.debug('[Talent] No profile found for wallet:', walletAddress)
@@ -399,20 +374,15 @@ function extractSocialAccounts(profile: any): SocialAccount[] {
  */
 export async function getTalentSocials(walletAddress: string): Promise<CreatorSocials> {
   try {
-    const qs = new URLSearchParams({ id: walletAddress, account_source: 'wallet' })
-    const response = await fetch(`${TALENT_API_BASE}/socials?${qs.toString()}`, {
-      headers: {
-        'X-API-KEY': TALENT_API_KEY,
-        Accept: 'application/json',
-      },
-    })
+    const response = await fetch(`${TALENT_API_BASE}?mode=socials&address=${encodeURIComponent(walletAddress)}`)
 
     if (!response.ok) {
       logger.error('[Talent] Failed to fetch socials', { status: response.status, statusText: response.statusText })
       return {}
     }
 
-    const data = await response.json()
+    const envelope = await response.json()
+    const data = envelope?.data
     const socialsArr = Array.isArray(data?.socials) ? data.socials : []
 
     const out: CreatorSocials = {}
