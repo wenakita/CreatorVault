@@ -97,7 +97,9 @@ export function Web3Providers({ children }: { children: ReactNode }) {
       appId={privyAppId as string}
       config={{
         embeddedWallets: {
-          createOnLogin: 'users-without-wallets',
+          ethereum: {
+            createOnLogin: 'users-without-wallets',
+          },
         },
       }}
     >
