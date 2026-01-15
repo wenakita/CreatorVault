@@ -32,6 +32,7 @@ import { useZoraCoin, useZoraProfile } from '@/lib/zora/hooks'
 import { getFarcasterUserByFid } from '@/lib/neynar-api'
 import { resolveCreatorIdentity } from '@/lib/identity/creatorIdentity'
 import { DEPLOY_BYTECODE } from '@/deploy/bytecode.generated'
+import { sendCoinbaseSmartWalletUserOperation } from '@/lib/aa/coinbaseErc4337'
 import {
   normalizeUnderlyingSymbol,
   toShareName,
@@ -1055,6 +1056,35 @@ function DeployVaultBatcher({
           }),
         })
 
+        // ===========================================
+        // Preferred: "true" ERC-4337 UserOperation path
+        // ===========================================
+        // If CDP bundler/paymaster is configured, send a UserOperation via EntryPoint v0.6.
+        // This avoids direct EOA tx execution and enables sponsorship.
+        const cdpApiKey = import.meta.env.VITE_CDP_API_KEY as string | undefined
+        const cdpBundlerUrl =
+          (paymasterUrl && typeof paymasterUrl === 'string' ? paymasterUrl : null) ??
+          (cdpApiKey ? `https://api.developer.coinbase.com/rpc/v1/base/${cdpApiKey}` : null)
+
+        if (cdpBundlerUrl) {
+          try {
+            const res = await sendCoinbaseSmartWalletUserOperation({
+              publicClient,
+              walletClient,
+              bundlerUrl: cdpBundlerUrl,
+              smartWallet: owner,
+              ownerAddress: connected,
+              calls: calls.map((c) => ({ to: c.target, value: c.value, data: c.data })),
+              version: '1',
+            })
+            setTxId(res.userOpHash)
+            onSuccess(expected)
+            return
+          } catch {
+            // Fallback below: direct executeBatch tx from the connected owner EOA.
+          }
+        }
+
         const executeBatchData = encodeFunctionData({
           abi: COINBASE_SMART_WALLET_EXECUTE_BATCH_ABI,
           functionName: 'executeBatch',
@@ -1873,13 +1903,11 @@ export function DeployVault() {
   const {
     data: zoraCoin,
     isLoading: zoraLoading,
-    isFetching: zoraFetching,
-    dataUpdatedAt: zoraUpdatedAt,
-    refetch: refetchZoraCoin,
   } = useZoraCoin(
     tokenIsValid ? (creatorToken as Address) : undefined,
   )
-  const { data: zoraCreatorProfile } = useZoraProfile(zoraCoin?.creatorAddress)
+  // Prefetch creator profile (used elsewhere in the app); we don't depend on the result here.
+  useZoraProfile(zoraCoin?.creatorAddress)
 
   const { data: tokenSymbol, isLoading: symbolLoading } = useReadContract({
     address: tokenIsValid ? (creatorToken as `0x${string}`) : undefined,
