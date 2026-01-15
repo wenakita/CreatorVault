@@ -2,7 +2,7 @@
 pragma solidity ^0.8.20;
 
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
-import {PayoutRouter} from "../helpers/PayoutRouter.sol";
+import {PayoutRouter} from "../helpers/routers/PayoutRouter.sol";
 
 /**
  * @title PayoutRouterFactory

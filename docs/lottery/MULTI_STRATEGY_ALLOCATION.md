@@ -11,7 +11,7 @@
 
 ## AKITA default allocation (example: 50,000,000 AKITA deposit)
 Target allocation:
-- **69.00%** → Charm LP (AKITA/USDC) via `CreatorCharmStrategyV2`
+- **69.00%** → Charm LP (AKITA/USDC) via `CreatorCharmStrategy`
 - **21.39%** → Ajna via `AjnaStrategy`
 - **9.61%** → idle reserve in the vault (`minimumTotalIdle`)
 

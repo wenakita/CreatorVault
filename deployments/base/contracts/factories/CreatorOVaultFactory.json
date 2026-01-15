@@ -1,0 +1,531 @@
+{
+  "contractName": "CreatorOVaultFactory",
+  "network": "Base",
+  "chainId": 8453,
+  "address": "0xcCa08f9b94dD478266D0D1D2e9B7758414280FfD",
+  "deployedBy": "0xB05Cf01231cF2fF99499682E64D3780d57c80FdD",
+  "deployedAt": "2026-01-14",
+  "abi": [
+    {
+      "type": "constructor",
+      "inputs": [
+        {
+          "name": "_registry",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "_owner",
+          "type": "address",
+          "internalType": "address"
+        }
+      ],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "function",
+      "name": "authorizedDeployers",
+      "inputs": [
+        {
+          "name": "",
+          "type": "address",
+          "internalType": "address"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "",
+          "type": "bool",
+          "internalType": "bool"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "deployedTokens",
+      "inputs": [
+        {
+          "name": "",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "",
+          "type": "address",
+          "internalType": "address"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "deploymentCount",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "deployments",
+      "inputs": [
+        {
+          "name": "",
+          "type": "address",
+          "internalType": "address"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "creatorCoin",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "vault",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "wrapper",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "shareOFT",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "gaugeController",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "ccaStrategy",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "oracle",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "creator",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "deployedAt",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "exists",
+          "type": "bool",
+          "internalType": "bool"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "getAllDeployedTokens",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "",
+          "type": "address[]",
+          "internalType": "address[]"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "getDeployment",
+      "inputs": [
+        {
+          "name": "_token",
+          "type": "address",
+          "internalType": "address"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "",
+          "type": "tuple",
+          "internalType": "struct CreatorOVaultFactory.DeploymentInfo",
+          "components": [
+            {
+              "name": "creatorCoin",
+              "type": "address",
+              "internalType": "address"
+            },
+            {
+              "name": "vault",
+              "type": "address",
+              "internalType": "address"
+            },
+            {
+              "name": "wrapper",
+              "type": "address",
+              "internalType": "address"
+            },
+            {
+              "name": "shareOFT",
+              "type": "address",
+              "internalType": "address"
+            },
+            {
+              "name": "gaugeController",
+              "type": "address",
+              "internalType": "address"
+            },
+            {
+              "name": "ccaStrategy",
+              "type": "address",
+              "internalType": "address"
+            },
+            {
+              "name": "oracle",
+              "type": "address",
+              "internalType": "address"
+            },
+            {
+              "name": "creator",
+              "type": "address",
+              "internalType": "address"
+            },
+            {
+              "name": "deployedAt",
+              "type": "uint256",
+              "internalType": "uint256"
+            },
+            {
+              "name": "exists",
+              "type": "bool",
+              "internalType": "bool"
+            }
+          ]
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "isAuthorizedDeployer",
+      "inputs": [
+        {
+          "name": "_deployer",
+          "type": "address",
+          "internalType": "address"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "",
+          "type": "bool",
+          "internalType": "bool"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "isDeployed",
+      "inputs": [
+        {
+          "name": "_token",
+          "type": "address",
+          "internalType": "address"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "",
+          "type": "bool",
+          "internalType": "bool"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "owner",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "",
+          "type": "address",
+          "internalType": "address"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "registerDeployment",
+      "inputs": [
+        {
+          "name": "_creatorCoin",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "_vault",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "_wrapper",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "_shareOFT",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "_gaugeController",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "_ccaStrategy",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "_oracle",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "_creator",
+          "type": "address",
+          "internalType": "address"
+        }
+      ],
+      "outputs": [],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "function",
+      "name": "registry",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "",
+          "type": "address",
+          "internalType": "contract ICreatorRegistry"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "renounceOwnership",
+      "inputs": [],
+      "outputs": [],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "function",
+      "name": "setAuthorizedDeployer",
+      "inputs": [
+        {
+          "name": "_deployer",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "_authorized",
+          "type": "bool",
+          "internalType": "bool"
+        }
+      ],
+      "outputs": [],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "function",
+      "name": "setRegistry",
+      "inputs": [
+        {
+          "name": "_registry",
+          "type": "address",
+          "internalType": "address"
+        }
+      ],
+      "outputs": [],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "function",
+      "name": "transferOwnership",
+      "inputs": [
+        {
+          "name": "newOwner",
+          "type": "address",
+          "internalType": "address"
+        }
+      ],
+      "outputs": [],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "event",
+      "name": "DeployerAuthorized",
+      "inputs": [
+        {
+          "name": "deployer",
+          "type": "address",
+          "indexed": true,
+          "internalType": "address"
+        },
+        {
+          "name": "authorized",
+          "type": "bool",
+          "indexed": false,
+          "internalType": "bool"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "event",
+      "name": "DeploymentRegistered",
+      "inputs": [
+        {
+          "name": "creatorCoin",
+          "type": "address",
+          "indexed": true,
+          "internalType": "address"
+        },
+        {
+          "name": "vault",
+          "type": "address",
+          "indexed": true,
+          "internalType": "address"
+        },
+        {
+          "name": "wrapper",
+          "type": "address",
+          "indexed": false,
+          "internalType": "address"
+        },
+        {
+          "name": "shareOFT",
+          "type": "address",
+          "indexed": false,
+          "internalType": "address"
+        },
+        {
+          "name": "gaugeController",
+          "type": "address",
+          "indexed": false,
+          "internalType": "address"
+        },
+        {
+          "name": "ccaStrategy",
+          "type": "address",
+          "indexed": false,
+          "internalType": "address"
+        },
+        {
+          "name": "oracle",
+          "type": "address",
+          "indexed": false,
+          "internalType": "address"
+        },
+        {
+          "name": "creator",
+          "type": "address",
+          "indexed": false,
+          "internalType": "address"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "event",
+      "name": "OwnershipTransferred",
+      "inputs": [
+        {
+          "name": "previousOwner",
+          "type": "address",
+          "indexed": true,
+          "internalType": "address"
+        },
+        {
+          "name": "newOwner",
+          "type": "address",
+          "indexed": true,
+          "internalType": "address"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "event",
+      "name": "RegistryUpdated",
+      "inputs": [
+        {
+          "name": "newRegistry",
+          "type": "address",
+          "indexed": true,
+          "internalType": "address"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "error",
+      "name": "AlreadyDeployed",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "NotAuthorized",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "OwnableInvalidOwner",
+      "inputs": [
+        {
+          "name": "owner",
+          "type": "address",
+          "internalType": "address"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "OwnableUnauthorizedAccount",
+      "inputs": [
+        {
+          "name": "account",
+          "type": "address",
+          "internalType": "address"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "ZeroAddress",
+      "inputs": []
+    }
+  ]
+}

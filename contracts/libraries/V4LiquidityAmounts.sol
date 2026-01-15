@@ -4,8 +4,10 @@ pragma solidity ^0.8.20;
 import {FullMath} from "@uniswap/v4-core/src/libraries/FullMath.sol";
 import {FixedPoint96} from "@uniswap/v4-core/src/libraries/FixedPoint96.sol";
 
-/// @notice Minimal liquidity math helpers for Uniswap-style concentrated liquidity.
-/// @dev Provides conversions from liquidity -> token0/token1 amounts for a given price and range.
+/// @title V4LiquidityAmounts
+/// @author 0xakita.eth
+/// @notice Liquidity math helpers for Uniswap v4-style ranges.
+/// @dev Converts liquidity to token0/token1 amounts for a price range.
 library V4LiquidityAmounts {
     /// @notice Computes token0 amount for liquidity between price bounds.
     function getAmount0ForLiquidity(uint160 sqrtPriceAX96, uint160 sqrtPriceBX96, uint128 liquidity)

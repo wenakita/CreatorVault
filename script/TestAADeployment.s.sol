@@ -3,9 +3,9 @@ pragma solidity ^0.8.20;
 
 import "forge-std/Script.sol";
 import "forge-std/Test.sol";
-import "../contracts/helpers/StrategyDeploymentBatcher.sol";
-import "../contracts/helpers/VaultActivationBatcher.sol";
-import "../contracts/strategies/CreatorCharmStrategyV2.sol";
+import "../contracts/helpers/batchers/StrategyDeploymentBatcher.sol";
+import "../contracts/helpers/batchers/VaultActivationBatcher.sol";
+import "../contracts/vault/strategies/univ3/CreatorCharmStrategy.sol";
 
 /**
  * @title TestAADeployment
@@ -114,7 +114,7 @@ contract TestAADeployment is Script, Test {
             console.log("   Charm governance:", governance);
             
             // Check Creator Charm Strategy configuration
-            address charmStrategyVault = CreatorCharmStrategyV2(result.creatorCharmStrategy).vault();
+            address charmStrategyVault = CreatorCharmStrategy(result.creatorCharmStrategy).vault();
             require(charmStrategyVault == CREATOR_VAULT, "Wrong vault");
             console.log("   Creator Charm Strategy configured");
             

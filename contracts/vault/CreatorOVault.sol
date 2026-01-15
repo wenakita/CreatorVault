@@ -9,7 +9,7 @@ import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol
 import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import {EIP712} from "@openzeppelin/contracts/utils/cryptography/EIP712.sol";
 import {SignatureChecker} from "@openzeppelin/contracts/utils/cryptography/SignatureChecker.sol";
-import {IStrategy} from "../interfaces/strategies/IStrategy.sol";
+import {IStrategy} from "../interfaces/IStrategy.sol";
 
 /**
  * @title CreatorOVault

@@ -32,11 +32,11 @@ Once deployed, read from onchain registries:
 
 ## 🧩 **Key contracts your UI interacts with**
 
-- **Vault activation**: `contracts/helpers/VaultActivationBatcher.sol`
-- **Deploy + launch**: `contracts/helpers/CreatorVaultBatcher.sol`
+- **Vault activation**: `contracts/helpers/batchers/VaultActivationBatcher.sol`
+- **Deploy + launch**: `contracts/helpers/batchers/CreatorVaultBatcher.sol`
 - **Deployment registry**: `contracts/factories/CreatorOVaultFactory.sol`
 - **Canonical registry**: `contracts/core/CreatorRegistry.sol`
-- **Strategy deployment (optional)**: `contracts/helpers/StrategyDeploymentBatcher.sol`
+- **Strategy deployment (optional)**: `contracts/helpers/batchers/StrategyDeploymentBatcher.sol`
 
 
 

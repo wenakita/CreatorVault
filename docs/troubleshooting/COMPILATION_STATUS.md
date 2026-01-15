@@ -6,7 +6,7 @@ I've verified **every single line** and **every parameter**:
 
 | Component | Constructor Params | Match? | Status |
 |-----------|-------------------|--------|--------|
-| **CreatorCharmStrategyV2** | 7 params | ✅ **YES** | Correct |
+| **CreatorCharmStrategy** | 7 params | ✅ **YES** | Correct |
 | **AjnaStrategy** | 5 params | ✅ **YES** | Correct |
 | **Import paths** | All correct | ✅ **YES** | Correct |
 | **Constants** | UNISWAP_ROUTER added | ✅ **YES** | Correct |
@@ -21,8 +21,8 @@ I've verified **every single line** and **every parameter**:
 ```
 Forge tries to compile ALL files in the project.
 Some UNRELATED files have missing V4 dependencies:
-  - contracts/strategies/CCALaunchStrategy.sol
-  - contracts/oracles/CreatorOracle.sol
+  - contracts/vault/strategies/CCALaunchStrategy.sol
+  - contracts/services/oracles/CreatorOracle.sol
 
 These files are NOT used by StrategyDeploymentBatcher!
 ```
@@ -31,7 +31,7 @@ These files are NOT used by StrategyDeploymentBatcher!
 
 ```
 StrategyDeploymentBatcher Imports:
-  ✅ CreatorCharmStrategyV2  (no V4 deps)
+  ✅ CreatorCharmStrategy  (no V4 deps)
   ✅ AjnaStrategy            (no V4 deps)
   ✅ CharmAlphaVaultDeploy   (no V4 deps)
   ✅ OpenZeppelin contracts  (no V4 deps)
@@ -60,14 +60,15 @@ cast send --create <BYTECODE> --rpc-url base --private-key $PK
 ```bash
 # Move unneeded files out of contracts folder
 mkdir /tmp/unused
-mv contracts/strategies/CCALaunchStrategy.sol /tmp/unused/
-mv contracts/oracles/CreatorOracle.sol /tmp/unused/
+mv contracts/vault/strategies/CCALaunchStrategy.sol /tmp/unused/
+mv contracts/services/oracles/CreatorOracle.sol /tmp/unused/
 
 # Now compile
 forge build
 
 # Move back after
-mv /tmp/unused/* contracts/strategies/
+mv /tmp/unused/CCALaunchStrategy.sol contracts/vault/strategies/
+mv /tmp/unused/CreatorOracle.sol contracts/services/oracles/
 ```
 
 ### **Option 3: Fix V4 Dependencies** (If Needed Later)
@@ -81,7 +82,7 @@ forge install Uniswap/v4-core@main
 
 ```
 1. Copy StrategyDeploymentBatcher.sol to Remix
-2. Copy dependencies (CreatorCharmStrategyV2, AjnaStrategy, etc.)
+2. Copy dependencies (CreatorCharmStrategy, AjnaStrategy, etc.)
 3. Compile individually
 4. Deploy
 ```
@@ -90,7 +91,7 @@ forge install Uniswap/v4-core@main
 
 ## ✅ **Code Verification Summary**
 
-### **CreatorCharmStrategyV2 Constructor:**
+### **CreatorCharmStrategy Constructor:**
 ```solidity
 // Expected: 7 parameters
 constructor(
@@ -104,7 +105,7 @@ constructor(
 )
 
 // Batcher calls with:
-new CreatorCharmStrategyV2(
+new CreatorCharmStrategy(
     creatorVault,           // ✅ _vault
     underlyingToken,        // ✅ _creator
     quoteToken,             // ✅ _usdc
@@ -142,8 +143,8 @@ MATCH: ✅ PERFECT
 
 ### **Approvals Call:**
 ```solidity
-// After deploying CreatorCharmStrategyV2:
-CreatorCharmStrategyV2(result.creatorCharmStrategy).initializeApprovals();
+// After deploying CreatorCharmStrategy:
+CreatorCharmStrategy(result.creatorCharmStrategy).initializeApprovals();
 
 STATUS: ✅ CORRECT
 ```
@@ -154,7 +155,7 @@ STATUS: ✅ CORRECT
 
 ### **What I Manually Verified:**
 
-1. ✅ Read CreatorCharmStrategyV2 constructor (line 198-222)
+1. ✅ Read CreatorCharmStrategy constructor (line 198-222)
 2. ✅ Read StrategyDeploymentBatcher deployment call (line 122-133)
 3. ✅ Counted all 7 parameters - **they match**
 4. ✅ Read AjnaStrategy constructor (line 113-132)

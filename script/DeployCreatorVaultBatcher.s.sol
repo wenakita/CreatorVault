@@ -2,7 +2,7 @@
 pragma solidity ^0.8.20;
 
 import "forge-std/Script.sol";
-import "../contracts/helpers/CreatorVaultBatcher.sol";
+import "../contracts/helpers/batchers/CreatorVaultBatcher.sol";
 
 /**
  * @dev Deploy CreatorVaultBatcher on Base mainnet.

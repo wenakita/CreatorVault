@@ -69,7 +69,7 @@ export function getApiContracts(): ApiContracts {
       BASE_DEFAULTS.universalCreate2DeployerFromStore,
     ),
     vaultActivationBatcher: pickAddress('VAULT_ACTIVATION_BATCHER', BASE_DEFAULTS.vaultActivationBatcher)!,
-    creatorVaultBatcher: pickAddress('CREATOR_VAULT_BATCHER'),
+    creatorVaultBatcher: pickAddress('CREATOR_VAULT_BATCHER', BASE_DEFAULTS.creatorVaultBatcher),
     protocolTreasury: pickAddress('PROTOCOL_TREASURY', BASE_DEFAULTS.protocolTreasury)!,
     vaultActivator: pickAddress('VAULT_ACTIVATOR', BASE_DEFAULTS.vaultActivator)!,
     poolManager: pickAddress('POOL_MANAGER', BASE_DEFAULTS.poolManager)!,

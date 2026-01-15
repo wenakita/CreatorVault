@@ -27,8 +27,8 @@ This doc tracks the current state of the **ve(3,3)** module for CreatorVault and
 
 ### 3) External bribes (optional)
 - **Contracts**
-  - `contracts/bribes/BribeDepot.sol`: epoch-scoped bribe depot for a single vault (multi‑token)
-  - `contracts/bribes/BribesFactory.sol`: CREATE2 factory to deploy one depot per whitelisted vault
+- `contracts/governance/bribes/BribeDepot.sol`: epoch-scoped bribe depot for a single vault (multi‑token)
+- `contracts/factories/BribesFactory.sol`: CREATE2 factory to deploy one depot per whitelisted vault
 - **Design**
   - Deposits only for a **future epoch** (prevents retroactive bribing)
   - Claims only after epoch ends; pro‑rata by vote weight
@@ -44,7 +44,7 @@ This doc tracks the current state of the **ve(3,3)** module for CreatorVault and
   - falls back to `protocolTreasury` (or jackpot reserve as final fallback)
 
 ### Lottery probability boost (optional)
-- **Contract**: `contracts/lottery/CreatorLotteryManager.sol`
+- **Contract**: `contracts/services/lottery/CreatorLotteryManager.sol`
 - If `vaultGaugeVoting` is set:
   - adds vote-directed probability boost via `getVaultGaugeProbabilityBoostPPM(vault)`
 - If unset:

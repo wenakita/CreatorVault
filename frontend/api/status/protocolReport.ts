@@ -110,9 +110,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   // NOTE: Keep these aligned with `frontend/src/config/contracts.ts`.
   // We inline them here to avoid any cross-bundling issues in Vercel serverless functions.
   const infra = [
-    { id: 'registry', label: 'Registry', value: pickAddress('CREATOR_REGISTRY', '0x777e28d7617ADb6E2fE7b7C49864A173e36881EF') },
-    { id: 'factory', label: 'Factory', value: pickAddress('CREATOR_FACTORY', '0x6205c91941A207A622fD00481b92cA04308a2819') },
-    { id: 'vaultActivationBatcher', label: 'VaultActivationBatcher', value: pickAddress('VAULT_ACTIVATION_BATCHER', '0x6d796554698f5Ddd74Ff20d745304096aEf93CB6') },
+    { id: 'registry', label: 'Registry', value: pickAddress('CREATOR_REGISTRY', '0x02c8031c39E10832A831b954Df7a2c1bf9Df052D') },
+    { id: 'factory', label: 'Factory', value: pickAddress('CREATOR_FACTORY', '0xcCa08f9b94dD478266D0D1D2e9B7758414280FfD') },
+    { id: 'vaultActivationBatcher', label: 'VaultActivationBatcher', value: pickAddress('VAULT_ACTIVATION_BATCHER', '0x4b67e3a4284090e5191c27B8F24248eC82DF055D') },
     { id: 'create2Deployer', label: 'CREATE2Deployer', value: pickAddress('CREATE2_DEPLOYER', '0xaBf645362104F34D9C3FE48440bE7c99aaDE58E7') },
     { id: 'taxHook', label: 'TaxHook', value: pickAddress('TAX_HOOK', '0xca975B9dAF772C71161f3648437c3616E5Be0088') },
     { id: 'poolManager', label: 'UniswapV4PoolManager', value: pickAddress('POOL_MANAGER', '0x498581fF718922c3f8e6A244956aF099B2652b2b') },

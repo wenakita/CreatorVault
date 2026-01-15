@@ -81,7 +81,7 @@ CharmAlphaVault(result.charmVault).acceptGovernance();
 |----------|------------------------|----------------------|
 | CharmAlphaVault | ⚠️ Pending (multisig) | ✅ Multisig |
 | CharmAlphaStrategy | ❌ Not deployed | Rebalance is embedded in CharmAlphaVaultDeploy |
-| CreatorCharmStrategyV2 | ✅ Multisig | ✅ Multisig |
+| CreatorCharmStrategy | ✅ Multisig | ✅ Multisig |
 | AjnaStrategy | ✅ Multisig | ✅ Multisig |
 
 **Only CharmAlphaVault requires the extra acceptance step.**
@@ -135,7 +135,7 @@ const {
 } = event.args.result;
 
 console.log("CharmAlphaVault:", charmVault);
-console.log("CreatorCharmStrategyV2:", creatorCharmStrategy);
+console.log("CreatorCharmStrategy:", creatorCharmStrategy);
 console.log("AjnaStrategy:", ajnaStrategy);
 
 // Step 2: Accept governance FROM MULTISIG
@@ -224,8 +224,8 @@ CharmAlphaVault(charmVault).governance()
 // charmStrategy is expected to be address(0) in the StrategiesDeployed result.
 // Should return: 0x7d429eCbdcE5ff516D6e0a93299cbBa97203f2d3 ✅
 
-// 3. Check CreatorCharmStrategyV2 owner (should be your multisig)
-CreatorCharmStrategyV2(creatorCharmStrategy).owner()
+// 3. Check CreatorCharmStrategy owner (should be your multisig)
+CreatorCharmStrategy(creatorCharmStrategy).owner()
 // Should return: 0x7d429eCbdcE5ff516D6e0a93299cbBa97203f2d3 ✅
 
 // 4. Check AjnaStrategy owner (should be your multisig)

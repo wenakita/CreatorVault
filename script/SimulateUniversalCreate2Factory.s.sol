@@ -2,7 +2,7 @@
 pragma solidity ^0.8.20;
 
 import "forge-std/Script.sol";
-import "../contracts/helpers/OFTBootstrapRegistry.sol";
+import "../contracts/helpers/infra/OFTBootstrapRegistry.sol";
 
 /// @notice Verifies the universal CREATE2 factory (0x4e59…) accepts calldata `bytes32 salt || initCode`
 ///         and deploys to the standard CREATE2-derived address.

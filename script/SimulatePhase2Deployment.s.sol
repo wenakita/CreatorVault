@@ -3,13 +3,13 @@ pragma solidity ^0.8.20;
 
 import "forge-std/Script.sol";
 
-import {Create2Deployer} from "../contracts/helpers/Create2Deployer.sol";
+import {Create2Deployer} from "../contracts/factories/Create2Deployer.sol";
 import {CreatorOVault} from "../contracts/vault/CreatorOVault.sol";
 import {CreatorOVaultWrapper} from "../contracts/vault/CreatorOVaultWrapper.sol";
-import {CreatorShareOFT} from "../contracts/layerzero/CreatorShareOFT.sol";
+import {CreatorShareOFT} from "../contracts/services/messaging/CreatorShareOFT.sol";
 import {CreatorGaugeController} from "../contracts/governance/CreatorGaugeController.sol";
-import {CCALaunchStrategy} from "../contracts/strategies/CCALaunchStrategy.sol";
-import {CreatorOracle} from "../contracts/oracles/CreatorOracle.sol";
+import {CCALaunchStrategy} from "../contracts/vault/strategies/CCALaunchStrategy.sol";
+import {CreatorOracle} from "../contracts/services/oracles/CreatorOracle.sol";
 
 /// @notice Fork simulation of the Phase 2 AA deployment sequence.
 /// @dev Run (no broadcast):

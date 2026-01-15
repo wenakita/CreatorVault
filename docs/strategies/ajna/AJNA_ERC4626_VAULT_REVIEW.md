@@ -33,7 +33,7 @@ So we should treat it as a **reference design**, not code we vendor/copy into Cr
 ## How this compares to our current Ajna integration
 
 ### Current strategy in CreatorVault
-- **Contract**: `contracts/strategies/AjnaStrategy.sol`
+- **Contract**: `contracts/vault/strategies/AjnaStrategy.sol`
 - **Role**: `CreatorOVault` strategy (`IStrategy`)
 - **Behavior**: deposits creator coin directly into an Ajna pool bucket (`addQuoteToken` / `removeQuoteToken`)
 
@@ -81,7 +81,7 @@ Practical notes:
 ### Option B (modular): introduce an ERC‑4626 strategy adapter
 - Keep `CreatorOVault` unchanged
 - ✅ Implemented: a generic `IStrategy` wrapper around a 4626 vault (Ajna‑style or others)
-  - Contract: `contracts/strategies/ERC4626StrategyAdapter.sol`
+  - Contract: `contracts/vault/strategies/ERC4626StrategyAdapter.sol`
 - Future: if Ajna publishes an OSS 4626 vault, we can integrate it without changing `CreatorOVault`
 
 

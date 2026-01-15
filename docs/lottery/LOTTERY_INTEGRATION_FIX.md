@@ -130,7 +130,7 @@ cast call $LOTTERY_MANAGER "entries(uint256)" <entryId>
 
 ## 📝 **Key Changes Summary**
 
-### **File: `contracts/layerzero/CreatorShareOFT.sol`**
+### **File: `contracts/services/messaging/CreatorShareOFT.sol`**
 
 | Change | Before | After |
 |--------|--------|-------|
@@ -205,8 +205,8 @@ If `LotteryTriggered` is missing, the lottery call failed!
 
 ## 🔗 **Related Files**
 
-- `contracts/layerzero/CreatorShareOFT.sol` - Main fix
-- `contracts/lottery/CreatorLotteryManager.sol` - Lottery manager
+- `contracts/services/messaging/CreatorShareOFT.sol` - Main fix
+- `contracts/services/lottery/CreatorLotteryManager.sol` - Lottery manager
 - `contracts/vault/CreatorOVault.sol` - Vault (implements `asset()`)
 - `contracts/governance/CreatorGaugeController.sol` - Fee recipient
 

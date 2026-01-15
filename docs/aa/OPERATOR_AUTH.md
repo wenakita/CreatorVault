@@ -33,7 +33,7 @@ Perm bitmask:
 
 ### 2) Operator-initiated deploy+launch (identity-bound)
 
-File: `contracts/helpers/CreatorVaultBatcher.sol`
+File: `contracts/helpers/batchers/CreatorVaultBatcher.sol`
 
 New operator entrypoints:
 - `deployAndLaunchWithPermit2AsOperatorIdentityFunded(...)`
@@ -52,7 +52,7 @@ Both require an **identity-signed DeployAuthorization** (EIP-712) that binds:
 
 ### 3) Operator-safe activation (Permit2 + identity binding)
 
-File: `contracts/helpers/VaultActivationBatcher.sol`
+File: `contracts/helpers/batchers/VaultActivationBatcher.sol`
 
 New functions:
 - `batchActivateWithPermit2For(identity, ...)` (identity-funded)

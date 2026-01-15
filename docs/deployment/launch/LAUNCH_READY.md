@@ -4,7 +4,8 @@
 
 ### **Production Infrastructure on Base:**
 ```
-VaultActivationBatcher: 0x6d796554698f5Ddd74Ff20d745304096aEf93CB6
+VaultActivationBatcher: 0x4b67e3a4284090e5191c27B8F24248eC82DF055D
+CreatorVaultBatcher: 0xB695AEaD09868F287DAA38FA444B240847c50fB8
 ✅ Verified on BaseScan
 ✅ Tested and working
 ✅ Ready for all creators
@@ -85,7 +86,8 @@ Step 3: CreatorVaultBatcher deploys + wires + launches
 
 | Component | Status | Notes |
 |-----------|--------|-------|
-| VaultActivationBatcher | ✅ Deployed | `0x6d79...3CB6` |
+| VaultActivationBatcher | ✅ Deployed | `0x4b67...55D` |
+| CreatorVaultBatcher | ✅ Deployed | `0xB695...fB8` |
 | Core Contracts | ✅ Ready | All tested |
 | Documentation | ✅ Complete | Creator guide ready |
 | Deploy + launch | ✅ Ready | `/deploy` + `CreatorVaultBatcher` |
@@ -128,7 +130,8 @@ Step 3: CreatorVaultBatcher deploys + wires + launches
 
 ### **Deployed Addresses:**
 ```typescript
-const VAULT_ACTIVATION_BATCHER = '0x6d796554698f5Ddd74Ff20d745304096aEf93CB6';
+const VAULT_ACTIVATION_BATCHER = '0x4b67e3a4284090e5191c27B8F24248eC82DF055D';
+const CREATOR_VAULT_BATCHER = '0xB695AEaD09868F287DAA38FA444B240847c50fB8';
 const LZ_ENDPOINT_BASE = '0x1a44076050125825900e736c501f859c50fE728c';
 ```
 

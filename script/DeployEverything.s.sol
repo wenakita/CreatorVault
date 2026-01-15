@@ -2,8 +2,8 @@
 pragma solidity ^0.8.20;
 
 import "forge-std/Script.sol";
-import "../contracts/helpers/StrategyDeploymentBatcher.sol";
-import "../contracts/helpers/VaultActivationBatcher.sol";
+import "../contracts/helpers/batchers/StrategyDeploymentBatcher.sol";
+import "../contracts/helpers/batchers/VaultActivationBatcher.sol";
 
 /**
  * @title DeployEverything

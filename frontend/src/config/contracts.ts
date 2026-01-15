@@ -3,7 +3,7 @@
  * Updated: December 2024
  */
 
-import { AKITA_DEFAULTS, BASE_DEFAULTS } from './contracts.defaults'
+import { AKITA_DEFAULTS, BASE_DEFAULTS, ERC4626_DEFAULTS } from './contracts.defaults'
 
 // Prefer env overrides for deployment flexibility. Use fallbacks for known Base mainnet addresses.
 function envAddress(name: string, fallback?: `0x${string}` | undefined): `0x${string}` | undefined {
@@ -38,7 +38,7 @@ export const CONTRACTS = {
   // Phase 1/2 (AA): Vault activation batcher (approve + deposit + wrap + launch auction)
   vaultActivationBatcher: envAddress('VITE_VAULT_ACTIVATION_BATCHER', BASE_DEFAULTS.vaultActivationBatcher),
   // Phase 2 (AA): One-call deploy+launch primitive (optional; used for deterministic AA deployments)
-  creatorVaultBatcher: envAddress('VITE_CREATOR_VAULT_BATCHER'),
+  creatorVaultBatcher: envAddress('VITE_CREATOR_VAULT_BATCHER', BASE_DEFAULTS.creatorVaultBatcher),
 
   // Protocol treasury / multisig (receives protocol fee slice from GaugeController)
   protocolTreasury: envAddress('VITE_PROTOCOL_TREASURY', BASE_DEFAULTS.protocolTreasury)!,
@@ -92,6 +92,17 @@ export const AKITA = {
     akitaUsdcLP: envAddress('VITE_AKITA_USDC_LP'), // Deploy AKITA/USDC 1% LP strategy
     ajna: envAddress('VITE_AKITA_AJNA_STRATEGY'), // Ajna strategy
   },
+} as const
+
+// Protocol token (ERC4626)
+export const ERC4626 = {
+  token: envAddress('VITE_ERC4626_TOKEN', ERC4626_DEFAULTS.token)!,
+  vault: envAddress('VITE_ERC4626_VAULT', ERC4626_DEFAULTS.vault)!,
+  wrapper: envAddress('VITE_ERC4626_WRAPPER', ERC4626_DEFAULTS.wrapper)!,
+  shareOFT: envAddress('VITE_ERC4626_SHARE_OFT', ERC4626_DEFAULTS.shareOFT)!,
+  gaugeController: envAddress('VITE_ERC4626_GAUGE_CONTROLLER', ERC4626_DEFAULTS.gaugeController)!,
+  ccaStrategy: envAddress('VITE_ERC4626_CCA_STRATEGY', ERC4626_DEFAULTS.ccaStrategy)!,
+  oracle: envAddress('VITE_ERC4626_ORACLE', ERC4626_DEFAULTS.oracle)!,
 } as const
 
 export type { ContractAddress } from './contracts.defaults'

@@ -12,20 +12,21 @@ export type ContractAddress = `0x${string}`
 
 export const BASE_DEFAULTS = {
   // Shared infrastructure
-  registry: '0x777e28d7617ADb6E2fE7b7C49864A173e36881EF' as ContractAddress,
-  factory: '0x6205c91941A207A622fD00481b92cA04308a2819' as ContractAddress,
-  lotteryManager: '0xe2C39D39FF92c0cF7A0e9eD16FcE1d6F14bB38fD' as ContractAddress,
-  vrfConsumer: '0xE7Bdc1dA09E6fD92B1a1cb82F427ed8d53B4f3Cb' as ContractAddress,
+  registry: '0x02c8031c39E10832A831b954Df7a2c1bf9Df052D' as ContractAddress,
+  factory: '0xcCa08f9b94dD478266D0D1D2e9B7758414280FfD' as ContractAddress,
+  lotteryManager: '0xA02A858E67c98320dCFB218831B645692E8f3483' as ContractAddress,
+  vrfConsumer: '0x0265236984DE964CB0422BaeFbDb2de7C9d590F5' as ContractAddress,
   payoutRouterFactory: '0x9C53cEaA15AdDB436c89A1F929fF12ED2BD26ea9' as ContractAddress,
 
   // CREATE2 infra
   create2Factory: '0x4e59b44847b379578588920cA78FbF26c0B4956C' as ContractAddress,
   create2Deployer: '0xaBf645362104F34D9C3FE48440bE7c99aaDE58E7' as ContractAddress,
-  universalBytecodeStore: '0xbec0c922835136949032223860C021484b0Cbdfa' as ContractAddress,
-  universalCreate2DeployerFromStore: '0x6E01e598e450F07551200e7b2db333BEcC66b35e' as ContractAddress,
+  universalBytecodeStore: '0xCDf45B94348DBBABba4bE6f4a5341badb83D4dC4' as ContractAddress,
+  universalCreate2DeployerFromStore: '0xDb65C152B0496208A117FF7C04ddd5039F3035c6' as ContractAddress,
 
   // AA helpers
-  vaultActivationBatcher: '0x6d796554698f5Ddd74Ff20d745304096aEf93CB6' as ContractAddress,
+  vaultActivationBatcher: '0x4b67e3a4284090e5191c27B8F24248eC82DF055D' as ContractAddress,
+  creatorVaultBatcher: '0xB695AEaD09868F287DAA38FA444B240847c50fB8' as ContractAddress,
 
   // Treasury
   protocolTreasury: '0x7d429eCbdcE5ff516D6e0a93299cbBa97203f2d3' as ContractAddress,
@@ -64,3 +65,12 @@ export const AKITA_DEFAULTS = {
   oracle: '0x8C044aeF10d05bcC53912869db89f6e1f37bC6fC' as ContractAddress,
 } as const
 
+export const ERC4626_DEFAULTS = {
+  token: AKITA_DEFAULTS.token,
+  vault: AKITA_DEFAULTS.vault,
+  wrapper: AKITA_DEFAULTS.wrapper,
+  shareOFT: AKITA_DEFAULTS.shareOFT,
+  gaugeController: AKITA_DEFAULTS.gaugeController,
+  ccaStrategy: AKITA_DEFAULTS.ccaStrategy,
+  oracle: AKITA_DEFAULTS.oracle,
+} as const

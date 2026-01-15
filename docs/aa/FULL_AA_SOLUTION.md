@@ -36,7 +36,7 @@
 - Prefer Permit2 signatures; fallback to token approve when needed
 
 **Canonical files:**
-- `contracts/helpers/CreatorVaultBatcher.sol`
+- `contracts/helpers/batchers/CreatorVaultBatcher.sol`
 - `frontend/src/pages/DeployVault.tsx` (uses `VITE_CREATOR_VAULT_BATCHER`)
 
 **User Flow:**
@@ -92,7 +92,7 @@ function LaunchPage() {
 
 **Deploy + launch is fully onchain via `CreatorVaultBatcher`:**
 
-1. Deploy `contracts/helpers/CreatorVaultBatcher.sol` (once per chain) and set its address in the frontend:
+1. Deploy `contracts/helpers/batchers/CreatorVaultBatcher.sol` (once per chain) and set its address in the frontend:
    - `VITE_CREATOR_VAULT_BATCHER`
 2. Use `/deploy` (`frontend/src/pages/DeployVault.tsx`) to deploy the full stack and launch the auction.
 
@@ -172,8 +172,8 @@ Both components work with:
 ## 🎯 **RECOMMENDED ROLLOUT**
 
 ### **Default path**
-- **Deploy + launch**: `/deploy` (`frontend/src/pages/DeployVault.tsx`) calls `contracts/helpers/CreatorVaultBatcher.sol`
-- **Activate existing**: `frontend/src/components/LaunchVaultAA.tsx` calls `contracts/helpers/VaultActivationBatcher.sol`
+- **Deploy + launch**: `/deploy` (`frontend/src/pages/DeployVault.tsx`) calls `contracts/helpers/batchers/CreatorVaultBatcher.sol`
+- **Activate existing**: `frontend/src/components/LaunchVaultAA.tsx` calls `contracts/helpers/batchers/VaultActivationBatcher.sol`
 
 ---
 

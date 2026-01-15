@@ -12,12 +12,12 @@ CREATE2 gives you **predictable addresses** for the per-creator vault stack, whi
 We deploy the stack via an **Account Abstraction batch** that uses a CREATE2 deployer and **versioned salts**.
 
 Primary implementation:
-- `contracts/helpers/CreatorVaultBatcher.sol`
+- `contracts/helpers/batchers/CreatorVaultBatcher.sol`
 - `frontend/src/pages/DeployVault.tsx` (calls `CreatorVaultBatcher` from the `/deploy` route)
 
 Supporting helpers:
-- `contracts/helpers/Create2Deployer.sol`
-- `contracts/helpers/OFTBootstrapRegistry.sol`
+- `contracts/factories/Create2Deployer.sol`
+- `contracts/helpers/infra/OFTBootstrapRegistry.sol`
 
 ### **Versioned salts**
 Salts are derived from (at minimum):

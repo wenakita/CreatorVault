@@ -148,7 +148,7 @@ cast send $AJNA_FACTORY \
 ### Step 3: Deploy AjnaStrategy
 
 ```bash
-forge create contracts/strategies/AjnaStrategy.sol:AjnaStrategy \
+forge create contracts/vault/strategies/AjnaStrategy.sol:AjnaStrategy \
   --rpc-url base \
   --private-key $PK \
   --constructor-args \

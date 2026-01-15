@@ -3,10 +3,10 @@ pragma solidity ^0.8.20;
 
 import "forge-std/Script.sol";
 
-import "../contracts/helpers/OFTBootstrapRegistry.sol";
-import "../contracts/helpers/UniversalBytecodeStore.sol";
-import "../contracts/helpers/UniversalCreate2DeployerFromStore.sol";
-import "../contracts/layerzero/CreatorShareOFT.sol";
+import "../contracts/helpers/infra/OFTBootstrapRegistry.sol";
+import "../contracts/helpers/infra/UniversalBytecodeStore.sol";
+import "../contracts/factories/UniversalCreate2DeployerFromStore.sol";
+import "../contracts/services/messaging/CreatorShareOFT.sol";
 
 /// @notice Deploys (and seeds) the universal bytecode infra via the universal CREATE2 factory (0x4e59…).
 ///

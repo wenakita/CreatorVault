@@ -6,19 +6,9 @@ import {ICreatorRegistry} from "../interfaces/core/ICreatorRegistry.sol";
 
 /**
  * @title CreatorRegistry
- * @author 0xakita.eth 
- * @notice Central registry for the CreatorVault ecosystem
- * 
- * @dev CORE FUNCTIONS:
- *      1. Register Creator Coins and map to their vault/OFT deployments
- *      2. Store chain configurations for multi-chain deployments
- *      3. Manage LayerZero endpoint and DVN configurations
- *      4. Track ecosystem contracts (lottery, gauge, gas reserve)
- * 
- * @dev Features:
- *      - Supports multiple Creator Coins
- *      - Each creator can register their token and associated infrastructure
- *      - Factory can auto-register when deploying new vaults
+ * @author 0xakita.eth
+ * @notice Registry for CreatorVault deployments and configs.
+ * @dev Used by factories, vaults, and OFTs to resolve ecosystem addresses.
  */
 contract CreatorRegistry is ICreatorRegistry, Ownable {
     

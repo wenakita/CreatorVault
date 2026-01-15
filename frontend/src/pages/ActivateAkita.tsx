@@ -6,22 +6,24 @@ import {
   Rocket,
   Zap,
 } from 'lucide-react'
-import { AKITA } from '../config/contracts'
+import { ERC4626 } from '../config/contracts'
 import { ConnectButton } from '../components/ConnectButton'
 import { toShareSymbol } from '@/lib/tokenSymbols'
 import { LaunchVaultAA } from '@/components/LaunchVaultAA'
 
 export function ActivateAkita() {
   const { address, isConnected, connector } = useAccount()
-  // Fixed parameters for AKITA launch
-  const depositAmount = '50000000' // 50M AKITA (locked)
+  const protocolName = 'ERC4626'
+  const protocolSymbol = '4626'
+  // Fixed parameters for ERC4626 launch
+  const depositAmount = '50000000' // 50M ERC4626 (locked)
   const auctionPercent = 50 // 50% to auction, 50% stays in vault (locked)
   const [requiredRaise, setRequiredRaise] = useState('0.1') // 0.1 ETH minimum
-  const SHARE_SYMBOL = toShareSymbol('AKITA')
+  const SHARE_SYMBOL = toShareSymbol(protocolSymbol)
 
-  // Read AKITA balance
+  // Read ERC4626 balance
   const { data: tokenBalance } = useReadContract({
-    address: AKITA.token as `0x${string}`,
+    address: ERC4626.token as `0x${string}`,
     abi: erc20Abi,
     functionName: 'balanceOf',
     args: address ? [address] : undefined,
@@ -41,9 +43,9 @@ export function ActivateAkita() {
         >
           <Rocket className="w-16 h-16 text-brand-500 mx-auto" />
           <div>
-            <h2 className="text-2xl font-bold mb-2">Launch AKITA Auction</h2>
+            <h2 className="text-2xl font-bold mb-2">Launch {protocolName} Auction</h2>
             <p className="text-slate-400 mb-6">
-              Connect your wallet to activate the AKITA vault and start the CCA auction
+              Connect your wallet to activate the {protocolName} vault and start the CCA auction
             </p>
             <ConnectButton />
           </div>
@@ -57,7 +59,7 @@ export function ActivateAkita() {
       {/* Header */}
       <div className="text-center">
         <Rocket className="w-12 h-12 text-brand-500 mx-auto mb-4" />
-        <h1 className="text-4xl font-bold mb-2">Launch AKITA Auction</h1>
+        <h1 className="text-4xl font-bold mb-2">Launch {protocolName} Auction</h1>
         <p className="text-slate-400">
           One-click activation powered by account abstraction
         </p>
@@ -80,7 +82,7 @@ export function ActivateAkita() {
               1
             </div>
             <div className="flex-1">
-              <p className="text-white font-medium">Approve 50M AKITA</p>
+              <p className="text-white font-medium">Approve 50M {protocolName}</p>
               <p className="text-slate-500">To the activation batcher</p>
             </div>
           </div>
@@ -91,7 +93,7 @@ export function ActivateAkita() {
             </div>
             <div className="flex-1">
               <p className="text-white font-medium">Deposit into vault</p>
-              <p className="text-slate-500">Mints ▢AKITA vault shares</p>
+              <p className="text-slate-500">Mints ▢{protocolSymbol} vault shares</p>
             </div>
           </div>
 
@@ -101,7 +103,7 @@ export function ActivateAkita() {
             </div>
             <div className="flex-1">
               <p className="text-white font-medium">Wrap to {SHARE_SYMBOL}</p>
-              <p className="text-slate-500">Converts ▢AKITA → {SHARE_SYMBOL}</p>
+              <p className="text-slate-500">Converts ▢{protocolSymbol} → {SHARE_SYMBOL}</p>
             </div>
           </div>
 
@@ -133,7 +135,7 @@ export function ActivateAkita() {
           <div className="grid grid-cols-2 gap-4 p-4 rounded-lg bg-white/[0.02] border border-white/10">
             <div>
               <p className="text-xs text-slate-500 mb-1">Deposit Amount</p>
-              <p className="text-2xl font-bold text-white">50M AKITA</p>
+              <p className="text-2xl font-bold text-white">50M {protocolName}</p>
               <p className="text-xs text-slate-400 mt-1">Fixed launch size</p>
             </div>
             <div>
@@ -146,15 +148,15 @@ export function ActivateAkita() {
           <div className="space-y-2">
             <div className="p-3 rounded-lg bg-brand-500/10 border border-brand-500/20 text-sm">
               <p className="text-brand-300">
-                Your balance: <span className="font-semibold">{tokenBalance ? formatUnits(tokenBalance, 18) : '0'} AKITA</span>
+                Your balance: <span className="font-semibold">{tokenBalance ? formatUnits(tokenBalance, 18) : '0'} {protocolName}</span>
               </p>
             </div>
             
             <div className="space-y-2">
               <div className="p-3 rounded-lg bg-green-500/10 border border-green-500/20 text-xs space-y-2">
-                <p className="text-green-300 font-medium">✓ Underlying AKITA Strategies (Vault):</p>
+                <p className="text-green-300 font-medium">✓ Underlying {protocolName} Strategies (Vault):</p>
                 <p className="text-green-400/80">
-                  69% AKITA/USDC Charm LP · 21.39% Ajna Lending · 9.61% Idle Reserve
+                  69% {protocolSymbol}/USDC Charm LP · 21.39% Ajna Lending · 9.61% Idle Reserve
                 </p>
                 <p className="text-green-400/80 italic">
                   Mirrors fee distribution for consistent branding
@@ -202,10 +204,10 @@ export function ActivateAkita() {
       <div className="flex flex-col items-center gap-4">
         <div className="w-full max-w-xl">
           <LaunchVaultAA
-            creatorToken={AKITA.token as Address}
-            vault={AKITA.vault as Address}
-            wrapper={AKITA.wrapper as Address}
-            ccaStrategy={AKITA.ccaStrategy as Address}
+            creatorToken={ERC4626.token as Address}
+            vault={ERC4626.vault as Address}
+            wrapper={ERC4626.wrapper as Address}
+            ccaStrategy={ERC4626.ccaStrategy as Address}
             depositAmount={depositAmount}
             auctionPercent={auctionPercent}
             requiredRaise={requiredRaise}

@@ -3,14 +3,9 @@ pragma solidity ^0.8.20;
 
 /**
  * @title ICreatorRegistry
- * @notice Interface for CreatorVault ecosystem registry
- * @dev Manages Creator Coin mappings, chain configurations, and LayerZero setup
- * 
- * @dev KEY FEATURES:
- *      - Register Creator Coins and their vault/OFT deployments
- *      - Chain configuration for multi-chain deployments
- *      - LayerZero endpoint and DVN configuration
- *      - Ecosystem contract lookups (lottery, gauge, etc.)
+ * @author 0xakita.eth
+ * @notice Registry interface for core CreatorVault addresses.
+ * @dev Used by vaults, OFTs, and helpers to resolve ecosystem contracts.
  */
 interface ICreatorRegistry {
     

@@ -12,7 +12,7 @@ Per-creator contracts are deployed per vault (vault/wrapper/shareOFT/oracle/gaug
 ## ✅ Recommended creator onboarding flow (one signature)
 Use the onchain deploy + launch flow:
 - `/deploy` (`frontend/src/pages/DeployVault.tsx`)
-- `contracts/helpers/CreatorVaultBatcher.sol`
+- `contracts/helpers/batchers/CreatorVaultBatcher.sol`
 
 This flow:
 - deploys the full vault stack

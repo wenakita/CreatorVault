@@ -3,31 +3,31 @@ pragma solidity ^0.8.20;
 
 /**
  * @title VaultGaugeVoting
- * @author 0xakita.eth (CreatorVault)
+ * @author 0xakita.eth
  * @notice ve(3,3) style gauge voting for directing jackpot probability to creator vaults
  * 
  * @dev VOTING MECHANISM:
- *      veAKITA holders vote to direct jackpot probability to specific creator vaults.
+ *      veERC4626 holders vote to direct jackpot probability to specific creator vaults.
  *      This is similar to how veCRV/veVELO holders vote to direct emissions to pools,
  *      but instead of emissions, we're directing PROBABILITY.
  * 
  * @dev EPOCH SYSTEM:
- *      - Weekly epochs (7 days), starting Monday 00:00 UTC
+ *      - Weekly epochs (7 days), starting Thursday 00:00 UTC
  *      - Users can vote anytime during an epoch
  *      - Votes are tallied at epoch end
  *      - Historical weights are stored per epoch
  * 
  * @dev VOTING POWER:
- *      - Voting power comes from veAKITA (locked ■AKITA)
+ *      - Voting power comes from veERC4626 (locked ■4626)
  *      - Users can split votes across multiple vaults
- *      - Votes are normalized by user's total veAKITA balance
+ *      - Votes are normalized by user's total veERC4626 balance
  */
 
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import {EnumerableSet} from "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 
-interface IveAKITA {
+interface IveERC4626 {
     function getVotingPower(address user) external view returns (uint256);
     function getTotalVotingPower() external view returns (uint256);
     function hasActiveLock(address user) external view returns (bool);
@@ -83,16 +83,16 @@ contract VaultGaugeVoting is IVaultGaugeVoting, Ownable, ReentrancyGuard {
     /// @notice Maximum number of vaults a user can vote for at once
     uint256 public constant MAX_VAULTS_PER_VOTE = 10;
 
-    /// @notice Genesis epoch start (first Monday 00:00 UTC after deployment)
-    /// @dev This is set in constructor to the next Monday 00:00 UTC
+    /// @notice Genesis epoch start (first Thursday 00:00 UTC after deployment)
+    /// @dev This is set in constructor to the next Thursday 00:00 UTC
     uint256 public immutable genesisEpochStart;
 
     // ================================
     // STATE
     // ================================
 
-    /// @notice veAKITA token for voting power
-    IveAKITA public immutable veAKITA;
+    /// @notice veERC4626 token for voting power
+    IveERC4626 public immutable veERC4626;
 
     /// @notice Optional registry for auto-whitelisting vaults
     ICreatorRegistry public registry;
@@ -113,7 +113,7 @@ contract VaultGaugeVoting is IVaultGaugeVoting, Ownable, ReentrancyGuard {
     /**
      * @notice Total gauge probability budget (in bps) is derived from creator count (and optionally TVL).
      *
-     * The intent: veAKITA votes allocate a bounded pool of "probability bps" each week,
+     * The intent: veERC4626 votes allocate a bounded pool of "probability bps" each week,
      * analogous to emissions in ve(3,3) systems.
      *
      * Example target behavior:
@@ -135,7 +135,7 @@ contract VaultGaugeVoting is IVaultGaugeVoting, Ownable, ReentrancyGuard {
     // VOTE STORAGE (PER-EPOCH)
     // ================================
 
-    /// @notice Vault votes per epoch: epoch => vault => total votes (veAKITA-weighted)
+    /// @notice Vault votes per epoch: epoch => vault => total votes (veERC4626-weighted)
     mapping(uint256 => mapping(address => uint256)) private _epochVaultVotes;
 
     /// @notice Total votes per epoch: epoch => total votes
@@ -180,28 +180,25 @@ contract VaultGaugeVoting is IVaultGaugeVoting, Ownable, ReentrancyGuard {
 
     /**
      * @notice Constructor
-     * @param _veAKITA veAKITA token address
-     * @param _owner Owner address
+     * @param _veERC4626 veERC4626 token address
+     * @param owner_ Owner address
      */
-    constructor(address _veAKITA, address _owner) Ownable(_owner) {
-        if (_veAKITA == address(0)) revert ZeroAddress();
-        veAKITA = IveAKITA(_veAKITA);
+    constructor(address _veERC4626, address owner_) Ownable(owner_) {
+        if (_veERC4626 == address(0)) revert ZeroAddress();
+        veERC4626 = IveERC4626(_veERC4626);
 
-        // Set genesis to the next Monday 00:00 UTC
-        // Monday = day 1 in Solidity (0 = Sunday, 1 = Monday, ...)
-        // Actually in Solidity: (timestamp / 1 day + 4) % 7 gives day of week (0 = Thursday of epoch 0)
-        // Let's use a simpler approach: round down to previous Thursday (epoch 0 start)
-        // and then advance to align with Monday
-        
-        // Simpler: just use current timestamp rounded to nearest week
+        // Set genesis to the next Thursday 00:00 UTC.
         uint256 currentTime = block.timestamp;
-        uint256 dayOfWeek = ((currentTime / 1 days) + 4) % 7; // 0 = Sunday, 1 = Monday, etc.
-        uint256 daysUntilMonday = (8 - dayOfWeek) % 7;
-        if (daysUntilMonday == 0) daysUntilMonday = 7; // If today is Monday, start next Monday
-        
-        // Round to start of day and add days until Monday
-        uint256 startOfToday = (currentTime / 1 days) * 1 days;
-        genesisEpochStart = startOfToday + (daysUntilMonday * 1 days);
+        // slither-disable-next-line weak-prng
+        uint256 startOfToday = currentTime - (currentTime % 1 days);
+        // slither-disable-next-line weak-prng
+        uint256 dayOfWeek = ((currentTime / 1 days) + 4) % 7; // 0=Sunday, 4=Thursday
+        // slither-disable-next-line weak-prng
+        uint256 daysUntilThursday = (7 + 4 - dayOfWeek) % 7;
+        if (daysUntilThursday < 1) {
+            daysUntilThursday = 7;
+        }
+        genesisEpochStart = startOfToday + (daysUntilThursday * 1 days);
     }
 
     // ================================
@@ -221,7 +218,7 @@ contract VaultGaugeVoting is IVaultGaugeVoting, Ownable, ReentrancyGuard {
         if (vaults.length != weights.length) revert ArrayLengthMismatch();
         if (vaults.length > MAX_VAULTS_PER_VOTE) revert TooManyVaults();
 
-        uint256 userPower = veAKITA.getVotingPower(msg.sender);
+        uint256 userPower = veERC4626.getVotingPower(msg.sender);
         if (userPower == 0) revert NoVotingPower();
 
         uint256 epoch = currentEpoch();
@@ -252,7 +249,10 @@ contract VaultGaugeVoting is IVaultGaugeVoting, Ownable, ReentrancyGuard {
 
             // Track user's vote
             _epochUserVaultVotes[epoch][msg.sender][vault] = normalizedWeight;
-            _epochUserVotedVaults[epoch][msg.sender].add(vault);
+            bool added = _epochUserVotedVaults[epoch][msg.sender].add(vault);
+            if (!added) {
+                // Vault already tracked for this user/epoch; weights still updated above.
+            }
 
             emit Voted(msg.sender, vault, normalizedWeight, epoch);
         }
@@ -284,7 +284,10 @@ contract VaultGaugeVoting is IVaultGaugeVoting, Ownable, ReentrancyGuard {
                 _epochUserVaultVotes[epoch][user][vault] = 0;
             }
 
-            votedVaults.remove(vault);
+            bool removed = votedVaults.remove(vault);
+            if (!removed) {
+                // Vault already removed; no action needed.
+            }
         }
     }
 
@@ -382,7 +385,7 @@ contract VaultGaugeVoting is IVaultGaugeVoting, Ownable, ReentrancyGuard {
 
     /**
      * @notice Vault's vote-directed probability boost in PPM.
-     * @dev This is the vault's share of the total gauge probability budget, based on veAKITA votes.
+     * @dev This is the vault's share of the total gauge probability budget, based on veERC4626 votes.
      *
      * Rules:
      * - If totalVotes == 0: equal split across whitelisted vaults
@@ -536,6 +539,7 @@ contract VaultGaugeVoting is IVaultGaugeVoting, Ownable, ReentrancyGuard {
 
         // Check registry if enabled
         if (useRegistryWhitelist && address(registry) != address(0)) {
+            // slither-disable-next-line calls-loop
             try registry.isRegisteredVault(vault) returns (bool registered) {
                 return registered;
             } catch {
@@ -566,9 +570,15 @@ contract VaultGaugeVoting is IVaultGaugeVoting, Ownable, ReentrancyGuard {
         isWhitelistedVault[vault] = status;
         
         if (status) {
-            _whitelistedVaults.add(vault);
+            bool added = _whitelistedVaults.add(vault);
+            if (!added) {
+                // Already whitelisted.
+            }
         } else {
-            _whitelistedVaults.remove(vault);
+            bool removed = _whitelistedVaults.remove(vault);
+            if (!removed) {
+                // Already removed.
+            }
         }
 
         emit VaultWhitelisted(vault, status);
@@ -591,9 +601,15 @@ contract VaultGaugeVoting is IVaultGaugeVoting, Ownable, ReentrancyGuard {
             isWhitelistedVault[vaults[i]] = statuses[i];
             
             if (statuses[i]) {
-                _whitelistedVaults.add(vaults[i]);
+                bool added = _whitelistedVaults.add(vaults[i]);
+                if (!added) {
+                    // Already whitelisted.
+                }
             } else {
-                _whitelistedVaults.remove(vaults[i]);
+                bool removed = _whitelistedVaults.remove(vaults[i]);
+                if (!removed) {
+                    // Already removed.
+                }
             }
 
             emit VaultWhitelisted(vaults[i], statuses[i]);

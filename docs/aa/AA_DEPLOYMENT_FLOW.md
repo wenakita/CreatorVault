@@ -4,7 +4,7 @@
 
 ### **Deploy + Launch (recommended)**
 - **Frontend route**: `/deploy` (`frontend/src/pages/DeployVault.tsx`)
-- **Onchain primitive**: `contracts/helpers/CreatorVaultBatcher.sol`
+- **Onchain primitive**: `contracts/helpers/batchers/CreatorVaultBatcher.sol`
 
 This path:
 - enforces canonical creator identity for existing Zora Creator Coins (prevents fragmentation)
@@ -14,7 +14,7 @@ This path:
 
 ### **Activate existing vaults**
 - **Frontend component**: `frontend/src/components/LaunchVaultAA.tsx`
-- **Onchain primitive**: `contracts/helpers/VaultActivationBatcher.sol`
+- **Onchain primitive**: `contracts/helpers/batchers/VaultActivationBatcher.sol`
 
 This path:
 - approves the activation batcher (when needed) and launches the auction

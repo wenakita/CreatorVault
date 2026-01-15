@@ -5,6 +5,7 @@ import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
+import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 
 interface ICreatorOVault {
     function burnSharesForPriceIncrease(uint256 shares) external;
@@ -63,46 +64,8 @@ interface IVoterRewardsDistributor {
 /**
  * @title CreatorGaugeController
  * @author 0xakita.eth
- * @notice Manages fee distribution for Creator Coin vaults - THE SOCIAL-FI ENGINE
- * 
- * @dev THE CORE MECHANIC - ve(3,3) Swap-to-Win Lottery:
- *      When someone trades the creator's ShareOFT tokens, 6.9% fees flow here from TWO sources:
- *      
- *      SOURCE 1: ShareOFT Token (6.9% on buys) - built into token contract
- *      SOURCE 2: V4 Tax Hook (6.9% on sells) - external hook on pool
- *      
- *      Fee Distribution (ve(3,3) Economics):
- *      
- *      1. LOTTERY (69%): Jackpot pool for swap-to-win lottery
- *         → Probability directed by veAKITA gauge votes
- *         → veAKITA holders get up to 2.5x personal boost on win probability
- *      
- *      2. BURN (21.39%): Burns vault shares → increases PPS for all holders
- *         → Passive value accrual for ALL vault holders
- *         → Creates deflationary pressure on supply
- *      
- *      3. PROTOCOL (9.61%): CreatorVault multisig (platform fee)
- *         → Operations, gas, development
- * 
- * @dev TOKEN FLOW (both sources):
- *      ■AKITA → GaugeController → distribute directly as ■AKITA
- *                                       ↓
- *               ┌───────────────────────┼───────────────────────┐
- *               ↓                       ↓                       ↓
- *            69%                    21.39%                   9.61%
- *           LOTTERY                  BURN                  PROTOCOL
- *          (jackpot)          (unwrap→burn)              (multisig)
- *           ■AKITA              ▢AKITA                   ■AKITA
- * 
- * @dev ve(3,3) SPLIT:
- *      - 69%    → Lottery Reserve (jackpot payouts, vote-directed probability)
- *      - 21.39% → Burn (increases PPS for all holders)
- *      - 9.61%  → Protocol Treasury (multisig)
- *      
- *      Note: Creators earn through coin appreciation and potential bribes,
- *      not direct fee share. The 69% lottery pool probability is directed
- *      by veAKITA gauge votes (ve(3,3) mechanics).
- * 
+ * @notice Fee splitter and gauge controller for creator vaults.
+ * @dev Routes swap fees to lottery, burn, and protocol allocations.
  */
 contract CreatorGaugeController is Ownable, ReentrancyGuard {
     using SafeERC20 for IERC20;
@@ -451,10 +414,10 @@ contract CreatorGaugeController is Ownable, ReentrancyGuard {
             if (creatorPerEth == 0) return 0;
             
             // Expected output = wethAmount * creatorPerEth / 1e18
-            uint256 expectedOut = (wethAmount * creatorPerEth) / 1e18;
+            uint256 expectedOut = Math.mulDiv(wethAmount, creatorPerEth, 1e18);
             
             // Apply slippage tolerance
-            minOut = (expectedOut * (MAX_BPS - swapSlippageBps)) / MAX_BPS;
+            minOut = Math.mulDiv(expectedOut, (MAX_BPS - swapSlippageBps), MAX_BPS);
         } catch {
             // Oracle failed, return 0 (no slippage protection)
             return 0;
@@ -548,7 +511,7 @@ contract CreatorGaugeController is Ownable, ReentrancyGuard {
             toCreator = 0;
         }
         
-        // Voter rewards (9.61% default): route to veAKITA voters (bribes/fees)
+        // Voter rewards (9.61% default): route to veERC4626 voters (bribes/fees)
         if (toProtocol > 0 && address(voterRewardsDistributor) != address(0)) {
             vaultShares.forceApprove(address(voterRewardsDistributor), toProtocol);
             voterRewardsDistributor.notifyRewards(address(vault), address(vaultShares), toProtocol);
@@ -903,8 +866,8 @@ contract CreatorGaugeController is Ownable, ReentrancyGuard {
         try oracle.getCreatorEthTWAP(oracleTwapDuration) returns (uint256 creatorPerEth) {
             if (creatorPerEth == 0) return (0, 0, false);
             
-            expectedOut = (wethAmount * creatorPerEth) / 1e18;
-            minOut = (expectedOut * (MAX_BPS - swapSlippageBps)) / MAX_BPS;
+            expectedOut = Math.mulDiv(wethAmount, creatorPerEth, 1e18);
+            minOut = Math.mulDiv(expectedOut, (MAX_BPS - swapSlippageBps), MAX_BPS);
             oracleActive = true;
         } catch {
             return (0, 0, false);

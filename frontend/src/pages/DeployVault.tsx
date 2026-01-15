@@ -17,7 +17,7 @@ import {
   keccak256,
   parseAbiParameters,
 } from 'viem'
-import { Link, useSearchParams } from 'react-router-dom'
+import { useSearchParams } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { coinABI } from '@zoralabs/protocol-deployments'
 import { BarChart3, Layers, Lock, Rocket, ShieldCheck } from 'lucide-react'
@@ -29,7 +29,6 @@ import { CONTRACTS } from '@/config/contracts'
 import { useSiweAuth } from '@/hooks/useSiweAuth'
 import { useCreatorAllowlist, useFarcasterAuth, useMiniAppContext } from '@/hooks'
 import { useZoraCoin, useZoraProfile } from '@/lib/zora/hooks'
-import { fetchCoinMarketRewardsByCoinFromApi } from '@/lib/onchain/coinMarketRewardsByCoin'
 import { getFarcasterUserByFid } from '@/lib/neynar-api'
 import { resolveCreatorIdentity } from '@/lib/identity/creatorIdentity'
 import { DEPLOY_BYTECODE } from '@/deploy/bytecode.generated'
@@ -1867,37 +1866,6 @@ export function DeployVault() {
   const isOriginalCreator =
     !!address && !!creatorAddress && address.toLowerCase() === creatorAddress.toLowerCase()
 
-  function formatUsdWhole(n: number): string {
-    return Intl.NumberFormat(undefined, { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(n)
-  }
-
-  function parseIsoToSeconds(iso?: string): number | undefined {
-    if (!iso) return undefined
-    const ms = Date.parse(iso)
-    if (!Number.isFinite(ms)) return undefined
-    return Math.floor(ms / 1000)
-  }
-
-  const createdAtSeconds = useMemo(() => parseIsoToSeconds(zoraCoin?.createdAt), [zoraCoin?.createdAt])
-
-  const marketCapDisplay = useMemo(() => {
-    const raw = zoraCoin?.marketCap
-    const n = raw ? Number(raw) : NaN
-    return Number.isFinite(n) ? formatUsdWhole(n) : '—'
-  }, [zoraCoin?.marketCap])
-
-  const volume24hDisplay = useMemo(() => {
-    const raw = zoraCoin?.volume24h
-    const n = raw ? Number(raw) : NaN
-    return Number.isFinite(n) ? formatUsdWhole(n) : '—'
-  }, [zoraCoin?.volume24h])
-
-  const totalVolumeDisplay = useMemo(() => {
-    const raw = zoraCoin?.totalVolume
-    const n = raw ? Number(raw) : NaN
-    return Number.isFinite(n) ? formatUsdWhole(n) : '—'
-  }, [zoraCoin?.totalVolume])
-
   // Onchain read of payoutRecipient (immediate after tx, no indexer delay).
   const { data: onchainPayoutRecipient } = useReadContract({
     address: tokenIsValid ? (creatorToken as `0x${string}`) : undefined,
@@ -2101,77 +2069,6 @@ export function DeployVault() {
   // NOTE: We previously supported an optional “fund owner wallet” helper flow, but it’s not wired into
   // the current UX. Keeping the deploy path deterministic + minimal for now.
 
-  const poolCurrencyAddress = useMemo(() => {
-    const c = zoraCoin?.poolCurrencyToken?.address ? String(zoraCoin.poolCurrencyToken.address) : ''
-    return isAddress(c) ? (c as Address) : null
-  }, [zoraCoin?.poolCurrencyToken?.address])
-
-  const coinAddress = useMemo(() => {
-    const c = zoraCoin?.address ? String(zoraCoin.address) : ''
-    return isAddress(c) ? (c as Address) : null
-  }, [zoraCoin?.address])
-
-  const poolCurrencyDecimals = useMemo(() => {
-    const d = zoraCoin?.poolCurrencyToken?.decimals
-    return typeof d === 'number' && Number.isFinite(d) ? d : 18
-  }, [zoraCoin?.poolCurrencyToken?.decimals])
-
-  const creatorEarningsQuery = useQuery({
-    queryKey: [
-      'onchain',
-      'coinMarketRewardsByCoin',
-      payoutRecipient ?? 'missing',
-      poolCurrencyAddress ?? 'missing',
-      coinAddress ?? 'missing',
-      createdAtSeconds ?? 0,
-    ],
-    queryFn: async () => {
-      if (!payoutRecipient || !poolCurrencyAddress || !coinAddress) return {}
-      return await fetchCoinMarketRewardsByCoinFromApi({
-        recipient: payoutRecipient,
-        currency: poolCurrencyAddress,
-        coin: coinAddress,
-        createdAtSeconds,
-      })
-    },
-    enabled: false, // user-triggered (can be slow on first run)
-    staleTime: 1000 * 60 * 10,
-  })
-
-  const creatorEarningsDisplay = useMemo(() => {
-    const map = creatorEarningsQuery.data
-    if (!map || !coinAddress) return '—'
-    const raw = map[coinAddress.toLowerCase()]
-    if (raw === undefined) return '—'
-
-    // Convert currency amount to decimal.
-    const amountCurrency = Number(formatUnits(raw, poolCurrencyDecimals))
-    if (!Number.isFinite(amountCurrency)) return '—'
-
-    // If pool currency is already USD (USDC), show 1:1.
-    const poolName = zoraCoin?.poolCurrencyToken?.name ? String(zoraCoin.poolCurrencyToken.name).toUpperCase() : ''
-    if (poolName.includes('USDC') || poolName.includes('USD')) return formatUsdWhole(amountCurrency)
-
-    // Otherwise estimate USD using Zora-provided pricing:
-    // poolTokenPriceInUsdc ~= coinPriceInUsdc / coinPriceInPoolToken
-    const priceInUsdc = zoraCoin?.tokenPrice?.priceInUsdc ? Number(zoraCoin.tokenPrice.priceInUsdc) : NaN
-    const priceInPoolToken = zoraCoin?.tokenPrice?.priceInPoolToken ? Number(zoraCoin.tokenPrice.priceInPoolToken) : NaN
-    const poolTokenPriceInUsdc =
-      Number.isFinite(priceInUsdc) && Number.isFinite(priceInPoolToken) && priceInPoolToken > 0
-        ? priceInUsdc / priceInPoolToken
-        : NaN
-
-    const usd = Number.isFinite(poolTokenPriceInUsdc) ? amountCurrency * poolTokenPriceInUsdc : NaN
-    return Number.isFinite(usd) ? formatUsdWhole(usd) : '—'
-  }, [
-    creatorEarningsQuery.data,
-    coinAddress,
-    poolCurrencyDecimals,
-    zoraCoin?.poolCurrencyToken?.name,
-    zoraCoin?.tokenPrice?.priceInUsdc,
-    zoraCoin?.tokenPrice?.priceInPoolToken,
-  ])
-
   // Creator Vaults are creator-initiated. If we can't confidently identify the creator, default to locked.
   const coinTypeUpper = String(zoraCoin?.coinType ?? '').toUpperCase()
   const isCreatorCoin = coinTypeUpper === 'CREATOR'
@@ -2231,54 +2128,113 @@ export function DeployVault() {
     batcherConfigured &&
     (!identity.blockingReason || executeBatchEligible || operatorModeEligible)
 
+  const vrfConsumerAddress = (CONTRACTS.vrfConsumer ?? null) as Address | null
+  const creatorVaultBatcherAddress = (CONTRACTS.creatorVaultBatcher ?? null) as Address | null
+  const vrfConsumerConfigured = isAddress(String(vrfConsumerAddress ?? ''))
+  const creatorVaultBatcherConfigured = isAddress(String(creatorVaultBatcherAddress ?? ''))
+  const allowlistReady = allowlistMode === 'disabled' ? true : isAllowlistedCreator
+  const creatorCoinReady = tokenIsValid && !!zoraCoin && isCreatorCoin
+  const fundingReady = fundingGateOk
+  const authReady = isAuthorizedDeployerOrOperator
+
+  const firstLaunchChecklist = [
+    {
+      label: 'CreatorVaultBatcher configured',
+      ok: creatorVaultBatcherConfigured,
+      hint: creatorVaultBatcherConfigured && creatorVaultBatcherAddress ? shortAddress(creatorVaultBatcherAddress) : 'missing',
+    },
+    {
+      label: 'VRF consumer configured',
+      ok: vrfConsumerConfigured,
+      hint: vrfConsumerConfigured && vrfConsumerAddress ? shortAddress(vrfConsumerAddress) : 'missing',
+    },
+    {
+      label: 'Allowlist status',
+      ok: allowlistReady,
+      hint: allowlistMode === 'disabled' ? 'disabled' : isAllowlistedCreator ? 'allowed' : 'blocked',
+    },
+    {
+      label: 'Creator coin detected',
+      ok: creatorCoinReady,
+      hint: creatorCoinReady ? (underlyingSymbolUpper || 'ok') : tokenIsValid ? 'not a creator coin' : 'invalid token',
+    },
+    {
+      label: 'Authorized + funded',
+      ok: authReady && fundingReady,
+      hint: authReady
+        ? fundingReady
+          ? 'ready'
+          : `needs 50,000,000 ${underlyingSymbolUpper || 'TOKENS'}`
+        : 'not authorized',
+    },
+    {
+      label: 'Ready to deploy',
+      ok: canDeploy,
+      hint: canDeploy ? 'ready' : 'missing requirements',
+    },
+  ] as const
+
+  const deployBlocker =
+    !tokenIsValid
+      ? 'Enter a creator coin address to continue.'
+      : tokenIsValid && !zoraCoin
+        ? 'Token is not a Zora Creator Coin.'
+        : tokenIsValid && zoraCoin && !isCreatorCoin
+          ? 'Only Creator Coins can deploy a vault.'
+          : creatorAllowlistQuery.isLoading
+            ? 'Checking creator access…'
+            : creatorAllowlistQuery.isError
+              ? 'Creator access check failed.'
+              : allowlistEnforced && !isAllowlistedCreator
+                ? 'Creator access required.'
+                : !creatorVaultBatcherConfigured
+                  ? 'Deployment not configured (missing CreatorVaultBatcher).'
+                  : !isAuthorizedDeployerOrOperator
+                    ? 'Connect the creator or payout recipient wallet.'
+                    : !fundingGateOk
+                      ? `Needs 50,000,000 ${underlyingSymbolUpper || 'TOKENS'} to deploy.`
+                      : identity.blockingReason && !executeBatchEligible && !operatorModeEligible
+                        ? identity.blockingReason
+                        : null
+
   return (
     <div className="relative">
       <section className="cinematic-section">
         <div className="max-w-3xl mx-auto px-6">
           <div className="space-y-8">
             {/* Header */}
-            <div className="space-y-3">
-              <span className="label">Deploy</span>
-              <h1 className="headline text-4xl sm:text-6xl">Deploy Vault</h1>
-              <p className="text-zinc-600 text-sm font-light">
-                Deploy a vault for your Creator Coin on Base. Only the creator or current payout recipient can deploy. Deploy is invite-only during
-                early launch.
-              </p>
+            <div className="flex items-start justify-between gap-6">
+              <div className="space-y-2">
+                <span className="label">Deploy</span>
+                <h1 className="headline text-4xl sm:text-6xl">Deploy Vault</h1>
+                <p className="text-zinc-600 text-sm font-light">
+                  Deploy a vault for your Creator Coin on Base. Only the creator or current payout recipient can deploy.
+                </p>
+              </div>
+              <div className="inline-flex items-center gap-2 rounded-full border border-zinc-900/70 bg-black/40 px-3 py-1 text-[10px] text-zinc-400">
+                <img src="/protocols/base.png" alt="" aria-hidden="true" loading="lazy" className="w-3.5 h-3.5 opacity-90" />
+                Base
+              </div>
             </div>
 
-            {/* Feature Callout: 1-Click Deployment */}
-            <motion.div
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="rounded-xl bg-gradient-to-br from-brand-primary/10 to-brand-accent/5 border border-brand-primary/20 p-6"
-            >
-              <div className="flex items-start gap-4">
-                <div className="flex-shrink-0 w-10 h-10 rounded-full bg-brand-primary/10 flex items-center justify-center">
-                  <Rocket className="w-5 h-5 text-brand-primary" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <h3 className="text-white text-sm font-medium mb-1">1-Click Deployment</h3>
-                  <p className="text-zinc-500 text-xs leading-relaxed mb-3">
-                    Powered by <span className="text-white">EIP-4337</span> account abstraction and <span className="text-white">EIP-5792</span>{' '}
-                    batching. Gas sponsorship is optional (via a paymaster); otherwise you’ll pay gas.
-                  </p>
-                  <div className="flex flex-wrap gap-2">
-                    <span className="inline-flex items-center gap-1.5 text-[10px] text-zinc-400 bg-black/40 border border-white/5 rounded-full px-2.5 py-1">
-                      <ShieldCheck className="w-3 h-3 text-brand-primary" />
-                      Optional gas sponsorship
-                    </span>
-                    <span className="inline-flex items-center gap-1.5 text-[10px] text-zinc-400 bg-black/40 border border-white/5 rounded-full px-2.5 py-1">
-                      <BarChart3 className="w-3 h-3 text-brand-primary" />
-                      Atomic batch execution
-                    </span>
-                    <span className="inline-flex items-center gap-1.5 text-[10px] text-zinc-400 bg-black/40 border border-white/5 rounded-full px-2.5 py-1">
-                      <Lock className="w-3 h-3 text-brand-primary" />
-                      EIP-5792 smart wallet batching
-                    </span>
-                  </div>
+            {isAdmin ? (
+              <div className="rounded-lg border border-amber-500/20 bg-amber-500/5 p-4 space-y-2">
+                <div className="text-[11px] uppercase tracking-wide text-amber-200">Launch checklist (admin)</div>
+                <div className="space-y-1 text-xs text-zinc-300">
+                  {firstLaunchChecklist.map((item) => (
+                    <div key={item.label} className="flex items-start gap-2">
+                      <span className={`mt-[5px] h-1.5 w-1.5 rounded-full ${item.ok ? 'bg-emerald-400' : 'bg-amber-400'}`} />
+                      <div className="flex-1 min-w-0">
+                        <span>{item.label}</span>
+                        {item.hint ? (
+                          <span className="ml-2 text-[11px] text-zinc-500 font-mono">{item.hint}</span>
+                        ) : null}
+                      </div>
+                    </div>
+                  ))}
                 </div>
               </div>
-            </motion.div>
+            ) : null}
 
             {/* Review */}
             {tokenIsValid && (
@@ -2327,45 +2283,19 @@ export function DeployVault() {
                         </div>
                       </div>
 
-                      <div className="flex flex-col items-end gap-2 shrink-0">
-                        <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${coinTypePillClass}`}>
+                      <div className="flex items-center gap-2 shrink-0">
+                        <span className={`inline-flex items-center px-3 py-1 rounded-full text-[10px] font-medium ${coinTypePillClass}`}>
                           {coinTypeLabel}
                         </span>
-                        <Link
-                          to={`/coin/${creatorToken}/manage`}
-                          className="text-[10px] text-zinc-600 hover:text-zinc-300 transition-colors"
-                        >
-                          Manage
-                        </Link>
                       </div>
                     </div>
 
                     {/* Key rows */}
                     <div className="space-y-0">
-                      {zoraCoin?.creatorAddress && (
-                        <div className="data-row">
-                          <div className="label">Creator</div>
-                          <div className="text-xs text-zinc-300">
-                            {zoraCreatorProfile?.handle
-                              ? `@${zoraCreatorProfile.handle}`
-                              : shortAddress(String(zoraCoin.creatorAddress))}
-                          </div>
-                        </div>
-                      )}
-
                       {payoutRecipient && (
                         <div className="data-row">
                           <div className="label">Payout recipient</div>
                           <div className="text-xs text-zinc-300 font-mono">{shortAddress(payoutRecipient)}</div>
-                        </div>
-                      )}
-
-                      {zoraCoin?.poolCurrencyToken?.name && (
-                        <div className="data-row">
-                          <div className="label">Paired token</div>
-                          <div className="text-xs text-zinc-300">
-                            {String(zoraCoin.poolCurrencyToken.name).toUpperCase()}
-                          </div>
                         </div>
                       )}
 
@@ -2380,51 +2310,6 @@ export function DeployVault() {
                             className="w-3.5 h-3.5 opacity-90"
                           />
                           Base
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Stats */}
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                      <div className="p-4 bg-black/30 border border-zinc-900/50 rounded-lg">
-                        <div className="flex items-center justify-between gap-2">
-                          <div className="label">Market cap</div>
-                          {zoraCoin ? (
-                            <button
-                              type="button"
-                              onClick={() => refetchZoraCoin()}
-                              disabled={zoraLoading || zoraFetching}
-                              className="text-[10px] text-zinc-600 hover:text-zinc-300 transition-colors disabled:opacity-50"
-                              title={zoraUpdatedAt ? `Last updated: ${new Date(zoraUpdatedAt).toLocaleTimeString()}` : 'Refresh'}
-                            >
-                              {zoraLoading || zoraFetching ? '…' : 'Refresh'}
-                            </button>
-                          ) : null}
-                        </div>
-                        <div className="text-sm font-mono text-emerald-400 mt-2">{marketCapDisplay}</div>
-                      </div>
-                      <div className="p-4 bg-black/30 border border-zinc-900/50 rounded-lg">
-                        <div className="label">24h volume</div>
-                        <div className="text-sm font-mono text-zinc-200 mt-2">{volume24hDisplay}</div>
-                        <div className="text-[10px] text-zinc-700 mt-2">Total: {totalVolumeDisplay}</div>
-                      </div>
-                      <div className="p-4 bg-black/30 border border-zinc-900/50 rounded-lg">
-                        <div className="flex items-center justify-between gap-2">
-                          <div className="label">Creator earnings</div>
-                          {payoutRecipient && poolCurrencyAddress && coinAddress ? (
-                            <button
-                              type="button"
-                              onClick={() => creatorEarningsQuery.refetch()}
-                              disabled={creatorEarningsQuery.isFetching}
-                              className="text-[10px] text-zinc-600 hover:text-zinc-300 transition-colors disabled:opacity-50"
-                              title="Computed from onchain reward events (can take ~30-60s the first time)."
-                            >
-                              {creatorEarningsQuery.isFetching ? 'Computing…' : creatorEarningsQuery.data ? 'Refresh' : 'Compute'}
-                            </button>
-                          ) : null}
-                        </div>
-                        <div className="text-sm font-mono text-zinc-200 mt-2">
-                          {creatorEarningsQuery.isFetching ? '…' : creatorEarningsDisplay}
                         </div>
                       </div>
                     </div>
@@ -2452,14 +2337,12 @@ export function DeployVault() {
               </motion.div>
             )}
 
-            {/* Settings */}
+            {/* Essentials */}
             <div className="card rounded-xl p-6 space-y-6">
               <div className="flex items-start justify-between gap-6">
                 <div className="space-y-1">
-                  <div className="label">Settings</div>
-                  <div className="text-xs text-zinc-600">
-                    Most creators won’t need to change anything here.
-                  </div>
+                  <div className="label">Launch</div>
+                  <div className="text-xs text-zinc-600">Minimal launch details for your Creator Coin.</div>
                 </div>
                 {isConnected ? (
                   <button
@@ -2467,7 +2350,7 @@ export function DeployVault() {
                     onClick={() => setShowAdvanced((v) => !v)}
                     className="text-[10px] text-zinc-600 hover:text-zinc-300 transition-colors"
                   >
-                    {showAdvanced ? 'Hide advanced' : 'Advanced'}
+                    {showAdvanced ? 'Hide details' : 'Details'}
                   </button>
                 ) : null}
               </div>
@@ -2565,7 +2448,7 @@ export function DeployVault() {
                         placeholder="No creator coin detected for this wallet"
                         className="w-full bg-black border border-zinc-800 rounded-lg px-4 py-3 text-sm text-zinc-500 placeholder:text-zinc-700 outline-none font-mono opacity-70 cursor-not-allowed"
                       />
-                      <div className="text-xs text-zinc-600">Open Advanced if you need to paste a coin address.</div>
+                      <div className="text-xs text-zinc-600">Open Details if you need to paste a coin address.</div>
                     </>
                   )
                 ) : (
@@ -2592,83 +2475,89 @@ export function DeployVault() {
                 )}
               </div>
 
-              {/* Deployment */}
+              {/* Details */}
               {isConnected && showAdvanced ? (
-                <div className="pt-3 border-t border-zinc-900/50 space-y-2">
-                  <div className="flex items-center justify-between gap-3">
+                <div className="pt-3 border-t border-zinc-900/50 space-y-4">
+                  <div className="space-y-2">
                     <div className="label">Deployment</div>
                     <div className="text-[10px] text-zinc-700">
                       {deploymentVersion === 'v3' ? 'Default (v3)' : deploymentVersion === 'v2' ? 'Alt (v2)' : 'Legacy (v1)'}
                     </div>
-                  </div>
 
-                  {isAdmin ? (
-                    <div className="inline-flex rounded-lg border border-zinc-900/60 bg-black/30 p-1 gap-1">
-                      <button
-                        type="button"
-                        onClick={() => setDeploymentVersion('v3')}
-                        className={`px-3 py-1.5 text-[11px] rounded-md transition-colors ${
-                          deploymentVersion === 'v3'
-                            ? 'bg-white/[0.06] text-zinc-100'
-                            : 'text-zinc-500 hover:text-zinc-200 hover:bg-white/[0.03]'
-                        }`}
-                        title="Default deterministic addresses (v3). Fresh namespace to avoid collisions with earlier deploy attempts."
-                      >
-                        v3
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setDeploymentVersion('v2')}
-                        className={`px-3 py-1.5 text-[11px] rounded-md transition-colors ${
-                          deploymentVersion === 'v2'
-                            ? 'bg-white/[0.06] text-zinc-100'
-                            : 'text-zinc-500 hover:text-zinc-200 hover:bg-white/[0.03]'
-                        }`}
-                        title="Alternative deterministic addresses (v2)."
-                      >
-                        v2
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setDeploymentVersion('v1')}
-                        className={`px-3 py-1.5 text-[11px] rounded-md transition-colors ${
-                          deploymentVersion === 'v1'
-                            ? 'bg-white/[0.06] text-zinc-100'
-                            : 'text-zinc-500 hover:text-zinc-200 hover:bg-white/[0.03]'
-                        }`}
-                        title="Legacy deterministic addresses (v1). Admin-only."
-                      >
-                        v1 (admin)
-                      </button>
+                    {isAdmin ? (
+                      <div className="inline-flex rounded-lg border border-zinc-900/60 bg-black/30 p-1 gap-1">
+                        <button
+                          type="button"
+                          onClick={() => setDeploymentVersion('v3')}
+                          className={`px-3 py-1.5 text-[11px] rounded-md transition-colors ${
+                            deploymentVersion === 'v3'
+                              ? 'bg-white/[0.06] text-zinc-100'
+                              : 'text-zinc-500 hover:text-zinc-200 hover:bg-white/[0.03]'
+                          }`}
+                          title="Default deterministic addresses (v3). Fresh namespace to avoid collisions with earlier deploy attempts."
+                        >
+                          v3
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setDeploymentVersion('v2')}
+                          className={`px-3 py-1.5 text-[11px] rounded-md transition-colors ${
+                            deploymentVersion === 'v2'
+                              ? 'bg-white/[0.06] text-zinc-100'
+                              : 'text-zinc-500 hover:text-zinc-200 hover:bg-white/[0.03]'
+                          }`}
+                          title="Alternative deterministic addresses (v2)."
+                        >
+                          v2
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setDeploymentVersion('v1')}
+                          className={`px-3 py-1.5 text-[11px] rounded-md transition-colors ${
+                            deploymentVersion === 'v1'
+                              ? 'bg-white/[0.06] text-zinc-100'
+                              : 'text-zinc-500 hover:text-zinc-200 hover:bg-white/[0.03]'
+                          }`}
+                          title="Legacy deterministic addresses (v1). Admin-only."
+                        >
+                          v1 (admin)
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="text-xs text-zinc-600">Using v3 (default). Legacy v1 is admin-only.</div>
+                    )}
+
+                    <div className="text-xs text-zinc-600">
+                      v3 uses a fresh deterministic address namespace to avoid collisions with earlier deployments. v2 is kept as an alternative.
                     </div>
-                  ) : (
-                    <div className="text-xs text-zinc-600">Using v3 (default). Legacy v1 is admin-only.</div>
-                  )}
+
+                    {!isSignedIn ? (
+                      <div className="pt-1">
+                        <button
+                          type="button"
+                          onClick={() => void signIn()}
+                          disabled={authBusy}
+                          className="text-[11px] text-zinc-500 hover:text-zinc-200 transition-colors disabled:opacity-60"
+                          title="Admin sign-in unlocks legacy v1 controls if your wallet is allowlisted."
+                        >
+                          {authBusy ? 'Signing in…' : 'Admin sign-in (optional)'}
+                        </button>
+                        {authError ? <div className="text-[11px] text-red-400/90 mt-1">{authError}</div> : null}
+                      </div>
+                    ) : null}
+                  </div>
 
                   <div className="text-xs text-zinc-600">
-                    v3 uses a fresh deterministic address namespace to avoid collisions with earlier deployments. v2 is kept as an alternative.
-                    v1 is a legacy fallback and is admin-only.
+                    Allowlist:{' '}
+                    <span className="text-zinc-300">
+                      {allowlistMode === 'disabled' ? 'disabled' : isAllowlistedCreator ? 'allowed' : 'blocked'}
+                    </span>
                   </div>
-
-                  {!isSignedIn ? (
-                    <div className="pt-1">
-                      <button
-                        type="button"
-                        onClick={() => void signIn()}
-                        disabled={authBusy}
-                        className="text-[11px] text-zinc-500 hover:text-zinc-200 transition-colors disabled:opacity-60"
-                        title="Admin sign-in unlocks legacy v1 controls if your wallet is allowlisted."
-                      >
-                        {authBusy ? 'Signing in…' : 'Admin sign-in (optional)'}
-                      </button>
-                      {authError ? <div className="text-[11px] text-red-400/90 mt-1">{authError}</div> : null}
-                    </div>
-                  ) : null}
                 </div>
               ) : null}
 
               {/* Smart Wallet Requirement */}
-              {isConnected ? (
+              {isConnected && showAdvanced ? (
                 <div className="pt-3 border-t border-zinc-900/50 space-y-4">
                   <div>
                     <div className="label mb-2">Your Smart Wallet</div>
@@ -2752,7 +2641,7 @@ export function DeployVault() {
             <div className="card rounded-xl p-8 space-y-4">
               <div className="label">Deploy</div>
 
-              {isConnected && tokenIsValid && zoraCoin && canonicalIdentityAddress && connectedWalletAddress ? (
+              {showAdvanced && isConnected && tokenIsValid && zoraCoin && canonicalIdentityAddress && connectedWalletAddress ? (
                 <div className="rounded-lg border border-white/5 bg-black/20 p-4 space-y-2">
                   <div className="flex items-center justify-between gap-4">
                     <div className="text-[11px] text-zinc-500">Canonical identity</div>
@@ -2788,7 +2677,7 @@ export function DeployVault() {
                 <div className="p-4 bg-amber-500/10 border border-amber-500/20 rounded-lg space-y-2">
                   <div className="text-amber-300/90 text-sm font-medium">Optional sign-in (admin tools)</div>
                   <div className="text-amber-300/70 text-xs leading-relaxed">
-                    Sign in to unlock admin-only deployment modes and advanced diagnostics. Deployment itself is executed onchain.
+                    Sign in to unlock admin-only deployment modes and diagnostics. Deployment itself is executed onchain.
                   </div>
                   <button
                     type="button"
@@ -2937,20 +2826,22 @@ export function DeployVault() {
                 </button>
               )}
 
-              <div className="text-xs text-zinc-600 space-y-1">
-                <p>Designed for one wallet confirmation (some wallets may require multiple confirmations).</p>
-                <p>Requires a 50M token deposit to start the fair launch.</p>
-                <p>Advanced: v3 is the default. v1 is admin-only.</p>
-                <p>For best results, use a smart wallet that supports `wallet_sendCalls` batching.</p>
+              {!canDeploy && deployBlocker ? (
+                <div className="text-xs text-amber-300/80">{deployBlocker}</div>
+              ) : null}
+
+              <div className="text-xs text-zinc-600">
+                Requires a 50,000,000 {underlyingSymbolUpper || 'TOKENS'} deposit. Some wallets may prompt multiple confirmations.
               </div>
             </div>
 
             {/* Contracts (details) */}
-            <details className="card rounded-xl p-8">
-              <summary className="flex items-center justify-between gap-4 cursor-pointer list-none">
-                <div className="label">Contracts</div>
-                <div className="text-[10px] text-zinc-600">View</div>
-              </summary>
+            {showAdvanced ? (
+              <details className="card rounded-xl p-8">
+                <summary className="flex items-center justify-between gap-4 cursor-pointer list-none">
+                  <div className="label">Contracts</div>
+                  <div className="text-[10px] text-zinc-600">View</div>
+                </summary>
 
               <div className="mt-6 rounded-2xl border border-white/5 bg-[#080808]/60 backdrop-blur-2xl overflow-hidden divide-y divide-white/5">
                 <div className="px-4 py-2 text-[10px] uppercase tracking-wide text-zinc-500 bg-white/[0.02]">
@@ -3121,7 +3012,8 @@ export function DeployVault() {
                   simulation.
                 </div>
               </div>
-            </details>
+              </details>
+            ) : null}
           </div>
         </div>
       </div>

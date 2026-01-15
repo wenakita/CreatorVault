@@ -1,0 +1,113 @@
+{
+  "contractName": "UniversalBytecodeStore",
+  "network": "Base",
+  "chainId": 8453,
+  "address": "0xCDf45B94348DBBABba4bE6f4a5341badb83D4dC4",
+  "deployedBy": "0xB05Cf01231cF2fF99499682E64D3780d57c80FdD",
+  "deployedAt": "2026-01-14",
+  "abi": [
+    {
+      "type": "function",
+      "name": "get",
+      "inputs": [
+        {
+          "name": "codeId",
+          "type": "bytes32",
+          "internalType": "bytes32"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "creationCode",
+          "type": "bytes",
+          "internalType": "bytes"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "pointers",
+      "inputs": [
+        {
+          "name": "",
+          "type": "bytes32",
+          "internalType": "bytes32"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "",
+          "type": "address",
+          "internalType": "address"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "store",
+      "inputs": [
+        {
+          "name": "creationCode",
+          "type": "bytes",
+          "internalType": "bytes"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "codeId",
+          "type": "bytes32",
+          "internalType": "bytes32"
+        },
+        {
+          "name": "pointer",
+          "type": "address",
+          "internalType": "address"
+        }
+      ],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "event",
+      "name": "Stored",
+      "inputs": [
+        {
+          "name": "codeId",
+          "type": "bytes32",
+          "indexed": true,
+          "internalType": "bytes32"
+        },
+        {
+          "name": "pointer",
+          "type": "address",
+          "indexed": true,
+          "internalType": "address"
+        },
+        {
+          "name": "size",
+          "type": "uint256",
+          "indexed": false,
+          "internalType": "uint256"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "error",
+      "name": "AlreadyStored",
+      "inputs": [
+        {
+          "name": "codeId",
+          "type": "bytes32",
+          "internalType": "bytes32"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "EmptyBytecode",
+      "inputs": []
+    }
+  ]
+}

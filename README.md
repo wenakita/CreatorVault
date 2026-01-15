@@ -367,24 +367,28 @@ CreatorVault/
     vault/                        # ERC-4626 vaults
       CreatorOVault.sol
       CreatorOVaultWrapper.sol
-    layerzero/                    # LayerZero V2 OFT
+    services/messaging/           # LayerZero V2 OFT
       CreatorShareOFT.sol
     governance/                   # Tokenomics
       CreatorGaugeController.sol
-      veAKITA.sol
-    lottery/                      # Lottery system
+      veERC4626.sol
+    services/lottery/             # Lottery system
       CreatorLotteryManager.sol
-    vrf/                          # Chainlink VRF
-      CreatorVRFConsumerV2_5.sol
-    oracles/                      # Price oracles
+      vrf/                        # Chainlink VRF
+        CreatorVRFConsumerV2_5.sol
+    services/oracles/             # Price oracles
       CreatorOracle.sol
-    strategies/                   # Yield strategies
+    vault/strategies/             # Yield strategies
       BaseCreatorStrategy.sol
-      CreatorCCAStrategy.sol
+      CCALaunchStrategy.sol
     factories/                    # Deployment factories
       CreatorOVaultFactory.sol
-    hooks/                        # Uniswap V4 hooks
-    lp/                           # LP management
+    helpers/                      # Batchers and infra helpers
+      batchers/
+      infra/
+      hooks/
+      routers/
+    vault/strategies/univ4/       # LP management
     interfaces/                   # All interfaces
   frontend/                       # React frontend (Vite)
     src/

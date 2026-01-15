@@ -61,7 +61,7 @@ forge create contracts/vault/CreatorOVaultWrapper.sol:CreatorOVaultWrapper \
 export WRAPPER_ADDRESS=0x...  # From output above
 
 # Deploy CreatorShareOFT
-forge create contracts/layerzero/CreatorShareOFT.sol:CreatorShareOFT \
+forge create contracts/services/messaging/CreatorShareOFT.sol:CreatorShareOFT \
     --constructor-args "Wrapped ${TOKEN_SYMBOL} Share" "ws${TOKEN_SYMBOL}" "0x1a44076050125825900e736c501f859c50fE728c" $CREATOR_ADDRESS \
     --rpc-url base \
     --private-key $PRIVATE_KEY \
@@ -139,7 +139,7 @@ cast send $GAUGE_ADDRESS "setWrapper(address)" $WRAPPER_ADDRESS --rpc-url base -
 ### **Deploy CCALaunchStrategy:**
 
 ```bash
-forge create contracts/strategies/CCALaunchStrategy.sol:CCALaunchStrategy \
+forge create contracts/vault/strategies/CCALaunchStrategy.sol:CCALaunchStrategy \
     --constructor-args $SHAREOFT_ADDRESS "0x0000000000000000000000000000000000000000" $VAULT_ADDRESS $CREATOR_ADDRESS $CREATOR_ADDRESS \
     --rpc-url base \
     --private-key $PRIVATE_KEY \

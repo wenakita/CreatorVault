@@ -3,9 +3,9 @@ pragma solidity ^0.8.20;
 
 import "forge-std/Script.sol";
 import "forge-std/Test.sol";
-import "../contracts/helpers/StrategyDeploymentBatcher.sol";
-import "../contracts/strategies/CreatorCharmStrategyV2.sol";
-import "../contracts/strategies/AjnaStrategy.sol";
+import "../contracts/helpers/batchers/StrategyDeploymentBatcher.sol";
+import "../contracts/vault/strategies/univ3/CreatorCharmStrategy.sol";
+import "../contracts/vault/strategies/AjnaStrategy.sol";
 
 /**
  * @title TestAAStrategyDeploy
@@ -69,9 +69,9 @@ contract TestAAStrategyDeploy is Script, Test {
             console.log("   - Ajna Strategy:        ", result.ajnaStrategy);
             console.log("");
             
-            // Verify CreatorCharmStrategyV2 is correct type
-            console.log("3. Verifying CreatorCharmStrategyV2...");
-            CreatorCharmStrategyV2 charmStrat = CreatorCharmStrategyV2(result.creatorCharmStrategy);
+            // Verify CreatorCharmStrategy is correct type
+            console.log("3. Verifying CreatorCharmStrategy...");
+            CreatorCharmStrategy charmStrat = CreatorCharmStrategy(result.creatorCharmStrategy);
             
             console.log("   - isActive():", charmStrat.isActive());
             console.log("   - asset():", charmStrat.asset());

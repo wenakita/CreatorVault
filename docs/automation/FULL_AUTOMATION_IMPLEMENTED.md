@@ -19,7 +19,7 @@ A simplified version of CharmAlphaVault with:
 - ✅ `initializeAndTransfer()` function for atomic setup
 - ✅ Embeds the rebalance logic (no separate `CharmAlphaStrategy` needed for the atomic path)
 
-**Location:** `contracts/charm/CharmAlphaVaultDeploy.sol`
+**Location:** `contracts/vault/strategies/univ3/CharmAlphaVaultDeploy.sol`
 
 **Key Features:**
 ```solidity
@@ -53,7 +53,7 @@ vault.initializeAndTransfer(creator, creator, 3000, 6000, 100, 1800)
 // DONE! Creator owns everything, no manual steps needed! ✅
 ```
 
-**Location:** `contracts/helpers/StrategyDeploymentBatcher.sol`
+**Location:** `contracts/helpers/batchers/StrategyDeploymentBatcher.sol`
 
 ---
 
@@ -75,7 +75,7 @@ DeploymentResult memory result = batcher.batchDeployStrategies(
 
 // ✅ DONE! No manual steps needed!
 // ✅ Creator owns CharmAlphaVault
-// ✅ Creator owns CreatorCharmStrategyV2
+// ✅ Creator owns CreatorCharmStrategy
 // ✅ Creator owns AjnaStrategy
 // ✅ Rebalance already called
 ```
@@ -115,7 +115,7 @@ User calls batchDeployStrategies(creator)
 └─────────────────────────────────────────┘
               ↓
 ┌─────────────────────────────────────────┐
-│ STEP 6: Deploy CreatorCharmStrategyV2   │
+│ STEP 6: Deploy CreatorCharmStrategy     │
 │ Owner = creator                         │
 └─────────────────────────────────────────┘
               ↓
@@ -143,7 +143,7 @@ Rebalance already executed
 | Contract | Owner | When |
 |----------|-------|------|
 | **CharmAlphaVaultDeploy** | Creator | ✅ Immediate (no acceptance needed) |
-| **CreatorCharmStrategyV2** | Creator | ✅ Immediate |
+| **CreatorCharmStrategy** | Creator | ✅ Immediate |
 | **AjnaStrategy** | Creator | ✅ Immediate |
 
 **ALL IMMEDIATE - NO MANUAL STEPS!** ✅
@@ -206,7 +206,7 @@ After deployment, verify everything worked:
 ```solidity
 // 1. Check ownership (should all be creator)
 assert(CharmAlphaVaultDeploy(charmVault).governance() == creator);
-assert(CreatorCharmStrategyV2(creatorCharmStrategy).owner() == creator);
+assert(CreatorCharmStrategy(creatorCharmStrategy).owner() == creator);
 assert(AjnaStrategy(ajnaStrategy).owner() == creator);
 
 // 2. Check strategy is set
@@ -288,11 +288,11 @@ The `owner` parameter still exists. You can pass:
 
 ## 📚 **FILES CHANGED:**
 
-1. **`contracts/charm/CharmAlphaVaultDeploy.sol`** - NEW FILE
+1. **`contracts/vault/strategies/univ3/CharmAlphaVaultDeploy.sol`** - NEW FILE
    - Simplified vault with single-step transfer
    - `initializeAndTransfer()` for atomic setup
 
-2. **`contracts/helpers/StrategyDeploymentBatcher.sol`** - UPDATED
+2. **`contracts/helpers/batchers/StrategyDeploymentBatcher.sol`** - UPDATED
    - Uses CharmAlphaVaultDeploy
    - Calls initializeAndTransfer()
    - Triggers auto-rebalance

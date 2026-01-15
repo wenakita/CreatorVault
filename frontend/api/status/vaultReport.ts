@@ -460,7 +460,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         const stratOwner = pickResult<`0x${string}`>(stratRes[base + 7])
 
         const flavor = addrOk(charmVault)
-          ? 'Charm LP (CreatorCharmStrategyV2)'
+          ? 'Charm LP (CreatorCharmStrategy)'
           : addrOk(ajnaPool)
             ? 'Ajna lending (AjnaStrategy)'
             : `Strategy #${i + 1}`

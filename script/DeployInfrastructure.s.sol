@@ -10,16 +10,16 @@ import {CreatorOVaultFactory} from "../contracts/factories/CreatorOVaultFactory.
 import {PayoutRouterFactory} from "../contracts/factories/PayoutRouterFactory.sol";
 
 // Shared Services
-import {CreatorLotteryManager} from "../contracts/lottery/CreatorLotteryManager.sol";
-import {CreatorVRFConsumerV2_5} from "../contracts/vrf/CreatorVRFConsumerV2_5.sol";
+import {CreatorLotteryManager} from "../contracts/services/lottery/CreatorLotteryManager.sol";
+import {CreatorVRFConsumerV2_5} from "../contracts/services/lottery/vrf/CreatorVRFConsumerV2_5.sol";
 
 // Per-Creator Contracts (deployed by DeployCreatorVault)
 import {CreatorOVault} from "../contracts/vault/CreatorOVault.sol";
 import {CreatorOVaultWrapper} from "../contracts/vault/CreatorOVaultWrapper.sol";
-import {CreatorShareOFT} from "../contracts/layerzero/CreatorShareOFT.sol";
+import {CreatorShareOFT} from "../contracts/services/messaging/CreatorShareOFT.sol";
 import {CreatorGaugeController} from "../contracts/governance/CreatorGaugeController.sol";
-import {CCALaunchStrategy} from "../contracts/strategies/CCALaunchStrategy.sol";
-import {CreatorOracle} from "../contracts/oracles/CreatorOracle.sol";
+import {CCALaunchStrategy} from "../contracts/vault/strategies/CCALaunchStrategy.sol";
+import {CreatorOracle} from "../contracts/services/oracles/CreatorOracle.sol";
 
 /**
  * @title DeployInfrastructure
