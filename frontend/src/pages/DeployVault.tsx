@@ -1666,12 +1666,25 @@ export function DeployVault() {
   const { address, isConnected, connector } = useAccount()
   const { connect, connectors } = useConnect()
   const { disconnect } = useDisconnect()
+  const { config: onchainKitConfig } = useOnchainKit()
   const [creatorToken, setCreatorToken] = useState('')
   const [showAdvanced, setShowAdvanced] = useState(false)
   const [deploymentVersion, setDeploymentVersion] = useState<'v1' | 'v2' | 'v3'>('v3')
 
   const [searchParams] = useSearchParams()
   const prefillToken = useMemo(() => searchParams.get('token') ?? '', [searchParams])
+  const paymasterStatus = useMemo(() => {
+    const paymasterUrl = onchainKitConfig?.paymaster ?? null
+    if (!paymasterUrl || typeof paymasterUrl !== 'string') {
+      return { ok: false, hint: 'missing' }
+    }
+    try {
+      const url = new URL(paymasterUrl)
+      return { ok: true, hint: url.host }
+    } catch {
+      return { ok: true, hint: 'configured' }
+    }
+  }, [onchainKitConfig?.paymaster])
 
   useEffect(() => {
     if (!prefillToken) return
@@ -1785,6 +1798,15 @@ export function DeployVault() {
     staleTime: 60_000,
     retry: 0,
   })
+  const entryPointBytecodeQuery = useQuery({
+    queryKey: ['bytecode', 'entryPointV06', COINBASE_ENTRYPOINT_V06],
+    enabled: !!publicClient,
+    queryFn: async () => {
+      return await publicClient!.getBytecode({ address: COINBASE_ENTRYPOINT_V06 as Address })
+    },
+    staleTime: 60_000,
+    retry: 0,
+  })
 
   const detectedSmartWalletContract = useMemo(() => {
     const code = smartWalletBytecodeQuery.data
@@ -1792,6 +1814,10 @@ export function DeployVault() {
     if (!code || code === '0x') return null
     return detectedSmartWallet
   }, [detectedSmartWallet, smartWalletBytecodeQuery.data])
+  const entryPointV06Ready = useMemo(() => {
+    const code = entryPointBytecodeQuery.data
+    return !!code && code !== '0x'
+  }, [entryPointBytecodeQuery.data])
 
   const autofillRef = useRef<{ tokenFor?: string }>({})
   const addressLc = (address ?? '').toLowerCase()
@@ -2193,9 +2219,18 @@ export function DeployVault() {
       hint: smartWalletPreflightOk ? 'EntryPoint v0.6' : 'no EntryPoint',
     },
     {
+      label: 'EntryPoint v0.6 deployed',
+      ok: entryPointV06Ready,
+      hint: entryPointBytecodeQuery.isFetching
+        ? 'checking'
+        : entryPointV06Ready
+          ? shortAddress(COINBASE_ENTRYPOINT_V06)
+          : 'no bytecode',
+    },
+    {
       label: 'Paymaster configured',
-      ok: Boolean(onchainKitConfig?.paymaster),
-      hint: onchainKitConfig?.paymaster ? 'CDP paymaster' : 'missing',
+      ok: paymasterStatus.ok,
+      hint: paymasterStatus.hint,
     },
     {
       label: 'VRF consumer configured',
