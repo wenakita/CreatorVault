@@ -46,7 +46,7 @@ import {
   fetchDeployNonce,
   preflightErc1271Signature,
 } from '@/lib/deploy/deployAuthorization'
-import { buildPermit2PermitTransferFrom } from '@/lib/deploy/permit2'
+import { appendPermit2SignatureType, buildPermit2PermitTransferFrom } from '@/lib/deploy/permit2'
 
 const MIN_FIRST_DEPOSIT = 50_000_000n * 10n ** 18n
 const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000' as const
@@ -942,29 +942,31 @@ function DeployVaultBatcher({
 
           const deadline = BigInt(Math.floor(Date.now() / 1000) + 60 * 10) // 10 minutes
 
-          const permitSig = (await walletClient.signTypedData({
-            account: (walletClient as any).account,
-            domain: { name: 'Permit2', version: '1', chainId: base.id, verifyingContract: permit2 },
-            types: {
-              TokenPermissions: [
-                { name: 'token', type: 'address' },
-                { name: 'amount', type: 'uint256' },
-              ],
-              PermitTransferFrom: [
-                { name: 'permitted', type: 'TokenPermissions' },
-                { name: 'spender', type: 'address' },
-                { name: 'nonce', type: 'uint256' },
-                { name: 'deadline', type: 'uint256' },
-              ],
-            },
-            primaryType: 'PermitTransferFrom',
-            message: {
-              permitted: { token: creatorToken, amount: shortfall },
-              spender: owner, // smart wallet will call Permit2 inside executeBatch
-              nonce,
-              deadline,
-            },
-          })) as Hex
+          const permitSig = appendPermit2SignatureType(
+            (await walletClient.signTypedData({
+              account: (walletClient as any).account,
+              domain: { name: 'Permit2', version: '1', chainId: base.id, verifyingContract: permit2 },
+              types: {
+                TokenPermissions: [
+                  { name: 'token', type: 'address' },
+                  { name: 'amount', type: 'uint256' },
+                ],
+                PermitTransferFrom: [
+                  { name: 'permitted', type: 'TokenPermissions' },
+                  { name: 'spender', type: 'address' },
+                  { name: 'nonce', type: 'uint256' },
+                  { name: 'deadline', type: 'uint256' },
+                ],
+              },
+              primaryType: 'PermitTransferFrom',
+              message: {
+                permitted: { token: creatorToken, amount: shortfall },
+                spender: owner, // smart wallet will call Permit2 inside executeBatch
+                nonce,
+                deadline,
+              },
+            })) as Hex,
+          )
 
           calls.push({
             target: permit2,
@@ -1183,13 +1185,15 @@ function DeployVaultBatcher({
           ttlSeconds: 20 * 60,
         })
 
-        const permitSig = (await walletClient.signTypedData({
-          account: (walletClient as any).account,
-          domain: signTypedDataArgs.domain,
-          types: signTypedDataArgs.types,
-          primaryType: signTypedDataArgs.primaryType,
-          message: signTypedDataArgs.message,
-        })) as Hex
+        const permitSig = appendPermit2SignatureType(
+          (await walletClient.signTypedData({
+            account: (walletClient as any).account,
+            domain: signTypedDataArgs.domain,
+            types: signTypedDataArgs.types,
+            primaryType: signTypedDataArgs.primaryType,
+            message: signTypedDataArgs.message,
+          })) as Hex,
+        )
 
         calls.push({
           to: batcherAddress,
@@ -1314,29 +1318,31 @@ function DeployVaultBatcher({
         const nonce = (0n << 8n) | BigInt(bitPos)
         const deadline = BigInt(Math.floor(Date.now() / 1000) + 60 * 20) // 20 minutes
 
-        const signature = (await walletClient.signTypedData({
-          account: (walletClient as any).account,
-          domain: { name: 'Permit2', version: '1', chainId: base.id, verifyingContract: permit2 },
-          types: {
-            TokenPermissions: [
-              { name: 'token', type: 'address' },
-              { name: 'amount', type: 'uint256' },
-            ],
-            PermitTransferFrom: [
-              { name: 'permitted', type: 'TokenPermissions' },
-              { name: 'spender', type: 'address' },
-              { name: 'nonce', type: 'uint256' },
-              { name: 'deadline', type: 'uint256' },
-            ],
-          },
-          primaryType: 'PermitTransferFrom',
-          message: {
-            permitted: { token: creatorToken, amount: depositAmount },
-            spender: batcherAddress,
-            nonce,
-            deadline,
-          },
-        })) as Hex
+        const signature = appendPermit2SignatureType(
+          (await walletClient.signTypedData({
+            account: (walletClient as any).account,
+            domain: { name: 'Permit2', version: '1', chainId: base.id, verifyingContract: permit2 },
+            types: {
+              TokenPermissions: [
+                { name: 'token', type: 'address' },
+                { name: 'amount', type: 'uint256' },
+              ],
+              PermitTransferFrom: [
+                { name: 'permitted', type: 'TokenPermissions' },
+                { name: 'spender', type: 'address' },
+                { name: 'nonce', type: 'uint256' },
+                { name: 'deadline', type: 'uint256' },
+              ],
+            },
+            primaryType: 'PermitTransferFrom',
+            message: {
+              permitted: { token: creatorToken, amount: depositAmount },
+              spender: batcherAddress,
+              nonce,
+              deadline,
+            },
+          })) as Hex,
+        )
 
         calls.push({
           to: batcherAddress,

@@ -65,6 +65,11 @@ export type Permit2PermitTransferFrom = {
   deadline: bigint
 }
 
+export function appendPermit2SignatureType(signature: Hex, type: 'eip712' | 'eth_sign' = 'eip712'): Hex {
+  const suffix = type === 'eip712' ? '00' : '01'
+  return `${signature}${suffix}` as Hex
+}
+
 export function normalizeAddress(value: unknown): Address | null {
   if (typeof value !== 'string') return null
   const v = value.trim()
