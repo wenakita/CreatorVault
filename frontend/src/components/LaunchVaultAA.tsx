@@ -16,6 +16,7 @@ import { motion } from 'framer-motion';
 import { Zap } from 'lucide-react';
 import { logger } from '@/lib/logger';
 import { CONTRACTS } from '@/config/contracts';
+import { resolveCdpPaymasterUrl } from '@/lib/aa/cdp';
 
 const VAULT_ACTIVATION_BATCHER = (CONTRACTS.vaultActivationBatcher ??
   '0x0000000000000000000000000000000000000000') as Address;
@@ -87,7 +88,8 @@ export function LaunchVaultAA({
       const requiredRaiseBigInt = parseEther(requiredRaise);
 
       // Optional paymaster sponsorship (Coinbase CDP via OnchainKitProvider).
-      const paymasterUrl = onchainKitConfig?.paymaster ?? null;
+      const cdpApiKey = import.meta.env.VITE_CDP_API_KEY as string | undefined;
+      const paymasterUrl = resolveCdpPaymasterUrl(onchainKitConfig?.paymaster ?? null, cdpApiKey);
       const capabilities =
         paymasterUrl && typeof paymasterUrl === 'string'
           ? ({ paymasterService: { url: paymasterUrl } } as const)

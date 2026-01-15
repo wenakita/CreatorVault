@@ -33,6 +33,7 @@ import { getFarcasterUserByFid } from '@/lib/neynar-api'
 import { resolveCreatorIdentity } from '@/lib/identity/creatorIdentity'
 import { DEPLOY_BYTECODE } from '@/deploy/bytecode.generated'
 import { sendCoinbaseSmartWalletUserOperation } from '@/lib/aa/coinbaseErc4337'
+import { resolveCdpPaymasterUrl } from '@/lib/aa/cdp'
 import {
   normalizeUnderlyingSymbol,
   toShareName,
@@ -657,7 +658,8 @@ function DeployVaultBatcher({
 
   // Optional gas sponsorship (EIP-4337 paymaster) for EIP-5792 `wallet_sendCalls`.
   // See docs/aa/notes.md for the AA mental model (EntryPoint + bundler + paymaster).
-  const paymasterUrl = onchainKitConfig?.paymaster ?? null
+  const cdpApiKey = import.meta.env.VITE_CDP_API_KEY as string | undefined
+  const paymasterUrl = resolveCdpPaymasterUrl(onchainKitConfig?.paymaster ?? null, cdpApiKey)
   const capabilities =
     paymasterUrl && typeof paymasterUrl === 'string'
       ? ({ paymasterService: { url: paymasterUrl } } as const)
@@ -1061,10 +1063,7 @@ function DeployVaultBatcher({
         // ===========================================
         // If CDP bundler/paymaster is configured, send a UserOperation via EntryPoint v0.6.
         // This avoids direct EOA tx execution and enables sponsorship.
-        const cdpApiKey = import.meta.env.VITE_CDP_API_KEY as string | undefined
-        const cdpBundlerUrl =
-          (paymasterUrl && typeof paymasterUrl === 'string' ? paymasterUrl : null) ??
-          (cdpApiKey ? `https://api.developer.coinbase.com/rpc/v1/base/${cdpApiKey}` : null)
+        const cdpBundlerUrl = paymasterUrl
 
         if (cdpBundlerUrl) {
           try {
