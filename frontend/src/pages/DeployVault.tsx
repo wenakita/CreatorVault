@@ -212,6 +212,16 @@ const COINBASE_SMART_WALLET_EXECUTE_BATCH_ABI = [
   },
 ] as const
 
+const COIN_PAYOUT_RECIPIENT_ABI = [
+  {
+    type: 'function',
+    name: 'setPayoutRecipient',
+    stateMutability: 'nonpayable',
+    inputs: [{ name: 'newPayoutRecipient', type: 'address' }],
+    outputs: [],
+  },
+] as const
+
 const PERMIT2_VIEW_ABI = [
   {
     type: 'function',
@@ -857,7 +867,7 @@ function DeployVaultBatcher({
 
       const depositAmount = MIN_FIRST_DEPOSIT
       const auctionSteps = encodeUniswapCcaLinearSteps(DEFAULT_CCA_DURATION_BLOCKS)
-      const payoutForDeploy = (currentPayoutRecipient ?? expectedGauge) as Address
+      const payoutForDeploy = ((payoutMismatch ? expectedGauge : currentPayoutRecipient) ?? expectedGauge) as Address
 
       // Ensure Permit2 address matches the batcher config (defensive).
       const permit2 = (await publicClient.readContract({
@@ -867,12 +877,6 @@ function DeployVaultBatcher({
       })) as Address
 
       const isOperatorSubmit = connected.toLowerCase() !== owner.toLowerCase()
-
-      // We treat payoutRecipient wiring as identity-critical. Do not auto-mutate it during deploy.
-      // If it is mismatched, require the user to fix it explicitly first.
-      if (payoutMismatch) {
-        throw new Error(`Payout recipient mismatch. Set payoutRecipient to ${expectedGauge} before deploying.`)
-      }
 
       // =================================
       // Smart wallet executeBatch path (EOA owner submits, SW executes)
@@ -974,6 +978,18 @@ function DeployVaultBatcher({
                 connected,
                 permitSig,
               ],
+            }),
+          })
+        }
+
+        if (payoutMismatch) {
+          calls.push({
+            target: creatorToken,
+            value: 0n,
+            data: encodeFunctionData({
+              abi: COIN_PAYOUT_RECIPIENT_ABI,
+              functionName: 'setPayoutRecipient',
+              args: [expectedGauge],
             }),
           })
         }
@@ -1233,6 +1249,24 @@ function DeployVaultBatcher({
 
         onSuccess(expected)
         return
+      }
+
+      if (payoutMismatch) {
+        if (connected.toLowerCase() !== owner.toLowerCase()) {
+          throw new Error('Payout recipient update requires the identity wallet. Connect it to continue.')
+        }
+        const hash = await walletClient.sendTransaction({
+          account: (walletClient as any).account,
+          chain: base as any,
+          to: creatorToken,
+          data: encodeFunctionData({
+            abi: COIN_PAYOUT_RECIPIENT_ABI,
+            functionName: 'setPayoutRecipient',
+            args: [expectedGauge],
+          }),
+          value: 0n,
+        })
+        await publicClient.waitForTransactionReceipt({ hash })
       }
 
       const calls: { to: Address; data: Hex; value?: bigint }[] = []
@@ -1534,19 +1568,29 @@ function DeployVaultBatcher({
     }
   }
 
+  const canAutoUpdatePayoutRecipient = !payoutMismatch || isExecuteBatchPath || connectedLc === ownerLc
+
   const disabled =
     busy ||
     expectedQuery.isLoading ||
     !expected ||
-    payoutMismatch ||
+    !canAutoUpdatePayoutRecipient ||
     (isExecuteBatchPath && !executeBatchFunding.ready)
 
   return (
     <div className="space-y-3">
       {payoutMismatch ? (
         <div className="text-[11px] text-amber-300/80">
-          Payout recipient mismatch. Set payoutRecipient to{' '}
-          <span className="font-mono text-amber-200">{shortAddress(expectedGauge!)}</span> before deploying.
+          {canAutoUpdatePayoutRecipient ? (
+            <>
+              Payout recipient will update to <span className="font-mono text-amber-200">{shortAddress(expectedGauge!)}</span> during deploy.
+            </>
+          ) : (
+            <>
+              Payout recipient must be updated to{' '}
+              <span className="font-mono text-amber-200">{shortAddress(expectedGauge!)}</span> by the identity wallet.
+            </>
+          )}
         </div>
       ) : null}
 
@@ -2142,6 +2186,16 @@ export function DeployVault() {
       label: 'CreatorVaultBatcher configured',
       ok: creatorVaultBatcherConfigured,
       hint: creatorVaultBatcherConfigured && creatorVaultBatcherAddress ? shortAddress(creatorVaultBatcherAddress) : 'missing',
+    },
+    {
+      label: 'Smart wallet batching enabled',
+      ok: smartWalletPreflightOk,
+      hint: smartWalletPreflightOk ? 'EntryPoint v0.6' : 'no EntryPoint',
+    },
+    {
+      label: 'Paymaster configured',
+      ok: Boolean(onchainKitConfig?.paymaster),
+      hint: onchainKitConfig?.paymaster ? 'CDP paymaster' : 'missing',
     },
     {
       label: 'VRF consumer configured',

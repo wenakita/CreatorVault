@@ -48,6 +48,18 @@ Use `LaunchVaultAA` (calls `VaultActivationBatcher`) when the per-vault contract
 
 ---
 
+## 🧠 **AA (ERC-4337) Readiness**
+
+We use smart-wallet batching + optional paymaster sponsorship:
+
+- **Bundling:** `wallet_sendCalls` via wagmi `useSendCalls` (EIP-5792).
+- **AA EntryPoint:** Coinbase Smart Wallet preflight checks EntryPoint v0.6 (`0x5FF1…2789`).
+- **Paymaster:** Optional; configured via `VITE_CDP_PAYMASTER_URL` (or derived from `VITE_CDP_API_KEY`).
+
+If paymaster is unset, deploys still work but gas is paid by the wallet.
+
+---
+
 ## 🎯 **CREATOR JOURNEY**
 
 ```
