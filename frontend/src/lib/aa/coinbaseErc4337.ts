@@ -50,15 +50,15 @@ async function findCoinbaseSmartWalletOwnerIndex(params: {
   smartWallet: Address
   ownerAddress: Address
   maxScan?: number
-}): Promise<number | null> {
-  const { publicClient, smartWallet, ownerAddress, maxScan = 16 } = params
+}): Promise<{ ownerIndex: number | null; ownerCount: number }> {
+  const { publicClient, smartWallet, ownerAddress, maxScan = 64 } = params
   const countRaw = (await publicClient.readContract({
     address: smartWallet,
     abi: COINBASE_SMART_WALLET_OWNERS_ABI,
     functionName: 'ownerCount',
   })) as bigint
   const count = Number(countRaw)
-  if (!Number.isFinite(count) || count <= 0) return null
+  if (!Number.isFinite(count) || count <= 0) return { ownerIndex: null, ownerCount: 0 }
 
   const expected = asOwnerBytes(ownerAddress).toLowerCase()
   const limit = Math.min(count, Math.max(1, maxScan))
@@ -69,9 +69,9 @@ async function findCoinbaseSmartWalletOwnerIndex(params: {
       functionName: 'ownerAtIndex',
       args: [BigInt(i)],
     })) as Hex
-    if (String(b).toLowerCase() === expected) return i
+    if (String(b).toLowerCase() === expected) return { ownerIndex: i, ownerCount: count }
   }
-  return null
+  return { ownerIndex: null, ownerCount: count }
 }
 
 function createWalletBackedLocalAccount(params: { walletClient: WalletClientLike; address: Address }) {
@@ -112,8 +112,13 @@ export async function sendCoinbaseSmartWalletUserOperation(params: {
   const { publicClient, walletClient, bundlerUrl, smartWallet, ownerAddress, calls, version = '1' } = params
   if (!bundlerUrl) throw new Error('Missing bundler URL')
 
-  const ownerIndex = await findCoinbaseSmartWalletOwnerIndex({ publicClient, smartWallet, ownerAddress })
-  if (ownerIndex === null) {
+  const { ownerIndex, ownerCount } = await findCoinbaseSmartWalletOwnerIndex({
+    publicClient,
+    smartWallet,
+    ownerAddress,
+  })
+  const resolvedOwnerIndex = ownerIndex ?? (ownerCount === 1 ? 0 : null)
+  if (resolvedOwnerIndex === null) {
     throw new Error('Connected wallet is not an onchain owner of this Coinbase Smart Wallet.')
   }
 
@@ -122,7 +127,7 @@ export async function sendCoinbaseSmartWalletUserOperation(params: {
     client: publicClient as any,
     address: smartWallet,
     owners: [owner],
-    ownerIndex,
+    ownerIndex: resolvedOwnerIndex,
     version,
   })
 
@@ -145,4 +150,3 @@ export async function sendCoinbaseSmartWalletUserOperation(params: {
   const receipt = await waitForUserOperationReceipt(bundlerClient, { hash: userOpHash, timeout: 120_000 })
   return { userOpHash, transactionHash: receipt.receipt.transactionHash as Hex }
 }
-
