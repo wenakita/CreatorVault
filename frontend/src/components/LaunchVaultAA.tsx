@@ -5,18 +5,19 @@
  * Uses `CONTRACTS.vaultActivationBatcher` (set via `VITE_VAULT_ACTIVATION_BATCHER` in Vercel).
  */
 
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAccount, usePublicClient, useWalletClient } from 'wagmi';
 import { useSendCalls } from 'wagmi/experimental';
 import { useOnchainKit } from '@coinbase/onchainkit';
-import { encodeFunctionData, erc20Abi, parseEther, type Address, type Hex } from 'viem';
+import { encodeFunctionData, erc20Abi, isAddress, parseEther, type Address, type Hex } from 'viem';
 import { base } from 'wagmi/chains';
 import { motion } from 'framer-motion';
 import { Zap } from 'lucide-react';
 import { logger } from '@/lib/logger';
 import { CONTRACTS } from '@/config/contracts';
 import { resolveCdpPaymasterUrl } from '@/lib/aa/cdp';
+import { useZoraProfile } from '@/lib/zora/hooks';
 
 const VAULT_ACTIVATION_BATCHER = (CONTRACTS.vaultActivationBatcher ??
   '0x0000000000000000000000000000000000000000') as Address;
@@ -63,6 +64,20 @@ export function LaunchVaultAA({
   const { data: walletClient } = useWalletClient({ chainId: base.id });
   const { sendCallsAsync } = useSendCalls();
   const { config: onchainKitConfig } = useOnchainKit();
+
+  const profileQuery = useZoraProfile(address);
+  const profile = profileQuery.data;
+  const connectedSmartWallet = useMemo(() => {
+    const edges = profile?.linkedWallets?.edges ?? [];
+    for (const e of edges) {
+      const node: any = (e as any)?.node;
+      const walletType = typeof node?.walletType === 'string' ? node.walletType : '';
+      const walletAddress = typeof node?.walletAddress === 'string' ? node.walletAddress : '';
+      if (String(walletType).toUpperCase() !== 'SMART_WALLET') continue;
+      if (isAddress(walletAddress)) return walletAddress as Address;
+    }
+    return null;
+  }, [profile?.linkedWallets?.edges]);
   
   const [loading, setLoading] = useState(false);
   const [txHash, setTxHash] = useState<string | null>(null);
@@ -146,6 +161,19 @@ export function LaunchVaultAA({
 
       // Fallback: Send transactions sequentially (EOA-style).
       if (!walletClient) throw new Error('Wallet not ready');
+      if (publicClient && address && connectedSmartWallet) {
+        const [connectedCode, smartWalletCode] = await Promise.all([
+          publicClient.getBytecode({ address: address as Address }),
+          publicClient.getBytecode({ address: connectedSmartWallet }),
+        ]);
+        const connectedIsContract = !!connectedCode && connectedCode !== '0x';
+        const smartWalletIsContract = !!smartWalletCode && smartWalletCode !== '0x';
+        if (!connectedIsContract && smartWalletIsContract) {
+          throw new Error(
+            `A Zora smart wallet (${connectedSmartWallet}) is linked to this account. Please switch to your Zora smart wallet connector before continuing.`,
+          );
+        }
+      }
       logger.info('Falling back to sequential transactions');
 
       const approveTxHash = await walletClient.sendTransaction({
