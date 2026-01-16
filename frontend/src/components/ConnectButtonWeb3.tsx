@@ -138,7 +138,6 @@ function ConnectButtonWeb3Wagmi({ autoConnect = false }: { autoConnect?: boolean
   }, [
     connectAsync,
     connectors,
-    isRabbyPresent,
     miniApp.isMiniApp,
     miniAppConnector,
     preferredConnector,
