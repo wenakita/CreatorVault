@@ -9,7 +9,8 @@
 
 declare const process: { env: Record<string, string | undefined> }
 
-import { BASE_DEFAULTS, type ContractAddress } from '../../src/config/contracts.defaults'
+// NOTE: Vercel Node functions run as ESM; include `.js` extension for cross-folder imports.
+import { BASE_DEFAULTS, type ContractAddress } from '../../src/config/contracts.defaults.js'
 
 export type ApiContracts = {
   registry: ContractAddress

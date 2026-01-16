@@ -6,10 +6,11 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
+    "postbuild": "node scripts/generate-brand-icons.mjs --out dist",
     "lint": "eslint . --ext ts,tsx --max-warnings 0",
     "typecheck": "tsc --noEmit",
     "preview": "vite preview",
-    "generate:brand-icons": "node scripts/generate-brand-icons.mjs",
+    "generate:brand-icons": "node scripts/generate-brand-icons.mjs --out dist",
     "capture:miniapp-screens": "node scripts/capture-miniapp-screenshots.mjs"
   },
   "dependencies": {
@@ -54,6 +55,7 @@
     "eslint-plugin-react-refresh": "^0.4.26",
     "playwright": "^1.57.0",
     "pngjs": "^7.0.0",
+    "sharp": "^0.34.5",
     "typescript": "^5.9.3"
   },
   "pnpm": {

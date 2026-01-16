@@ -325,7 +325,7 @@ export function Status() {
 
     const canonical = document.createElement('link')
     canonical.rel = 'canonical'
-    canonical.href = 'https://erc4626.fun/status'
+    canonical.href = 'https://4626.fun/status'
     document.head.appendChild(canonical)
 
     return () => {

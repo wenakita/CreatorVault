@@ -99,6 +99,8 @@ npm run build
 | Variable | Required | Scope | Description |
 |----------|----------|-------|-------------|
 | `VITE_CDP_API_KEY` | Yes | client | Coinbase Developer Platform API key (public key / key id) |
+| `VITE_CDP_PAYMASTER_URL` | Recommended | client | Paymaster/bundler endpoint override (set to `/api/paymaster` to use same-origin proxy) |
+| `CDP_PAYMASTER_URL` | Recommended (prod) | server | Real CDP paymaster/bundler endpoint used by `/api/paymaster` (keep secret) |
 | `VITE_ZORA_PUBLIC_API_KEY` | Recommended | client | Zora public key (restrict allowed origins) |
 | `ZORA_SERVER_API_KEY` | Recommended | server | Zora server key for Vercel Functions |
 | `VITE_BASE_RPC` | No | client | Base RPC used by the browser (default: public) |

@@ -95,10 +95,10 @@ export function makeNonce(): string {
 
 export function getFarcasterDomain(): string | null {
   const raw = (process.env.FARCASTER_DOMAIN || '').trim()
-  // Default to the canonical production domain for CreatorVault (erc4626.fun).
+  // Default to the canonical production domain for CreatorVault (4626.fun).
   // This avoids shipping a broken deployment if env vars aren't configured yet,
   // while still allowing overrides for staging.
-  if (!raw) return 'erc4626.fun'
+  if (!raw) return '4626.fun'
   return raw
 }
 

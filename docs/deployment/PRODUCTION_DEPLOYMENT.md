@@ -43,7 +43,13 @@ VITE_BASE_RPC=https://mainnet.base.org
 ```bash
 # Get from https://portal.cdp.coinbase.com/
 VITE_CDP_API_KEY=your_cdp_api_key_here
-VITE_CDP_PAYMASTER_URL=...
+VITE_CDP_PAYMASTER_URL=/api/paymaster
+
+# Server-only (Vercel env var): real CDP endpoint (keep secret)
+CDP_PAYMASTER_URL=https://api.developer.coinbase.com/rpc/v1/base/<CDP_API_KEY_ID>
+
+# IMPORTANT: `/api/paymaster` enforces a SIWE session (Sign in with Ethereum).
+# Set a stable AUTH_SESSION_SECRET in Vercel and have users click "Sign in" once per session.
 ```
 
 **Optional (already hardcoded in contracts.ts):**

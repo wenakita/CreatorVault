@@ -36,8 +36,8 @@ const walletConnectProjectId = (
 const walletConnectMetadata = {
   name: 'Creator Vaults',
   description: 'Creator coin vaults on Base.',
-  url: typeof window !== 'undefined' ? window.location.origin : 'https://erc4626.fun',
-  icons: ['https://erc4626.fun/pwa-512.png'] as string[],
+  url: typeof window !== 'undefined' ? window.location.origin : 'https://4626.fun',
+  icons: ['https://4626.fun/pwa-512.png'] as string[],
 }
 
 export const wagmiConfig = createWagmiConfig({

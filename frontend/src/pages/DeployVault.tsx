@@ -833,9 +833,15 @@ function DeployVaultBatcher({
         initCode: DEPLOY_BYTECODE.OFTBootstrapRegistry as Hex,
       })
 
+      // IMPORTANT: The onchain `CreatorVaultBatcher` normalizes `shareSymbol` to lowercase
+      // when constructing the ShareOFT + Oracle init code (for deterministic addresses).
+      // We must mirror that here, otherwise `expected.*` (especially `expectedGauge`) will be wrong
+      // and we’ll set the coin payoutRecipient to an address that will never be deployed.
+      const shareSymbolDeploy = shareSymbol.toLowerCase()
+
       const shareOftArgs = encodeAbiParameters(parseAbiParameters('string,string,address,address'), [
         shareName,
-        shareSymbol,
+        shareSymbolDeploy,
         oftBootstrapRegistry,
         tempOwner,
       ])
@@ -919,7 +925,10 @@ function DeployVaultBatcher({
 
       const depositAmount = minFirstDeposit
       const auctionSteps = encodeUniswapCcaLinearSteps(DEFAULT_CCA_DURATION_BLOCKS)
-      const payoutForDeploy = ((payoutMismatch ? expectedGauge : currentPayoutRecipient) ?? expectedGauge) as Address
+      // Safety: `CreatorVaultBatcher` tries to call `CreatorCoin.setPayoutRecipient(payoutRecipient)` when non-zero.
+      // Zora Creator Coins restrict `setPayoutRecipient` to the coin owner, so that internal call reverts (msg.sender=batcher).
+      // We always pass `address(0)` to the batcher and, when needed, set payoutRecipient from the identity wallet separately.
+      const payoutForDeploy = ZERO_ADDRESS as Address
 
       const resolvePermit2 = async (): Promise<Address> => {
         if (batcherIsContract) {

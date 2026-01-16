@@ -5,7 +5,7 @@ import { useMiniAppContext } from '@/hooks'
 
 type SignManifestResult = { header: string; payload: string; signature: string }
 
-const DOMAIN = 'erc4626.fun'
+const DEFAULT_DOMAIN = '4626.fun'
 
 function tryParseJson(input: string): unknown | null {
   try {
@@ -19,6 +19,15 @@ export function AdminMiniApp() {
   const mini = useMiniAppContext()
   const [capabilities, setCapabilities] = useState<string[] | null>(null)
   const [capsError, setCapsError] = useState<string | null>(null)
+
+  const [domain, setDomain] = useState<string>(() => {
+    if (typeof window === 'undefined') return DEFAULT_DOMAIN
+    const qs = new URLSearchParams(window.location.search)
+    const fromQuery = (qs.get('domain') || '').trim()
+    if (fromQuery) return fromQuery
+    const host = (window.location.hostname || '').trim()
+    return host || DEFAULT_DOMAIN
+  })
 
   const [result, setResult] = useState<SignManifestResult | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -96,7 +105,7 @@ export function AdminMiniApp() {
     setBusy(true)
     try {
       const { sdk } = await import('@farcaster/miniapp-sdk')
-      const signed = await sdk.experimental.signManifest({ domain: DOMAIN })
+      const signed = await sdk.experimental.signManifest({ domain: domain.trim() || DEFAULT_DOMAIN })
       setResult({ header: signed.header, payload: signed.payload, signature: signed.signature })
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : 'Manifest signing failed')
@@ -117,13 +126,27 @@ export function AdminMiniApp() {
                 <div className="text-sm text-zinc-600 max-w-prose">
                   Use this page <span className="text-zinc-300">inside the Base app preview</span> to generate the{' '}
                   <span className="font-mono text-zinc-300">accountAssociation</span> block for{' '}
-                  <span className="font-mono text-zinc-300">{DOMAIN}</span>.
+                  <span className="font-mono text-zinc-300">{domain}</span>.
                 </div>
+              </div>
+
+              <div className="rounded-xl border border-white/10 bg-black/30 p-5 space-y-3">
+                <div className="text-sm text-zinc-200">Domain to sign</div>
+                <div className="text-xs text-zinc-600">
+                  This must match the <span className="font-mono text-zinc-400">canonicalDomain</span> in{' '}
+                  <span className="font-mono text-zinc-400">/.well-known/farcaster.json</span>.
+                </div>
+                <input
+                  className="w-full bg-transparent border border-white/10 rounded-lg px-3 py-2 text-sm text-zinc-200 focus:outline-none focus:border-white/20"
+                  value={domain}
+                  onChange={(e) => setDomain(e.target.value)}
+                  placeholder={DEFAULT_DOMAIN}
+                />
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <a
-                  href={`https://${DOMAIN}/.well-known/farcaster.json?t=${Date.now()}`}
+                  href={`https://${(domain.trim() || DEFAULT_DOMAIN).replace(/^https?:\/\//, '')}/.well-known/farcaster.json?t=${Date.now()}`}
                   target="_blank"
                   rel="noreferrer"
                   className="rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-sm text-zinc-200 hover:border-white/20 transition-colors inline-flex items-center justify-between"

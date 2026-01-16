@@ -11,6 +11,33 @@ CreatorVaultBatcher: 0xB695AEaD09868F287DAA38FA444B240847c50fB8
 ✅ Ready for all creators
 ```
 
+### ⚠️ **IMPORTANT: BytecodeStore v1 cannot seed the current `CreatorOVault`**
+
+The current `CreatorOVault` **creation bytecode is ~29KB**, which exceeds the single-pointer SSTORE2 limit (~24KB) used by `UniversalBytecodeStore` v1.
+
+If you run `SeedUniversalBytecodeStore` against the v1 store, it will revert with:
+
+- `SSTORE2_WRITE_FAILED`
+
+**Fix:** deploy the Phase-2 v2 infra (chunked bytecode store) + a new `CreatorVaultBatcher` wired to it, then seed the v2 store:
+
+```bash
+export BASE_RPC_URL="https://mainnet.base.org"
+
+# 1) Deploy v2 store + v2 deployer + new batcher (Base mainnet)
+forge script script/DeployBaseMainnetPhase2V2.s.sol:DeployBaseMainnetPhase2V2 --rpc-url "$BASE_RPC_URL" --broadcast
+
+# 2) Seed the v2 store with the bytecode used by the frontend
+./script/generate_frontend_deploy_bytecode.sh
+UNIVERSAL_BYTECODE_STORE=<v2_store_address> \
+  forge script script/SeedUniversalBytecodeStore.s.sol:SeedUniversalBytecodeStore --rpc-url "$BASE_RPC_URL" --broadcast
+```
+
+Then update the frontend defaults (or env overrides) to point at the new v2 infra:
+- `universalBytecodeStore`
+- `universalCreate2DeployerFromStore`
+- `creatorVaultBatcher`
+
 Note: the address above is the currently deployed activation batcher for `batchActivate`. Operator-safe Permit2 activation requires deploying the updated batcher build (constructor includes `permit2`).
 
 ---
@@ -54,7 +81,7 @@ We use smart-wallet batching + optional paymaster sponsorship:
 
 - **Bundling:** `wallet_sendCalls` via wagmi `useSendCalls` (EIP-5792).
 - **AA EntryPoint:** Coinbase Smart Wallet preflight checks EntryPoint v0.6 (`0x5FF1…2789`).
-- **Paymaster:** Optional; configured via `VITE_CDP_PAYMASTER_URL` (or derived from `VITE_CDP_API_KEY`).
+- **Paymaster:** Optional; configured via `VITE_CDP_PAYMASTER_URL` (recommended: `/api/paymaster` proxy).
 
 If paymaster is unset, deploys still work but gas is paid by the wallet.
 
