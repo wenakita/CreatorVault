@@ -688,6 +688,21 @@ function DeployVaultBatcher({
   const ownerLc = owner.toLowerCase()
   const isExecuteBatchPath = executeBatchEligible && connectedLc.length > 0 && connectedLc !== ownerLc
 
+  const batcherBytecodeQuery = useQuery({
+    queryKey: ['bytecode', 'batcher', batcherAddress],
+    enabled: !!publicClient && !!batcherAddress,
+    queryFn: async () => {
+      return await publicClient!.getBytecode({ address: batcherAddress as Address })
+    },
+    staleTime: 60_000,
+    retry: 0,
+  })
+
+  const batcherIsContract = useMemo(() => {
+    const code = batcherBytecodeQuery.data
+    return !!code && code !== '0x'
+  }, [batcherBytecodeQuery.data])
+
   const connectedBytecodeQuery = useQuery({
     queryKey: ['bytecode', 'connected', connectedWalletAddress],
     enabled: !!publicClient && !!connectedWalletAddress,
@@ -723,7 +738,7 @@ function DeployVaultBatcher({
     address: batcherAddress ? (batcherAddress as `0x${string}`) : undefined,
     abi: CREATOR_VAULT_BATCHER_ABI,
     functionName: 'permit2',
-    query: { enabled: Boolean(batcherAddress && isExecuteBatchPath) },
+    query: { enabled: Boolean(batcherAddress && batcherIsContract && isExecuteBatchPath) },
   })
   const permit2Address = useMemo(() => {
     const p = permit2FromBatcher ? String(permit2FromBatcher) : ''
@@ -901,12 +916,25 @@ function DeployVaultBatcher({
       const auctionSteps = encodeUniswapCcaLinearSteps(DEFAULT_CCA_DURATION_BLOCKS)
       const payoutForDeploy = ((payoutMismatch ? expectedGauge : currentPayoutRecipient) ?? expectedGauge) as Address
 
+      const resolvePermit2 = async (): Promise<Address> => {
+        if (batcherIsContract) {
+          try {
+            const res = (await publicClient.readContract({
+              address: batcherAddress,
+              abi: CREATOR_VAULT_BATCHER_ABI,
+              functionName: 'permit2',
+            })) as Address
+            if (isAddress(res) && res !== ZERO_ADDRESS) return res
+          } catch {
+            // fall back to config
+          }
+        }
+        if (permit2FromConfig) return permit2FromConfig
+        throw new Error('Permit2 is not configured for this deploy. Set VITE_PERMIT2 or check batcher deployment.')
+      }
+
       // Ensure Permit2 address matches the batcher config (defensive).
-      const permit2 = (await publicClient.readContract({
-        address: batcherAddress,
-        abi: CREATOR_VAULT_BATCHER_ABI,
-        functionName: 'permit2',
-      })) as Address
+      const permit2 = await resolvePermit2()
 
       const isOperatorSubmit = connected.toLowerCase() !== owner.toLowerCase()
 
@@ -1754,7 +1782,7 @@ export function DeployVault() {
     } catch {
       return { ok: true, hint: 'configured' }
     }
-  }, [onchainKitConfig?.paymaster])
+  }, [onchainKitConfig?.apiKey, onchainKitConfig?.paymaster])
 
   useEffect(() => {
     if (!prefillToken) return
