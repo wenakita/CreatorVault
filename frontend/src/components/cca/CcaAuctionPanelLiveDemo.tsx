@@ -83,7 +83,7 @@ export function CcaAuctionPanelLiveDemo({
     } catch {
       return '—'
     }
-  }, [mode, maxPriceEthPerToken])
+  }, [clearingPrice, mode, maxPriceEthPerToken])
 
   const estTokens = useMemo(() => {
     if (!spendWei || spendWei === 0n) return null
@@ -486,4 +486,3 @@ export function CcaAuctionPanelLiveDemo({
     </div>
   )
 }
-

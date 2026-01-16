@@ -628,6 +628,7 @@ function DeployVaultBatcher({
   creatorToken,
   owner,
   connectedWalletAddress,
+  connectedSmartWalletAddress,
   executeBatchEligible = false,
   depositSymbol,
   shareSymbol,
@@ -641,6 +642,7 @@ function DeployVaultBatcher({
   creatorToken: Address
   owner: Address
   connectedWalletAddress: Address | null
+  connectedSmartWalletAddress: Address | null
   executeBatchEligible?: boolean
   depositSymbol: string
   shareSymbol: string
@@ -686,6 +688,48 @@ function DeployVaultBatcher({
   const ownerLc = owner.toLowerCase()
   const isExecuteBatchPath = executeBatchEligible && connectedLc.length > 0 && connectedLc !== ownerLc
 
+  const batcherBytecodeQuery = useQuery({
+    queryKey: ['bytecode', 'batcher', batcherAddress],
+    enabled: !!publicClient && !!batcherAddress,
+    queryFn: async () => {
+      return await publicClient!.getBytecode({ address: batcherAddress as Address })
+    },
+    staleTime: 60_000,
+    retry: 0,
+  })
+
+  const batcherIsContract = useMemo(() => {
+    const code = batcherBytecodeQuery.data
+    return !!code && code !== '0x'
+  }, [batcherBytecodeQuery.data])
+
+  const connectedBytecodeQuery = useQuery({
+    queryKey: ['bytecode', 'connected', connectedWalletAddress],
+    enabled: !!publicClient && !!connectedWalletAddress,
+    queryFn: async () => {
+      return await publicClient!.getBytecode({ address: connectedWalletAddress as Address })
+    },
+    staleTime: 60_000,
+    retry: 0,
+  })
+
+  const connectedIsContract = useMemo(() => {
+    const code = connectedBytecodeQuery.data
+    return !!code && code !== '0x'
+  }, [connectedBytecodeQuery.data])
+
+  const sequentialBlockerMessage = useMemo(() => {
+    if (connectedIsContract) return null
+    if (!connectedSmartWalletAddress) return null
+    return `A Zora smart wallet (${connectedSmartWalletAddress}) is linked to this account. Please switch to your Zora smart wallet connector before continuing.`
+  }, [connectedIsContract, connectedSmartWalletAddress])
+
+  const assertSequentialAllowed = () => {
+    if (sequentialBlockerMessage) {
+      throw new Error(sequentialBlockerMessage)
+    }
+  }
+
   const permit2FromConfig = useMemo(() => {
     const p = String(CONTRACTS.permit2 ?? '')
     return isAddress(p) ? (p as Address) : null
@@ -694,7 +738,7 @@ function DeployVaultBatcher({
     address: batcherAddress ? (batcherAddress as `0x${string}`) : undefined,
     abi: CREATOR_VAULT_BATCHER_ABI,
     functionName: 'permit2',
-    query: { enabled: Boolean(batcherAddress && isExecuteBatchPath) },
+    query: { enabled: Boolean(batcherAddress && batcherIsContract && isExecuteBatchPath) },
   })
   const permit2Address = useMemo(() => {
     const p = permit2FromBatcher ? String(permit2FromBatcher) : ''
@@ -872,12 +916,25 @@ function DeployVaultBatcher({
       const auctionSteps = encodeUniswapCcaLinearSteps(DEFAULT_CCA_DURATION_BLOCKS)
       const payoutForDeploy = ((payoutMismatch ? expectedGauge : currentPayoutRecipient) ?? expectedGauge) as Address
 
+      const resolvePermit2 = async (): Promise<Address> => {
+        if (batcherIsContract) {
+          try {
+            const res = (await publicClient.readContract({
+              address: batcherAddress,
+              abi: CREATOR_VAULT_BATCHER_ABI,
+              functionName: 'permit2',
+            })) as Address
+            if (isAddress(res) && res !== ZERO_ADDRESS) return res
+          } catch {
+            // fall back to config
+          }
+        }
+        if (permit2FromConfig) return permit2FromConfig
+        throw new Error('Permit2 is not configured for this deploy. Set VITE_PERMIT2 or check batcher deployment.')
+      }
+
       // Ensure Permit2 address matches the batcher config (defensive).
-      const permit2 = (await publicClient.readContract({
-        address: batcherAddress,
-        abi: CREATOR_VAULT_BATCHER_ABI,
-        functionName: 'permit2',
-      })) as Address
+      const permit2 = await resolvePermit2()
 
       const isOperatorSubmit = connected.toLowerCase() !== owner.toLowerCase()
 
@@ -1268,6 +1325,7 @@ function DeployVaultBatcher({
           // sequential fallback
         }
 
+        assertSequentialAllowed()
         for (const c of calls) {
           const hash = await walletClient.sendTransaction({
             account: (walletClient as any).account,
@@ -1417,6 +1475,7 @@ function DeployVaultBatcher({
         }
 
         if (!walletClient) throw new Error('Wallet not ready')
+        assertSequentialAllowed()
         for (const c of calls) {
           const hash = await walletClient.sendTransaction({
             account: (walletClient as any).account,
@@ -1488,6 +1547,7 @@ function DeployVaultBatcher({
         // sequential fallback
       }
 
+      assertSequentialAllowed()
       for (const c of fallbackCalls) {
         const hash = await walletClient.sendTransaction({
           account: (walletClient as any).account,
@@ -1722,7 +1782,7 @@ export function DeployVault() {
     } catch {
       return { ok: true, hint: 'configured' }
     }
-  }, [onchainKitConfig?.paymaster])
+  }, [onchainKitConfig?.apiKey, onchainKitConfig?.paymaster])
 
   useEffect(() => {
     if (!prefillToken) return
@@ -2931,6 +2991,7 @@ export function DeployVault() {
                     creatorToken={creatorToken as Address}
                     owner={identity.canonicalIdentity.address as Address}
                     connectedWalletAddress={connectedWalletAddress}
+                    connectedSmartWalletAddress={detectedSmartWalletContract}
                     executeBatchEligible={executeBatchEligible}
                     depositSymbol={underlyingSymbolUpper || 'TOKENS'}
                     shareSymbol={derivedShareSymbol}
