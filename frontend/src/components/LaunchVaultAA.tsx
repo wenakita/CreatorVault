@@ -17,6 +17,7 @@ import { Zap } from 'lucide-react';
 import { logger } from '@/lib/logger';
 import { CONTRACTS } from '@/config/contracts';
 import { resolveCdpPaymasterUrl } from '@/lib/aa/cdp';
+import { sendCoinbaseSmartWalletUserOperation } from '@/lib/aa/coinbaseErc4337';
 import { useZoraProfile } from '@/lib/zora/hooks';
 
 const VAULT_ACTIVATION_BATCHER = (CONTRACTS.vaultActivationBatcher ??
@@ -141,6 +142,29 @@ export function LaunchVaultAA({
           value: 0n
         }
       ];
+
+      // Prefer true ERC-4337 flow when a smart wallet is linked + paymaster is available.
+      if (paymasterUrl && publicClient && walletClient && address && connectedSmartWallet) {
+        const [connectedCode, smartWalletCode] = await Promise.all([
+          publicClient.getBytecode({ address: address as Address }),
+          publicClient.getBytecode({ address: connectedSmartWallet }),
+        ]);
+        const connectedIsContract = !!connectedCode && connectedCode !== '0x';
+        const smartWalletIsContract = !!smartWalletCode && smartWalletCode !== '0x';
+        if (!connectedIsContract && smartWalletIsContract) {
+          const res = await sendCoinbaseSmartWalletUserOperation({
+            publicClient,
+            walletClient,
+            bundlerUrl: paymasterUrl,
+            smartWallet: connectedSmartWallet,
+            ownerAddress: address as Address,
+            calls: transactions.map((tx) => ({ to: tx.to, value: tx.value, data: tx.data })),
+            version: '1',
+          });
+          setTxHash(res.transactionHash);
+          return;
+        }
+      }
 
       // Preferred: wallet_sendCalls atomic batch (Smart Wallets + paymaster support).
       try {
