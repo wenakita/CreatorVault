@@ -630,6 +630,8 @@ function DeployVaultBatcher({
   connectedWalletAddress,
   connectedSmartWalletAddress,
   executeBatchEligible = false,
+  minFirstDeposit,
+  tokenDecimals,
   depositSymbol,
   shareSymbol,
   shareName,
@@ -644,6 +646,8 @@ function DeployVaultBatcher({
   connectedWalletAddress: Address | null
   connectedSmartWalletAddress: Address | null
   executeBatchEligible?: boolean
+  minFirstDeposit: bigint
+  tokenDecimals: number | null
   depositSymbol: string
   shareSymbol: string
   shareName: string
@@ -667,9 +671,10 @@ function DeployVaultBatcher({
       ? ({ paymasterService: { url: paymasterUrl } } as const)
       : undefined
 
+  const resolvedTokenDecimals = typeof tokenDecimals === 'number' ? tokenDecimals : 18
   const formatDeposit = (raw?: bigint): string => {
     if (raw === undefined) return '—'
-    const s = formatUnits(raw, 18)
+    const s = formatUnits(raw, resolvedTokenDecimals)
     const n = Number(s)
     if (Number.isFinite(n)) return n.toLocaleString(undefined, { maximumFractionDigits: 2 })
     return s
@@ -776,9 +781,9 @@ function DeployVaultBatcher({
   const executeBatchShortfall = useMemo(() => {
     if (!isExecuteBatchPath) return null
     if (typeof smartWalletTokenBalance !== 'bigint') return null
-    if (smartWalletTokenBalance >= MIN_FIRST_DEPOSIT) return 0n
-    return MIN_FIRST_DEPOSIT - smartWalletTokenBalance
-  }, [isExecuteBatchPath, smartWalletTokenBalance])
+    if (smartWalletTokenBalance >= minFirstDeposit) return 0n
+    return minFirstDeposit - smartWalletTokenBalance
+  }, [isExecuteBatchPath, minFirstDeposit, smartWalletTokenBalance])
 
   const codeIds = useMemo(() => {
     return {
@@ -912,7 +917,7 @@ function DeployVaultBatcher({
       const connected = (((walletClient as any).account?.address ?? (walletClient as any).account) as Address | null) ?? null
       if (!connected) throw new Error('Wallet not ready')
 
-      const depositAmount = MIN_FIRST_DEPOSIT
+      const depositAmount = minFirstDeposit
       const auctionSteps = encodeUniswapCcaLinearSteps(DEFAULT_CCA_DURATION_BLOCKS)
       const payoutForDeploy = ((payoutMismatch ? expectedGauge : currentPayoutRecipient) ?? expectedGauge) as Address
 
@@ -1984,6 +1989,12 @@ export function DeployVault() {
     functionName: 'name',
     query: { enabled: tokenIsValid },
   })
+  const { data: tokenDecimals } = useReadContract({
+    address: tokenIsValid ? (creatorToken as `0x${string}`) : undefined,
+    abi: erc20Abi,
+    functionName: 'decimals',
+    query: { enabled: tokenIsValid },
+  })
 
   // Auto-derive ShareOFT symbol and name (preserve original case)
   const baseSymbol = tokenSymbol ?? zoraCoin?.symbol ?? ''
@@ -2022,7 +2033,8 @@ export function DeployVault() {
 
   function formatToken18(raw?: bigint): string {
     if (raw === undefined) return '—'
-    const s = formatUnits(raw, 18)
+    const decimals = typeof tokenDecimals === 'number' ? tokenDecimals : 18
+    const s = formatUnits(raw, decimals)
     const n = Number(s)
     if (Number.isFinite(n)) return n.toLocaleString(undefined, { maximumFractionDigits: 2 })
     return s
@@ -2247,8 +2259,15 @@ export function DeployVault() {
         ? 'bg-amber-500/10 border border-amber-500/20 text-amber-300'
         : 'bg-zinc-500/10 border border-zinc-500/20 text-zinc-300'
 
+  const minFirstDeposit = useMemo(() => {
+    if (typeof tokenDecimals === 'number' && tokenDecimals >= 0) {
+      return 50_000_000n * 10n ** BigInt(tokenDecimals)
+    }
+    return MIN_FIRST_DEPOSIT
+  }, [tokenDecimals])
+
   const walletHasMinDeposit =
-    typeof connectedTokenBalance === 'bigint' && connectedTokenBalance >= MIN_FIRST_DEPOSIT
+    typeof connectedTokenBalance === 'bigint' && connectedTokenBalance >= minFirstDeposit
 
   const batcherConfigured = isAddress(String((CONTRACTS as any).creatorVaultBatcher ?? ''))
   const operatorModeEligible = useMemo(() => {
@@ -2993,6 +3012,8 @@ export function DeployVault() {
                     connectedWalletAddress={connectedWalletAddress}
                     connectedSmartWalletAddress={detectedSmartWalletContract}
                     executeBatchEligible={executeBatchEligible}
+                    minFirstDeposit={minFirstDeposit}
+                    tokenDecimals={typeof tokenDecimals === 'number' ? tokenDecimals : null}
                     depositSymbol={underlyingSymbolUpper || 'TOKENS'}
                     shareSymbol={derivedShareSymbol}
                     shareName={derivedShareName}
