@@ -152,21 +152,17 @@ export function LaunchVaultAA({
         const connectedIsContract = !!connectedCode && connectedCode !== '0x';
         const smartWalletIsContract = !!smartWalletCode && smartWalletCode !== '0x';
         if (!connectedIsContract && smartWalletIsContract) {
-          try {
-            const res = await sendCoinbaseSmartWalletUserOperation({
-              publicClient,
-              walletClient,
-              bundlerUrl: paymasterUrl,
-              smartWallet: connectedSmartWallet,
-              ownerAddress: address as Address,
-              calls: transactions.map((tx) => ({ to: tx.to, value: tx.value, data: tx.data })),
-              version: '1',
-            });
-            setTxHash(res.transactionHash);
-            return;
-          } catch (err) {
-            logger.warn('Coinbase smart wallet userOp failed, falling back to wallet_sendCalls', err);
-          }
+          const res = await sendCoinbaseSmartWalletUserOperation({
+            publicClient,
+            walletClient,
+            bundlerUrl: paymasterUrl,
+            smartWallet: connectedSmartWallet,
+            ownerAddress: address as Address,
+            calls: transactions.map((tx) => ({ to: tx.to, value: tx.value, data: tx.data })),
+            version: '1',
+          });
+          setTxHash(res.transactionHash);
+          return;
         }
       }
 
