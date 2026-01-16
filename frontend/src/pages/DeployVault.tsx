@@ -1995,6 +1995,7 @@ export function DeployVault() {
     functionName: 'decimals',
     query: { enabled: tokenIsValid },
   })
+  const resolvedTokenDecimals = useMemo<number | null>(() => {
   const resolvedTokenDecimals = useMemo(() => {
     if (typeof tokenDecimals === 'number' && Number.isFinite(tokenDecimals)) return tokenDecimals
     if (typeof tokenDecimals === 'bigint') return Number(tokenDecimals)
