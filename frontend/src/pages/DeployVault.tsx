@@ -1995,6 +1995,11 @@ export function DeployVault() {
     functionName: 'decimals',
     query: { enabled: tokenIsValid },
   })
+  const resolvedTokenDecimals = useMemo(() => {
+    if (typeof tokenDecimals === 'number' && Number.isFinite(tokenDecimals)) return tokenDecimals
+    if (typeof tokenDecimals === 'bigint') return Number(tokenDecimals)
+    return null
+  }, [tokenDecimals])
 
   // Auto-derive ShareOFT symbol and name (preserve original case)
   const baseSymbol = tokenSymbol ?? zoraCoin?.symbol ?? ''
@@ -2260,6 +2265,11 @@ export function DeployVault() {
         : 'bg-zinc-500/10 border border-zinc-500/20 text-zinc-300'
 
   const minFirstDeposit = useMemo(() => {
+    if (typeof resolvedTokenDecimals === 'number' && resolvedTokenDecimals >= 0) {
+      return 50_000_000n * 10n ** BigInt(resolvedTokenDecimals)
+    }
+    return MIN_FIRST_DEPOSIT
+  }, [resolvedTokenDecimals])
     if (typeof tokenDecimals === 'number' && tokenDecimals >= 0) {
       return 50_000_000n * 10n ** BigInt(tokenDecimals)
     }
