@@ -1996,6 +1996,7 @@ export function DeployVault() {
     query: { enabled: tokenIsValid },
   })
   const resolvedTokenDecimals = useMemo<number | null>(() => {
+  const resolvedTokenDecimals = useMemo(() => {
     if (typeof tokenDecimals === 'number' && Number.isFinite(tokenDecimals)) return tokenDecimals
     if (typeof tokenDecimals === 'bigint') return Number(tokenDecimals)
     return null
@@ -2038,7 +2039,7 @@ export function DeployVault() {
 
   function formatToken18(raw?: bigint): string {
     if (raw === undefined) return '—'
-    const decimals = typeof resolvedTokenDecimals === 'number' ? resolvedTokenDecimals : 18
+    const decimals = typeof tokenDecimals === 'number' ? tokenDecimals : 18
     const s = formatUnits(raw, decimals)
     const n = Number(s)
     if (Number.isFinite(n)) return n.toLocaleString(undefined, { maximumFractionDigits: 2 })
@@ -2270,6 +2271,11 @@ export function DeployVault() {
     }
     return MIN_FIRST_DEPOSIT
   }, [resolvedTokenDecimals])
+    if (typeof tokenDecimals === 'number' && tokenDecimals >= 0) {
+      return 50_000_000n * 10n ** BigInt(tokenDecimals)
+    }
+    return MIN_FIRST_DEPOSIT
+  }, [tokenDecimals])
 
   const walletHasMinDeposit =
     typeof connectedTokenBalance === 'bigint' && connectedTokenBalance >= minFirstDeposit
@@ -3018,7 +3024,7 @@ export function DeployVault() {
                     connectedSmartWalletAddress={detectedSmartWalletContract}
                     executeBatchEligible={executeBatchEligible}
                     minFirstDeposit={minFirstDeposit}
-                    tokenDecimals={typeof resolvedTokenDecimals === 'number' ? resolvedTokenDecimals : null}
+                    tokenDecimals={typeof tokenDecimals === 'number' ? tokenDecimals : null}
                     depositSymbol={underlyingSymbolUpper || 'TOKENS'}
                     shareSymbol={derivedShareSymbol}
                     shareName={derivedShareName}
