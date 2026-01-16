@@ -1709,7 +1709,10 @@ export function DeployVault() {
   const [searchParams] = useSearchParams()
   const prefillToken = useMemo(() => searchParams.get('token') ?? '', [searchParams])
   const paymasterStatus = useMemo(() => {
-    const paymasterUrl = onchainKitConfig?.paymaster ?? null
+    const paymasterUrl = resolveCdpPaymasterUrl(
+      onchainKitConfig?.paymaster ?? null,
+      onchainKitConfig?.apiKey ?? undefined,
+    )
     if (!paymasterUrl || typeof paymasterUrl !== 'string') {
       return { ok: false, hint: 'missing' }
     }
