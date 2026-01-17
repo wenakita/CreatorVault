@@ -13,14 +13,16 @@ import { farcasterMiniApp } from '@farcaster/miniapp-wagmi-connector'
 const DEFAULT_BASE_RPCS = [
   'https://mainnet.base.org',
   // Public community RPCs (best-effort; can change over time)
-  'https://base.llamarpc.com',
   'https://base-mainnet.public.blastapi.io',
+  // Note: some public RPCs can lag behind chain head; keep them last.
+  'https://base.llamarpc.com',
 ] as const
 
 const baseRpcUrls = (() => {
   const env = (import.meta.env.VITE_BASE_RPC as string | undefined)?.trim()
-  if (env) return [env, ...DEFAULT_BASE_RPCS]
-  return [...DEFAULT_BASE_RPCS]
+  const urls = env ? [env, ...DEFAULT_BASE_RPCS] : [...DEFAULT_BASE_RPCS]
+  // Avoid duplicate endpoints (e.g. when VITE_BASE_RPC matches a default).
+  return Array.from(new Set(urls))
 })()
 
 /**
