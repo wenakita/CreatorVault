@@ -37,8 +37,8 @@ export const BASE_DEFAULTS = {
   taxHook: '0xca975B9dAF772C71161f3648437c3616E5Be0088' as ContractAddress,
 
   // Uniswap V3 pools (Base) used for ZORA reference pricing (TWAP via observe)
-  zoraUsdcV3Pool: '0xEdc625b74537ee3A10874f53D170e9C17a906B9c' as ContractAddress,
-  zoraWethV3Pool: '0xA0Ca5BEBC42Cdbf3623b1C09206aE4E3975b0Fc7' as ContractAddress,
+  zoraUsdcV3Pool: '0xedc625b74537ee3a10874f53d170e9c17a906b9c' as ContractAddress,
+  zoraWethV3Pool: '0xa0ca5bebc42cdbf3623b1c09206ae4e3975b0fc7' as ContractAddress,
 
   // Chainlink + tokens
   chainlinkEthUsd: '0x71041dddad3595F9CEd3DcCFBe3D1F4b0a16Bb70' as ContractAddress,
