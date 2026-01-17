@@ -1,16 +1,19 @@
 # CreatorVault Documentation
 
 This repo keeps the root clean (only `README.md`) and stores project documentation under `docs/`.
+There is **no separate hosted docs site** today — the canonical docs live in this folder, with HTML diagrams in `docs/html/`.
 
 ## Guides
 
 ### Deployment
 
-- `deployment/DEPLOY_INSTRUCTIONS.md`
+- `deployment/PRODUCTION_DEPLOYMENT.md`
+- `deployment/CREATOR_LAUNCH_GUIDE.md`
 - `deployment/DEPLOYMENT_APPROVALS_GUIDE.md`
 - `deployment/REQUIRED_APPROVALS_CHECKLIST.md`
 - `deployment/PRE_LAUNCH_VERIFICATION.md`
 - `deployment/CCA_DEPLOYMENT_VERIFICATION.md`
+- `deployment/CREATE2_REGISTRY.md`
 - `deployment/launch/LAUNCH_CHECKLIST.md`
 - `deployment/launch/LAUNCH_READY.md`
 - `deployment/launch/LAUNCH_VERIFICATION.md`

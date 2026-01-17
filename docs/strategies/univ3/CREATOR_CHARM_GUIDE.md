@@ -1,23 +1,8 @@
 # 🎯 CreatorCharmStrategy - Production Ready
 
-## ✅ **What Changed from USD1/WLFI → CREATOR/WETH**
-
-### **Token Replacements:**
-| Original | New | Purpose |
-|----------|-----|---------|
-| `USD1` | `CREATOR` | Main token (99%) |
-| `WLFI` | `WETH` | Quote token (1%) |
-| `EAGLE_VAULT` | `vault` | Vault address |
-
-### **Ratio Adjustments:**
-| Parameter | USD1/WLFI | CREATOR/WETH | Reason |
-|-----------|-----------|--------------|--------|
-| `maxSwapPercent` | 30% | **5%** | 99/1 ratio needs minimal swaps |
-| Initial ratio | ~50/50 | **99/1** | CREATOR-heavy pool |
-| Price fallback | 7 WLFI per USD1 | **100 CREATOR per WETH** | Reflects 99/1 ratio |
-
-### **Interface Additions:**
-✅ Added full `IStrategy` interface implementation:
+CreatorCharmStrategy is the Uniswap V3 + Charm Alpha adapter used by CreatorVault. It supports **single-sided CREATOR deposits** and maintains a **99/1 ratio** against a configurable quote token (USDC by default in the frontend).
+### ✅ **Interface Coverage**
+The strategy fully implements `IStrategy`:
 - `isActive()` → `bool`
 - `asset()` → `address`
 - `getTotalAssets()` → `uint256`
@@ -27,15 +12,14 @@
 - `harvest()` → `uint256`
 - `rebalance()` → `void`
 
-### **New Features:**
-✅ **Single-sided CREATOR deposits** - Handles 100% CREATOR input  
-✅ **Auto-swap to maintain ratio** - Swaps 1-5% CREATOR → WETH as needed  
-✅ **Graceful WETH→CREATOR conversion** - Withdrawals return only CREATOR  
-✅ **Harvest tracking** - Monitors profit over time  
+### ✅ **Behavior Summary**
+- **Single-sided CREATOR deposits** (swaps 1–5% into quote token when needed)
+- **Graceful quote → CREATOR conversion** on withdrawals
+- **Harvest tracking** for vault accounting
 
 ---
 
-## 📊 **How It Works - 99/1 CREATOR/WETH**
+## 📊 **How It Works - 99/1 CREATOR/Quote Token**
 
 ### **Initial Deposit (Empty Charm Vault):**
 ```
@@ -43,7 +27,7 @@ User deposits: 100,000 CREATOR
 
 Strategy automatically:
 1. Keeps 99,000 CREATOR (99%)
-2. Swaps 1,000 CREATOR → ~10 WETH (1%)
+2. Swaps 1,000 CREATOR → ~10 quote token units (1%)
 3. Deposits both to Charm vault
 4. Returns unused tokens to vault
 
@@ -52,13 +36,13 @@ Result: 99/1 ratio established
 
 ### **Subsequent Deposits (Vault has liquidity):**
 ```
-Charm has: 990,000 CREATOR + 10,000 WETH (ratio 99:1)
+Charm has: 990,000 CREATOR + 10,000 quote token units (ratio 99:1)
 User deposits: 50,000 CREATOR
 
 Strategy calculates:
-1. For 50,000 CREATOR, need ~500 WETH
-2. Don't have WETH → swap 500 CREATOR → 5 WETH
-3. Deposit 49,500 CREATOR + 5 WETH
+1. For 50,000 CREATOR, need ~500 quote token units
+2. Don't have quote token → swap 500 CREATOR → 5 quote token units
+3. Deposit 49,500 CREATOR + 5 quote token units
 4. Maintains 99/1 ratio
 
 Result: Proportional deposit, ratio maintained
@@ -70,8 +54,8 @@ User withdraws: 10% of position
 
 Strategy executes:
 1. Withdraw 10% shares from Charm
-2. Receive ~9,900 CREATOR + 100 WETH
-3. Swap 100 WETH → ~10,000 CREATOR
+2. Receive ~9,900 CREATOR + 100 quote token units
+3. Swap 100 quote token units → ~10,000 CREATOR
 4. Return ~19,900 CREATOR to user
 
 Result: User receives only CREATOR (as expected by IStrategy)
@@ -86,10 +70,10 @@ Result: User receives only CREATOR (as expected by IStrategy)
 constructor(
     address _vault,          // CreatorOVault address
     address _creator,        // CREATOR token address
-    address _weth,           // WETH address (Base: 0x4200000000000000000000000000000000000006)
+    address _quoteToken,     // Quote token (USDC by default)
     address _uniswapRouter,  // SwapRouter (Base: 0x2626664c2603336E57B271c5C0b26F421741e481)
     address _charmVault,     // CharmAlphaVault (deployed separately or 0x0)
-    address _swapPool,       // CREATOR/WETH V3 pool (or 0x0 if not exists yet)
+    address _swapPool,       // CREATOR/quote token V3 pool (or 0x0 if not exists yet)
     address _owner           // Strategy owner
 )
 ```
@@ -106,7 +90,7 @@ strategy.setCharmVault(charmVaultAddress);
 
 ### **4. Set Swap Pool (if exists):**
 ```solidity
-strategy.setSwapPool(creatorWethPoolAddress);
+strategy.setSwapPool(creatorQuotePoolAddress);
 ```
 
 ### **5. Optional: Enable zRouter for gas savings:**
@@ -134,7 +118,7 @@ vault.addStrategy(strategyAddress, allocationBps); // e.g., 6900 = 69%
 
 ### **Default Settings (Safe for Launch):**
 ```solidity
-maxSwapPercent = 5          // Max 5% CREATOR → WETH per transaction
+maxSwapPercent = 5          // Max 5% CREATOR → quote token per transaction
 swapSlippageBps = 300       // 3% max swap slippage
 depositSlippageBps = 500    // 5% deposit slippage tolerance
 swapPoolFee = 3000          // 0.3% fee tier (standard)
@@ -154,7 +138,7 @@ strategy.setParameters(
 
 ## 🔒 **Safety Features**
 
-### **✅ Battle-Tested from USD1/WLFI:**
+### **✅ Core Protections:**
 1. **Slippage Protection** - All swaps have min output
 2. **Try/Catch on Deposits** - Graceful failure, returns tokens
 3. **Range Checks** - Skips deposit if Charm out of range
@@ -166,34 +150,34 @@ strategy.setParameters(
 ### **✅ CREATOR-Specific Additions:**
 8. **IStrategy Interface** - Full CreatorOVault compatibility
 9. **Single-sided Deposits** - Handles 100% CREATOR input
-10. **Auto WETH→CREATOR** - Withdrawals return only CREATOR
+10. **Auto quote → CREATOR** - Withdrawals return only CREATOR
 11. **Harvest Tracking** - Monitors profit for vault
 
 ---
 
 ## 📈 **Expected Behavior**
 
-### **Initial Launch (99% CREATOR, 1% WETH):**
+### **Initial Launch (99% CREATOR, 1% Quote Token):**
 ```
 Deposit #1: 1,000,000 CREATOR
 ├─ Keep:  990,000 CREATOR (99%)
-├─ Swap:   10,000 CREATOR → ~100 WETH (1%)
-└─ Charm: 990,000 CREATOR + 100 WETH
+├─ Swap:   10,000 CREATOR → ~100 quote token units (1%)
+└─ Charm: 990,000 CREATOR + 100 quote token units
 ```
 
 ### **Subsequent Deposits:**
 ```
 Deposit #2: 500,000 CREATOR
-├─ Need:  ~5 WETH to match ratio
-├─ Swap:  ~500 CREATOR → 5 WETH
-└─ Charm: +495,000 CREATOR + 5 WETH
+├─ Need:  ~5 quote token units to match ratio
+├─ Swap:  ~500 CREATOR → 5 quote token units
+└─ Charm: +495,000 CREATOR + 5 quote token units
 ```
 
 ### **Withdrawals:**
 ```
 Withdraw: 10% of strategy
-├─ From Charm: 148,500 CREATOR + 1.5 WETH
-├─ Swap WETH: 1.5 WETH → ~1,500 CREATOR
+├─ From Charm: 148,500 CREATOR + 1.5 quote token units
+├─ Swap quote token: 1.5 units → ~1,500 CREATOR
 └─ Return: 150,000 CREATOR to vault
 ```
 
@@ -201,17 +185,17 @@ Withdraw: 10% of strategy
 
 ## 🎯 **Integration with StrategyDeploymentBatcher**
 
-Update the batcher to deploy **CreatorCharmStrategy** instead of the old one:
+`StrategyDeploymentBatcher` deploys **CreatorCharmStrategy** with the following constructor args:
 
 ```solidity
 // In StrategyDeploymentBatcher.sol
 result.creatorCharmStrategy = address(new CreatorCharmStrategy(
     creatorVault,
     underlyingToken,      // CREATOR
-    quoteToken,           // WETH
+    quoteToken,           // Quote token (USDC default)
     UNISWAP_ROUTER,       // Base SwapRouter
     result.charmVault,    // Charm vault (just deployed)
-    result.v3Pool,        // CREATOR/WETH V3 pool (just created)
+    result.v3Pool,        // CREATOR/quote token V3 pool (just created)
     msg.sender            // Owner
 ));
 
@@ -226,8 +210,8 @@ CreatorCharmStrategy(result.creatorCharmStrategy).initializeApprovals();
 Before launch, verify:
 
 - [ ] CreatorCharmStrategy deployed
-- [ ] CharmAlphaVault deployed for CREATOR/WETH
-- [ ] CREATOR/WETH V3 pool created (0.3% fee tier)
+- [ ] CharmAlphaVault deployed for CREATOR/quote token
+- [ ] CREATOR/quote token V3 pool created (0.3% fee tier)
 - [ ] Strategy has approvals initialized
 - [ ] Strategy.setCharmVault() called
 - [ ] Strategy.setSwapPool() called
@@ -248,7 +232,7 @@ Before launch, verify:
 | Graceful failure | ❌ Would revert | ✅ Try/catch, returns tokens |
 | Gas optimization | ❌ Basic | ✅ zRouter support (8-18% savings) |
 | Fee tier discovery | ❌ Fixed | ✅ Auto-discovers best pool |
-| Withdraw behavior | ⚠️ Returns CREATOR+WETH | ✅ Returns only CREATOR |
+| Withdraw behavior | ⚠️ Returns CREATOR + quote token | ✅ Returns only CREATOR |
 | Harvest tracking | ❌ Not tracked | ✅ Tracks profit |
 | IStrategy interface | ⚠️ Partial | ✅ Full implementation |
 
@@ -256,13 +240,11 @@ Before launch, verify:
 
 ## 🎉 **Ready to Deploy!**
 
-This contract is **production-ready** and has been **battle-tested** with USD1/WLFI. 
+This contract is **production-ready** and built for a 99/1 **CREATOR/quote token** configuration.
 
-The adaptations for CREATOR/WETH (99/1 ratio) are:
-1. ✅ Token addresses updated
-2. ✅ Swap percentages adjusted (30% → 5%)
-3. ✅ Price fallbacks updated (7 → 100 ratio)
-4. ✅ IStrategy interface fully implemented
-5. ✅ Single-sided CREATOR deposits supported
+Key adaptations for CreatorVault deployments:
+1. ✅ Single-sided CREATOR deposits supported
+2. ✅ Swap percentages tuned for 99/1 pools (default 5%)
+3. ✅ Full IStrategy interface implemented
 
 **Next Step:** Deploy with StrategyDeploymentBatcher in one AA transaction! 🚀

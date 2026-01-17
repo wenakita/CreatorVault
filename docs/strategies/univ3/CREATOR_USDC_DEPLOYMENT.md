@@ -137,9 +137,12 @@ function batchDeployStrategies(
     address underlyingToken,     // CREATOR
     address quoteToken,          // 0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913 (USDC)
     address creatorVault,
-    address ajnaPool,
-    uint24 v3FeeTier,           // 3000 (0.3%)
-    uint160 initialSqrtPriceX96 // ~100 CREATOR per USDC
+    address ajnaFactory,         // Ajna ERC20 factory (or address(0) to skip Ajna)
+    uint24 v3FeeTier,            // 3000 (0.3%)
+    uint160 initialSqrtPriceX96, // ~100 CREATOR per USDC
+    address owner,
+    string vaultName,
+    string vaultSymbol
 ) external nonReentrant returns (DeploymentResult memory result)
 ```
 

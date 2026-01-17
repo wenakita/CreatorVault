@@ -4,11 +4,12 @@
 
 ### **1. Smart Contracts** ✓
 - [x] All contracts deployed to Base mainnet
-- [x] Contract addresses hardcoded in `frontend/src/config/contracts.ts`
+- [x] Default addresses tracked in `frontend/src/config/contracts.defaults.ts` and `deployments/base/contracts/`
 - [ ] Contracts verified on Basescan (recommended)
 
-### **2. Environment Variables** 
+### **2. Environment Variables**
 - [ ] `VITE_CREATOR_VAULT_BATCHER` configured (onchain deploy + launch)
+- [ ] `VITE_VAULT_ACTIVATION_BATCHER` configured (activation-only flow)
 - [ ] Base RPC URL configured (or use default)
 
 ### **3. Frontend Code** ✓
@@ -18,6 +19,15 @@
 - [x] Mobile responsive
 
 ---
+
+## 🧱 Infra Deployment (Base Mainnet)
+
+The canonical deployment scripts live in `script/` and write addresses to `deployments/base/contracts/`:
+
+- `script/DeployBaseMainnet.s.sol` (registry, factory, batchers, lottery, bytecode store)
+- `script/DeployBaseMainnetPhase2V2.s.sol` (v2 bytecode store + new CreatorVaultBatcher)
+
+Use these when re-deploying infra or verifying addresses.
 
 ## 🔧 Step 1: Set Up Environment Variables
 
@@ -33,7 +43,10 @@ cp .env.example .env.production
 **Required:**
 ```bash
 # Onchain deploy + launch
-VITE_CREATOR_VAULT_BATCHER=0xYourCreatorVaultBatcher
+VITE_CREATOR_VAULT_BATCHER=0xB695AEaD09868F287DAA38FA444B240847c50fB8
+
+# Activation-only (already deployed stacks)
+VITE_VAULT_ACTIVATION_BATCHER=0x4b67e3a4284090e5191c27B8F24248eC82DF055D
 
 # Base mainnet RPC
 VITE_BASE_RPC=https://mainnet.base.org
@@ -52,12 +65,14 @@ CDP_PAYMASTER_URL=https://api.developer.coinbase.com/rpc/v1/base/<CDP_API_KEY_ID
 # Set a stable AUTH_SESSION_SECRET in Vercel and have users click "Sign in" once per session.
 ```
 
-**Optional (already hardcoded in contracts.ts):**
+**Optional (already hardcoded in `contracts.defaults.ts`):**
 ```bash
 # Contract addresses - these are already in your code
 # Only needed if you want to override them via env vars
-VITE_REGISTRY_ADDRESS=0x777e28d7617ADb6E2fE7b7C49864A173e36881EF
-VITE_FACTORY_ADDRESS=0x6205c91941A207A622fD00481b92cA04308a2819
+VITE_REGISTRY=0x02c8031c39E10832A831b954Df7a2c1bf9Df052D
+VITE_FACTORY=0xcCa08f9b94dD478266D0D1D2e9B7758414280FfD
+VITE_LOTTERY_MANAGER=0xA02A858E67c98320dCFB218831B645692E8f3483
+VITE_PROTOCOL_TREASURY=0x7d429eCbdcE5ff516D6e0a93299cbBa97203f2d3
 # ... etc
 ```
 
@@ -471,5 +486,3 @@ npm run build
 6. **Scale** - Onboard more creators
 
 **You're ready to go live! 🚀**
-
-
