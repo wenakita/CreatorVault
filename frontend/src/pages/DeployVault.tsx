@@ -16,6 +16,7 @@ import {
   isAddress,
   keccak256,
   parseAbiParameters,
+  toHex,
 } from 'viem'
 import { useSearchParams } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
@@ -49,20 +50,21 @@ import {
   preflightErc1271Signature,
 } from '@/lib/deploy/deployAuthorization'
 import { appendPermit2SignatureType, buildPermit2PermitTransferFrom } from '@/lib/deploy/permit2'
+import { computeMarketFloorQuote } from '@/lib/cca/marketFloor'
+import { q96ToCurrencyPerTokenBaseUnits } from '@/lib/cca/q96'
 
 const MIN_FIRST_DEPOSIT = 50_000_000n * 10n ** 18n
 const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000' as const
 
 // Uniswap CCA uses Q96 fixed-point prices + a compact step schedule.
-const Q96 = 2n ** 96n
-const DEFAULT_FLOOR_PRICE_ETH_WEI_PER_TOKEN = 1_000_000_000_000_000n // 0.001 ETH / token
-const DEFAULT_FLOOR_PRICE_Q96 = (DEFAULT_FLOOR_PRICE_ETH_WEI_PER_TOKEN * Q96) / 10n ** 18n
-const DEFAULT_TICK_SPACING_Q96_RAW = DEFAULT_FLOOR_PRICE_Q96 / 100n
-const DEFAULT_TICK_SPACING_Q96 = DEFAULT_TICK_SPACING_Q96_RAW > 1n ? DEFAULT_TICK_SPACING_Q96_RAW : 2n
-const DEFAULT_FLOOR_PRICE_Q96_ALIGNED = (DEFAULT_FLOOR_PRICE_Q96 / DEFAULT_TICK_SPACING_Q96) * DEFAULT_TICK_SPACING_Q96
 const DEFAULT_REQUIRED_RAISE_WEI = 100_000_000_000_000_000n // 0.1 ETH
 const DEFAULT_AUCTION_PERCENT = 50
 const DEFAULT_CCA_DURATION_BLOCKS = 302_400n // ~7 days on Base at ~2s blocks (must match CCALaunchStrategy defaultDuration)
+
+// Minimum age for a Creator Coin before allowing vault deployment.
+// Rationale: reduce launch-manipulation surface area on brand new coins with thin/no trading history.
+const DEFAULT_MIN_COIN_AGE_DAYS = 30
+const MIN_COIN_AGE_LOCALSTORAGE_KEY = 'cv:deploy:minCoinAgeDays'
 
 type ApiEnvelope<T> = { success: boolean; data?: T; error?: string }
 type AdminAuthResponse = { address: string; isAdmin: boolean } | null
@@ -79,6 +81,43 @@ type ServerDeployResponse = {
 }
 
 const shortAddress = (addr: string) => `${addr.slice(0, 6)}…${addr.slice(-4)}`
+
+const EIP712_DOMAIN_TYPEHASH = keccak256(
+  toHex('EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)'),
+)
+
+function computeEip712DomainSeparator(params: {
+  name: string
+  version: string
+  chainId: number
+  verifyingContract: Address
+}): Hex {
+  const nameHash = keccak256(toHex(params.name))
+  const versionHash = keccak256(toHex(params.version))
+  return keccak256(
+    encodeAbiParameters(parseAbiParameters('bytes32,bytes32,bytes32,uint256,address'), [
+      EIP712_DOMAIN_TYPEHASH,
+      nameHash,
+      versionHash,
+      BigInt(params.chainId),
+      params.verifyingContract,
+    ]),
+  )
+}
+
+function splitEcdsaSignature(signature: Hex): { v: number; r: Hex; s: Hex } {
+  const sig = String(signature)
+  if (!sig.startsWith('0x')) throw new Error('Invalid signature')
+  const hex = sig.slice(2)
+  if (hex.length !== 130) throw new Error('Invalid signature length')
+  const r = `0x${hex.slice(0, 64)}` as Hex
+  const s = `0x${hex.slice(64, 128)}` as Hex
+  let v = Number.parseInt(hex.slice(128, 130), 16)
+  if (!Number.isFinite(v)) throw new Error('Invalid signature')
+  if (v < 27) v += 27
+  if (v !== 27 && v !== 28) throw new Error('Invalid signature')
+  return { v, r, s }
+}
 
 function identitySourceLabel(source: string): string {
   switch (source) {
@@ -274,6 +313,41 @@ const PERMIT2_SIGNATURE_TRANSFER_ABI = [
   },
 ] as const
 
+const ERC20_PERMIT_VIEW_ABI = [
+  {
+    type: 'function',
+    name: 'nonces',
+    stateMutability: 'view',
+    inputs: [{ name: 'owner', type: 'address' }],
+    outputs: [{ type: 'uint256' }],
+  },
+  {
+    type: 'function',
+    name: 'DOMAIN_SEPARATOR',
+    stateMutability: 'view',
+    inputs: [],
+    outputs: [{ type: 'bytes32' }],
+  },
+] as const
+
+const EIP712_DOMAIN_VIEW_ABI = [
+  {
+    type: 'function',
+    name: 'eip712Domain',
+    stateMutability: 'view',
+    inputs: [],
+    outputs: [
+      { name: 'fields', type: 'bytes1' },
+      { name: 'name', type: 'string' },
+      { name: 'version', type: 'string' },
+      { name: 'chainId', type: 'uint256' },
+      { name: 'verifyingContract', type: 'address' },
+      { name: 'salt', type: 'bytes32' },
+      { name: 'extensions', type: 'uint256[]' },
+    ],
+  },
+] as const
+
 const CREATOR_VAULT_BATCHER_ABI = [
   {
     type: 'function',
@@ -326,6 +400,65 @@ const CREATOR_VAULT_BATCHER_ABI = [
           { name: 'cca', type: 'bytes32' },
           { name: 'oracle', type: 'bytes32' },
           { name: 'oftBootstrap', type: 'bytes32' },
+        ],
+      },
+    ],
+    outputs: [
+      {
+        name: 'result',
+        type: 'tuple',
+        components: [
+          { name: 'vault', type: 'address' },
+          { name: 'wrapper', type: 'address' },
+          { name: 'shareOFT', type: 'address' },
+          { name: 'gaugeController', type: 'address' },
+          { name: 'ccaStrategy', type: 'address' },
+          { name: 'oracle', type: 'address' },
+          { name: 'auction', type: 'address' },
+        ],
+      },
+    ],
+  },
+  {
+    type: 'function',
+    name: 'deployAndLaunchWithPermit',
+    stateMutability: 'nonpayable',
+    inputs: [
+      { name: 'creatorToken', type: 'address' },
+      { name: 'owner', type: 'address' },
+      { name: 'creatorTreasury', type: 'address' },
+      { name: 'payoutRecipient', type: 'address' },
+      { name: 'vaultName', type: 'string' },
+      { name: 'vaultSymbol', type: 'string' },
+      { name: 'shareName', type: 'string' },
+      { name: 'shareSymbol', type: 'string' },
+      { name: 'version', type: 'string' },
+      { name: 'depositAmount', type: 'uint256' },
+      { name: 'auctionPercent', type: 'uint8' },
+      { name: 'requiredRaise', type: 'uint128' },
+      { name: 'floorPriceQ96', type: 'uint256' },
+      { name: 'auctionSteps', type: 'bytes' },
+      {
+        name: 'codeIds',
+        type: 'tuple',
+        components: [
+          { name: 'vault', type: 'bytes32' },
+          { name: 'wrapper', type: 'bytes32' },
+          { name: 'shareOFT', type: 'bytes32' },
+          { name: 'gauge', type: 'bytes32' },
+          { name: 'cca', type: 'bytes32' },
+          { name: 'oracle', type: 'bytes32' },
+          { name: 'oftBootstrap', type: 'bytes32' },
+        ],
+      },
+      {
+        name: 'permit',
+        type: 'tuple',
+        components: [
+          { name: 'deadline', type: 'uint256' },
+          { name: 'v', type: 'uint8' },
+          { name: 'r', type: 'bytes32' },
+          { name: 's', type: 'bytes32' },
         ],
       },
     ],
@@ -639,6 +772,9 @@ function DeployVaultBatcher({
   vaultName,
   deploymentVersion,
   currentPayoutRecipient,
+  floorPriceQ96Aligned,
+  marketFloorTwapDurationSec,
+  marketFloorDiscountBps,
   onSuccess,
 }: {
   creatorToken: Address
@@ -655,6 +791,9 @@ function DeployVaultBatcher({
   vaultName: string
   deploymentVersion: 'v1' | 'v2' | 'v3'
   currentPayoutRecipient: Address | null
+  floorPriceQ96Aligned: bigint | null
+  marketFloorTwapDurationSec: number | null
+  marketFloorDiscountBps: number | null
   onSuccess: (addresses: ServerDeployResponse['addresses']) => void
 }) {
   const publicClient = usePublicClient({ chainId: base.id })
@@ -688,6 +827,36 @@ function DeployVaultBatcher({
   const [approveTxId, setApproveTxId] = useState<string | null>(null)
 
   const batcherAddress = (CONTRACTS.creatorVaultBatcher ?? null) as Address | null
+
+  const marketFloorWeiPerTokenAligned = useMemo(() => {
+    if (!floorPriceQ96Aligned || floorPriceQ96Aligned <= 0n) return null
+    // ShareOFT (■token) uses 18 decimals, so convert Q96 → wei/token using 18.
+    return q96ToCurrencyPerTokenBaseUnits(floorPriceQ96Aligned, 18)
+  }, [floorPriceQ96Aligned])
+
+  const marketFloorText = useMemo(() => {
+    if (!marketFloorWeiPerTokenAligned) return null
+    const eth = formatUnits(marketFloorWeiPerTokenAligned, 18)
+    // Keep the UI compact; avoid long decimal spam.
+    const n = Number(eth)
+    const ethShort = Number.isFinite(n) ? n.toFixed(6) : eth
+
+    const duration = typeof marketFloorTwapDurationSec === 'number' ? marketFloorTwapDurationSec : null
+    const mins = duration && duration > 0 ? Math.round(duration / 60) : null
+
+    const discount = typeof marketFloorDiscountBps === 'number' ? marketFloorDiscountBps : null
+    const bufferBps = discount !== null ? Math.max(0, 10_000 - discount) : null
+    const bufferPct = bufferBps !== null ? Math.round(bufferBps / 100) : null
+
+    const meta = [
+      mins ? `TWAP ${mins}m` : null,
+      bufferPct !== null ? `-${bufferPct}% buffer` : null,
+    ]
+      .filter(Boolean)
+      .join(', ')
+
+    return meta ? `${ethShort} ETH / ${shareSymbol} (${meta})` : `${ethShort} ETH / ${shareSymbol}`
+  }, [marketFloorWeiPerTokenAligned, marketFloorTwapDurationSec, marketFloorDiscountBps, shareSymbol])
 
   const connectedLc = connectedWalletAddress ? connectedWalletAddress.toLowerCase() : ''
   const ownerLc = owner.toLowerCase()
@@ -919,6 +1088,9 @@ function DeployVaultBatcher({
       if (!publicClient) throw new Error('Network client not ready')
       if (!walletClient) throw new Error('Wallet not ready')
       if (!expected || !expectedGauge) throw new Error('Failed to compute expected deployment addresses')
+      if (!floorPriceQ96Aligned || floorPriceQ96Aligned <= 0n) {
+        throw new Error('Market floor price not available. Wait for pricing to load.')
+      }
 
       const connected = (((walletClient as any).account?.address ?? (walletClient as any).account) as Address | null) ?? null
       if (!connected) throw new Error('Wallet not ready')
@@ -1122,7 +1294,7 @@ function DeployVaultBatcher({
               depositAmount,
               DEFAULT_AUCTION_PERCENT,
               DEFAULT_REQUIRED_RAISE_WEI,
-              DEFAULT_FLOOR_PRICE_Q96_ALIGNED,
+              floorPriceQ96Aligned,
               auctionSteps,
               codeIds,
             ],
@@ -1201,7 +1373,7 @@ function DeployVaultBatcher({
           depositAmount,
           auctionPercent: DEFAULT_AUCTION_PERCENT,
           requiredRaise: DEFAULT_REQUIRED_RAISE_WEI,
-          floorPriceQ96: DEFAULT_FLOOR_PRICE_Q96_ALIGNED,
+          floorPriceQ96: floorPriceQ96Aligned,
           auctionSteps,
           codeIds,
           leftoverRecipient: owner,
@@ -1313,7 +1485,7 @@ function DeployVaultBatcher({
               depositAmount,
               DEFAULT_AUCTION_PERCENT,
               DEFAULT_REQUIRED_RAISE_WEI,
-              DEFAULT_FLOOR_PRICE_Q96_ALIGNED,
+              floorPriceQ96Aligned,
               auctionSteps,
               codeIds,
               auth,
@@ -1356,13 +1528,202 @@ function DeployVaultBatcher({
         return
       }
 
-      if (payoutMismatch) {
-        if (connected.toLowerCase() !== owner.toLowerCase()) {
-          throw new Error('Payout recipient update requires the identity wallet. Connect it to continue.')
+      if (payoutMismatch && connected.toLowerCase() !== owner.toLowerCase()) {
+        throw new Error('Payout recipient update requires the identity wallet. Connect it to continue.')
+      }
+
+      // ===========================
+      // EIP-2612 permit path (preferred for strict CDP contract allowlisting)
+      // ===========================
+      // If the creator coin supports ERC-2612 `permit`, we can avoid any direct `approve()` calls
+      // (which would require allowlisting every creator coin contract). The only inner call target
+      // becomes `CreatorVaultBatcher`, and it executes `permit()` + `transferFrom()` internally.
+      if (connected.toLowerCase() === owner.toLowerCase()) {
+        try {
+          let permitDomainName: string | null = null
+          let permitDomainVersion: string | null = null
+
+          // Prefer EIP-5267 domain metadata when available (e.g. Zora creator coins use name="Coin").
+          try {
+            const res = (await publicClient.readContract({
+              address: creatorToken,
+              abi: EIP712_DOMAIN_VIEW_ABI,
+              functionName: 'eip712Domain',
+            })) as readonly unknown[]
+
+            const fieldsHex = String(res?.[0] ?? '')
+            const fields = fieldsHex.startsWith('0x') ? Number.parseInt(fieldsHex.slice(2), 16) : NaN
+
+            const name = String(res?.[1] ?? '').trim()
+            const version = String(res?.[2] ?? '').trim()
+            const chainIdRaw = res?.[3]
+            let chainId = 0n
+            if (typeof chainIdRaw === 'bigint') chainId = chainIdRaw
+            else if (typeof chainIdRaw === 'number') chainId = BigInt(chainIdRaw)
+            else if (typeof chainIdRaw === 'string') {
+              try {
+                chainId = BigInt(chainIdRaw)
+              } catch {
+                chainId = 0n
+              }
+            }
+            const verifyingContract = String(res?.[4] ?? '').toLowerCase()
+
+            // We only support the standard domain fields (name+version+chainId+verifyingContract).
+            if (
+              Number.isFinite(fields) &&
+              fields === 0x0f &&
+              chainId === BigInt(base.id) &&
+              verifyingContract === creatorToken.toLowerCase()
+            ) {
+              if (name) permitDomainName = name
+              if (version) permitDomainVersion = version
+            }
+          } catch {
+            // fall back below
+          }
+
+          if (!permitDomainName) {
+            permitDomainName = (await publicClient.readContract({
+              address: creatorToken,
+              abi: erc20Abi,
+              functionName: 'name',
+            })) as string
+          }
+          if (!permitDomainVersion) {
+            permitDomainVersion = '1'
+          }
+
+          const domainName = (permitDomainName ?? '').trim()
+          const domainVersion = (permitDomainVersion ?? '').trim() || '1'
+          if (!domainName) throw new Error('permit_domain_missing')
+
+          const nonce = (await publicClient.readContract({
+            address: creatorToken,
+            abi: ERC20_PERMIT_VIEW_ABI,
+            functionName: 'nonces',
+            args: [owner],
+          })) as bigint
+
+          const onchainDomainSeparator = (await publicClient.readContract({
+            address: creatorToken,
+            abi: ERC20_PERMIT_VIEW_ABI,
+            functionName: 'DOMAIN_SEPARATOR',
+          })) as Hex
+
+          const expectedDomainSeparator = computeEip712DomainSeparator({
+            name: domainName,
+            version: domainVersion,
+            chainId: base.id,
+            verifyingContract: creatorToken,
+          })
+
+          // Only use this path when the token matches the standard OZ-style ERC20Permit domain.
+          if (String(onchainDomainSeparator).toLowerCase() !== String(expectedDomainSeparator).toLowerCase()) {
+            throw new Error('permit_domain_mismatch')
+          }
+
+          const deadline = BigInt(Math.floor(Date.now() / 1000) + 60 * 20) // 20 minutes
+          const sig = (await walletClient.signTypedData({
+            account: (walletClient as any).account,
+            domain: { name: domainName, version: domainVersion, chainId: base.id, verifyingContract: creatorToken },
+            types: {
+              Permit: [
+                { name: 'owner', type: 'address' },
+                { name: 'spender', type: 'address' },
+                { name: 'value', type: 'uint256' },
+                { name: 'nonce', type: 'uint256' },
+                { name: 'deadline', type: 'uint256' },
+              ],
+            },
+            primaryType: 'Permit',
+            message: {
+              owner,
+              spender: batcherAddress,
+              value: depositAmount,
+              nonce,
+              deadline,
+            },
+          })) as Hex
+
+          const { v, r, s } = splitEcdsaSignature(sig)
+
+          const permitCalls: { to: Address; data: Hex; value?: bigint }[] = []
+
+          if (payoutMismatch) {
+            permitCalls.push({
+              to: creatorToken,
+              data: encodeFunctionData({
+                abi: COIN_PAYOUT_RECIPIENT_ABI,
+                functionName: 'setPayoutRecipient',
+                args: [expectedGauge],
+              }),
+              value: 0n,
+            })
+          }
+
+          permitCalls.push({
+            to: batcherAddress,
+            data: encodeFunctionData({
+              abi: CREATOR_VAULT_BATCHER_ABI,
+              functionName: 'deployAndLaunchWithPermit',
+              args: [
+                creatorToken,
+                owner,
+                owner, // creatorTreasury
+                payoutForDeploy,
+                vaultName,
+                vaultSymbol,
+                shareName,
+                shareSymbol,
+                deploymentVersion,
+                depositAmount,
+                DEFAULT_AUCTION_PERCENT,
+                DEFAULT_REQUIRED_RAISE_WEI,
+                floorPriceQ96Aligned,
+                auctionSteps,
+                codeIds,
+                { deadline, v, r, s },
+              ],
+            }),
+          })
+
+          try {
+            const res = await sendCallsAsync({
+              calls: permitCalls.map((c) => ({ to: c.to, data: c.data, value: c.value ?? 0n })),
+              account: connected,
+              chainId: base.id,
+              forceAtomic: true,
+              capabilities: capabilities as any,
+            })
+            setTxId(res.id)
+            onSuccess(expected)
+            return
+          } catch {
+            // sequential fallback below
+          }
+
+          assertSequentialAllowed()
+          const hash = await walletClient.sendTransaction({
+            account: (walletClient as any).account,
+            chain: base as any,
+            to: batcherAddress,
+            data: permitCalls[0]!.data,
+            value: 0n,
+          })
+          await publicClient.waitForTransactionReceipt({ hash })
+          setTxId(hash)
+          onSuccess(expected)
+          return
+        } catch (permitErr) {
+          // Fall through to Permit2 / approve paths.
+          void permitErr
         }
-        const hash = await walletClient.sendTransaction({
-          account: (walletClient as any).account,
-          chain: base as any,
+      }
+
+      const calls: { to: Address; data: Hex; value?: bigint }[] = []
+      if (payoutMismatch) {
+        calls.push({
           to: creatorToken,
           data: encodeFunctionData({
             abi: COIN_PAYOUT_RECIPIENT_ABI,
@@ -1371,10 +1732,7 @@ function DeployVaultBatcher({
           }),
           value: 0n,
         })
-        await publicClient.waitForTransactionReceipt({ hash })
       }
-
-      const calls: { to: Address; data: Hex; value?: bigint }[] = []
 
       // ===========================
       // Permit2-first path
@@ -1463,7 +1821,7 @@ function DeployVaultBatcher({
               depositAmount,
               DEFAULT_AUCTION_PERCENT,
               DEFAULT_REQUIRED_RAISE_WEI,
-              DEFAULT_FLOOR_PRICE_Q96_ALIGNED,
+              floorPriceQ96Aligned,
               auctionSteps,
               codeIds,
               { permitted: { token: creatorToken, amount: depositAmount }, nonce, deadline },
@@ -1513,6 +1871,17 @@ function DeployVaultBatcher({
       // Approve fallback path
       // ===========================
       const fallbackCalls: { to: Address; data: Hex; value?: bigint }[] = []
+      if (payoutMismatch) {
+        fallbackCalls.push({
+          to: creatorToken,
+          data: encodeFunctionData({
+            abi: COIN_PAYOUT_RECIPIENT_ABI,
+            functionName: 'setPayoutRecipient',
+            args: [expectedGauge],
+          }),
+          value: 0n,
+        })
+      }
       fallbackCalls.push({
         to: creatorToken,
         data: encodeFunctionData({
@@ -1539,7 +1908,7 @@ function DeployVaultBatcher({
             depositAmount,
             DEFAULT_AUCTION_PERCENT,
             DEFAULT_REQUIRED_RAISE_WEI,
-            DEFAULT_FLOOR_PRICE_Q96_ALIGNED,
+            floorPriceQ96Aligned,
             auctionSteps,
             codeIds,
           ],
@@ -1761,6 +2130,8 @@ function DeployVaultBatcher({
               : '1‑Click Deploy (AA)'}
       </button>
 
+      {marketFloorText ? <div className="text-[11px] text-zinc-500">Market floor: {marketFloorText}</div> : null}
+
       {error ? <div className="text-[11px] text-red-400/90">{error}</div> : null}
       {txId ? (
         <div className="text-[11px] text-zinc-500">
@@ -1868,6 +2239,29 @@ export function DeployVault() {
     retry: 0,
   })
   const isAdmin = Boolean(adminAuthQuery.data?.isAdmin)
+
+  const [minCoinAgeDays, setMinCoinAgeDays] = useState<number>(DEFAULT_MIN_COIN_AGE_DAYS)
+  useEffect(() => {
+    if (!isAdmin) {
+      setMinCoinAgeDays(DEFAULT_MIN_COIN_AGE_DAYS)
+      return
+    }
+    try {
+      const raw = localStorage.getItem(MIN_COIN_AGE_LOCALSTORAGE_KEY)
+      const n = Number(raw)
+      if (Number.isFinite(n) && n >= 0 && n <= 3650) setMinCoinAgeDays(Math.floor(n))
+    } catch {
+      // ignore
+    }
+  }, [isAdmin])
+  useEffect(() => {
+    if (!isAdmin) return
+    try {
+      localStorage.setItem(MIN_COIN_AGE_LOCALSTORAGE_KEY, String(minCoinAgeDays))
+    } catch {
+      // ignore
+    }
+  }, [isAdmin, minCoinAgeDays])
 
   useEffect(() => {
     // v1 is legacy/admin-only; never allow non-admins to select it.
@@ -2271,6 +2665,51 @@ export function DeployVault() {
         ? 'bg-amber-500/10 border border-amber-500/20 text-amber-300'
         : 'bg-zinc-500/10 border border-zinc-500/20 text-zinc-300'
 
+  const coinCreatedAtMs = useMemo(() => {
+    const raw = typeof zoraCoin?.createdAt === 'string' ? zoraCoin.createdAt.trim() : ''
+    if (!raw) return null
+    const ms = Date.parse(raw)
+    return Number.isFinite(ms) ? ms : null
+  }, [zoraCoin?.createdAt])
+
+  const coinAgeDays = useMemo(() => {
+    if (!coinCreatedAtMs) return null
+    const ageMs = Date.now() - coinCreatedAtMs
+    if (!Number.isFinite(ageMs) || ageMs < 0) return null
+    return ageMs / (1000 * 60 * 60 * 24)
+  }, [coinCreatedAtMs])
+
+  const coinAgeOk = useMemo(() => {
+    if (!tokenIsValid || !zoraCoin || !isCreatorCoin) return false
+    if (!coinCreatedAtMs) return false
+    const ageMs = Date.now() - coinCreatedAtMs
+    if (!Number.isFinite(ageMs) || ageMs < 0) return false
+    return ageMs >= minCoinAgeDays * 24 * 60 * 60 * 1000
+  }, [coinCreatedAtMs, isCreatorCoin, minCoinAgeDays, tokenIsValid, zoraCoin])
+
+  const marketFloorQuery = useQuery({
+    queryKey: ['cca', 'marketFloor', creatorToken],
+    enabled: !!publicClient && tokenIsValid && !!zoraCoin && isCreatorCoin,
+    queryFn: async () => {
+      // Derive a market-based ETH floor price for the CCA:
+      // - CREATOR/ZORA v4 spot tick (from the coin’s pool key)
+      // - ZORA→ETH via Uniswap v3 TWAP (ZORA/WETH + ZORA/USDC+Chainlink), conservative min + discount
+      return await computeMarketFloorQuote({
+        publicClient: publicClient!,
+        creatorCoin: creatorToken as Address,
+      })
+    },
+    staleTime: 60_000,
+    retry: 0,
+  })
+
+  const marketFloorOk = Boolean(
+    marketFloorQuery.isSuccess &&
+      marketFloorQuery.data &&
+      typeof marketFloorQuery.data.floorPriceQ96Aligned === 'bigint' &&
+      marketFloorQuery.data.floorPriceQ96Aligned > 0n,
+  )
+
   const minFirstDeposit = useMemo(() => {
     if (typeof resolvedTokenDecimals === 'number' && resolvedTokenDecimals >= 0) {
       return 50_000_000n * 10n ** BigInt(resolvedTokenDecimals)
@@ -2313,6 +2752,8 @@ export function DeployVault() {
     tokenIsValid &&
     !!zoraCoin &&
     isCreatorCoin &&
+    coinAgeOk &&
+    marketFloorOk &&
     isAuthorizedDeployerOrOperator &&
     creatorAllowlistQuery.isSuccess &&
     passesCreatorAllowlist &&
@@ -2331,6 +2772,7 @@ export function DeployVault() {
   const creatorVaultBatcherConfigured = isAddress(String(creatorVaultBatcherAddress ?? ''))
   const allowlistReady = allowlistMode === 'disabled' ? true : isAllowlistedCreator
   const creatorCoinReady = tokenIsValid && !!zoraCoin && isCreatorCoin
+  const coinAgeReady = creatorCoinReady && coinAgeOk
   const fundingReady = fundingGateOk
   const authReady = isAuthorizedDeployerOrOperator
 
@@ -2375,6 +2817,16 @@ export function DeployVault() {
       hint: creatorCoinReady ? (underlyingSymbolUpper || 'ok') : tokenIsValid ? 'not a creator coin' : 'invalid token',
     },
     {
+      label: `Coin age ≥ ${minCoinAgeDays}d`,
+      ok: coinAgeReady,
+      hint:
+        coinAgeDays !== null
+          ? `${coinAgeDays.toFixed(1)}d`
+          : typeof zoraCoin?.createdAt === 'string' && zoraCoin.createdAt.trim().length > 0
+            ? 'invalid createdAt'
+            : 'missing',
+    },
+    {
       label: 'Authorized + funded',
       ok: authReady && fundingReady,
       hint: authReady
@@ -2382,6 +2834,17 @@ export function DeployVault() {
           ? 'ready'
           : `needs 50,000,000 ${underlyingSymbolUpper || 'TOKENS'}`
         : 'not authorized',
+    },
+    {
+      label: 'Market floor price',
+      ok: marketFloorOk,
+      hint: marketFloorQuery.isFetching
+        ? 'computing'
+        : marketFloorQuery.isError
+          ? 'error'
+          : marketFloorQuery.data?.weiPerToken
+            ? `${Number(formatUnits(marketFloorQuery.data.weiPerToken, 18)).toFixed(6)} ETH`
+            : 'missing',
     },
     {
       label: 'Ready to deploy',
@@ -2397,6 +2860,8 @@ export function DeployVault() {
         ? 'Token is not a Zora Creator Coin.'
         : tokenIsValid && zoraCoin && !isCreatorCoin
           ? 'Only Creator Coins can deploy a vault.'
+          : tokenIsValid && zoraCoin && isCreatorCoin && !coinAgeOk
+            ? `Creator Coin must be at least ${minCoinAgeDays} days old to deploy.`
           : creatorAllowlistQuery.isLoading
             ? 'Checking creator access…'
             : creatorAllowlistQuery.isError
@@ -2411,7 +2876,13 @@ export function DeployVault() {
                       ? `Needs 50,000,000 ${underlyingSymbolUpper || 'TOKENS'} to deploy.`
                       : identity.blockingReason && !executeBatchEligible && !operatorModeEligible
                         ? identity.blockingReason
-                        : null
+                        : marketFloorQuery.isFetching
+                          ? 'Computing market floor price…'
+                          : marketFloorQuery.isError
+                            ? (marketFloorQuery.error as any)?.message || 'Could not compute market floor price.'
+                            : !marketFloorOk
+                              ? 'Market floor price is required to deploy.'
+                              : null
 
   return (
     <div className="relative">
@@ -2435,7 +2906,26 @@ export function DeployVault() {
 
             {isAdmin ? (
               <div className="rounded-lg border border-amber-500/20 bg-amber-500/5 p-4 space-y-2">
-                <div className="text-[11px] uppercase tracking-wide text-amber-200">Launch checklist (admin)</div>
+                <div className="flex items-center justify-between gap-3">
+                  <div className="text-[11px] uppercase tracking-wide text-amber-200">Launch checklist (admin)</div>
+                  <div className="flex items-center gap-2 text-[11px] text-zinc-500">
+                    <span>Min coin age (days)</span>
+                    <input
+                      type="number"
+                      min={0}
+                      max={3650}
+                      step={1}
+                      value={minCoinAgeDays}
+                      onChange={(e) => {
+                        const n = Number(e.target.value)
+                        if (!Number.isFinite(n)) return
+                        const clamped = Math.max(0, Math.min(3650, Math.floor(n)))
+                        setMinCoinAgeDays(clamped)
+                      }}
+                      className="w-16 bg-black/30 border border-zinc-900/70 rounded-md px-2 py-1 text-zinc-200 font-mono text-[11px] outline-none"
+                    />
+                  </div>
+                </div>
                 <div className="space-y-1 text-xs text-zinc-300">
                   {firstLaunchChecklist.map((item) => (
                     <div key={item.label} className="flex items-start gap-2">
@@ -3033,6 +3523,9 @@ export function DeployVault() {
                     vaultName={derivedVaultName}
                     deploymentVersion={deploymentVersion}
                     currentPayoutRecipient={payoutRecipient}
+                    floorPriceQ96Aligned={marketFloorQuery.data?.floorPriceQ96Aligned ?? null}
+                    marketFloorTwapDurationSec={marketFloorQuery.data?.zoraEth.durationSec ?? null}
+                    marketFloorDiscountBps={marketFloorQuery.data?.zoraEth.discountBps ?? null}
                     onSuccess={() => {}}
                   />
                 </>
@@ -3041,7 +3534,7 @@ export function DeployVault() {
                   disabled
                   className="w-full py-4 bg-black/30 border border-zinc-900/60 rounded-lg text-zinc-600 text-sm cursor-not-allowed"
                 >
-                  Enter token address to continue
+                  {deployBlocker || 'Enter token address to continue'}
                 </button>
               )}
 

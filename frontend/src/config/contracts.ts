@@ -68,6 +68,9 @@ export const CONTRACTS = {
 
   // External - Uniswap
   uniswapV3Factory: envAddress('VITE_UNISWAP_V3_FACTORY', BASE_DEFAULTS.uniswapV3Factory)!,
+  // ZORA reference pools (Uniswap V3) for deploy-time pricing
+  zoraUsdcV3Pool: envAddress('VITE_ZORA_USDC_V3_POOL', BASE_DEFAULTS.zoraUsdcV3Pool)!,
+  zoraWethV3Pool: envAddress('VITE_ZORA_WETH_V3_POOL', BASE_DEFAULTS.zoraWethV3Pool)!,
 
   // External - Standard Tokens
   zora: envAddress('VITE_ZORA', BASE_DEFAULTS.zora)!,

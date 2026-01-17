@@ -10,6 +10,7 @@ pragma solidity ^0.8.20;
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {IERC20Permit} from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Permit.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import {VestingWallet} from "@openzeppelin/contracts/finance/VestingWallet.sol";
 import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import {EIP712} from "@openzeppelin/contracts/utils/cryptography/EIP712.sol";
 import {SignatureChecker} from "@openzeppelin/contracts/utils/cryptography/SignatureChecker.sol";
@@ -72,6 +73,10 @@ interface IOFTBootstrapRegistry {
  */
 contract CreatorVaultBatcher is ReentrancyGuard, EIP712 {
     using SafeERC20 for IERC20;
+
+    /// @notice Linear vesting duration for the creator's initial ShareOFT allocation (e.g. the leftover 25M shares).
+    /// @dev 6 months ≈ 180 days (seconds).
+    uint64 public constant CREATOR_SHARE_VESTING_DURATION = 180 days;
 
     struct CodeIds {
         bytes32 vault;
@@ -180,6 +185,17 @@ contract CreatorVaultBatcher is ReentrancyGuard, EIP712 {
         address ccaStrategy,
         address oracle,
         address auction
+    );
+
+    /// @notice Emitted when the creator's leftover share allocation is sent to a vesting wallet.
+    event CreatorShareVestingCreated(
+        address indexed creatorToken,
+        address indexed owner,
+        address indexed shareOFT,
+        address vestingWallet,
+        uint256 amount,
+        uint64 startTimestamp,
+        uint64 durationSeconds
     );
 
     constructor(
@@ -571,7 +587,18 @@ contract CreatorVaultBatcher is ReentrancyGuard, EIP712 {
 
         uint256 remaining = wsTokens - auctionAmount;
         if (remaining > 0) {
-            IERC20(result.shareOFT).safeTransfer(params.owner, remaining);
+            uint64 start = uint64(block.timestamp);
+            VestingWallet vestingWallet = new VestingWallet(params.owner, start, CREATOR_SHARE_VESTING_DURATION);
+            IERC20(result.shareOFT).safeTransfer(address(vestingWallet), remaining);
+            emit CreatorShareVestingCreated(
+                params.creatorToken,
+                params.owner,
+                result.shareOFT,
+                address(vestingWallet),
+                remaining,
+                start,
+                CREATOR_SHARE_VESTING_DURATION
+            );
         }
 
         // Final ownership (hybrid):
