@@ -50,6 +50,9 @@ contract SeedUniversalBytecodeStore is Script {
         _storeIfMissing(store, _extractCreationCode(src, "CreatorGaugeController"), "CreatorGaugeController", supportsChunking);
         _storeIfMissing(store, _extractCreationCode(src, "CCALaunchStrategy"), "CCALaunchStrategy", supportsChunking);
         _storeIfMissing(store, _extractCreationCode(src, "CreatorOracle"), "CreatorOracle", supportsChunking);
+        _storeIfMissing(store, _extractCreationCode(src, "CharmAlphaVaultDeploy"), "CharmAlphaVaultDeploy", supportsChunking);
+        _storeIfMissing(store, _extractCreationCode(src, "CreatorCharmStrategy"), "CreatorCharmStrategy", supportsChunking);
+        _storeIfMissing(store, _extractCreationCode(src, "AjnaStrategy"), "AjnaStrategy", supportsChunking);
         vm.stopBroadcast();
     }
 

@@ -40,6 +40,9 @@ printf "  OFTBootstrapRegistry: '%s',\n" "$(bytecode OFTBootstrapRegistry)" >>"$
 printf "  CreatorGaugeController: '%s',\n" "$(bytecode CreatorGaugeController)" >>"$OUT_FILE"
 printf "  CCALaunchStrategy: '%s',\n" "$(bytecode CCALaunchStrategy)" >>"$OUT_FILE"
 printf "  CreatorOracle: '%s',\n" "$(bytecode CreatorOracle)" >>"$OUT_FILE"
+printf "  CharmAlphaVaultDeploy: '%s',\n" "$(bytecode CharmAlphaVaultDeploy)" >>"$OUT_FILE"
+printf "  CreatorCharmStrategy: '%s',\n" "$(bytecode CreatorCharmStrategy)" >>"$OUT_FILE"
+printf "  AjnaStrategy: '%s',\n" "$(bytecode AjnaStrategy)" >>"$OUT_FILE"
 
 cat >>"$OUT_FILE" <<'EOF'
 } as const;

@@ -16,6 +16,7 @@ import {
   isAddress,
   keccak256,
   parseAbiParameters,
+  toBytes,
   toHex,
 } from 'viem'
 import { useSearchParams } from 'react-router-dom'
@@ -85,6 +86,40 @@ const shortAddress = (addr: string) => `${addr.slice(0, 6)}…${addr.slice(-4)}`
 const EIP712_DOMAIN_TYPEHASH = keccak256(
   toHex('EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)'),
 )
+
+function formatEthPerTokenForUi(weiPerToken: bigint): string {
+  if (weiPerToken <= 0n) return '0'
+
+  const BASE = 10n ** 18n
+  const whole = weiPerToken / BASE
+  const frac = weiPerToken % BASE
+
+  const wholeStr = whole.toString()
+  const fracStrFull = frac.toString().padStart(18, '0')
+
+  const MIN_DECIMALS = 6
+  const DEFAULT_MAX_DECIMALS = 12
+  const FULL_MAX_DECIMALS = 18
+
+  const formatWithMaxDecimals = (maxDecimals: number): string => {
+    const firstNonZero = fracStrFull.search(/[1-9]/)
+    const desiredDecimals =
+      firstNonZero === -1
+        ? MIN_DECIMALS
+        : Math.min(maxDecimals, Math.max(MIN_DECIMALS, firstNonZero + 4 /* show a few significant digits */))
+
+    const fracShownRaw = fracStrFull.slice(0, desiredDecimals)
+    const fracShownTrimmed = fracShownRaw.replace(/0+$/, '')
+
+    if (!fracShownTrimmed) return wholeStr
+    return `${wholeStr}.${fracShownTrimmed}`
+  }
+
+  // Prefer a compact display, but never show "0" for non-zero values.
+  const compact = formatWithMaxDecimals(DEFAULT_MAX_DECIMALS)
+  if (compact === '0' && weiPerToken > 0n) return formatWithMaxDecimals(FULL_MAX_DECIMALS)
+  return compact
+}
 
 function computeEip712DomainSeparator(params: {
   name: string
@@ -718,6 +753,209 @@ const CREATOR_VAULT_BATCHER_ABI = [
       },
     ],
   },
+  {
+    type: 'function',
+    name: 'deployPhase1',
+    stateMutability: 'nonpayable',
+    inputs: [
+      {
+        name: 'params',
+        type: 'tuple',
+        components: [
+          { name: 'creatorToken', type: 'address' },
+          { name: 'owner', type: 'address' },
+          { name: 'vaultName', type: 'string' },
+          { name: 'vaultSymbol', type: 'string' },
+          { name: 'shareName', type: 'string' },
+          { name: 'shareSymbol', type: 'string' },
+          { name: 'version', type: 'string' },
+        ],
+      },
+      {
+        name: 'codeIds',
+        type: 'tuple',
+        components: [
+          { name: 'vault', type: 'bytes32' },
+          { name: 'wrapper', type: 'bytes32' },
+          { name: 'shareOFT', type: 'bytes32' },
+          { name: 'gauge', type: 'bytes32' },
+          { name: 'cca', type: 'bytes32' },
+          { name: 'oracle', type: 'bytes32' },
+          { name: 'oftBootstrap', type: 'bytes32' },
+        ],
+      },
+    ],
+    outputs: [
+      {
+        name: 'out',
+        type: 'tuple',
+        components: [
+          { name: 'oftBootstrapRegistry', type: 'address' },
+          { name: 'vault', type: 'address' },
+          { name: 'wrapper', type: 'address' },
+          { name: 'shareOFT', type: 'address' },
+        ],
+      },
+    ],
+  },
+  {
+    type: 'function',
+    name: 'deployPhase2AndLaunch',
+    stateMutability: 'nonpayable',
+    inputs: [
+      {
+        name: 'params',
+        type: 'tuple',
+        components: [
+          { name: 'creatorToken', type: 'address' },
+          { name: 'owner', type: 'address' },
+          { name: 'creatorTreasury', type: 'address' },
+          { name: 'payoutRecipient', type: 'address' },
+          { name: 'vault', type: 'address' },
+          { name: 'wrapper', type: 'address' },
+          { name: 'shareOFT', type: 'address' },
+          { name: 'shareSymbol', type: 'string' },
+          { name: 'version', type: 'string' },
+          { name: 'depositAmount', type: 'uint256' },
+          { name: 'auctionPercent', type: 'uint8' },
+          { name: 'requiredRaise', type: 'uint128' },
+          { name: 'floorPriceQ96', type: 'uint256' },
+          { name: 'auctionSteps', type: 'bytes' },
+        ],
+      },
+      {
+        name: 'codeIds',
+        type: 'tuple',
+        components: [
+          { name: 'vault', type: 'bytes32' },
+          { name: 'wrapper', type: 'bytes32' },
+          { name: 'shareOFT', type: 'bytes32' },
+          { name: 'gauge', type: 'bytes32' },
+          { name: 'cca', type: 'bytes32' },
+          { name: 'oracle', type: 'bytes32' },
+          { name: 'oftBootstrap', type: 'bytes32' },
+        ],
+      },
+    ],
+    outputs: [
+      {
+        name: 'out',
+        type: 'tuple',
+        components: [
+          { name: 'gaugeController', type: 'address' },
+          { name: 'ccaStrategy', type: 'address' },
+          { name: 'oracle', type: 'address' },
+          { name: 'auction', type: 'address' },
+        ],
+      },
+    ],
+  },
+  {
+    type: 'function',
+    name: 'deployPhase2AndLaunchWithPermit',
+    stateMutability: 'nonpayable',
+    inputs: [
+      {
+        name: 'params',
+        type: 'tuple',
+        components: [
+          { name: 'creatorToken', type: 'address' },
+          { name: 'owner', type: 'address' },
+          { name: 'creatorTreasury', type: 'address' },
+          { name: 'payoutRecipient', type: 'address' },
+          { name: 'vault', type: 'address' },
+          { name: 'wrapper', type: 'address' },
+          { name: 'shareOFT', type: 'address' },
+          { name: 'shareSymbol', type: 'string' },
+          { name: 'version', type: 'string' },
+          { name: 'depositAmount', type: 'uint256' },
+          { name: 'auctionPercent', type: 'uint8' },
+          { name: 'requiredRaise', type: 'uint128' },
+          { name: 'floorPriceQ96', type: 'uint256' },
+          { name: 'auctionSteps', type: 'bytes' },
+        ],
+      },
+      {
+        name: 'codeIds',
+        type: 'tuple',
+        components: [
+          { name: 'vault', type: 'bytes32' },
+          { name: 'wrapper', type: 'bytes32' },
+          { name: 'shareOFT', type: 'bytes32' },
+          { name: 'gauge', type: 'bytes32' },
+          { name: 'cca', type: 'bytes32' },
+          { name: 'oracle', type: 'bytes32' },
+          { name: 'oftBootstrap', type: 'bytes32' },
+        ],
+      },
+      {
+        name: 'permit',
+        type: 'tuple',
+        components: [
+          { name: 'deadline', type: 'uint256' },
+          { name: 'v', type: 'uint8' },
+          { name: 'r', type: 'bytes32' },
+          { name: 's', type: 'bytes32' },
+        ],
+      },
+    ],
+    outputs: [
+      {
+        name: 'out',
+        type: 'tuple',
+        components: [
+          { name: 'gaugeController', type: 'address' },
+          { name: 'ccaStrategy', type: 'address' },
+          { name: 'oracle', type: 'address' },
+          { name: 'auction', type: 'address' },
+        ],
+      },
+    ],
+  },
+  {
+    type: 'function',
+    name: 'deployPhase3Strategies',
+    stateMutability: 'nonpayable',
+    inputs: [
+      {
+        name: 'params',
+        type: 'tuple',
+        components: [
+          { name: 'creatorToken', type: 'address' },
+          { name: 'owner', type: 'address' },
+          { name: 'vault', type: 'address' },
+          { name: 'version', type: 'string' },
+          { name: 'initialSqrtPriceX96', type: 'uint160' },
+          { name: 'charmVaultName', type: 'string' },
+          { name: 'charmVaultSymbol', type: 'string' },
+          { name: 'charmWeightBps', type: 'uint256' },
+          { name: 'ajnaWeightBps', type: 'uint256' },
+          { name: 'enableAutoAllocate', type: 'bool' },
+        ],
+      },
+      {
+        name: 'codeIds',
+        type: 'tuple',
+        components: [
+          { name: 'charmAlphaVaultDeploy', type: 'bytes32' },
+          { name: 'creatorCharmStrategy', type: 'bytes32' },
+          { name: 'ajnaStrategy', type: 'bytes32' },
+        ],
+      },
+    ],
+    outputs: [
+      {
+        name: 'out',
+        type: 'tuple',
+        components: [
+          { name: 'v3Pool', type: 'address' },
+          { name: 'charmVault', type: 'address' },
+          { name: 'charmStrategy', type: 'address' },
+          { name: 'ajnaStrategy', type: 'address' },
+        ],
+      },
+    ],
+  },
 ] as const
 
 // UniversalBytecodeStore (v1 + v2 compatible) helpers.
@@ -875,10 +1113,7 @@ function DeployVaultBatcher({
 
   const marketFloorText = useMemo(() => {
     if (!marketFloorWeiPerTokenAligned) return null
-    const eth = formatUnits(marketFloorWeiPerTokenAligned, 18)
-    // Keep the UI compact; avoid long decimal spam.
-    const n = Number(eth)
-    const ethShort = Number.isFinite(n) ? n.toFixed(6) : eth
+    const ethShort = formatEthPerTokenForUi(marketFloorWeiPerTokenAligned)
 
     const duration = typeof marketFloorTwapDurationSec === 'number' ? marketFloorTwapDurationSec : null
     const mins = duration && duration > 0 ? Math.round(duration / 60) : null
@@ -1002,6 +1237,14 @@ function DeployVaultBatcher({
       cca: keccak256(DEPLOY_BYTECODE.CCALaunchStrategy as Hex),
       oracle: keccak256(DEPLOY_BYTECODE.CreatorOracle as Hex),
       oftBootstrap: keccak256(DEPLOY_BYTECODE.OFTBootstrapRegistry as Hex),
+    } as const
+  }, [])
+
+  const strategyCodeIds = useMemo(() => {
+    return {
+      charmAlphaVaultDeploy: keccak256(DEPLOY_BYTECODE.CharmAlphaVaultDeploy as Hex),
+      creatorCharmStrategy: keccak256(DEPLOY_BYTECODE.CreatorCharmStrategy as Hex),
+      ajnaStrategy: keccak256(DEPLOY_BYTECODE.AjnaStrategy as Hex),
     } as const
   }, [])
 
@@ -1162,6 +1405,513 @@ function DeployVaultBatcher({
       const permit2 = await resolvePermit2()
 
       const isOperatorSubmit = connected.toLowerCase() !== owner.toLowerCase()
+
+      // ===========================
+      // Two-step batcher (Phase 1 + Phase 2) path
+      // ===========================
+      // Base mainnet can no longer fit the full stack deploy (vault + wrapper + shareOFT + gauge + CCA + oracle + deposit + launch)
+      // in a single transaction due to code-deposit gas limits. If the configured batcher supports the two-step ABI,
+      // prefer it and bypass the legacy one-tx deploy flow below.
+      const isTwoStepBatcher = await (async () => {
+        const bc = await publicClient.getBytecode({ address: batcherAddress })
+        if (!bc || bc === '0x') return false
+        const phase1Topic = keccak256(
+          toBytes('Phase1Deployed(address,address,address,address,address,address)'),
+        ).slice(2).toLowerCase()
+        return bc.toLowerCase().includes(phase1Topic)
+      })()
+
+      if (isTwoStepBatcher) {
+        const phase1Call = {
+          target: batcherAddress,
+          value: 0n,
+          data: encodeFunctionData({
+            abi: CREATOR_VAULT_BATCHER_ABI,
+            functionName: 'deployPhase1',
+            args: [
+              { creatorToken, owner, vaultName, vaultSymbol, shareName, shareSymbol, version: deploymentVersion },
+              codeIds,
+            ],
+          }),
+        } as const
+
+        const phase2Params = {
+          creatorToken,
+          owner,
+          creatorTreasury: owner,
+          payoutRecipient: payoutForDeploy,
+          vault: expected.vault,
+          wrapper: expected.wrapper,
+          shareOFT: expected.shareOFT,
+          shareSymbol,
+          version: deploymentVersion,
+          depositAmount,
+          auctionPercent: DEFAULT_AUCTION_PERCENT,
+          requiredRaise: DEFAULT_REQUIRED_RAISE_WEI,
+          floorPriceQ96: floorPriceQ96Aligned,
+          auctionSteps,
+        } as const
+
+        // Phase 3 (strategies): Charm CREATOR/USDC + Ajna lending
+        const charmWeightBps = 6900n
+        const ajnaWeightBps = 2139n
+        const charmLabel = (depositSymbol || '').toLowerCase()
+        const phase3Params = {
+          creatorToken,
+          owner,
+          vault: expected.vault,
+          version: deploymentVersion,
+          initialSqrtPriceX96: 0n,
+          charmVaultName: charmLabel ? `CreatorVault: ${charmLabel}/USDC` : 'CreatorVault: CREATOR/USDC',
+          charmVaultSymbol: charmLabel ? `CV-${charmLabel}-USDC` : 'CV-CREATOR-USDC',
+          charmWeightBps,
+          ajnaWeightBps,
+          enableAutoAllocate: false,
+        } as const
+
+        // =================================
+        // Smart wallet executeBatch path (EOA submits, SW executes)
+        // =================================
+        if (isOperatorSubmit && isExecuteBatchPath) {
+          const cdpBundlerUrl = paymasterUrl
+
+          const phase1Calls: Array<{ target: Address; value: bigint; data: Hex }> = []
+          if (payoutMismatch) {
+            phase1Calls.push({
+              target: creatorToken,
+              value: 0n,
+              data: encodeFunctionData({
+                abi: COIN_PAYOUT_RECIPIENT_ABI,
+                functionName: 'setPayoutRecipient',
+                args: [expectedGauge],
+              }),
+            })
+          }
+          phase1Calls.push(phase1Call)
+
+          if (cdpBundlerUrl) {
+            const res1 = await sendCoinbaseSmartWalletUserOperation({
+              publicClient,
+              walletClient,
+              bundlerUrl: cdpBundlerUrl,
+              smartWallet: owner,
+              ownerAddress: connected,
+              calls: phase1Calls.map((c) => ({ to: c.target, value: c.value, data: c.data })),
+              version: '1',
+            })
+            setTxId(res1.transactionHash)
+          } else {
+            const executeBatchPhase1 = encodeFunctionData({
+              abi: COINBASE_SMART_WALLET_EXECUTE_BATCH_ABI,
+              functionName: 'executeBatch',
+              args: [phase1Calls],
+            })
+            const hash1 = await walletClient.sendTransaction({
+              account: (walletClient as any).account,
+              chain: base as any,
+              to: owner,
+              data: executeBatchPhase1,
+              value: 0n,
+            })
+            await publicClient.waitForTransactionReceipt({ hash: hash1 })
+            setTxId(hash1)
+          }
+
+          // Phase 2: (optional top-up) + approve + deployPhase2AndLaunch
+          const smartWalletBalance = (await publicClient.readContract({
+            address: creatorToken,
+            abi: erc20Abi,
+            functionName: 'balanceOf',
+            args: [owner],
+          })) as bigint
+          const shortfall = smartWalletBalance >= depositAmount ? 0n : depositAmount - smartWalletBalance
+
+          const phase2Calls: Array<{ target: Address; value: bigint; data: Hex }> = []
+
+          if (shortfall > 0n) {
+            const eoaBalance = (await publicClient.readContract({
+              address: creatorToken,
+              abi: erc20Abi,
+              functionName: 'balanceOf',
+              args: [connected],
+            })) as bigint
+            if (eoaBalance < shortfall) {
+              throw new Error(
+                `Your wallet needs at least ${formatDeposit(shortfall)} ${depositSymbol} to top up the creator smart wallet.`,
+              )
+            }
+
+            const eoaPermit2Allowance = (await publicClient.readContract({
+              address: creatorToken,
+              abi: erc20Abi,
+              functionName: 'allowance',
+              args: [connected, permit2],
+            })) as bigint
+            if (eoaPermit2Allowance < shortfall) {
+              throw new Error(
+                `Approve Permit2 before deploying (required to pull ${formatDeposit(shortfall)} ${depositSymbol} into the smart wallet).`,
+              )
+            }
+
+            const bitmap = (await publicClient.readContract({
+              address: permit2,
+              abi: PERMIT2_VIEW_ABI,
+              functionName: 'nonceBitmap',
+              args: [connected, 0n],
+            })) as bigint
+
+            let bitPos = -1
+            for (let i = 0; i < 256; i++) {
+              const used = (bitmap >> BigInt(i)) & 1n
+              if (used === 0n) {
+                bitPos = i
+                break
+              }
+            }
+            if (bitPos < 0) throw new Error('Permit2 nonce bitmap is full (word 0).')
+            const nonce = (0n << 8n) | BigInt(bitPos)
+            const deadline = BigInt(Math.floor(Date.now() / 1000) + 60 * 10)
+
+            const permitSig = appendPermit2SignatureType(
+              (await walletClient.signTypedData({
+                account: (walletClient as any).account,
+                domain: { name: 'Permit2', version: '1', chainId: base.id, verifyingContract: permit2 },
+                types: {
+                  TokenPermissions: [
+                    { name: 'token', type: 'address' },
+                    { name: 'amount', type: 'uint256' },
+                  ],
+                  PermitTransferFrom: [
+                    { name: 'permitted', type: 'TokenPermissions' },
+                    { name: 'spender', type: 'address' },
+                    { name: 'nonce', type: 'uint256' },
+                    { name: 'deadline', type: 'uint256' },
+                  ],
+                },
+                primaryType: 'PermitTransferFrom',
+                message: {
+                  permitted: { token: creatorToken, amount: shortfall },
+                  spender: owner,
+                  nonce,
+                  deadline,
+                },
+              })) as Hex,
+            )
+
+            phase2Calls.push({
+              target: permit2,
+              value: 0n,
+              data: encodeFunctionData({
+                abi: PERMIT2_SIGNATURE_TRANSFER_ABI,
+                functionName: 'permitTransferFrom',
+                args: [
+                  { permitted: { token: creatorToken, amount: shortfall }, nonce, deadline },
+                  { to: owner, requestedAmount: shortfall },
+                  connected,
+                  permitSig,
+                ],
+              }),
+            })
+          }
+
+          const swAllowanceToBatcher = (await publicClient.readContract({
+            address: creatorToken,
+            abi: erc20Abi,
+            functionName: 'allowance',
+            args: [owner, batcherAddress],
+          })) as bigint
+
+          if (swAllowanceToBatcher < depositAmount) {
+            if (swAllowanceToBatcher !== 0n) {
+              phase2Calls.push({
+                target: creatorToken,
+                value: 0n,
+                data: encodeFunctionData({
+                  abi: erc20Abi,
+                  functionName: 'approve',
+                  args: [batcherAddress, 0n],
+                }),
+              })
+            }
+            phase2Calls.push({
+              target: creatorToken,
+              value: 0n,
+              data: encodeFunctionData({
+                abi: erc20Abi,
+                functionName: 'approve',
+                args: [batcherAddress, depositAmount],
+              }),
+            })
+          }
+
+          phase2Calls.push({
+            target: batcherAddress,
+            value: 0n,
+            data: encodeFunctionData({
+              abi: CREATOR_VAULT_BATCHER_ABI,
+              functionName: 'deployPhase2AndLaunch',
+              args: [phase2Params, codeIds],
+            }),
+          })
+
+          const phase3Calls: Array<{ target: Address; value: bigint; data: Hex }> = [
+            {
+              target: batcherAddress,
+              value: 0n,
+              data: encodeFunctionData({
+                abi: CREATOR_VAULT_BATCHER_ABI,
+                functionName: 'deployPhase3Strategies',
+                args: [phase3Params, strategyCodeIds],
+              }),
+            },
+          ]
+
+          if (cdpBundlerUrl) {
+            const res2 = await sendCoinbaseSmartWalletUserOperation({
+              publicClient,
+              walletClient,
+              bundlerUrl: cdpBundlerUrl,
+              smartWallet: owner,
+              ownerAddress: connected,
+              calls: phase2Calls.map((c) => ({ to: c.target, value: c.value, data: c.data })),
+              version: '1',
+            })
+            setTxId(res2.transactionHash)
+
+            const res3 = await sendCoinbaseSmartWalletUserOperation({
+              publicClient,
+              walletClient,
+              bundlerUrl: cdpBundlerUrl,
+              smartWallet: owner,
+              ownerAddress: connected,
+              calls: phase3Calls.map((c) => ({ to: c.target, value: c.value, data: c.data })),
+              version: '1',
+            })
+            setTxId(res3.transactionHash)
+            onSuccess(expected)
+            return
+          }
+
+          const executeBatchPhase2 = encodeFunctionData({
+            abi: COINBASE_SMART_WALLET_EXECUTE_BATCH_ABI,
+            functionName: 'executeBatch',
+            args: [phase2Calls],
+          })
+
+          const hash2 = await walletClient.sendTransaction({
+            account: (walletClient as any).account,
+            chain: base as any,
+            to: owner,
+            data: executeBatchPhase2,
+            value: 0n,
+          })
+          await publicClient.waitForTransactionReceipt({ hash: hash2 })
+          setTxId(hash2)
+
+          const executeBatchPhase3 = encodeFunctionData({
+            abi: COINBASE_SMART_WALLET_EXECUTE_BATCH_ABI,
+            functionName: 'executeBatch',
+            args: [phase3Calls],
+          })
+
+          const hash3 = await walletClient.sendTransaction({
+            account: (walletClient as any).account,
+            chain: base as any,
+            to: owner,
+            data: executeBatchPhase3,
+            value: 0n,
+          })
+          await publicClient.waitForTransactionReceipt({ hash: hash3 })
+          setTxId(hash3)
+          onSuccess(expected)
+          return
+        }
+
+        // Direct owner path
+        if (isOperatorSubmit) {
+          throw new Error('Connect the canonical identity wallet/account to deploy (two-step batcher).')
+        }
+
+        // Prefer a single wallet approval via EIP-5792 `wallet_sendCalls`.
+        // Wallets may execute non-atomically and can split this bundle into multiple EntryPoint txs.
+        try {
+          const calls: { to: Address; data: Hex; value?: bigint }[] = []
+
+          if (payoutMismatch) {
+            calls.push({
+              to: creatorToken,
+              data: encodeFunctionData({
+                abi: COIN_PAYOUT_RECIPIENT_ABI,
+                functionName: 'setPayoutRecipient',
+                args: [expectedGauge],
+              }),
+              value: 0n,
+            })
+          }
+
+          // Phase 1
+          calls.push({ to: batcherAddress, data: phase1Call.data, value: 0n })
+
+          // Ensure allowance for Phase 2 deposit (approve path keeps user interaction to one wallet approval).
+          const allowance = (await publicClient.readContract({
+            address: creatorToken,
+            abi: erc20Abi,
+            functionName: 'allowance',
+            args: [owner, batcherAddress],
+          })) as bigint
+
+          if (allowance < depositAmount) {
+            if (allowance !== 0n) {
+              calls.push({
+                to: creatorToken,
+                data: encodeFunctionData({
+                  abi: erc20Abi,
+                  functionName: 'approve',
+                  args: [batcherAddress, 0n],
+                }),
+                value: 0n,
+              })
+            }
+            calls.push({
+              to: creatorToken,
+              data: encodeFunctionData({
+                abi: erc20Abi,
+                functionName: 'approve',
+                args: [batcherAddress, depositAmount],
+              }),
+              value: 0n,
+            })
+          }
+
+          // Phase 2
+          calls.push({
+            to: batcherAddress,
+            data: encodeFunctionData({
+              abi: CREATOR_VAULT_BATCHER_ABI,
+              functionName: 'deployPhase2AndLaunch',
+              args: [phase2Params, codeIds],
+            }),
+            value: 0n,
+          })
+
+          // Phase 3 (strategies)
+          calls.push({
+            to: batcherAddress,
+            data: encodeFunctionData({
+              abi: CREATOR_VAULT_BATCHER_ABI,
+              functionName: 'deployPhase3Strategies',
+              args: [phase3Params, strategyCodeIds],
+            }),
+            value: 0n,
+          })
+
+          const res = await sendCallsAsync({
+            calls: calls.map((c) => ({ to: c.to, data: c.data, value: c.value ?? 0n })),
+            account: connected,
+            chainId: base.id,
+            // Allow non-atomic execution so the wallet can split this into multiple txs (e.g. 2 EntryPoint txs).
+            forceAtomic: false,
+            capabilities: capabilities as any,
+          })
+          setTxId(res.id)
+          onSuccess(expected)
+          return
+        } catch {
+          // Fall back to sequential txs below.
+        }
+
+        // Fallback: sequential txs (will require multiple confirmations).
+        if (payoutMismatch) {
+          const hashPayout = await walletClient.sendTransaction({
+            account: (walletClient as any).account,
+            chain: base as any,
+            to: creatorToken,
+            data: encodeFunctionData({
+              abi: COIN_PAYOUT_RECIPIENT_ABI,
+              functionName: 'setPayoutRecipient',
+              args: [expectedGauge],
+            }),
+            value: 0n,
+          })
+          await publicClient.waitForTransactionReceipt({ hash: hashPayout })
+        }
+
+        const hash1 = await walletClient.sendTransaction({
+          account: (walletClient as any).account,
+          chain: base as any,
+          to: batcherAddress,
+          data: phase1Call.data,
+          value: 0n,
+        })
+        await publicClient.waitForTransactionReceipt({ hash: hash1 })
+        setTxId(hash1)
+
+        const allowance = (await publicClient.readContract({
+          address: creatorToken,
+          abi: erc20Abi,
+          functionName: 'allowance',
+          args: [owner, batcherAddress],
+        })) as bigint
+
+        if (allowance < depositAmount) {
+          if (allowance !== 0n) {
+            const hash0 = await walletClient.sendTransaction({
+              account: (walletClient as any).account,
+              chain: base as any,
+              to: creatorToken,
+              data: encodeFunctionData({
+                abi: erc20Abi,
+                functionName: 'approve',
+                args: [batcherAddress, 0n],
+              }),
+              value: 0n,
+            })
+            await publicClient.waitForTransactionReceipt({ hash: hash0 })
+          }
+          const hashApprove = await walletClient.sendTransaction({
+            account: (walletClient as any).account,
+            chain: base as any,
+            to: creatorToken,
+            data: encodeFunctionData({
+              abi: erc20Abi,
+              functionName: 'approve',
+              args: [batcherAddress, depositAmount],
+            }),
+            value: 0n,
+          })
+          await publicClient.waitForTransactionReceipt({ hash: hashApprove })
+        }
+
+        const hash2 = await walletClient.sendTransaction({
+          account: (walletClient as any).account,
+          chain: base as any,
+          to: batcherAddress,
+          data: encodeFunctionData({
+            abi: CREATOR_VAULT_BATCHER_ABI,
+            functionName: 'deployPhase2AndLaunch',
+            args: [phase2Params, codeIds],
+          }),
+          value: 0n,
+        })
+        await publicClient.waitForTransactionReceipt({ hash: hash2 })
+        setTxId(hash2)
+
+        const hash3 = await walletClient.sendTransaction({
+          account: (walletClient as any).account,
+          chain: base as any,
+          to: batcherAddress,
+          data: encodeFunctionData({
+            abi: CREATOR_VAULT_BATCHER_ABI,
+            functionName: 'deployPhase3Strategies',
+            args: [phase3Params, strategyCodeIds],
+          }),
+          value: 0n,
+        })
+        await publicClient.waitForTransactionReceipt({ hash: hash3 })
+        setTxId(hash3)
+        onSuccess(expected)
+        return
+      }
 
       // =================================
       // Smart wallet executeBatch path (EOA owner submits, SW executes)
@@ -2764,6 +3514,9 @@ export function DeployVault() {
       cca: keccak256(DEPLOY_BYTECODE.CCALaunchStrategy as Hex),
       oracle: keccak256(DEPLOY_BYTECODE.CreatorOracle as Hex),
       oftBootstrap: keccak256(DEPLOY_BYTECODE.OFTBootstrapRegistry as Hex),
+      charmAlphaVaultDeploy: keccak256(DEPLOY_BYTECODE.CharmAlphaVaultDeploy as Hex),
+      creatorCharmStrategy: keccak256(DEPLOY_BYTECODE.CreatorCharmStrategy as Hex),
+      ajnaStrategy: keccak256(DEPLOY_BYTECODE.AjnaStrategy as Hex),
     } as const
   }, [])
 
@@ -2779,6 +3532,9 @@ export function DeployVault() {
       deployCodeIds.cca,
       deployCodeIds.oracle,
       deployCodeIds.oftBootstrap,
+      deployCodeIds.charmAlphaVaultDeploy,
+      deployCodeIds.creatorCharmStrategy,
+      deployCodeIds.ajnaStrategy,
     ],
     enabled: Boolean(publicClient && creatorVaultBatcherAddress),
     staleTime: 60_000,
@@ -2833,6 +3589,9 @@ export function DeployVault() {
         { key: 'gauge', label: 'CreatorGaugeController', codeId: deployCodeIds.gauge },
         { key: 'cca', label: 'CCALaunchStrategy', codeId: deployCodeIds.cca },
         { key: 'oracle', label: 'CreatorOracle', codeId: deployCodeIds.oracle },
+        { key: 'charmAlphaVaultDeploy', label: 'CharmAlphaVaultDeploy', codeId: deployCodeIds.charmAlphaVaultDeploy },
+        { key: 'creatorCharmStrategy', label: 'CreatorCharmStrategy', codeId: deployCodeIds.creatorCharmStrategy },
+        { key: 'ajnaStrategy', label: 'AjnaStrategy', codeId: deployCodeIds.ajnaStrategy },
       ] as const
 
       const pointerResults = await publicClient!.multicall({
