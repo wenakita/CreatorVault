@@ -85,6 +85,8 @@ docs-export/
 
 # Development and testing directories (excluded from repo)
 scripts/
+!docs-site/scripts/
+!docs-site/scripts/**
 # script/ - Keep deployment scripts
 !script/DeployBase.s.sol
 !script/DeployInfrastructure.s.sol
