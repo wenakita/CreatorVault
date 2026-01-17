@@ -1,5 +1,5 @@
 import type { Address } from 'viem'
-import { encodeAbiParameters, isAddress, keccak256, parseAbiParameters } from 'viem'
+import { encodeAbiParameters, isAddress, keccak256, parseAbiParameters, toHex } from 'viem'
 import { erc20Abi } from 'viem'
 
 import { CONTRACTS } from '@/config/contracts'
@@ -8,28 +8,21 @@ import { currencyPerTokenBaseUnitsToQ96 } from '@/lib/cca/q96'
 
 const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000' as const
 
-// Uniswap V4 PoolManager view
-const V4_POOL_MANAGER_VIEW_ABI = [
+// Uniswap V4 PoolManager state reads use `extsload` (see v4-core StateLibrary).
+const V4_EXTSLOAD_ABI = [
   {
     type: 'function',
-    name: 'getSlot0',
+    name: 'extsload',
     stateMutability: 'view',
-    inputs: [{ name: 'poolId', type: 'bytes32' }],
-    outputs: [
-      { name: 'sqrtPriceX96', type: 'uint160' },
-      { name: 'tick', type: 'int24' },
-      { name: 'protocolFee', type: 'uint24' },
-      { name: 'lpFee', type: 'uint24' },
-    ],
-  },
-  {
-    type: 'function',
-    name: 'getLiquidity',
-    stateMutability: 'view',
-    inputs: [{ name: 'poolId', type: 'bytes32' }],
-    outputs: [{ name: 'liquidity', type: 'uint128' }],
+    inputs: [{ name: 'slot', type: 'bytes32' }],
+    outputs: [{ name: 'value', type: 'bytes32' }],
   },
 ] as const
+
+// v4-core StateLibrary constants (PoolManager storage layout)
+const V4_POOLS_SLOT =
+  '0x0000000000000000000000000000000000000000000000000000000000000006' as const
+const V4_LIQUIDITY_OFFSET = 3n
 
 // Zora creator coin pool key (many Zora coins expose this)
 const ZORA_COIN_POOL_KEY_ABI = [
@@ -131,6 +124,35 @@ function approxToken1PerToken0FromTick(tick: number, decimals0: number, decimals
   const priceRaw = Math.pow(1.0001, tick)
   const decAdj = Math.pow(10, decimals0 - decimals1)
   return priceRaw * decAdj
+}
+
+function addSlot(slot: `0x${string}`, offset: bigint): `0x${string}` {
+  return toHex(BigInt(slot) + offset, { size: 32 }) as `0x${string}`
+}
+
+function getV4PoolStateSlot(poolId: `0x${string}`): `0x${string}` {
+  // stateSlot = keccak256(abi.encodePacked(poolId, POOLS_SLOT))
+  // For fixed-size bytes32 values, abi.encodePacked == abi.encode.
+  return keccak256(
+    encodeAbiParameters(parseAbiParameters('bytes32,bytes32'), [poolId, V4_POOLS_SLOT]),
+  ) as `0x${string}`
+}
+
+function decodeV4Slot0Word(word: `0x${string}`): { sqrtPriceX96: bigint; tick: number; protocolFee: number; lpFee: number } {
+  const data = BigInt(word)
+  const sqrtMask = (1n << 160n) - 1n
+  const sqrtPriceX96 = data & sqrtMask
+
+  // tick is next 24 bits (signed int24)
+  const tickRaw = (data >> 160n) & ((1n << 24n) - 1n)
+  const tickSigned = tickRaw >= (1n << 23n) ? tickRaw - (1n << 24n) : tickRaw
+  const tick = Number(tickSigned)
+
+  const protocolFee = Number((data >> 184n) & ((1n << 24n) - 1n))
+  const lpFee = Number((data >> 208n) & ((1n << 24n) - 1n))
+
+  if (!Number.isFinite(tick)) throw new Error('Invalid v4 tick')
+  return { sqrtPriceX96, tick, protocolFee, lpFee }
 }
 
 function floorDiv(a: bigint, b: bigint): bigint {
@@ -261,23 +283,46 @@ async function estimateV4BlockRange(params: {
   return { fromBlock, toBlock, avgBlockTimeSec }
 }
 
-async function getV4TickAtBlock(params: {
+async function getV4Slot0AtBlock(params: {
   publicClient: ReadonlyPublicClient
   poolManager: Address
   poolId: `0x${string}`
   blockNumber: bigint
-}): Promise<number> {
+}): Promise<{ sqrtPriceX96: bigint; tick: number; protocolFee: number; lpFee: number }> {
   const { publicClient, poolManager, poolId, blockNumber } = params
-  const slot0 = await publicClient.readContract({
+  const stateSlot = getV4PoolStateSlot(poolId)
+  const word = (await publicClient.readContract({
     address: poolManager,
-    abi: V4_POOL_MANAGER_VIEW_ABI,
-    functionName: 'getSlot0',
-    args: [poolId],
+    abi: V4_EXTSLOAD_ABI,
+    functionName: 'extsload',
+    args: [stateSlot],
     blockNumber,
-  })
-  const tick = Number((slot0 as any)?.[1] ?? 0)
-  if (!Number.isFinite(tick)) throw new Error('Invalid v4 tick')
-  return tick
+  })) as `0x${string}`
+
+  const decoded = decodeV4Slot0Word(word)
+  if (decoded.sqrtPriceX96 <= 0n) throw new Error('V4 pool not initialized (sqrtPriceX96=0)')
+  return decoded
+}
+
+async function getV4LiquidityAtBlock(params: {
+  publicClient: ReadonlyPublicClient
+  poolManager: Address
+  poolId: `0x${string}`
+  blockNumber: bigint
+}): Promise<bigint> {
+  const { publicClient, poolManager, poolId, blockNumber } = params
+  const stateSlot = getV4PoolStateSlot(poolId)
+  const liquiditySlot = addSlot(stateSlot, V4_LIQUIDITY_OFFSET)
+  const word = (await publicClient.readContract({
+    address: poolManager,
+    abi: V4_EXTSLOAD_ABI,
+    functionName: 'extsload',
+    args: [liquiditySlot],
+    blockNumber,
+  })) as `0x${string}`
+  const v = BigInt(word)
+  const liq = v & ((1n << 128n) - 1n)
+  return liq
 }
 
 async function getV4SampledMeanTick(params: {
@@ -309,7 +354,7 @@ async function getV4SampledMeanTick(params: {
     blocks.map(async (bn) => {
       const [block, tick] = await Promise.all([
         publicClient.getBlock({ blockNumber: bn }),
-        getV4TickAtBlock({ publicClient, poolManager, poolId, blockNumber: bn }),
+        getV4Slot0AtBlock({ publicClient, poolManager, poolId, blockNumber: bn }).then((s) => s.tick),
       ])
       const ts = getBlockTimestampSec(block)
       if (ts <= 0n) throw new Error('Invalid sampled block timestamp')
@@ -530,13 +575,7 @@ export async function computeMarketFloorQuote(params: {
   })
 
   const [liquidityRaw, c0Dec, c1Dec] = await Promise.all([
-    publicClient.readContract({
-      address: poolManager,
-      abi: V4_POOL_MANAGER_VIEW_ABI,
-      functionName: 'getLiquidity',
-      args: [poolId],
-      blockNumber: toBlock,
-    }) as Promise<bigint>,
+    getV4LiquidityAtBlock({ publicClient, poolManager, poolId, blockNumber: toBlock }),
     publicClient.readContract({ address: c0, abi: erc20Abi, functionName: 'decimals' }) as Promise<number>,
     publicClient.readContract({ address: c1, abi: erc20Abi, functionName: 'decimals' }) as Promise<number>,
   ])
