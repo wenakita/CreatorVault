@@ -93,6 +93,7 @@ export type MarketFloorQuote = {
 
   // Diagnostics (for UI/debug)
   creatorZora: {
+    durationSec: number
     poolId: `0x${string}`
     currency0: Address
     currency1: Address
@@ -160,6 +161,49 @@ async function getV3TwapTick(params: { publicClient: ReadonlyPublicClient; pool:
   const n = Number(meanTick)
   if (!Number.isFinite(n)) throw new Error('Invalid TWAP tick (non-finite)')
   return n
+}
+
+function isV3ObserveOldError(e: any): boolean {
+  const msg = String((e as any)?.shortMessage ?? (e as any)?.message ?? '')
+  if (!msg) return false
+  // Uniswap v3 oracle uses `require(target >= oldest, 'OLD')`
+  return /\bOLD\b/.test(msg)
+}
+
+async function getZoraReferenceV3Ticks(params: {
+  publicClient: ReadonlyPublicClient
+  zoraWethV3Pool: Address
+  zoraUsdcV3Pool: Address
+  desiredDurationSec: number
+}): Promise<{ durationSec: number; wethTick: number; usdcTick: number }> {
+  const { publicClient, zoraWethV3Pool, zoraUsdcV3Pool } = params
+  const desired = Math.floor(params.desiredDurationSec)
+  if (desired <= 0) throw new Error('Invalid v3 TWAP duration')
+
+  // Try progressively shorter windows if the pool cannot serve the requested lookback (observe() reverts with `OLD`).
+  const candidatesRaw = [desired, 3600, 1800, 900, 300].filter((d) => Number.isFinite(d) && d > 0 && d <= desired)
+  const candidates = Array.from(new Set(candidatesRaw)).sort((a, b) => b - a)
+
+  let lastOldErr: any = null
+  for (const d of candidates) {
+    try {
+      const [wethTick, usdcTick] = await Promise.all([
+        getV3TwapTick({ publicClient, pool: zoraWethV3Pool, durationSec: d }),
+        getV3TwapTick({ publicClient, pool: zoraUsdcV3Pool, durationSec: d }),
+      ])
+      return { durationSec: d, wethTick, usdcTick }
+    } catch (e: any) {
+      if (isV3ObserveOldError(e)) {
+        lastOldErr = e
+        continue
+      }
+      throw e
+    }
+  }
+
+  // Preserve the signal while keeping the user-facing message clean.
+  void lastOldErr
+  throw new Error('ZORA reference pools do not have enough oracle history for the requested TWAP window')
 }
 
 function getBlockTimestampSec(block: any): bigint {
@@ -309,12 +353,18 @@ function toWeiFromEthFloat(eth: number): bigint {
 export async function computeMarketFloorQuote(params: {
   publicClient: ReadonlyPublicClient
   creatorCoin: Address
+  /** Lookback window for sampling the CREATOR/ZORA v4 pool tick. */
   twapDurationSec?: number
+  /** TWAP window used for ZORA reference pricing from Uniswap v3 pools. */
+  zoraEthTwapDurationSec?: number
   discountBps?: number
 }): Promise<MarketFloorQuote> {
   const { publicClient, creatorCoin } = params
   // Default lookback: 2 hours (meaningful smoothing for low-liquidity creator coins).
   const twapDurationSec = params.twapDurationSec ?? 7200
+  // Uniswap v3 `observe()` frequently cannot serve very long windows unless the pool has
+  // sufficient observation history. Keep this shorter and separate from the v4 sampling window.
+  const zoraEthTwapDurationSec = params.zoraEthTwapDurationSec ?? 1800
   const discountBps = params.discountBps ?? 8000
 
   if (!isAddress(creatorCoin) || creatorCoin === ZERO_ADDRESS) throw new Error('Invalid creator coin address')
@@ -378,17 +428,14 @@ export async function computeMarketFloorQuote(params: {
   const zora = zoraFromWethPool
 
   // 2) Read ZORA→ETH using Uniswap v3 TWAPs (both sources; pick conservative min)
-  const [
-    wethTick,
-    usdcTick,
-    wethDec,
-    usdcDec,
-    zoraDec,
-    chainlinkDec,
-    chainlinkRound,
-  ] = await Promise.all([
-    getV3TwapTick({ publicClient, pool: zoraWethV3Pool as Address, durationSec: twapDurationSec }),
-    getV3TwapTick({ publicClient, pool: zoraUsdcV3Pool as Address, durationSec: twapDurationSec }),
+  const { durationSec: v3DurationSecUsed, wethTick, usdcTick } = await getZoraReferenceV3Ticks({
+    publicClient,
+    zoraWethV3Pool: zoraWethV3Pool as Address,
+    zoraUsdcV3Pool: zoraUsdcV3Pool as Address,
+    desiredDurationSec: zoraEthTwapDurationSec,
+  })
+
+  const [wethDec, usdcDec, zoraDec, chainlinkDec, chainlinkRound] = await Promise.all([
     publicClient.readContract({ address: weth, abi: erc20Abi, functionName: 'decimals' }) as Promise<number>,
     publicClient.readContract({ address: usdc, abi: erc20Abi, functionName: 'decimals' }) as Promise<number>,
     publicClient.readContract({ address: zora, abi: erc20Abi, functionName: 'decimals' }) as Promise<number>,
@@ -532,6 +579,7 @@ export async function computeMarketFloorQuote(params: {
     floorPriceQ96,
     weiPerToken,
     creatorZora: {
+      durationSec: twapDurationSec,
       poolId,
       currency0: c0,
       currency1: c1,
@@ -544,7 +592,7 @@ export async function computeMarketFloorQuote(params: {
       creatorPerZora,
     },
     zoraEth: {
-      durationSec: twapDurationSec,
+      durationSec: v3DurationSecUsed,
       ethPerZoraWethTwap,
       ethPerZoraUsdcTwap,
       ethPerZoraConservative,

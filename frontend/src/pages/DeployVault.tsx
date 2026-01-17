@@ -3524,7 +3524,7 @@ export function DeployVault() {
                     deploymentVersion={deploymentVersion}
                     currentPayoutRecipient={payoutRecipient}
                     floorPriceQ96Aligned={marketFloorQuery.data?.floorPriceQ96Aligned ?? null}
-                    marketFloorTwapDurationSec={marketFloorQuery.data?.zoraEth.durationSec ?? null}
+                    marketFloorTwapDurationSec={marketFloorQuery.data?.creatorZora.durationSec ?? null}
                     marketFloorDiscountBps={marketFloorQuery.data?.zoraEth.discountBps ?? null}
                     onSuccess={() => {}}
                   />
