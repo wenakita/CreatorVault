@@ -3,25 +3,77 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            primary: '#0052FF',
+                            hover: '#004AD9',
+                            accent: '#3B82F6',
+                        },
+                        vault: {
+                            bg: '#020202',
+                            card: '#0A0A0A',
+                            border: '#1F1F1F',
+                            text: '#EDEDED',
+                            subtext: '#666666',
+                        },
+                        surface: {
+                            50: '#f8fafc',
+                            100: '#f1f5f9',
+                            200: '#e2e8f0',
+                            300: '#cbd5e1',
+                            400: '#94a3b8',
+                            500: '#64748b',
+                            600: '#475569',
+                            700: '#334155',
+                            800: '#1e293b',
+                            900: '#0f172a',
+                            950: '#020617',
+                        },
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'system-ui', 'sans-serif'],
+                        display: ['Space Grotesk', 'Inter', 'system-ui', 'sans-serif'],
+                        mono: ['JetBrains Mono', 'Space Mono', 'monospace'],
+                    },
+                    backgroundImage: {
+                        'blue-gradient': 'linear-gradient(135deg, #0052FF 0%, #0033CC 100%)',
+                        'subtle-glow': 'radial-gradient(circle at 50% 0%, rgba(0, 82, 255, 0.05) 0%, transparent 70%)',
+                        'wire-grid': 'linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px)',
+                    },
+                },
+            },
+        }
+    </script>
     <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;500;700&family=JetBrains+Mono:wght@300;400&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Space+Grotesk:wght@300;500;700&family=JetBrains+Mono:wght@300;400&family=Space+Mono:wght@300;400;700&display=swap" rel="stylesheet">
     <style>
         :root {
-            --obsidian: #050506;
-            --tension-cyan: #00f2ff;
-            --tension-blue: #0044ff;
-            --wire-grey: rgba(255, 255, 255, 0.08);
-            --wire-bright: rgba(255, 255, 255, 0.4);
+            --vault-bg: #020202;
+            --vault-card: #0A0A0A;
+            --vault-border: #1F1F1F;
+            --vault-text: #EDEDED;
+            --vault-subtext: #666666;
+            --brand-primary: #0052FF;
+            --brand-hover: #004AD9;
+            --brand-accent: #3B82F6;
+            --wire-grey: rgba(255, 255, 255, 0.05);
+            --wire-bright: rgba(59, 130, 246, 0.45);
         }
 
         body {
-            background-color: var(--obsidian);
-            color: white;
-            font-family: 'Space Grotesk', sans-serif;
+            background-color: var(--vault-bg);
+            color: var(--vault-text);
+            font-family: 'Inter', system-ui, sans-serif;
             overflow-x: hidden;
-            background-image: 
-                radial-gradient(circle at 2px 2px, var(--wire-grey) 1px, transparent 0);
-            background-size: 40px 40px;
+            background-image:
+                radial-gradient(circle at 50% 0%, rgba(0, 82, 255, 0.08) 0%, transparent 60%),
+                linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+            background-size: 100% 100%, 40px 40px, 40px 40px;
         }
 
         .manifold-container {
@@ -42,24 +94,28 @@
             opacity: 0.5;
         }
 
-        .mono { font-family: 'JetBrains Mono', monospace; }
+        .mono { font-family: 'JetBrains Mono', 'Space Mono', monospace; }
+
+        h1, h2, h3, h4, h5, h6 {
+            font-family: 'Space Grotesk', 'Inter', sans-serif;
+        }
 
         .glass-panel {
-            background: rgba(10, 10, 12, 0.8);
+            background: rgba(10, 10, 10, 0.85);
             backdrop-filter: blur(12px);
-            border: 0.5px solid var(--wire-grey);
+            border: 1px solid var(--vault-border);
             position: relative;
             transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
         }
 
         .glass-panel:hover {
-            border-color: var(--wire-bright);
+            border-color: var(--brand-accent);
             transform: translateY(-2px);
         }
 
         .tension-line {
             height: 1px;
-            background: linear-gradient(90deg, transparent, var(--tension-cyan), transparent);
+            background: linear-gradient(90deg, transparent, var(--brand-accent), transparent);
             position: relative;
             overflow: hidden;
         }
@@ -92,7 +148,7 @@
             gap: 10px;
             font-size: 0.7rem;
             text-transform: uppercase;
-            color: var(--tension-cyan);
+            color: var(--brand-accent);
             letter-spacing: 0.2em;
         }
 
@@ -107,15 +163,15 @@
             width: 8px;
             height: 8px;
             border-radius: 50%;
-            background: var(--tension-cyan);
-            box-shadow: 0 0 15px var(--tension-cyan);
+            background: var(--brand-accent);
+            box-shadow: 0 0 15px rgba(59, 130, 246, 0.5);
             display: inline-block;
         }
 
         .btn-launch {
             background: transparent;
-            border: 1px solid var(--tension-cyan);
-            color: var(--tension-cyan);
+            border: 1px solid var(--brand-primary);
+            color: var(--brand-primary);
             padding: 12px 32px;
             text-transform: uppercase;
             font-weight: bold;
@@ -126,9 +182,9 @@
         }
 
         .btn-launch:hover {
-            background: var(--tension-cyan);
-            color: var(--obsidian);
-            box-shadow: 0 0 30px rgba(0, 242, 255, 0.4);
+            background: var(--brand-primary);
+            color: var(--vault-bg);
+            box-shadow: 0 0 30px rgba(0, 82, 255, 0.4);
         }
 
         .manifold-svg {
@@ -150,16 +206,16 @@
 
         input {
             background: transparent;
-            border-bottom: 1px solid var(--wire-grey);
+            border-bottom: 1px solid var(--vault-border);
             padding: 8px 0;
-            color: white;
+            color: var(--vault-text);
             outline: none;
             width: 100%;
-            font-family: 'JetBrains Mono', monospace;
+            font-family: 'JetBrains Mono', 'Space Mono', monospace;
         }
 
         input:focus {
-            border-bottom-color: var(--tension-cyan);
+            border-bottom-color: var(--brand-accent);
         }
 
         .status-tag {
@@ -172,7 +228,7 @@
         .node-connector {
             position: absolute;
             width: 1px;
-            background: var(--wire-grey);
+            background: var(--vault-border);
         }
     </style>
 </head>
@@ -183,8 +239,8 @@
         <svg class="manifold-svg" viewBox="0 0 1000 1000">
             <defs>
                 <linearGradient id="grad" x1="0%" y1="0%" x2="100%" y2="100%">
-                    <stop offset="0%" style="stop-color:var(--tension-cyan);stop-opacity:1" />
-                    <stop offset="100%" style="stop-color:var(--tension-blue);stop-opacity:1" />
+                    <stop offset="0%" style="stop-color:var(--brand-accent);stop-opacity:1" />
+                    <stop offset="100%" style="stop-color:var(--brand-primary);stop-opacity:1" />
                 </linearGradient>
             </defs>
             <path d="M100,500 Q250,100 500,500 T900,500" fill="none" stroke="url(#grad)" stroke-width="0.5" />

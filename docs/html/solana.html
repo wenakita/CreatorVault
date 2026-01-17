@@ -6,16 +6,17 @@
     <title>CreatorVault | Solana Bridge</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;800&family=Space+Grotesk:wght@300;500;700&family=JetBrains+Mono:wght@300;400;500;700&family=Space+Mono:wght@300;400;700&display=swap" rel="stylesheet">
     <style>
         :root {
-            --bg: #050505;
-            --chrome-light: #f0f0f0;
-            --chrome-dark: #1a1a1a;
-            --accent-solana: #9945FF;
+            --bg: #020202;
+            --chrome-light: #EDEDED;
+            --chrome-dark: #0A0A0A;
+            --accent-solana: #3B82F6;
             --accent-base: #0052FF;
-            --glass: rgba(255, 255, 255, 0.03);
-            --border: rgba(255, 255, 255, 0.1);
+            --glass: rgba(10, 10, 10, 0.6);
+            --border: rgba(59, 130, 246, 0.25);
+            --text-dim: #666666;
             --reflection: linear-gradient(135deg, transparent 45%, rgba(255,255,255,0.15) 50%, transparent 55%);
         }
 
@@ -32,8 +33,12 @@
             font-family: 'Inter', sans-serif;
             overflow-x: hidden;
             background-image: 
-                radial-gradient(circle at 20% 20%, rgba(153, 69, 255, 0.05) 0%, transparent 40%),
-                radial-gradient(circle at 80% 80%, rgba(0, 82, 255, 0.05) 0%, transparent 40%);
+                radial-gradient(circle at 20% 20%, rgba(59, 130, 246, 0.08) 0%, transparent 40%),
+                radial-gradient(circle at 80% 80%, rgba(0, 82, 255, 0.08) 0%, transparent 40%);
+        }
+
+        h1, h2, h3 {
+            font-family: 'Space Grotesk', 'Inter', sans-serif;
         }
 
         .container {
@@ -55,7 +60,7 @@
             text-transform: uppercase;
             letter-spacing: -0.04em;
             line-height: 0.9;
-            background: linear-gradient(to bottom, #fff 30%, #666 100%);
+            background: linear-gradient(to bottom, #fff 30%, var(--accent-solana) 100%);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
             margin-bottom: 20px;
@@ -78,9 +83,9 @@
         .pulse {
             width: 8px;
             height: 8px;
-            background: #00ffaa;
+            background: var(--accent-solana);
             border-radius: 50%;
-            box-shadow: 0 0 10px #00ffaa;
+            box-shadow: 0 0 10px rgba(59, 130, 246, 0.5);
             animation: pulse-ring 2s infinite;
         }
 
@@ -134,7 +139,7 @@
         .vortex {
             width: 60px;
             height: 60px;
-            border: 2px solid var(--chrome-light);
+            border: 2px solid var(--accent-base);
             border-radius: 50%;
             z-index: 2;
             background: var(--bg);
@@ -167,7 +172,7 @@
             font-size: 0.75rem;
             text-transform: uppercase;
             letter-spacing: 0.2em;
-            color: #888;
+            color: rgba(148, 163, 184, 0.8);
             margin-bottom: 20px;
         }
 
@@ -191,13 +196,13 @@
         }
 
         .code-block {
-            background: #0a0a0a;
+            background: #05070f;
             padding: 30px;
-            border: 1px solid #1a1a1a;
-            font-family: 'JetBrains Mono', monospace;
+            border: 1px solid var(--border);
+            font-family: 'JetBrains Mono', 'Space Mono', monospace;
             font-size: 0.85rem;
             line-height: 1.6;
-            color: #a0a0a0;
+            color: rgba(237, 237, 237, 0.75);
             position: relative;
             overflow-x: auto;
         }
@@ -208,12 +213,12 @@
             top: 10px;
             right: 15px;
             font-size: 10px;
-            color: #444;
+            color: rgba(148, 163, 184, 0.7);
         }
 
         .keyword { color: var(--accent-solana); }
         .func { color: var(--accent-base); }
-        .string { color: #00ffaa; }
+        .string { color: var(--accent-solana); }
 
         .address-table {
             width: 100%;
@@ -229,7 +234,7 @@
 
         .address-table tr:last-child td { border: none; }
 
-        .label { color: #666; width: 40%; }
+        .label { color: var(--text-dim); width: 40%; }
         .val { color: var(--chrome-light); text-align: right; word-break: break-all; }
 
         /* --- Twin Contract Visualization --- */
@@ -323,7 +328,7 @@
             Mainnet Operational • 0.1s Cross-Verification
         </div>
         <h1>Solana<br>Integration</h1>
-        <p style="color: #888; letter-spacing: 0.1em; font-weight: 300;">BILATERAL LIQUIDITY VIA BASE-SOLANA BRIDGE</p>
+        <p style="color: var(--text-dim); letter-spacing: 0.1em; font-weight: 300;">BILATERAL LIQUIDITY VIA BASE-SOLANA BRIDGE</p>
     </header>
 
     <div class="mirror-flow">
@@ -371,18 +376,18 @@
 
     <div class="twin-module">
         <h2 style="font-weight: 800; text-transform: uppercase;">The Deterministic Twin</h2>
-        <p style="max-width: 600px; margin: 20px auto; color: #888; line-height: 1.6;">Your Solana wallet address is mathematically mapped to a unique smart contract on Base. This Twin acts as your agent, holding assets and executing calls on your behalf.</p>
+        <p style="max-width: 600px; margin: 20px auto; color: var(--text-dim); line-height: 1.6;">Your Solana wallet address is mathematically mapped to a unique smart contract on Base. This Twin acts as your agent, holding assets and executing calls on your behalf.</p>
         
         <div class="twin-visual">
             <div class="node">
                 <span class="node-icon">◎</span>
-                <span style="font-size: 0.6rem; color: #666;">SOLANA WALLET</span>
+                <span style="font-size: 0.6rem; color: var(--text-dim);">SOLANA WALLET</span>
                 <span style="font-family: 'JetBrains Mono'; font-size: 0.7rem; margin-top: 10px;">9aYk...CA</span>
             </div>
             <div class="connector"></div>
             <div class="node" style="border-color: var(--accent-base);">
                 <span class="node-icon">⚓</span>
-                <span style="font-size: 0.6rem; color: #666;">BASE TWIN</span>
+                <span style="font-size: 0.6rem; color: var(--text-dim);">BASE TWIN</span>
                 <span style="font-family: 'JetBrains Mono'; font-size: 0.7rem; margin-top: 10px;">0x12...34</span>
             </div>
         </div>
@@ -391,7 +396,7 @@
     <div class="tech-spec">
         <div class="spec-grid">
             <div>
-                <h3 style="margin-bottom: 25px; font-size: 0.8rem; letter-spacing: 0.2em; color: #666;">REGISTRY ADAPTERS</h3>
+                <h3 style="margin-bottom: 25px; font-size: 0.8rem; letter-spacing: 0.2em; color: var(--text-dim);">REGISTRY ADAPTERS</h3>
                 <table class="address-table">
                     <tr>
                         <td class="label">Bridge Program</td>
@@ -412,7 +417,7 @@
                 </table>
             </div>
             <div>
-                <h3 style="margin-bottom: 25px; font-size: 0.8rem; letter-spacing: 0.2em; color: #666;">IMPLEMENTATION</h3>
+                <h3 style="margin-bottom: 25px; font-size: 0.8rem; letter-spacing: 0.2em; color: var(--text-dim);">IMPLEMENTATION</h3>
                 <div class="code-block">
                     <span class="keyword">const</span> ixs = [<br>
                     &nbsp;&nbsp;<span class="func">getBridgeSolInstruction</span>({<br>

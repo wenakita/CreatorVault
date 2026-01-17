@@ -6,16 +6,20 @@
     <title>Solana Bridge Adapter - Mercury Nexus</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;500;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Space+Grotesk:wght@300;500;700&family=JetBrains+Mono:wght@300;400;500;700&family=Space+Mono:wght@300;400;700&display=swap" rel="stylesheet">
     <style>
         :root {
-            --mercury-gradient: linear-gradient(135deg, #f0f0f0 0%, #a0a0a0 25%, #e0e0e0 50%, #707070 75%, #d0d0d0 100%);
-            --deep-void: #050505;
-            --base-blue: #0052FF;
-            --solana-green: #14F195;
-            --solana-purple: #9945FF;
-            --glass: rgba(255, 255, 255, 0.03);
-            --border-silver: rgba(255, 255, 255, 0.2);
+            --mercury-gradient: linear-gradient(135deg, #0052FF 0%, #0033CC 50%, #3B82F6 100%);
+            --vault-bg: #020202;
+            --vault-card: #0A0A0A;
+            --vault-border: #1F1F1F;
+            --vault-text: #EDEDED;
+            --vault-subtext: #666666;
+            --brand-primary: #0052FF;
+            --brand-hover: #004AD9;
+            --brand-accent: #3B82F6;
+            --glass: rgba(10, 10, 10, 0.65);
+            --border-silver: rgba(59, 130, 246, 0.3);
         }
 
         * {
@@ -25,11 +29,15 @@
         }
 
         body {
-            background-color: var(--deep-void);
-            color: #fff;
-            font-family: 'Space Grotesk', sans-serif;
+            background-color: var(--vault-bg);
+            color: var(--vault-text);
+            font-family: 'Inter', system-ui, sans-serif;
             overflow-x: hidden;
             min-height: 100vh;
+        }
+
+        h1, h2, h3, h4, .logo {
+            font-family: 'Space Grotesk', 'Inter', sans-serif;
         }
 
         .liquid-bg {
@@ -39,7 +47,7 @@
             width: 100%;
             height: 100%;
             z-index: -1;
-            background: radial-gradient(circle at 50% 50%, #111 0%, #000 100%);
+            background: radial-gradient(circle at 50% 50%, rgba(0, 82, 255, 0.15) 0%, rgba(0, 0, 0, 0.9) 70%);
             opacity: 0.8;
         }
 
@@ -64,7 +72,7 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
-            border-bottom: 1px solid var(--border-silver);
+            border-bottom: 1px solid var(--vault-border);
             backdrop-filter: blur(10px);
         }
 
@@ -83,16 +91,16 @@
             height: 32px;
             background: var(--mercury-gradient);
             border-radius: 50%;
-            box-shadow: 0 0 20px rgba(255,255,255,0.2);
+            box-shadow: 0 0 20px rgba(0, 82, 255, 0.35);
         }
 
         .status-pill {
             padding: 6px 16px;
             border-radius: 100px;
-            background: rgba(20, 241, 149, 0.1);
-            border: 1px solid var(--solana-green);
-            color: var(--solana-green);
-            font-family: 'Space Mono', monospace;
+            background: rgba(0, 82, 255, 0.12);
+            border: 1px solid var(--brand-primary);
+            color: var(--brand-accent);
+            font-family: 'JetBrains Mono', 'Space Mono', monospace;
             font-size: 0.8rem;
             text-transform: uppercase;
         }
@@ -107,7 +115,7 @@
         }
 
         .center-line {
-            background: linear-gradient(to bottom, transparent, var(--border-silver), transparent);
+            background: linear-gradient(to bottom, transparent, rgba(59, 130, 246, 0.35), transparent);
             position: relative;
         }
 
@@ -121,7 +129,7 @@
             background: #fff;
             border-radius: 50%;
             z-index: 10;
-            box-shadow: 0 0 50px #fff;
+            box-shadow: 0 0 50px rgba(0, 82, 255, 0.45);
             display: flex;
             align-items: center;
             justify-content: center;
@@ -146,7 +154,7 @@
         }
 
         .network-tag {
-            font-family: 'Space Mono', monospace;
+            font-family: 'JetBrains Mono', 'Space Mono', monospace;
             text-transform: uppercase;
             font-size: 0.9rem;
             opacity: 0.6;
@@ -155,7 +163,7 @@
 
         .card {
             background: var(--glass);
-            border: 1px solid var(--border-silver);
+            border: 1px solid var(--vault-border);
             border-radius: 24px;
             padding: 32px;
             transition: all 0.4s cubic-bezier(0.165, 0.84, 0.44, 1);
@@ -196,7 +204,7 @@
 
         label {
             display: block;
-            font-family: 'Space Mono', monospace;
+            font-family: 'JetBrains Mono', 'Space Mono', monospace;
             font-size: 0.75rem;
             margin-bottom: 8px;
             opacity: 0.5;
@@ -206,11 +214,11 @@
         input {
             width: 100%;
             background: rgba(0,0,0,0.3);
-            border: 1px solid var(--border-silver);
+            border: 1px solid var(--vault-border);
             border-radius: 12px;
             padding: 16px;
             color: #fff;
-            font-family: 'Space Mono', monospace;
+            font-family: 'JetBrains Mono', 'Space Mono', monospace;
             font-size: 1rem;
             outline: none;
             transition: border-color 0.3s;
@@ -248,7 +256,7 @@
 
         .btn-outline {
             background: transparent;
-            border: 1px solid var(--border-silver);
+            border: 1px solid var(--vault-border);
             color: #fff;
         }
 
@@ -259,7 +267,7 @@
 
         .twin-mapping {
             background: linear-gradient(to right, rgba(0, 82, 255, 0.1), rgba(20, 241, 149, 0.1));
-            border: 1px dashed var(--border-silver);
+            border: 1px dashed rgba(59, 130, 246, 0.35);
             border-radius: 16px;
             padding: 20px;
             display: flex;
@@ -296,7 +304,7 @@
         .stat-val {
             font-size: 1.25rem;
             font-weight: 700;
-            color: var(--solana-green);
+            color: var(--brand-accent);
         }
 
         .stat-label {
@@ -310,7 +318,7 @@
             position: absolute;
             top: -10px;
             right: 20px;
-            background: var(--solana-purple);
+            background: var(--brand-primary);
             color: #fff;
             padding: 4px 12px;
             border-radius: 4px;
@@ -434,7 +442,7 @@
                     <label>Min Output wsToken</label>
                     <input type="text" placeholder="6,942.00">
                 </div>
-                <button class="btn btn-mercury" style="background: var(--solana-green); color: #000;">Buy & Enter Draw</button>
+                <button class="btn btn-mercury" style="background: var(--brand-primary); color: #fff;">Buy & Enter Draw</button>
             </div>
 
             <div class="card">
@@ -475,7 +483,7 @@
         </section>
     </main>
 
-    <footer style="padding: 40px; border-top: 1px solid var(--border-silver); text-align: center; font-size: 0.8rem; opacity: 0.4; font-family: 'Space Mono', monospace;">
+    <footer style="padding: 40px; border-top: 1px solid var(--vault-border); text-align: center; font-size: 0.8rem; opacity: 0.4; font-family: 'JetBrains Mono', 'Space Mono', monospace;">
         SOLANA-BRIDGE-ADAPTER V1.0.2 // TWIN CONTRACT ARCHITECTURE BY CREATORVAULT
     </footer>
 

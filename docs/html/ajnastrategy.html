@@ -6,16 +6,19 @@
     <title>Ajna Strategy Deployment</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Lexend+Exa:wght@300;400;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Space+Grotesk:wght@300;400;500;700&family=JetBrains+Mono:wght@300;400;500;700&family=Space+Mono:wght@300;400;700&display=swap" rel="stylesheet">
     <style>
         :root {
-            --obsidian: #0a0a0b;
-            --basalt: #16161a;
-            --ash: #2a2a32;
-            --sifted-light: #e0e0e0;
-            --magma-mint: #00ffa3;
+            --vault-bg: #020202;
+            --vault-card: #0A0A0A;
+            --vault-border: #1F1F1F;
+            --vault-text: #EDEDED;
+            --vault-subtext: #666666;
+            --brand-primary: #0052FF;
+            --brand-hover: #004AD9;
+            --brand-accent: #3B82F6;
             --void-shadow: 0 20px 50px rgba(0,0,0,0.8);
-            --basalt-border: 1px solid rgba(255,255,255,0.08);
+            --basalt-border: 1px solid rgba(59,130,246,0.18);
             --transition: all 0.4s cubic-bezier(0.23, 1, 0.32, 1);
         }
 
@@ -26,12 +29,16 @@
         }
 
         body {
-            background-color: var(--obsidian);
-            color: var(--sifted-light);
-            font-family: 'Lexend Exa', sans-serif;
+            background-color: var(--vault-bg);
+            color: var(--vault-text);
+            font-family: 'Inter', system-ui, sans-serif;
             line-height: 1.6;
             overflow-x: hidden;
             -webkit-font-smoothing: antialiased;
+        }
+
+        h1, h2, h3, h4 {
+            font-family: 'Space Grotesk', 'Inter', sans-serif;
         }
 
         /* Basalt Grain Texture Overlay */
@@ -60,7 +67,7 @@
             font-size: 0.7rem;
             text-transform: uppercase;
             letter-spacing: 0.4em;
-            color: var(--magma-mint);
+            color: var(--brand-accent);
             margin-bottom: 1rem;
             display: block;
             opacity: 0.8;
@@ -72,7 +79,7 @@
             line-height: 0.9;
             letter-spacing: -0.04em;
             margin-bottom: 2rem;
-            background: linear-gradient(180deg, #fff 0%, #444 100%);
+            background: linear-gradient(180deg, #fff 0%, var(--brand-accent) 100%);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
         }
@@ -86,13 +93,13 @@
 
         .p-lead {
             font-size: 1.2rem;
-            color: #999;
+            color: var(--vault-subtext);
             max-width: 600px;
         }
 
         /* Basin Card Components */
         .basin-card {
-            background: var(--basalt);
+            background: var(--vault-card);
             border: var(--basalt-border);
             padding: 40px;
             position: relative;
@@ -102,7 +109,7 @@
         }
 
         .basin-card:hover {
-            border-color: rgba(0, 255, 163, 0.3);
+            border-color: rgba(59,130,246,0.4);
             transform: translateY(-5px);
         }
 
@@ -110,7 +117,7 @@
             content: '';
             position: absolute;
             top: 0; left: 0; width: 4px; height: 100%;
-            background: var(--magma-mint);
+            background: var(--brand-primary);
             opacity: 0.3;
         }
 
@@ -118,7 +125,7 @@
             position: absolute;
             top: -12px;
             right: 40px;
-            background: var(--obsidian);
+            background: var(--vault-bg);
             padding: 4px 12px;
             font-size: 0.6rem;
             border: var(--basalt-border);
@@ -139,18 +146,18 @@
             content: '';
             width: 20px;
             height: 2px;
-            background: var(--magma-mint);
+            background: var(--brand-accent);
             display: inline-block;
         }
 
         /* Code Block Styling */
         code, pre {
-            font-family: 'Space Mono', monospace;
+            font-family: 'JetBrains Mono', 'Space Mono', monospace;
             font-size: 0.9rem;
         }
 
         .code-basin {
-            background: #050505;
+            background: #05070f;
             padding: 24px;
             border-radius: 4px;
             overflow-x: auto;
@@ -167,7 +174,7 @@
             opacity: 0.3;
         }
 
-        .hljs-keyword { color: var(--magma-mint); }
+        .hljs-keyword { color: var(--brand-accent); }
         .hljs-comment { color: #555; }
         .hljs-string { color: #888; }
 
@@ -189,13 +196,13 @@
 
         .step-item:hover {
             background: rgba(255,255,255,0.05);
-            border-left-color: var(--magma-mint);
+            border-left-color: var(--brand-accent);
         }
 
         .step-num {
-            font-family: 'Space Mono', monospace;
+            font-family: 'JetBrains Mono', 'Space Mono', monospace;
             font-weight: 700;
-            color: var(--magma-mint);
+            color: var(--brand-accent);
             opacity: 0.5;
         }
 
@@ -210,7 +217,7 @@
         }
 
         .metric-cell {
-            background: var(--basalt);
+            background: var(--vault-card);
             padding: 20px;
             display: flex;
             flex-direction: column;
@@ -219,7 +226,7 @@
         .metric-val {
             font-family: 'Space Mono', monospace;
             font-size: 1.1rem;
-            color: var(--magma-mint);
+            color: var(--brand-accent);
         }
 
         .metric-label {
@@ -242,7 +249,7 @@
             border: 1px solid #444;
             margin-bottom: 10px;
             font-size: 0.8rem;
-            background: var(--obsidian);
+            background: var(--vault-bg);
             display: flex;
             justify-content: space-between;
             align-items: center;
@@ -288,8 +295,8 @@
         }
 
         .nav-dot:hover, .nav-dot.active {
-            background: var(--magma-mint);
-            box-shadow: 0 0 15px var(--magma-mint);
+            background: var(--brand-primary);
+            box-shadow: 0 0 15px rgba(0, 82, 255, 0.45);
         }
 
         @media (max-width: 900px) {
@@ -342,7 +349,7 @@
             <h2>Prerequisites</h2>
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 30px; margin-top: 20px;">
                 <div>
-                    <h3 style="font-size: 0.8rem; margin-bottom: 15px; color: var(--magma-mint);">For Creators</h3>
+                    <h3 style="font-size: 0.8rem; margin-bottom: 15px; color: var(--brand-accent);">For Creators</h3>
                     <ul style="list-style: none; font-size: 0.9rem; color: #bbb;">
                         <li>↳ Deployed Vault (Base)</li>
                         <li>↳ Token Contract Address</li>
@@ -350,7 +357,7 @@
                     </ul>
                 </div>
                 <div>
-                    <h3 style="font-size: 0.8rem; margin-bottom: 15px; color: var(--magma-mint);">Infrastructure</h3>
+                    <h3 style="font-size: 0.8rem; margin-bottom: 15px; color: var(--brand-accent);">Infrastructure</h3>
                     <ul style="list-style: none; font-size: 0.9rem; color: #bbb;">
                         <li>↳ Ajna ERC20 Factory</li>
                         <li>↳ Uniswap V4 PoolManager</li>

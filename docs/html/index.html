@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CreatorVault Docs Preview</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&family=Space+Grotesk:wght@400;600;700&family=JetBrains+Mono:wght@300;400;600&family=Space+Mono:wght@300;400;600&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --vault-bg: #020202;
+      --vault-card: #0A0A0A;
+      --vault-border: #1F1F1F;
+      --vault-text: #EDEDED;
+      --vault-subtext: #666666;
+      --brand-primary: #0052FF;
+      --brand-hover: #004AD9;
+      --brand-accent: #3B82F6;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background-color: var(--vault-bg);
+      color: var(--vault-text);
+      font-family: 'Inter', system-ui, sans-serif;
+      min-height: 100vh;
+      background-image:
+        radial-gradient(circle at 20% 0%, rgba(0, 82, 255, 0.14) 0%, transparent 45%),
+        radial-gradient(circle at 80% 20%, rgba(59, 130, 246, 0.12) 0%, transparent 50%);
+    }
+
+    h1, h2 {
+      font-family: 'Space Grotesk', 'Inter', sans-serif;
+    }
+
+    .shell {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 72px 24px 80px;
+      position: relative;
+    }
+
+    .hero {
+      display: grid;
+      gap: 24px;
+      margin-bottom: 48px;
+    }
+
+    .eyebrow {
+      font-family: 'JetBrains Mono', 'Space Mono', monospace;
+      font-size: 0.75rem;
+      letter-spacing: 0.35em;
+      text-transform: uppercase;
+      color: var(--brand-accent);
+    }
+
+    .hero h1 {
+      font-size: clamp(2.5rem, 6vw, 4.5rem);
+      font-weight: 700;
+      letter-spacing: -0.04em;
+      line-height: 0.95;
+    }
+
+    .hero p {
+      max-width: 620px;
+      color: var(--vault-subtext);
+      font-size: 1.05rem;
+    }
+
+    .docs-grid {
+      display: grid;
+      gap: 20px;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    }
+
+    .doc-card {
+      background: var(--vault-card);
+      border: 1px solid var(--vault-border);
+      border-radius: 16px;
+      padding: 24px;
+      display: grid;
+      gap: 16px;
+      transition: transform 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .doc-card::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(135deg, rgba(0, 82, 255, 0.12), transparent 55%);
+      opacity: 0;
+      transition: opacity 0.3s ease;
+      pointer-events: none;
+    }
+
+    .doc-card:hover {
+      transform: translateY(-4px);
+      border-color: var(--brand-accent);
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.45);
+    }
+
+    .doc-card:hover::after {
+      opacity: 1;
+    }
+
+    .doc-card h2 {
+      font-size: 1.2rem;
+      font-weight: 600;
+    }
+
+    .doc-card p {
+      color: var(--vault-subtext);
+      font-size: 0.95rem;
+    }
+
+    .doc-card a {
+      color: var(--brand-primary);
+      text-decoration: none;
+      font-weight: 600;
+      font-size: 0.9rem;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      font-family: 'JetBrains Mono', 'Space Mono', monospace;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .doc-card a span {
+      display: inline-block;
+      transition: transform 0.2s ease;
+    }
+
+    .doc-card a:hover {
+      color: var(--brand-hover);
+    }
+
+    .doc-card a:hover span {
+      transform: translateX(4px);
+    }
+
+    .footer {
+      margin-top: 48px;
+      color: var(--vault-subtext);
+      font-size: 0.85rem;
+      font-family: 'JetBrains Mono', 'Space Mono', monospace;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <section class="hero">
+      <span class="eyebrow">CreatorVault Docs</span>
+      <h1>Visual Documentation Previews</h1>
+      <p>Jump directly into the styled HTML documentation. This hub keeps the preview environment from returning a 404 while showcasing the brand-aligned docs.</p>
+    </section>
+
+    <section class="docs-grid">
+      <article class="doc-card">
+        <h2>Continuous Clearing Auction</h2>
+        <p>Launch protocol dashboard with vault surfaces and brand glow accents.</p>
+        <a href="cca.html">Open CCA <span>→</span></a>
+      </article>
+
+      <article class="doc-card">
+        <h2>Fee Architecture</h2>
+        <p>Strata-based fee flow map themed with CreatorVault blues.</p>
+        <a href="feearchitecture.html">Open Fee Architecture <span>→</span></a>
+      </article>
+
+      <article class="doc-card">
+        <h2>Ajna Strategy</h2>
+        <p>Deployment guide with vault cards, gradients, and mono callouts.</p>
+        <a href="ajnastrategy.html">Open Ajna Strategy <span>→</span></a>
+      </article>
+
+      <article class="doc-card">
+        <h2>Creator VRF Hub</h2>
+        <p>Signal grid + braided motion visuals with brand signal colors.</p>
+        <a href="vrf.html">Open VRF Hub <span>→</span></a>
+      </article>
+
+      <article class="doc-card">
+        <h2>Solana Bridge</h2>
+        <p>Mirror flow overview and twin contract visualization.</p>
+        <a href="solana.html">Open Solana Bridge <span>→</span></a>
+      </article>
+
+      <article class="doc-card">
+        <h2>Base ⇄ Solana Nexus</h2>
+        <p>Mercury nexus two-sided bridge layout with vault styling.</p>
+        <a href="basesolana.html">Open Base Solana <span>→</span></a>
+      </article>
+
+      <article class="doc-card">
+        <h2>Tectonic Span</h2>
+        <p>Interactive bridge controls with brand gradients and mono UI.</p>
+        <a href="basesolana2.html">Open Tectonic Span <span>→</span></a>
+      </article>
+    </section>
+
+    <div class="footer">CreatorVault / docs/html/index.html</div>
+  </main>
+</body>
+</html>

@@ -6,18 +6,20 @@
     <title>CreatorVRF Hub | Conductive Braided Signalry</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&family=Space+Grotesk:wght@300;500;700&family=JetBrains+Mono:wght@300;400;500;700&family=Space+Mono:wght@300;400;700&display=swap" rel="stylesheet">
     <style>
         :root {
-            --bg: #070708;
-            --copper-dull: #4a3321;
-            --copper-bright: #f59e0b;
-            --signal-cyan: #06b6d4;
-            --signal-pulse: #22d3ee;
-            --glass: rgba(15, 15, 18, 0.85);
-            --border: rgba(245, 158, 11, 0.15);
-            --mono: 'JetBrains Mono', monospace;
+            --bg: #020202;
+            --copper-dull: #1F1F1F;
+            --copper-bright: #0052FF;
+            --signal-cyan: #3B82F6;
+            --signal-pulse: #0052FF;
+            --glass: rgba(10, 10, 10, 0.85);
+            --border: rgba(59, 130, 246, 0.2);
+            --text-dim: #94a3b8;
+            --mono: 'JetBrains Mono', 'Space Mono', monospace;
             --sans: 'Inter', sans-serif;
+            --display: 'Space Grotesk', 'Inter', sans-serif;
         }
 
         * {
@@ -29,13 +31,13 @@
 
         body {
             background-color: var(--bg);
-            color: #e2e8f0;
+            color: #EDEDED;
             font-family: var(--sans);
             overflow-x: hidden;
             background-image: 
-                radial-gradient(circle at 50% 50%, #1a1510 0%, transparent 80%),
-                linear-gradient(rgba(245, 158, 11, 0.03) 1px, transparent 1px),
-                linear-gradient(90deg, rgba(245, 158, 11, 0.03) 1px, transparent 1px);
+                radial-gradient(circle at 50% 50%, rgba(0, 82, 255, 0.12) 0%, transparent 80%),
+                linear-gradient(rgba(59, 130, 246, 0.05) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(59, 130, 246, 0.05) 1px, transparent 1px);
             background-size: 100% 100%, 40px 40px, 40px 40px;
         }
 
@@ -103,6 +105,7 @@
             font-size: 2.5rem;
             letter-spacing: -0.04em;
             text-transform: uppercase;
+            font-family: var(--display);
             background: linear-gradient(to bottom, #fff, #a1a1aa);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
@@ -110,7 +113,7 @@
 
         .brand span {
             font-family: var(--mono);
-            color: var(--copper-bright);
+            color: var(--signal-cyan);
             font-size: 0.75rem;
             letter-spacing: 0.2em;
             display: block;
@@ -141,7 +144,7 @@
         .panel-label {
             font-family: var(--mono);
             font-size: 0.65rem;
-            color: var(--copper-bright);
+            color: var(--signal-cyan);
             text-transform: uppercase;
             margin-bottom: 1.5rem;
             display: flex;
@@ -167,20 +170,20 @@
             font-size: 3.5rem;
             font-weight: 500;
             color: var(--signal-cyan);
-            text-shadow: 0 0 20px rgba(6, 182, 212, 0.4);
+            text-shadow: 0 0 20px rgba(0, 82, 255, 0.45);
             margin-bottom: 0.5rem;
         }
 
         .price-meta {
             font-size: 0.8rem;
-            color: #71717a;
+            color: #94a3b8;
             display: flex;
             justify-content: center;
             gap: 1.5rem;
         }
 
         .price-meta span b {
-            color: #d4d4d8;
+            color: #EDEDED;
         }
 
         /* Chain Grid */
@@ -191,8 +194,8 @@
         }
 
         .chain-card {
-            border: 1px solid rgba(255, 255, 255, 0.05);
-            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid var(--border);
+            background: rgba(10, 10, 10, 0.75);
             padding: 1rem;
             border-radius: 2px;
             transition: all 0.3s ease;
@@ -200,13 +203,13 @@
 
         .chain-card:hover {
             border-color: var(--copper-bright);
-            background: rgba(245, 158, 11, 0.05);
+            background: rgba(0, 82, 255, 0.08);
         }
 
         .chain-id {
             font-family: var(--mono);
             font-size: 0.7rem;
-            color: #52525b;
+            color: var(--text-dim);
         }
 
         .chain-name {
@@ -240,7 +243,7 @@
 
         .feed-item {
             padding: 0.75rem 0;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            border-bottom: 1px solid var(--border);
             display: flex;
             flex-direction: column;
             gap: 0.25rem;
@@ -255,10 +258,10 @@
             width: fit-content;
         }
 
-        .tag.local { background: rgba(6, 182, 212, 0.15); color: var(--signal-cyan); border: 1px solid var(--signal-cyan); }
-        .tag.remote { background: rgba(245, 158, 11, 0.15); color: var(--copper-bright); border: 1px solid var(--copper-bright); }
+        .tag.local { background: rgba(59, 130, 246, 0.15); color: var(--signal-cyan); border: 1px solid var(--signal-cyan); }
+        .tag.remote { background: rgba(0, 82, 255, 0.15); color: var(--copper-bright); border: 1px solid var(--copper-bright); }
 
-        .hash { color: #71717a; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .hash { color: var(--text-dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
         /* Controls */
         .control-group {
@@ -268,7 +271,7 @@
         .control-group label {
             display: block;
             font-size: 0.7rem;
-            color: #71717a;
+            color: var(--text-dim);
             margin-bottom: 0.5rem;
             text-transform: uppercase;
         }
@@ -292,7 +295,7 @@
         .btn-conduct {
             width: 100%;
             background: var(--copper-bright);
-            color: #000;
+            color: #fff;
             border: none;
             padding: 1rem;
             font-weight: 700;
@@ -446,15 +449,15 @@
                 <div class="panel-label">Contract Resonance</div>
                 <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1rem; margin-top: 1rem;">
                     <div style="border-left: 2px solid var(--copper-bright); padding-left: 1rem;">
-                        <div style="font-size: 0.6rem; color: #71717a;">ESCROW BALANCE</div>
+                        <div style="font-size: 0.6rem; color: var(--text-dim);">ESCROW BALANCE</div>
                         <div style="font-family: var(--mono); font-size: 1.2rem;">4.228 ETH</div>
                     </div>
                     <div style="border-left: 2px solid var(--signal-cyan); padding-left: 1rem;">
-                        <div style="font-size: 0.6rem; color: #71717a;">AVG LATENCY</div>
+                        <div style="font-size: 0.6rem; color: var(--text-dim);">AVG LATENCY</div>
                         <div style="font-family: var(--mono); font-size: 1.2rem;">14.2s</div>
                     </div>
                     <div style="border-left: 2px solid #52525b; padding-left: 1rem;">
-                        <div style="font-size: 0.6rem; color: #71717a;">TOTAL REQUESTS</div>
+                        <div style="font-size: 0.6rem; color: var(--text-dim);">TOTAL REQUESTS</div>
                         <div style="font-family: var(--mono); font-size: 1.2rem;">12,842</div>
                     </div>
                 </div>
