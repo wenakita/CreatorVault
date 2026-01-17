@@ -2,319 +2,160 @@
 
 ## 📋 **QUICK START - DEPLOY YOUR VAULT**
 
-This guide walks you through deploying your Creator Vault in **5 simple steps**.
+This guide walks you through the **current** CreatorVault launch flow. The recommended path is the **AA batcher** (single signature) plus a registry registration step.
 
-**Total Time:** 15-20 minutes  
-**Total Cost:** ~$15-20 in gas on Base  
-**Deployed Infrastructure:** VaultActivationBatcher at `0x6d796554698f5Ddd74Ff20d745304096aEf93CB6` (supports `batchActivate`; operator-safe Permit2 activation requires deploying the updated batcher build)
-
----
-
-## 🎯 **WHAT YOU'LL DEPLOY**
-
-1. **CreatorOVault** - Your ERC-4626 vault
-2. **CreatorOVaultWrapper** - User-facing deposit/withdraw interface
-3. **CreatorShareOFT** - Cross-chain wsToken (LayerZero OFT)
-4. **CCALaunchStrategy** - 7-day Continuous Clearing Auction
-5. **CreatorGaugeController** - Fee distribution system
+**Preferred deployment path:**
+1. **Deploy + launch** via `/deploy` (AA) using `CreatorVaultBatcher`
+2. **Activation-only** via `LaunchVaultAA` if a vault stack already exists
+3. **Register deployment** (if not already registered) via `CreatorOVaultFactory.registerDeployment(...)`
 
 ---
 
-## 📝 **PREREQUISITES**
+## ✅ **Base Mainnet Infrastructure (Current)**
 
-- [ ] Your creator token deployed on Base
-- [ ] Wallet with ~0.01 ETH for gas
-- [ ] Token symbol (e.g., "AKITA")
-- [ ] Basic understanding of contract deployment
+These addresses are pulled from `deployments/base/contracts/**` and `frontend/src/config/contracts.defaults.ts`:
+
+- **CreatorRegistry:** `0x02c8031c39E10832A831b954Df7a2c1bf9Df052D`
+- **CreatorOVaultFactory:** `0xcCa08f9b94dD478266D0D1D2e9B7758414280FfD`
+- **CreatorVaultBatcher:** `0xB695AEaD09868F287DAA38FA444B240847c50fB8`
+- **VaultActivationBatcher:** `0x4b67e3a4284090e5191c27B8F24248eC82DF055D`
+- **Permit2:** `0x000000000022D473030F116dDEE9F6B43aC78BA3`
+- **LayerZero Endpoint (Base):** `0x1a44076050125825900e736c501f859c50fE728c`
 
 ---
 
-## 🔧 **STEP 1: DEPLOY VAULT CONTRACTS**
+## 🎯 **WHAT YOU'LL DEPLOY (Per Creator Coin)**
 
-### **Option A: Using Foundry (Recommended)**
+1. **CreatorOVault** – ERC-4626 vault
+2. **CreatorOVaultWrapper** – wraps vault shares into OFT shares
+3. **CreatorShareOFT** – LayerZero share token
+4. **CCALaunchStrategy** – continuous clearing auction launch contract
+5. **CreatorGaugeController** – fee routing + lottery integration
+6. **CreatorOracle** – price oracle for share token
+
+---
+
+## 🔧 **STEP 1: Deploy + Launch (Recommended)**
+
+Use the frontend `/deploy` page, which calls the AA batcher:
+
+- `CreatorVaultBatcher.deployAndLaunch(...)`
+- `CreatorVaultBatcher.deployAndLaunchWithPermit2(...)`
+- Operator-safe variants when using a paymaster or relayer
+
+**Config required in the frontend:**
+```bash
+VITE_CREATOR_VAULT_BATCHER=0xB695AEaD09868F287DAA38FA444B240847c50fB8
+VITE_VAULT_ACTIVATION_BATCHER=0x4b67e3a4284090e5191c27B8F24248eC82DF055D
+VITE_REGISTRY=0x02c8031c39E10832A831b954Df7a2c1bf9Df052D
+VITE_FACTORY=0xcCa08f9b94dD478266D0D1D2e9B7758414280FfD
+```
+
+**Result:** Vault stack deployed, wired, and auction launched in a single flow.
+
+---
+
+## 🔧 **STEP 2: Activation-Only (Optional)**
+
+If the vault stack already exists, you can launch the CCA with `VaultActivationBatcher`:
 
 ```bash
-# Set your parameters
-export CREATOR_TOKEN=0x...  # Your token address
-export CREATOR_ADDRESS=0x...  # Your address
-export TOKEN_SYMBOL=AKITA
-export PRIVATE_KEY=0x...
+cast send 0x4b67e3a4284090e5191c27B8F24248eC82DF055D \
+  "batchActivate(address,address,address,address,uint256,uint8,uint128)" \
+  $CREATOR_TOKEN \
+  $VAULT_ADDRESS \
+  $WRAPPER_ADDRESS \
+  $CCA_ADDRESS \
+  $DEPOSIT_AMOUNT \
+  $AUCTION_PERCENT \
+  $REQUIRED_RAISE \
+  --rpc-url base --private-key $PRIVATE_KEY
+```
 
-# Deploy CreatorOVault
+Permit2-based variants are also available for operator flows:
+- `batchActivateWithPermit2For(...)`
+- `batchActivateWithPermit2FromOperator(...)`
+
+---
+
+## 🧾 **STEP 3: Register Deployment (Required for Canonical Indexing)**
+
+If your deploy flow does **not** already register with the factory, call:
+
+```bash
+cast send 0xcCa08f9b94dD478266D0D1D2e9B7758414280FfD \
+  "registerDeployment(address,address,address,address,address,address,address,address)" \
+  $CREATOR_TOKEN \
+  $VAULT_ADDRESS \
+  $WRAPPER_ADDRESS \
+  $SHARE_OFT \
+  $GAUGE_CONTROLLER \
+  $CCA_STRATEGY \
+  $ORACLE \
+  $CREATOR_OWNER \
+  --rpc-url base --private-key $PRIVATE_KEY
+```
+
+This **registers the vault** and updates the **CreatorRegistry** pointers used across the app.
+
+---
+
+## 🛠️ **Manual Deployment (Advanced / Legacy)**
+
+If you must deploy each contract manually, use the current constructor signatures:
+
+```bash
+# CreatorOVault
 forge create contracts/vault/CreatorOVault.sol:CreatorOVault \
-    --constructor-args $CREATOR_TOKEN $CREATOR_ADDRESS "${TOKEN_SYMBOL} Vault" "v${TOKEN_SYMBOL}" \
-    --rpc-url base \
-    --private-key $PRIVATE_KEY \
-    --verify
+  --constructor-args $CREATOR_TOKEN $TEMP_OWNER "${TOKEN_SYMBOL} Vault" "v${TOKEN_SYMBOL}" \
+  --rpc-url base --private-key $PRIVATE_KEY
 
-# Save the deployed address
-export VAULT_ADDRESS=0x...  # From output above
-
-# Deploy CreatorOVaultWrapper
+# CreatorOVaultWrapper
 forge create contracts/vault/CreatorOVaultWrapper.sol:CreatorOVaultWrapper \
-    --constructor-args $CREATOR_TOKEN $VAULT_ADDRESS $CREATOR_ADDRESS \
-    --rpc-url base \
-    --private-key $PRIVATE_KEY \
-    --verify
+  --constructor-args $CREATOR_TOKEN $VAULT_ADDRESS $TEMP_OWNER \
+  --rpc-url base --private-key $PRIVATE_KEY
 
-# Save the deployed address
-export WRAPPER_ADDRESS=0x...  # From output above
-
-# Deploy CreatorShareOFT
+# CreatorShareOFT (registry-based constructor)
 forge create contracts/services/messaging/CreatorShareOFT.sol:CreatorShareOFT \
-    --constructor-args "Wrapped ${TOKEN_SYMBOL} Share" "ws${TOKEN_SYMBOL}" "0x1a44076050125825900e736c501f859c50fE728c" $CREATOR_ADDRESS \
-    --rpc-url base \
-    --private-key $PRIVATE_KEY \
-    --verify
+  --constructor-args "${TOKEN_SYMBOL} Shares" "■${TOKEN_SYMBOL}" \
+  0x02c8031c39E10832A831b954Df7a2c1bf9Df052D $TEMP_OWNER \
+  --rpc-url base --private-key $PRIVATE_KEY
 
-# Save the deployed address
-export SHAREOFT_ADDRESS=0x...  # From output above
-```
-
-### **Option B: Using Etherscan/BaseScan**
-
-1. Go to [BaseScan Contract Deployer](https://basescan.org/verifyContract)
-2. Deploy each contract with constructor args
-3. Verify on BaseScan
-4. Save all addresses
-
----
-
-## 🔧 **STEP 2: CONFIGURE PERMISSIONS**
-
-### **Configure Wrapper:**
-
-```bash
-# Set ShareOFT on Wrapper
-cast send $WRAPPER_ADDRESS "setShareOFT(address)" $SHAREOFT_ADDRESS \
-    --rpc-url base \
-    --private-key $PRIVATE_KEY
-```
-
-### **Configure ShareOFT:**
-
-```bash
-# Set vault on ShareOFT
-cast send $SHAREOFT_ADDRESS "setVault(address)" $VAULT_ADDRESS \
-    --rpc-url base \
-    --private-key $PRIVATE_KEY
-
-# Give wrapper minter rights
-cast send $SHAREOFT_ADDRESS "setMinter(address,bool)" $WRAPPER_ADDRESS true \
-    --rpc-url base \
-    --private-key $PRIVATE_KEY
-```
-
-### **Configure Vault:**
-
-```bash
-# Whitelist wrapper on vault
-cast send $VAULT_ADDRESS "setWhitelist(address,bool)" $WRAPPER_ADDRESS true \
-    --rpc-url base \
-    --private-key $PRIVATE_KEY
-```
-
----
-
-## 🔧 **STEP 3: DEPLOY GAUGE & CCA**
-
-### **Deploy GaugeController:**
-
-```bash
+# CreatorGaugeController
 forge create contracts/governance/CreatorGaugeController.sol:CreatorGaugeController \
-    --constructor-args $SHAREOFT_ADDRESS $CREATOR_ADDRESS $CREATOR_ADDRESS $CREATOR_ADDRESS \
-    --rpc-url base \
-    --private-key $PRIVATE_KEY \
-    --verify
+  --constructor-args $SHARE_OFT $CREATOR_TREASURY $PROTOCOL_TREASURY $TEMP_OWNER \
+  --rpc-url base --private-key $PRIVATE_KEY
 
-export GAUGE_ADDRESS=0x...  # From output
-
-# Configure gauge on vault and shareOFT
-cast send $VAULT_ADDRESS "setGaugeController(address)" $GAUGE_ADDRESS --rpc-url base --private-key $PRIVATE_KEY
-cast send $SHAREOFT_ADDRESS "setGaugeController(address)" $GAUGE_ADDRESS --rpc-url base --private-key $PRIVATE_KEY
-cast send $GAUGE_ADDRESS "setVault(address)" $VAULT_ADDRESS --rpc-url base --private-key $PRIVATE_KEY
-cast send $GAUGE_ADDRESS "setWrapper(address)" $WRAPPER_ADDRESS --rpc-url base --private-key $PRIVATE_KEY
-```
-
-### **Deploy CCALaunchStrategy:**
-
-```bash
+# CCALaunchStrategy
 forge create contracts/vault/strategies/CCALaunchStrategy.sol:CCALaunchStrategy \
-    --constructor-args $SHAREOFT_ADDRESS "0x0000000000000000000000000000000000000000" $VAULT_ADDRESS $CREATOR_ADDRESS $CREATOR_ADDRESS \
-    --rpc-url base \
-    --private-key $PRIVATE_KEY \
-    --verify
+  --constructor-args $SHARE_OFT $RAISE_TOKEN $VAULT_ADDRESS $VAULT_ADDRESS $TEMP_OWNER \
+  --rpc-url base --private-key $PRIVATE_KEY
 
-export CCA_ADDRESS=0x...  # From output
+# CreatorOracle
+forge create contracts/services/oracles/CreatorOracle.sol:CreatorOracle \
+  --constructor-args 0x02c8031c39E10832A831b954Df7a2c1bf9Df052D \
+  0x71041dddad3595F9CEd3DcCFBe3D1F4b0a16Bb70 "■${TOKEN_SYMBOL}" $TEMP_OWNER \
+  --rpc-url base --private-key $PRIVATE_KEY
 ```
 
----
+Then wire the contracts (owner-only):
+- `wrapper.setShareOFT(shareOFT)`
+- `shareOFT.setVault(vault)`
+- `shareOFT.setMinter(wrapper, true)`
+- `shareOFT.setGaugeController(gauge)`
+- `gauge.setVault(vault)` + `setWrapper(wrapper)` + `setCreatorCoin(token)` + `setOracle(oracle)`
+- `vault.setGaugeController(gauge)` + `vault.setWhitelist(wrapper, true)`
+- `cca.setApprovedLauncher(VaultActivationBatcher, true)`
+- `cca.setOracleConfig(oracle, poolManager, taxHook, gauge)`
 
-## 🔧 **STEP 4: APPROVE VAULT ACTIVATION BATCHER**
-
-**CRITICAL STEP:** This allows 1-click CCA launching!
-
-```bash
-# Approve the VaultActivationBatcher to launch your CCA
-cast send $CCA_ADDRESS \
-    "setApprovedLauncher(address,bool)" \
-    0x6d796554698f5Ddd74Ff20d745304096aEf93CB6 \
-    true \
-    --rpc-url base \
-    --private-key $PRIVATE_KEY
-```
-
-✅ **Your vault is now configured and ready to launch!**
+Finally, transfer ownership to the creator or protocol treasury and call **registerDeployment** as shown above.
 
 ---
 
-## 🎉 **STEP 5: LAUNCH YOUR CCA**
+## ✅ **Checklist**
 
-### **Prepare Your Launch:**
-
-1. **Decide your parameters:**
-   - Deposit Amount: How many tokens to deposit (e.g., 50,000,000 AKITA)
-   - Auction %: What % to auction (e.g., 69%)
-   - Required Raise: Minimum ETH to raise (e.g., 10 ETH)
-
-2. **Approve tokens:**
-
-```bash
-# Approve VaultActivationBatcher to spend your tokens
-cast send $CREATOR_TOKEN \
-    "approve(address,uint256)" \
-    0x6d796554698f5Ddd74Ff20d745304096aEf93CB6 \
-    50000000000000000000000000 \
-    --rpc-url base \
-    --private-key $PRIVATE_KEY
-```
-
-3. **Launch CCA:**
-
-```bash
-# Launch your 7-day CCA in ONE transaction!
-cast send 0x6d796554698f5Ddd74Ff20d745304096aEf93CB6 \
-    "batchActivate(address,address,address,address,uint256,uint8,uint128)" \
-    $CREATOR_TOKEN \
-    $VAULT_ADDRESS \
-    $WRAPPER_ADDRESS \
-    $CCA_ADDRESS \
-    50000000000000000000000000 \
-    69 \
-    10000000000000000000 \
-    --rpc-url base \
-    --private-key $PRIVATE_KEY
-```
-
-🎉 **YOUR CCA IS NOW LIVE FOR 7 DAYS!**
-
----
-
-## 📋 **CHECKLIST**
-
-Use this to track your progress:
-
-### **Phase 1: Deploy Core Contracts**
-- [ ] Deploy CreatorOVault
-- [ ] Deploy CreatorOVaultWrapper  
-- [ ] Deploy CreatorShareOFT
-
-### **Phase 2: Configure Permissions**
-- [ ] Set ShareOFT on Wrapper
-- [ ] Set Vault on ShareOFT
-- [ ] Give Wrapper minter rights on ShareOFT
-- [ ] Whitelist Wrapper on Vault
-
-### **Phase 3: Deploy Governance**
-- [ ] Deploy CreatorGaugeController
-- [ ] Deploy CCALaunchStrategy
-- [ ] Configure Gauge on all contracts
-
-### **Phase 4: Enable 1-Click Launch**
-- [ ] Approve VaultActivationBatcher on CCA
-
-### **Phase 5: Launch**
-- [ ] Approve tokens
-- [ ] Call batchActivate()
-- [ ] ✅ CCA LIVE!
-
----
-
-## 🎯 **WHAT HAPPENS NEXT**
-
-### **During 7-Day CCA:**
-- Users bid ETH for ■AKITA
-- Auction clears at fair market price
-- You can monitor bids in real-time
-
-### **After Auction Completes:**
-- Call `sweepCurrency()` on `CCALaunchStrategy` (permissionless)
-- Token owner configures the V4 tax hook via `setTaxConfig(...)`
-- Trading begins (with 6.9% hook fees routed to the GaugeController)
-
-### **Optional: Deploy Strategies:**
-- Deploy Charm vault strategy (yield farming)
-- Deploy Ajna lending strategy
-- Increase PPS automatically
-
----
-
-## 💡 **TIPS & BEST PRACTICES**
-
-### **Testing:**
-- Test on Base Sepolia first
-- Use small amounts initially
-- Verify all contracts before mainnet
-
-### **Security:**
-- Use a multisig for creator address
-- Double-check all addresses
-- Verify contracts on BaseScan
-
-### **Gas Optimization:**
-- Deploy during low gas times
-- Batch transactions where possible
-- Use forge scripts for efficiency
-
----
-
-## 🆘 **TROUBLESHOOTING**
-
-### **"Insufficient balance" error:**
-- Make sure you have enough ETH for gas
-- Check token balance for deposit
-
-### **"Not approved" error:**
-- Run the approve transaction first
-- Check approval amount is sufficient
-
-### **"Unauthorized" error:**
-- Make sure you called setApprovedLauncher()
-- Verify you're using correct CCA address
-
----
-
-## 📞 **SUPPORT**
-
-### **Contract Addresses:**
-- VaultActivationBatcher: `0x6d796554698f5Ddd74Ff20d745304096aEf93CB6`
-- LayerZero Endpoint (Base): `0x1a44076050125825900e736c501f859c50fE728c`
-
-### **Resources:**
-- BaseScan: https://basescan.org
-- Base RPC: https://mainnet.base.org
-- Docs: See repository documentation
-
----
-
-## 🎉 **CONGRATULATIONS!**
-
-You've successfully deployed your Creator Vault! Your community can now:
-- Deposit tokens via the wrapper
-- Get wsTokens for cross-chain transfers
-- Participate in the CCA auction
-- Trade on Uniswap V4 after launch
-- Earn yield from strategies
-
-**Welcome to the Creator Economy!** 🚀
-
+- [ ] Use `/deploy` (AA) for one-click deployment
+- [ ] If manual, wire contracts and approve launchers
+- [ ] Register deployment via `CreatorOVaultFactory`
+- [ ] Verify contracts on Basescan
+- [ ] Confirm `/status` shows the vault as active
