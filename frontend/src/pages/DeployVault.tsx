@@ -1782,11 +1782,9 @@ export function DeployVault() {
 
   const [searchParams] = useSearchParams()
   const prefillToken = useMemo(() => searchParams.get('token') ?? '', [searchParams])
+  const cdpApiKey = import.meta.env.VITE_CDP_API_KEY as string | undefined
   const paymasterStatus = useMemo(() => {
-    const paymasterUrl = resolveCdpPaymasterUrl(
-      onchainKitConfig?.paymaster ?? null,
-      onchainKitConfig?.apiKey ?? undefined,
-    )
+    const paymasterUrl = resolveCdpPaymasterUrl(onchainKitConfig?.paymaster ?? null, cdpApiKey)
     if (!paymasterUrl || typeof paymasterUrl !== 'string') {
       return { ok: false, hint: 'missing' }
     }
@@ -1796,7 +1794,7 @@ export function DeployVault() {
     } catch {
       return { ok: true, hint: 'configured' }
     }
-  }, [onchainKitConfig?.apiKey, onchainKitConfig?.paymaster])
+  }, [cdpApiKey, onchainKitConfig?.paymaster])
 
   useEffect(() => {
     if (!prefillToken) return
@@ -2005,7 +2003,6 @@ export function DeployVault() {
     query: { enabled: tokenIsValid },
   })
   const resolvedTokenDecimals = useMemo<number | null>(() => {
-  const resolvedTokenDecimals = useMemo(() => {
     if (typeof tokenDecimals === 'number' && Number.isFinite(tokenDecimals)) return tokenDecimals
     if (typeof tokenDecimals === 'bigint') return Number(tokenDecimals)
     return null
@@ -2280,11 +2277,6 @@ export function DeployVault() {
     }
     return MIN_FIRST_DEPOSIT
   }, [resolvedTokenDecimals])
-    if (typeof tokenDecimals === 'number' && tokenDecimals >= 0) {
-      return 50_000_000n * 10n ** BigInt(tokenDecimals)
-    }
-    return MIN_FIRST_DEPOSIT
-  }, [tokenDecimals])
 
   const walletHasMinDeposit =
     typeof connectedTokenBalance === 'bigint' && connectedTokenBalance >= minFirstDeposit
