@@ -10,8 +10,10 @@ let prisma: any = null;
 async function getPrisma(): Promise<any> {
   if (!prisma) {
     try {
-      const modulePath = '@prisma/client';
-      const prismaModule = await eval(`import('${modulePath}')`).catch(() => null);
+      // Use a dynamic import without `eval()` so we don't trigger code-injection scanners,
+      // while still keeping Prisma truly optional (not a hard dependency for builds).
+      const modulePath: string = ['@prisma', 'client'].join('/');
+      const prismaModule = await import(modulePath).catch(() => null);
       if (!prismaModule) {
         logger.warn('[sync-vault-data] Could not load Prisma module');
         return null;
