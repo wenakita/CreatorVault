@@ -3,6 +3,7 @@ import { encodeAbiParameters, isAddress, keccak256, parseAbiParameters } from 'v
 import { erc20Abi } from 'viem'
 
 import { CONTRACTS } from '@/config/contracts'
+import { BASE_DEFAULTS } from '@/config/contracts.defaults'
 import { currencyPerTokenBaseUnitsToQ96 } from '@/lib/cca/q96'
 
 const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000' as const
@@ -319,12 +320,18 @@ export async function computeMarketFloorQuote(params: {
   if (!isAddress(creatorCoin) || creatorCoin === ZERO_ADDRESS) throw new Error('Invalid creator coin address')
   if (discountBps <= 0 || discountBps > 10_000) throw new Error('Invalid discountBps')
 
-  const poolManager = CONTRACTS.poolManager as Address
-  const zoraUsdcV3Pool = (CONTRACTS as any).zoraUsdcV3Pool as Address | undefined
-  const zoraWethV3Pool = (CONTRACTS as any).zoraWethV3Pool as Address | undefined
-  const chainlinkEthUsd = CONTRACTS.chainlinkEthUsd as Address
-  const weth = CONTRACTS.weth as Address
-  const usdc = CONTRACTS.usdc as Address
+  // Defensive: env vars can be set to non-address strings ("undefined"/"null") and override fallbacks.
+  // Prefer configured values when valid, otherwise fall back to Base defaults.
+  const poolManager = (isAddress((CONTRACTS as any).poolManager) ? (CONTRACTS as any).poolManager : BASE_DEFAULTS.poolManager) as Address
+  const zoraUsdcV3Pool = (isAddress((CONTRACTS as any).zoraUsdcV3Pool) ? (CONTRACTS as any).zoraUsdcV3Pool : BASE_DEFAULTS.zoraUsdcV3Pool) as
+    | Address
+    | undefined
+  const zoraWethV3Pool = (isAddress((CONTRACTS as any).zoraWethV3Pool) ? (CONTRACTS as any).zoraWethV3Pool : BASE_DEFAULTS.zoraWethV3Pool) as
+    | Address
+    | undefined
+  const chainlinkEthUsd = (isAddress((CONTRACTS as any).chainlinkEthUsd) ? (CONTRACTS as any).chainlinkEthUsd : BASE_DEFAULTS.chainlinkEthUsd) as Address
+  const weth = (isAddress((CONTRACTS as any).weth) ? (CONTRACTS as any).weth : BASE_DEFAULTS.weth) as Address
+  const usdc = (isAddress((CONTRACTS as any).usdc) ? (CONTRACTS as any).usdc : BASE_DEFAULTS.usdc) as Address
 
   if (!isAddress(poolManager)) throw new Error('Missing V4 PoolManager address')
   if (!isAddress(zoraUsdcV3Pool as any)) throw new Error('Missing ZORA/USDC v3 pool address')
