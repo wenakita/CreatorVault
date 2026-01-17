@@ -6,20 +6,21 @@
     <title>CreatorVault | Fee Architecture</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;700;900&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;900&family=Space+Grotesk:wght@300;500;700&family=JetBrains+Mono:wght@300;400;700&family=Space+Mono:wght@300;400;700&display=swap" rel="stylesheet">
     <style>
         :root {
-            --bg: #0C0B0A;
-            --strata-dark: #1A1614;
-            --strata-mid: #2D2A27;
-            --strata-light: #413D39;
-            --accent: #D4AF37; /* Gold Silt */
-            --accent-glow: rgba(212, 175, 55, 0.3);
-            --flash: #00E5FF; /* Flash Blue */
-            --text-main: #E5D3B3;
-            --text-dim: #A89B85;
-            --mono: 'JetBrains Mono', monospace;
+            --bg: #020202;
+            --strata-dark: #0A0A0A;
+            --strata-mid: #1e293b;
+            --strata-light: #334155;
+            --accent: #0052FF;
+            --accent-glow: rgba(0, 82, 255, 0.3);
+            --flash: #3B82F6;
+            --text-main: #EDEDED;
+            --text-dim: #666666;
+            --mono: 'JetBrains Mono', 'Space Mono', monospace;
             --sans: 'Inter', sans-serif;
+            --display: 'Space Grotesk', 'Inter', sans-serif;
         }
 
         * {
@@ -34,8 +35,8 @@
             font-family: var(--sans);
             line-height: 1.6;
             overflow-x: hidden;
-            background-image: 
-                radial-gradient(circle at 50% 0%, #25221F 0%, transparent 70%),
+            background-image:
+                radial-gradient(circle at 50% 0%, rgba(0, 82, 255, 0.12) 0%, transparent 70%),
                 url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3External%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
             background-blend-mode: overlay;
         }
@@ -80,6 +81,7 @@
             line-height: 0.9;
             text-transform: uppercase;
             letter-spacing: -0.04em;
+            font-family: var(--display);
             color: transparent;
             -webkit-text-stroke: 1px var(--text-main);
             background: linear-gradient(180deg, var(--text-main) 0%, var(--text-dim) 100%);
@@ -161,6 +163,7 @@
             margin-bottom: 24px;
             font-weight: 700;
             letter-spacing: -0.02em;
+            font-family: var(--display);
         }
 
         .feature-list {
