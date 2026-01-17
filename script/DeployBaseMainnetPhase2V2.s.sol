@@ -35,6 +35,8 @@ contract DeployBaseMainnetPhase2V2 is Script {
     // Chain-agnostic salts: same on every chain → same deployed addresses (for store + deployer).
     bytes32 constant STORE_SALT_V2 = keccak256("CreatorVault:UniversalBytecodeStore:v2");
     bytes32 constant DEPLOYER_SALT_V2 = keccak256("CreatorVault:UniversalCreate2DeployerFromStore:v2");
+    // Deterministic Base mainnet batcher (constructor args are chain-specific, so address is chain-specific too).
+    bytes32 constant BATCHER_SALT_V2 = keccak256("CreatorVault:CreatorVaultBatcher:v2-infra");
 
     // Defaults (Base mainnet) — can be overridden via env.
     address constant DEFAULT_REGISTRY = 0x02c8031c39E10832A831b954Df7a2c1bf9Df052D;
@@ -79,6 +81,25 @@ contract DeployBaseMainnetPhase2V2 is Script {
         console2.log("UniversalBytecodeStoreV2 (predicted):", storeAddr);
         console2.log("UniversalCreate2DeployerFromStoreV2 (predicted):", deployerAddr);
 
+        // Predict deterministic address for the new CreatorVaultBatcher wired to v2 infra.
+        bytes memory batcherInit = abi.encodePacked(
+            type(CreatorVaultBatcher).creationCode,
+            abi.encode(
+                registry,
+                storeAddr,
+                deployerAddr,
+                protocolTreasury,
+                poolManager,
+                taxHook,
+                chainlinkEthUsd,
+                vaultActivationBatcher,
+                lotteryManager,
+                permit2
+            )
+        );
+        address batcherAddr = _create2(CREATE2_FACTORY_ADDR, BATCHER_SALT_V2, keccak256(batcherInit));
+        console2.log("CreatorVaultBatcher (v2-infra, predicted):", batcherAddr);
+
         vm.startBroadcast(pk);
 
         // Deploy v2 store (if missing).
@@ -93,22 +114,15 @@ contract DeployBaseMainnetPhase2V2 is Script {
             require(ok, "DEPLOYER_V2 deploy failed");
         }
 
-        // Deploy a new CreatorVaultBatcher wired to v2 infra.
-        CreatorVaultBatcher batcher = new CreatorVaultBatcher(
-            registry,
-            storeAddr,
-            deployerAddr,
-            protocolTreasury,
-            poolManager,
-            taxHook,
-            chainlinkEthUsd,
-            vaultActivationBatcher,
-            lotteryManager,
-            permit2
-        );
+        // Deploy a new CreatorVaultBatcher wired to v2 infra (deterministic via CREATE2 factory).
+        if (batcherAddr.code.length == 0) {
+            (bool ok, ) = CREATE2_FACTORY_ADDR.call(abi.encodePacked(BATCHER_SALT_V2, batcherInit));
+            require(ok, "BATCHER_V2 deploy failed");
+        }
 
         vm.stopBroadcast();
 
+        CreatorVaultBatcher batcher = CreatorVaultBatcher(batcherAddr);
         console2.log("CreatorVaultBatcher (v2-infra):", address(batcher));
 
         // Minimal sanity checks (read-only).

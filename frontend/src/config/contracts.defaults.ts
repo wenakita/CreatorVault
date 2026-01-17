@@ -21,12 +21,14 @@ export const BASE_DEFAULTS = {
   // CREATE2 infra
   create2Factory: '0x4e59b44847b379578588920cA78FbF26c0B4956C' as ContractAddress,
   create2Deployer: '0xaBf645362104F34D9C3FE48440bE7c99aaDE58E7' as ContractAddress,
-  universalBytecodeStore: '0xCDf45B94348DBBABba4bE6f4a5341badb83D4dC4' as ContractAddress,
-  universalCreate2DeployerFromStore: '0xDb65C152B0496208A117FF7C04ddd5039F3035c6' as ContractAddress,
+  // Phase-2 v2 bytecode store (chunked) + deterministic CREATE2 deployer-from-store
+  universalBytecodeStore: '0x35c189abcb7289ab87a54b5067538668662e0702' as ContractAddress,
+  universalCreate2DeployerFromStore: '0x24a2137950257a227a28663c76515fbffd2475c3' as ContractAddress,
 
   // AA helpers
   vaultActivationBatcher: '0x4b67e3a4284090e5191c27B8F24248eC82DF055D' as ContractAddress,
-  creatorVaultBatcher: '0xB695AEaD09868F287DAA38FA444B240847c50fB8' as ContractAddress,
+  // v2-infra CreatorVaultBatcher (deterministic, deployed via CREATE2 factory)
+  creatorVaultBatcher: '0xa06d34f47c8e784e8fa6d1352092e6bb6186e35b' as ContractAddress,
 
   // Treasury
   protocolTreasury: '0x7d429eCbdcE5ff516D6e0a93299cbBa97203f2d3' as ContractAddress,

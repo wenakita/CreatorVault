@@ -351,6 +351,13 @@ const EIP712_DOMAIN_VIEW_ABI = [
 const CREATOR_VAULT_BATCHER_ABI = [
   {
     type: 'function',
+    name: 'bytecodeStore',
+    stateMutability: 'view',
+    inputs: [],
+    outputs: [{ type: 'address' }],
+  },
+  {
+    type: 'function',
     name: 'create2Deployer',
     stateMutability: 'view',
     inputs: [],
@@ -710,6 +717,38 @@ const CREATOR_VAULT_BATCHER_ABI = [
         ],
       },
     ],
+  },
+] as const
+
+// UniversalBytecodeStore (v1 + v2 compatible) helpers.
+const UNIVERSAL_BYTECODE_STORE_POINTERS_ABI = [
+  {
+    type: 'function',
+    name: 'pointers',
+    stateMutability: 'view',
+    inputs: [{ name: 'codeId', type: 'bytes32' }],
+    outputs: [{ type: 'address' }],
+  },
+] as const
+
+// UniversalBytecodeStoreV2 adds chunking for >24KB creation code. v1 stores won't recognize this selector.
+const UNIVERSAL_BYTECODE_STORE_CHUNKCOUNT_ABI = [
+  {
+    type: 'function',
+    name: 'chunkCount',
+    stateMutability: 'view',
+    inputs: [{ name: 'codeId', type: 'bytes32' }],
+    outputs: [{ type: 'uint256' }],
+  },
+] as const
+
+const CREATE2_DEPLOYER_STORE_ABI = [
+  {
+    type: 'function',
+    name: 'store',
+    stateMutability: 'view',
+    inputs: [],
+    outputs: [{ type: 'address' }],
   },
 ] as const
 
@@ -2710,6 +2749,148 @@ export function DeployVault() {
       marketFloorQuery.data.floorPriceQ96Aligned > 0n,
   )
 
+  const creatorVaultBatcherAddress = (() => {
+    const v = String((CONTRACTS as any).creatorVaultBatcher ?? '')
+    return isAddress(v) ? (v as Address) : null
+  })()
+  const creatorVaultBatcherConfigured = Boolean(creatorVaultBatcherAddress)
+
+  const deployCodeIds = useMemo(() => {
+    return {
+      vault: keccak256(DEPLOY_BYTECODE.CreatorOVault as Hex),
+      wrapper: keccak256(DEPLOY_BYTECODE.CreatorOVaultWrapper as Hex),
+      shareOFT: keccak256(DEPLOY_BYTECODE.CreatorShareOFT as Hex),
+      gauge: keccak256(DEPLOY_BYTECODE.CreatorGaugeController as Hex),
+      cca: keccak256(DEPLOY_BYTECODE.CCALaunchStrategy as Hex),
+      oracle: keccak256(DEPLOY_BYTECODE.CreatorOracle as Hex),
+      oftBootstrap: keccak256(DEPLOY_BYTECODE.OFTBootstrapRegistry as Hex),
+    } as const
+  }, [])
+
+  const bytecodeInfraQuery = useQuery({
+    queryKey: [
+      'creatorVaultBatcher',
+      'bytecodeInfra',
+      creatorVaultBatcherAddress,
+      deployCodeIds.vault,
+      deployCodeIds.wrapper,
+      deployCodeIds.shareOFT,
+      deployCodeIds.gauge,
+      deployCodeIds.cca,
+      deployCodeIds.oracle,
+      deployCodeIds.oftBootstrap,
+    ],
+    enabled: Boolean(publicClient && creatorVaultBatcherAddress),
+    staleTime: 60_000,
+    retry: 0,
+    queryFn: async () => {
+      const batcher = creatorVaultBatcherAddress as Address
+
+      const [bytecodeStore, create2Deployer] = (await Promise.all([
+        publicClient!.readContract({
+          address: batcher,
+          abi: CREATOR_VAULT_BATCHER_ABI,
+          functionName: 'bytecodeStore',
+        }),
+        publicClient!.readContract({
+          address: batcher,
+          abi: CREATOR_VAULT_BATCHER_ABI,
+          functionName: 'create2Deployer',
+        }),
+      ])) as [Address, Address]
+
+      const deployerStore = (await publicClient!.readContract({
+        address: create2Deployer,
+        abi: CREATE2_DEPLOYER_STORE_ABI,
+        functionName: 'store',
+      })) as Address
+
+      if (bytecodeStore.toLowerCase() !== deployerStore.toLowerCase()) {
+        throw new Error(
+          `Misconfigured infra: batcher.bytecodeStore=${bytecodeStore} but create2Deployer.store=${deployerStore}`,
+        )
+      }
+
+      // v2 store detection: v1 stores won't have `chunkCount(bytes32)`.
+      let storeSupportsChunking = false
+      try {
+        await publicClient!.readContract({
+          address: bytecodeStore,
+          abi: UNIVERSAL_BYTECODE_STORE_CHUNKCOUNT_ABI,
+          functionName: 'chunkCount',
+          args: [deployCodeIds.vault],
+        })
+        storeSupportsChunking = true
+      } catch {
+        storeSupportsChunking = false
+      }
+
+      const codeEntries = [
+        { key: 'oftBootstrap', label: 'OFTBootstrapRegistry', codeId: deployCodeIds.oftBootstrap },
+        { key: 'shareOFT', label: 'CreatorShareOFT', codeId: deployCodeIds.shareOFT },
+        { key: 'vault', label: 'CreatorOVault', codeId: deployCodeIds.vault },
+        { key: 'wrapper', label: 'CreatorOVaultWrapper', codeId: deployCodeIds.wrapper },
+        { key: 'gauge', label: 'CreatorGaugeController', codeId: deployCodeIds.gauge },
+        { key: 'cca', label: 'CCALaunchStrategy', codeId: deployCodeIds.cca },
+        { key: 'oracle', label: 'CreatorOracle', codeId: deployCodeIds.oracle },
+      ] as const
+
+      const pointerResults = await publicClient!.multicall({
+        allowFailure: true,
+        contracts: codeEntries.map((c) => ({
+          address: bytecodeStore,
+          abi: UNIVERSAL_BYTECODE_STORE_POINTERS_ABI,
+          functionName: 'pointers',
+          args: [c.codeId],
+        })),
+      })
+
+      const entries = codeEntries.map((c, i) => {
+        const r: any = pointerResults[i]
+        const pointer = r?.status === 'success' ? (r.result as Address) : (ZERO_ADDRESS as Address)
+        const ok = r?.status === 'success' && pointer !== ZERO_ADDRESS
+        return { ...c, pointer, ok }
+      })
+
+      const missing = entries.filter((e) => !e.ok).map((e) => e.label)
+
+      return {
+        bytecodeStore,
+        create2Deployer,
+        storeSupportsChunking,
+        entries,
+        missing,
+      }
+    },
+  })
+
+  const bytecodeInfraOk = Boolean(
+    creatorVaultBatcherConfigured &&
+      bytecodeInfraQuery.isSuccess &&
+      bytecodeInfraQuery.data &&
+      bytecodeInfraQuery.data.missing.length === 0,
+  )
+
+  const bytecodeInfraBlocker = useMemo(() => {
+    if (!creatorVaultBatcherConfigured) return null
+    if (bytecodeInfraQuery.isFetching) return 'Checking deployment bytecode store…'
+    if (bytecodeInfraQuery.isError) return (bytecodeInfraQuery.error as any)?.message || 'Deployment bytecode check failed.'
+    if (!bytecodeInfraQuery.data) return 'Deployment bytecode check failed.'
+    if (!bytecodeInfraQuery.data.storeSupportsChunking) {
+      return 'Deployment infra uses a v1 bytecode store (no chunking). Deploy the v2 bytecode store + v2 deployer + new CreatorVaultBatcher.'
+    }
+    if (bytecodeInfraQuery.data.missing.length > 0) {
+      return `Bytecode store is missing: ${bytecodeInfraQuery.data.missing.join(', ')}. Seed the v2 store, then retry.`
+    }
+    return null
+  }, [
+    creatorVaultBatcherConfigured,
+    bytecodeInfraQuery.data,
+    bytecodeInfraQuery.error,
+    bytecodeInfraQuery.isError,
+    bytecodeInfraQuery.isFetching,
+  ])
+
   const minFirstDeposit = useMemo(() => {
     if (typeof resolvedTokenDecimals === 'number' && resolvedTokenDecimals >= 0) {
       return 50_000_000n * 10n ** BigInt(resolvedTokenDecimals)
@@ -2720,7 +2901,6 @@ export function DeployVault() {
   const walletHasMinDeposit =
     typeof connectedTokenBalance === 'bigint' && connectedTokenBalance >= minFirstDeposit
 
-  const batcherConfigured = isAddress(String((CONTRACTS as any).creatorVaultBatcher ?? ''))
   const operatorModeEligible = useMemo(() => {
     return operatorModeForIdentity && canonicalIdentityIsContract
   }, [canonicalIdentityIsContract, operatorModeForIdentity])
@@ -2763,13 +2943,12 @@ export function DeployVault() {
     !!derivedVaultSymbol &&
     !!connectedWalletAddress &&
     fundingGateOk &&
-    batcherConfigured &&
+    creatorVaultBatcherConfigured &&
+    bytecodeInfraOk &&
     (!identity.blockingReason || executeBatchEligible || operatorModeEligible)
 
   const vrfConsumerAddress = (CONTRACTS.vrfConsumer ?? null) as Address | null
-  const creatorVaultBatcherAddress = (CONTRACTS.creatorVaultBatcher ?? null) as Address | null
   const vrfConsumerConfigured = isAddress(String(vrfConsumerAddress ?? ''))
-  const creatorVaultBatcherConfigured = isAddress(String(creatorVaultBatcherAddress ?? ''))
   const allowlistReady = allowlistMode === 'disabled' ? true : isAllowlistedCreator
   const creatorCoinReady = tokenIsValid && !!zoraCoin && isCreatorCoin
   const coinAgeReady = creatorCoinReady && coinAgeOk
@@ -2781,6 +2960,21 @@ export function DeployVault() {
       label: 'CreatorVaultBatcher configured',
       ok: creatorVaultBatcherConfigured,
       hint: creatorVaultBatcherConfigured && creatorVaultBatcherAddress ? shortAddress(creatorVaultBatcherAddress) : 'missing',
+    },
+    {
+      label: 'Deployment bytecode ready',
+      ok: bytecodeInfraOk,
+      hint: !creatorVaultBatcherConfigured
+        ? 'missing'
+        : bytecodeInfraQuery.isFetching
+          ? 'checking'
+          : bytecodeInfraQuery.isError
+            ? 'error'
+            : bytecodeInfraOk
+              ? 'ok'
+              : bytecodeInfraQuery.data?.storeSupportsChunking
+                ? 'missing code'
+                : 'needs v2 store',
     },
     {
       label: 'Smart wallet batching enabled',
@@ -2876,6 +3070,12 @@ export function DeployVault() {
                       ? `Needs 50,000,000 ${underlyingSymbolUpper || 'TOKENS'} to deploy.`
                       : identity.blockingReason && !executeBatchEligible && !operatorModeEligible
                         ? identity.blockingReason
+                    : bytecodeInfraQuery.isFetching
+                      ? 'Checking deployment bytecode store…'
+                      : bytecodeInfraQuery.isError
+                        ? (bytecodeInfraQuery.error as any)?.message || 'Deployment bytecode check failed.'
+                        : !bytecodeInfraOk
+                          ? bytecodeInfraBlocker || 'Deployment infra is not ready.'
                         : marketFloorQuery.isFetching
                           ? 'Computing market floor price…'
                           : marketFloorQuery.isError
@@ -3480,7 +3680,7 @@ export function DeployVault() {
                 <RequestCreatorAccess coin={creatorToken} />
               ) : tokenIsValid && zoraCoin && allowlistEnforced && !isAllowlistedCreator ? (
                 <RequestCreatorAccess coin={creatorToken} />
-              ) : tokenIsValid && zoraCoin && !batcherConfigured ? (
+              ) : tokenIsValid && zoraCoin && !creatorVaultBatcherConfigured ? (
                 <button
                   disabled
                   className="w-full py-4 bg-black/30 border border-zinc-900/60 rounded-lg text-zinc-600 text-sm cursor-not-allowed"
