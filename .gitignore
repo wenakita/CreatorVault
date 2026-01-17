@@ -87,6 +87,8 @@ docs-export/
 scripts/
 !docs-site/scripts/
 !docs-site/scripts/**
+!frontend/scripts/
+!frontend/scripts/**
 # script/ - Keep deployment scripts
 !script/DeployBase.s.sol
 !script/DeployInfrastructure.s.sol

@@ -5,12 +5,15 @@
       <stop offset="0.55" stop-color="#070707"/>
       <stop offset="1" stop-color="#000000"/>
     </radialGradient>
-    <linearGradient id="gold" x1="220" y1="380" x2="820" y2="1280" gradientUnits="userSpaceOnUse">
-      <stop stop-color="#F7D680"/>
-      <stop offset="0.45" stop-color="#C7A24C"/>
-      <stop offset="1" stop-color="#7A5C1E"/>
+
+    <linearGradient id="cv-stroke" x1="120" y1="120" x2="380" y2="380" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#D6DCE8" />
+      <stop offset="45%" stop-color="#8492B0" />
+      <stop offset="80%" stop-color="#0052FF" />
+      <stop offset="100%" stop-color="#0033CC" />
     </linearGradient>
-    <linearGradient id="glass" x1="140" y1="520" x2="940" y2="1600" gradientUnits="userSpaceOnUse">
+
+    <linearGradient id="glass" x1="120" y1="520" x2="960" y2="1680" gradientUnits="userSpaceOnUse">
       <stop stop-color="rgba(255,255,255,0.10)"/>
       <stop offset="0.4" stop-color="rgba(255,255,255,0.04)"/>
       <stop offset="1" stop-color="rgba(255,255,255,0.08)"/>
@@ -19,41 +22,84 @@
 
   <rect width="1080" height="1920" fill="url(#bg)"/>
 
-  <text x="140" y="210" fill="rgba(255,255,255,0.88)" font-family="Inter, ui-sans-serif, system-ui" font-size="54" font-weight="300">
+  <!-- header -->
+  <rect x="120" y="150" width="92" height="92" rx="18" fill="none" stroke="url(#cv-stroke)" stroke-width="8" />
+  <text x="240" y="205" fill="rgba(255,255,255,0.90)" font-family="Inter, ui-sans-serif, system-ui" font-size="48" font-weight="400">
     Creator Vaults
   </text>
-  <text x="140" y="280" fill="rgba(255,255,255,0.55)" font-family="Inter, ui-sans-serif, system-ui" font-size="26" font-weight="300">
-    Creator coin vaults on Base
+  <text x="240" y="252" fill="rgba(255,255,255,0.56)" font-family="Inter, ui-sans-serif, system-ui" font-size="22" font-weight="300">
+    Deploy and manage creator coin vaults
   </text>
 
-  <circle cx="270" cy="560" r="150" fill="url(#gold)" opacity="0.92"/>
-  <circle cx="270" cy="560" r="156" stroke="rgba(255,255,255,0.16)" stroke-width="2"/>
-  <path d="M170 500c55-60 150-65 210-25" stroke="rgba(255,255,255,0.16)" stroke-width="10" stroke-linecap="round"/>
-
-  <rect x="140" y="760" width="800" height="420" rx="28" fill="url(#glass)" stroke="rgba(255,255,255,0.10)"/>
-  <rect x="180" y="820" width="420" height="14" rx="7" fill="rgba(255,255,255,0.20)"/>
-  <rect x="180" y="860" width="660" height="10" rx="5" fill="rgba(255,255,255,0.12)"/>
-  <rect x="180" y="890" width="610" height="10" rx="5" fill="rgba(255,255,255,0.10)"/>
-
-  <rect x="180" y="980" width="220" height="54" rx="27" fill="rgba(247,214,128,0.22)" stroke="rgba(247,214,128,0.35)"/>
-  <text x="290" y="1015" text-anchor="middle" fill="rgba(255,255,255,0.82)" font-family="Inter, ui-sans-serif, system-ui" font-size="16" font-weight="500">
-    Browse vaults
+  <!-- pills -->
+  <rect x="120" y="290" width="120" height="40" rx="20" fill="rgba(0,82,255,0.14)" stroke="rgba(0,82,255,0.30)"/>
+  <text x="180" y="316" text-anchor="middle" fill="rgba(255,255,255,0.82)" font-family="Inter, ui-sans-serif, system-ui" font-size="16" font-weight="500">
+    Base
   </text>
 
-  <rect x="420" y="980" width="250" height="54" rx="27" fill="rgba(255,255,255,0.06)" stroke="rgba(255,255,255,0.12)"/>
-  <text x="545" y="1015" text-anchor="middle" fill="rgba(255,255,255,0.68)" font-family="Inter, ui-sans-serif, system-ui" font-size="16" font-weight="500">
-    Trade creator coins
+  <rect x="252" y="290" width="260" height="40" rx="20" fill="rgba(255,255,255,0.06)" stroke="rgba(255,255,255,0.10)"/>
+  <text x="382" y="316" text-anchor="middle" fill="rgba(255,255,255,0.72)" font-family="Inter, ui-sans-serif, system-ui" font-size="16" font-weight="400">
+    1‑click deploy
   </text>
 
-  <rect x="140" y="1260" width="800" height="420" rx="28" fill="rgba(255,255,255,0.03)" stroke="rgba(255,255,255,0.08)"/>
-  <text x="180" y="1330" fill="rgba(255,255,255,0.70)" font-family="Inter, ui-sans-serif, system-ui" font-size="20" font-weight="500">
-    Market
+  <!-- main deploy card -->
+  <rect x="120" y="380" width="840" height="640" rx="28" fill="url(#glass)" stroke="rgba(255,255,255,0.10)"/>
+  <text x="160" y="450" fill="rgba(255,255,255,0.82)" font-family="Inter, ui-sans-serif, system-ui" font-size="22" font-weight="500">
+    Deploy vault
   </text>
-  <rect x="180" y="1370" width="720" height="12" rx="6" fill="rgba(255,255,255,0.10)"/>
-  <rect x="180" y="1410" width="540" height="10" rx="5" fill="rgba(255,255,255,0.08)"/>
-  <rect x="180" y="1450" width="670" height="10" rx="5" fill="rgba(255,255,255,0.08)"/>
 
-  <text x="140" y="1820" fill="rgba(255,255,255,0.40)" font-family="Inter, ui-sans-serif, system-ui" font-size="18" font-weight="300">
+  <!-- token input -->
+  <text x="160" y="510" fill="rgba(255,255,255,0.58)" font-family="Inter, ui-sans-serif, system-ui" font-size="16" font-weight="400">
+    Creator coin address
+  </text>
+  <rect x="160" y="535" width="760" height="64" rx="16" fill="rgba(0,0,0,0.35)" stroke="rgba(255,255,255,0.14)"/>
+  <text x="190" y="576" fill="rgba(255,255,255,0.46)" font-family="JetBrains Mono, ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas" font-size="16" font-weight="400">
+    0x…
+  </text>
+
+  <!-- deposit row -->
+  <rect x="160" y="630" width="760" height="84" rx="18" fill="rgba(255,255,255,0.04)" stroke="rgba(255,255,255,0.10)"/>
+  <text x="190" y="680" fill="rgba(255,255,255,0.72)" font-family="Inter, ui-sans-serif, system-ui" font-size="18" font-weight="500">
+    First deposit
+  </text>
+  <text x="900" y="680" text-anchor="end" fill="rgba(255,255,255,0.62)" font-family="JetBrains Mono, ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas" font-size="18" font-weight="400">
+    50,000,000
+  </text>
+
+  <!-- status rows -->
+  <rect x="160" y="740" width="760" height="72" rx="18" fill="rgba(255,255,255,0.03)" stroke="rgba(255,255,255,0.08)"/>
+  <text x="190" y="784" fill="rgba(255,255,255,0.62)" font-family="Inter, ui-sans-serif, system-ui" font-size="16" font-weight="400">
+    Paymaster
+  </text>
+  <text x="900" y="784" text-anchor="end" fill="rgba(255,255,255,0.62)" font-family="Inter, ui-sans-serif, system-ui" font-size="16" font-weight="400">
+    configured
+  </text>
+
+  <rect x="160" y="828" width="760" height="72" rx="18" fill="rgba(255,255,255,0.03)" stroke="rgba(255,255,255,0.08)"/>
+  <text x="190" y="872" fill="rgba(255,255,255,0.62)" font-family="Inter, ui-sans-serif, system-ui" font-size="16" font-weight="400">
+    EntryPoint
+  </text>
+  <text x="900" y="872" text-anchor="end" fill="rgba(255,255,255,0.62)" font-family="Inter, ui-sans-serif, system-ui" font-size="16" font-weight="400">
+    v0.6
+  </text>
+
+  <!-- primary CTA -->
+  <rect x="160" y="930" width="760" height="72" rx="22" fill="rgba(0,82,255,0.20)" stroke="rgba(0,82,255,0.35)"/>
+  <text x="540" y="976" text-anchor="middle" fill="rgba(255,255,255,0.86)" font-family="Inter, ui-sans-serif, system-ui" font-size="18" font-weight="600">
+    Deploy
+  </text>
+
+  <!-- secondary panel -->
+  <rect x="120" y="1060" width="840" height="520" rx="28" fill="rgba(255,255,255,0.03)" stroke="rgba(255,255,255,0.08)"/>
+  <text x="160" y="1130" fill="rgba(255,255,255,0.78)" font-family="Inter, ui-sans-serif, system-ui" font-size="22" font-weight="500">
+    Preview
+  </text>
+  <rect x="160" y="1170" width="760" height="12" rx="6" fill="rgba(255,255,255,0.10)"/>
+  <rect x="160" y="1210" width="620" height="10" rx="5" fill="rgba(255,255,255,0.08)"/>
+  <rect x="160" y="1250" width="700" height="10" rx="5" fill="rgba(255,255,255,0.08)"/>
+  <rect x="160" y="1310" width="520" height="10" rx="5" fill="rgba(255,255,255,0.08)"/>
+
+  <text x="120" y="1820" fill="rgba(255,255,255,0.40)" font-family="Inter, ui-sans-serif, system-ui" font-size="18" font-weight="300">
     4626.fun
   </text>
 </svg>
