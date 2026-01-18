@@ -46,7 +46,7 @@ For Uniswap V4 tax-hook setups, WETH fees can be swapped into the creator coin, 
 
 ## 3) Lottery Mechanics: Jackpot Accrual, Odds, and VRF Winners
 
-CreatorVault’s lottery is driven by swap activity. When a user trades a share token (■TOKEN), the ShareOFT calls `processSwapLottery` on the CreatorLotteryManager to create a lottery entry tied to that swap’s USD value, which is computed via the creator’s oracle feed.[^10] The base win chance scales with swap size: the default configuration starts at **0.004% per $1** (40 PPM), and linearly increases up to a **4% max chance** at $1,000 in swap volume (with a minimum swap threshold). This is the same “$1 traded = 0.0004% chance” mechanic described in the core docs.[^10][^24]
+CreatorVault’s lottery is driven by swap activity. When a user trades a share token (■TOKEN), the ShareOFT calls `processSwapLottery` on the CreatorLotteryManager to create a lottery entry tied to that swap’s USD value, which is computed via the creator’s oracle feed.[^10] The base win chance scales with swap size: the default configuration starts at **0.0004% per $1** (40 PPM), and linearly increases up to a **4% max chance** at $10,000 in swap volume (with a minimum swap threshold). This is the same “$1 traded = 0.0004% chance” mechanic described in the core docs.[^10][^24]
 
 ### Jackpot accrual and payout
 
