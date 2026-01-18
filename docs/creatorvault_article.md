@@ -44,7 +44,30 @@ For Uniswap V4 tax-hook setups, WETH fees can be swapped into the creator coin, 
 
 ---
 
-## 3) Strategies: Why Charm and Ajna Matter Together
+## 3) Lottery Mechanics: Jackpot Accrual, Odds, and VRF Winners
+
+CreatorVault’s lottery is driven by swap activity. When a user trades a share token (■TOKEN), the ShareOFT calls `processSwapLottery` on the CreatorLotteryManager to create a lottery entry tied to that swap’s USD value, which is computed via the creator’s oracle feed.[^10] The base win chance scales with swap size: the default configuration starts at **0.004% per $1** (40 PPM), and linearly increases up to a **4% max chance** at $1,000 in swap volume (with a minimum swap threshold). This is the same “$1 traded = 0.0004% chance” mechanic described in the core docs.[^10][^24]
+
+### Jackpot accrual and payout
+
+Jackpots accrue inside each creator’s gauge controller as vault shares. The gauge routes its lottery share into a `jackpotReserve`, which is paid out only by the lottery manager on a winning draw.[^25] When a winner is picked, the lottery pays out **69% of each vault’s jackpot reserve** (multi-token jackpot) so the prize can include diversified shares across all active creator vaults on the chain.[^26]
+
+### How winners are picked (Chainlink VRF v2.5)
+
+The lottery manager requests randomness through Chainlink VRF v2.5 (locally or via the cross-chain integrator). The VRF callback supplies random words, which are reduced to a PPM range and compared against the computed win chance for that entry. If the random value falls below the win chance, the entry wins and the jackpot payout executes.[^27][^28]
+
+### Probability boosts and caps
+
+Win probability starts with the base chance derived from the user’s **swap USD amount**, then receives optional boosts:
+
+- **ve■4626 boost (up to 2.5x)**: The boost manager can multiply the base chance by up to **2.5x** based on ve■4626 voting power, with an additional lock-duration additive boost. The final boosted chance is capped at the configured max win chance.[^29][^24]
+- **Gauge-directed boost**: VaultGaugeVoting provides a bounded probability budget per vault, and the lottery manager **scales that boost by swap size** so small swaps do not capture the full weekly budget. This ensures boosts remain proportional to the user’s swap USD amount.[^24]
+
+These controls keep probability tied to swap size while still rewarding long-term ve■4626 alignment.
+
+---
+
+## 4) Strategies: Why Charm and Ajna Matter Together
 
 CreatorVault is designed for **multi-strategy allocation** so a creator vault can earn yield across multiple DeFi venues without overexposing to a single market mechanic. The strategy architecture explicitly pairs **Charm (Uniswap V3 LP)** with **Ajna (lending)** to diversify yield sources and liquidity behavior.[^19]
 
@@ -69,7 +92,7 @@ The result is a vault that can earn both **trading fees** and **lending yield**,
 
 ---
 
-## 4) ve■4626: The Governance Backbone
+## 5) ve■4626: The Governance Backbone
 
 The veERC4626 contract mints the ve■4626 governance token. The protocol token is the $4626 Zora Creator Coin; when its vault is created, the vault share token is ■4626, and that share token is what users lock to mint ve■4626. Voting power scales linearly with lock duration (up to 4 years). This lock grants voting power used in gauge votes and can be extended or increased over time. Unlocking burns ve■4626 and returns the underlying ■4626 when the lock expires.[^8]
 
@@ -83,7 +106,7 @@ This token is the foundation for gauge voting and bribe alignment: the more and 
 
 ---
 
-## 5) VaultGaugeVoting: Directing Probability With ve(3,3) Mechanics
+## 6) VaultGaugeVoting: Directing Probability With ve(3,3) Mechanics
 
 VaultGaugeVoting is a ve(3,3)-style voting contract. Instead of controlling emissions, it directs **probability budget** for the lottery: ve■4626 holders vote for specific vaults, and those votes determine each vault’s share of a bounded “probability budget.”[^5]
 
@@ -106,7 +129,7 @@ This results in a **vault-specific probability boost**, which can be used by oth
 
 ---
 
-## 6) The Gauge + Voting Loop: How Voters Are Rewarded
+## 7) The Gauge + Voting Loop: How Voters Are Rewarded
 
 CreatorGaugeController routes a defined share of fees (default 9.61%) to the **VoterRewardsDistributor**. This contract records rewards per (epoch, vault) and allows ve■4626 voters to claim their share based on their vote weight for that vault in that epoch.[^16]
 
@@ -122,7 +145,7 @@ This creates the basic loop: trading fees → gauge → voter rewards → ve■4
 
 ---
 
-## 7) Bribes: Vault-Scoped Incentives for Votes
+## 8) Bribes: Vault-Scoped Incentives for Votes
 
 CreatorVault supports bribes through **BribeDepot**, a per-vault bribe contract. Anyone can deposit bribe tokens for a given epoch, and voters can claim those bribes proportional to their vote weight for that vault and epoch.[^7]
 
@@ -135,7 +158,7 @@ This introduces a transparent market for vote direction: creators, communities, 
 
 ---
 
-## 8) How the Gauge, Voting, and Bribes Interact End-to-End
+## 9) How the Gauge, Voting, and Bribes Interact End-to-End
 
 Putting it all together, the economic loop for a creator vault looks like this:
 
@@ -155,7 +178,7 @@ This structure aligns participants:
 
 ---
 
-## 9) Deployment Wiring: Ensuring the Contracts Connect Correctly
+## 10) Deployment Wiring: Ensuring the Contracts Connect Correctly
 
 CreatorVault’s batch deployment flow wires these relationships automatically. The batcher sets the gauge on the vault and share token, connects the gauge to the wrapper, lottery, and oracle, and then transfers gauge ownership to the protocol treasury. This ensures fee routing and governance connections are correct from day one.[^9]
 
@@ -168,7 +191,7 @@ CreatorVault’s batch deployment flow wires these relationships automatically. 
 
 ---
 
-## 10) Why This Design Matters
+## 11) Why This Design Matters
 
 CreatorVault’s governance and incentive stack is intentionally layered:
 
@@ -212,3 +235,9 @@ CreatorVault is not just a vault product; it is a full-stack incentive system. T
 [^21]: docs/strategies/ajna/CREATOR_AJNA_GUIDE.md (Ajna strategy behavior)
 [^22]: docs/lottery/MULTI_STRATEGY_ALLOCATION.md (strategy weights)
 [^23]: contracts/governance/CreatorGaugeController.sol + VaultGaugeVoting.sol + BribeDepot.sol (end-to-end loop)
+[^24]: contracts/services/lottery/CreatorLotteryManager.sol (entry odds, boosts, and win processing)
+[^25]: contracts/governance/CreatorGaugeController.sol (jackpot reserve accrual and payout gating)
+[^26]: docs/lottery/MULTI_TOKEN_JACKPOT.md (multi-vault jackpot payout model)
+[^27]: contracts/services/lottery/CreatorLotteryManager.sol (VRF request/fulfillment flow)
+[^28]: contracts/services/lottery/vrf/CreatorVRFConsumerV2_5.sol (Chainlink VRF v2.5 consumer)
+[^29]: contracts/governance/veERC4626BoostManager.sol (2.5x boost and lock-duration bonus)
