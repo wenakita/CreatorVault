@@ -56,6 +56,8 @@ Charm provides automated V3 LP management, giving the vault exposure to trading 
 
 Ajna provides a **permissionless lending pool** where the creator token acts as the quote asset, and borrowers post collateral (often WETH or USDC) to borrow the creator token. The AjnaStrategy is production-ready, auto-creates or discovers the pool, and lets the vault earn interest from lending activity rather than trading fees alone.[^21]
 
+For creators, Ajna can also serve as a transparent liquidity path: by posting USDC collateral and borrowing their own creator coin, a creator can sell into the market with a visible onchain signal and a defined obligation to buy the token back later (at a lower or higher price) to redeem their USDC collateral.[^21]
+
 ### Why use both?
 
 - **Diversified yield drivers**: Charm captures LP fees from trading volume; Ajna captures lending interest. This spreads risk across different market conditions.[^19]
