@@ -1,6 +1,6 @@
 # CreatorVault: Deep Dive Into the Creator Economy Stack, Gauges, Voting, and Bribes
 
-CreatorVault is a Base-native creator finance layer that turns Creator Coins into composable onchain economies. The protocol combines ERC-4626 vaults, omnichain share tokens, a fee-splitting gauge, and a lottery system, while anchoring governance and incentives in vote-escrowed liquidity (veERC4626). The end result is a system where creator tokens become programmable ecosystems: deposits mint vault shares, shares wrap into omnichain tokens, DEX trading fees flow into a gauge, and ve-style voting steers probability and rewards. This article breaks down the smart contracts and how they interact, with special focus on gauges, voting, bribes, and strategies.[^1]
+CreatorVault is a Base-native creator finance layer that turns Creator Coins into composable onchain economies. The protocol combines ERC-4626 vaults, omnichain share tokens, a fee-splitting gauge, and a lottery system, while anchoring governance and incentives in vote-escrowed liquidity (ve■4626). The end result is a system where creator tokens become programmable ecosystems: deposits mint vault shares, shares wrap into omnichain tokens, DEX trading fees flow into a gauge, and ve-style voting steers probability and rewards. This article breaks down the smart contracts and how they interact, with special focus on gauges, voting, bribes, and strategies.[^1]
 
 ---
 
@@ -13,10 +13,10 @@ CreatorVault’s architecture is a modular system deployed as a stack for each c
 - **CreatorShareOFT**: Omnichain fungible token that collects trading fees from DEX swaps and forwards those fees to the gauge controller.[^3]
 - **CreatorGaugeController**: The fee-splitting “gauge” that receives OFT (and optionally WETH) fees and distributes them across burn, lottery, creator, and voter rewards buckets. It is the central economic router.[^4]
 - **CreatorLotteryManager**: Receives jackpot funding from the gauge and administers draws.[^3]
-- **VaultGaugeVoting**: A ve(3,3)-style voting system that lets veERC4626 holders allocate “probability boost” toward specific vaults.[^5]
+- **VaultGaugeVoting**: A ve(3,3)-style voting system that lets ve■4626 holders allocate “probability boost” toward specific vaults.[^5]
 - **VoterRewardsDistributor**: Receives the gauge’s voter slice and distributes vault share rewards to voters based on per-epoch weights.[^6]
 - **BribeDepot**: A per-vault bribe contract that allows anyone to fund a bribe pool for a specific epoch, and lets voters claim their share based on their vote weight for that vault.[^7]
-- **veERC4626**: A vote-escrowed token. The protocol token is the $4626 Zora Creator Coin; when a vault is created, its share token is ■4626. Users lock ■4626 to mint ve■4626, which supplies voting power for the gauge voting system. The token is non-transferable to preserve governance alignment.[^8]
+- **veERC4626 (ve■4626 token)**: A vote-escrowed token contract. The protocol token is the $4626 Zora Creator Coin; when a vault is created, its share token is ■4626. Users lock ■4626 to mint ve■4626, which supplies voting power for the gauge voting system. The token is non-transferable to preserve governance alignment.[^8]
 
 This modular stack is wired together at deployment time, typically via the CreatorVault batcher flow, so that the vault knows its gauge, the gauge knows its vault, wrapper, and lottery, and the share token knows where to send fees.[^9]
 
@@ -34,7 +34,7 @@ CreatorVault applies a trading fee to all DEX trades of the omnichain share toke
    - **Burn share**: Burned via `vault.burnSharesForPriceIncrease` to increase PPS for all holders.[^13]
    - **Lottery share**: Added to jackpot reserve and later paid out by the lottery manager.[^14]
    - **Creator share**: Optionally paid to the creator treasury (default 0%).[^15]
-   - **Voter rewards (protocol share)**: Routed to the VoterRewardsDistributor for veERC4626 voters; if not configured, the gauge falls back to the protocol treasury or the jackpot.[^16]
+   - **Voter rewards (protocol share)**: Routed to the VoterRewardsDistributor for ve■4626 voters; if not configured, the gauge falls back to the protocol treasury or the jackpot.[^16]
 
 **Default split:** 21.39% burn, 69.00% lottery, 0% creator, 9.61% voter rewards.[^17]
 
@@ -67,9 +67,9 @@ The result is a vault that can earn both **trading fees** and **lending yield**,
 
 ---
 
-## 4) veERC4626: The Governance Backbone
+## 4) ve■4626: The Governance Backbone
 
-The veERC4626 contract is the system’s governance primitive. The protocol token is the $4626 Zora Creator Coin; when its vault is created, the vault share token is ■4626, and that share token is what users lock to mint ve■4626. Voting power scales linearly with lock duration (up to 4 years). This lock grants voting power used in gauge votes and can be extended or increased over time. Unlocking burns ve■4626 and returns the underlying ■4626 when the lock expires.[^8]
+The veERC4626 contract mints the ve■4626 governance token. The protocol token is the $4626 Zora Creator Coin; when its vault is created, the vault share token is ■4626, and that share token is what users lock to mint ve■4626. Voting power scales linearly with lock duration (up to 4 years). This lock grants voting power used in gauge votes and can be extended or increased over time. Unlocking burns ve■4626 and returns the underlying ■4626 when the lock expires.[^8]
 
 Key design features:
 
@@ -83,12 +83,12 @@ This token is the foundation for gauge voting and bribe alignment: the more and 
 
 ## 5) VaultGaugeVoting: Directing Probability With ve(3,3) Mechanics
 
-VaultGaugeVoting is a ve(3,3)-style voting contract. Instead of controlling emissions, it directs **probability budget** for the lottery: veERC4626 holders vote for specific vaults, and those votes determine each vault’s share of a bounded “probability budget.”[^5]
+VaultGaugeVoting is a ve(3,3)-style voting contract. Instead of controlling emissions, it directs **probability budget** for the lottery: ve■4626 holders vote for specific vaults, and those votes determine each vault’s share of a bounded “probability budget.”[^5]
 
 ### How voting works
 
 - **Epochs**: Weekly epochs (7 days), starting on the next Thursday at 00:00 UTC after deployment. Votes are tracked per epoch.[^5]
-- **Vote submission**: Voters can split their voting power across up to 10 vaults. Weights are normalized by the voter’s total veERC4626 voting power for that epoch.[^5]
+- **Vote submission**: Voters can split their voting power across up to 10 vaults. Weights are normalized by the voter’s total ve■4626 voting power for that epoch.[^5]
 - **Whitelist gating**: Vaults must be whitelisted (manually or via registry integration) to receive votes.[^5]
 
 ### Probability budget
@@ -100,13 +100,13 @@ Each vault’s share of the probability budget is calculated as:
 - If no votes exist for the epoch, the budget is equally split across whitelisted vaults.
 - If votes exist, a vault’s share is proportional to its vote weight vs. total votes.
 
-This results in a **vault-specific probability boost**, which can be used by other modules (e.g., lottery logic) to bias outcomes toward vaults favored by veERC4626 voters.[^5]
+This results in a **vault-specific probability boost**, which can be used by other modules (e.g., lottery logic) to bias outcomes toward vaults favored by ve■4626 voters.[^5]
 
 ---
 
 ## 6) The Gauge + Voting Loop: How Voters Are Rewarded
 
-CreatorGaugeController routes a defined share of fees (default 9.61%) to the **VoterRewardsDistributor**. This contract records rewards per (epoch, vault) and allows veERC4626 voters to claim their share based on their vote weight for that vault in that epoch.[^16]
+CreatorGaugeController routes a defined share of fees (default 9.61%) to the **VoterRewardsDistributor**. This contract records rewards per (epoch, vault) and allows ve■4626 voters to claim their share based on their vote weight for that vault in that epoch.[^16]
 
 **Reward flow:**
 
@@ -116,7 +116,7 @@ CreatorGaugeController routes a defined share of fees (default 9.61%) to the **V
 
 If a vault receives **zero votes** in an epoch, rewards can be swept to a protocol treasury after a grace period, preventing stuck balances.[^6]
 
-This creates the basic loop: trading fees → gauge → voter rewards → veERC4626 incentives → voting → probability direction.
+This creates the basic loop: trading fees → gauge → voter rewards → ve■4626 incentives → voting → probability direction.
 
 ---
 
@@ -140,7 +140,7 @@ Putting it all together, the economic loop for a creator vault looks like this:
 1. **Users trade the omnichain share token** on DEXs; fees are collected and forwarded to the gauge.[^10]
 2. **The gauge unwraps and distributes** fees into burn, lottery, creator (optional), and voter rewards buckets.[^12]
 3. **Voter rewards are deposited** into the VoterRewardsDistributor for the current epoch.[^16]
-4. **veERC4626 holders vote** each epoch to allocate probability budget across vaults. The voting contract tracks weight per vault.[^5]
+4. **ve■4626 holders vote** each epoch to allocate probability budget across vaults. The voting contract tracks weight per vault.[^5]
 5. **Voters claim rewards** after the epoch ends, receiving vault shares in proportion to their vote weight.[^6]
 6. **Bribes add another incentive layer**, allowing any party to reward voters who support a specific vault.[^7]
 
@@ -148,7 +148,7 @@ This structure aligns participants:
 
 - **Traders** fund the system through activity.
 - **Vault holders** benefit from PPS increases and jackpot growth.
-- **veERC4626 voters** are rewarded for directing probability and growth.
+- **ve■4626 voters** are rewarded for directing probability and growth.
 - **Creators and communities** can attract votes and attention through bribes or direct coordination.
 
 ---
@@ -181,7 +181,7 @@ This approach mirrors the proven dynamics of ve(3,3) systems while adapting them
 
 ## Conclusion
 
-CreatorVault is not just a vault product; it is a full-stack incentive system. Trading fees flow into a gauge, which funds jackpots, burns shares, and rewards voters. veERC4626 holders vote each epoch to direct probability toward vaults, and bribe depots allow targeted incentive campaigns. Together, these pieces create a robust economic OS for creators, combining DeFi mechanics with social alignment. The stack’s strength is in how these contracts interlock: vaults and wrappers handle assets, gauges distribute value, voting steers probability, and bribes plus voter rewards keep governance active.[^23]
+CreatorVault is not just a vault product; it is a full-stack incentive system. Trading fees flow into a gauge, which funds jackpots, burns shares, and rewards voters. ve■4626 holders vote each epoch to direct probability toward vaults, and bribe depots allow targeted incentive campaigns. Together, these pieces create a robust economic OS for creators, combining DeFi mechanics with social alignment. The stack’s strength is in how these contracts interlock: vaults and wrappers handle assets, gauges distribute value, voting steers probability, and bribes plus voter rewards keep governance active.[^23]
 
 ---
 
