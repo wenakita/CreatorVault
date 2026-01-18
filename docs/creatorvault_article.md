@@ -16,7 +16,7 @@ CreatorVault’s architecture is a modular system deployed as a stack for each c
 - **VaultGaugeVoting**: A ve(3,3)-style voting system that lets veERC4626 holders allocate “probability boost” toward specific vaults.[^5]
 - **VoterRewardsDistributor**: Receives the gauge’s voter slice and distributes vault share rewards to voters based on per-epoch weights.[^6]
 - **BribeDepot**: A per-vault bribe contract that allows anyone to fund a bribe pool for a specific epoch, and lets voters claim their share based on their vote weight for that vault.[^7]
-- **veERC4626**: A vote-escrowed token. Users lock wrapped shares (■4626) or vault shares (▢4626) to gain voting power, and this voting power is used by the gauge voting system. The token is non-transferable to preserve governance alignment.[^8]
+- **veERC4626**: A vote-escrowed token. The protocol token is the $4626 Zora Creator Coin; when a vault is created, its share token is ■4626. Users lock ■4626 to mint ve■4626, which supplies voting power for the gauge voting system. The token is non-transferable to preserve governance alignment.[^8]
 
 This modular stack is wired together at deployment time, typically via the CreatorVault batcher flow, so that the vault knows its gauge, the gauge knows its vault, wrapper, and lottery, and the share token knows where to send fees.[^9]
 
@@ -69,7 +69,7 @@ The result is a vault that can earn both **trading fees** and **lending yield**,
 
 ## 4) veERC4626: The Governance Backbone
 
-The veERC4626 contract is the system’s governance primitive. Users lock either wrapped share tokens (■4626) or vault shares (▢4626) to receive vote-escrowed voting power, which scales linearly with lock duration (up to 4 years). This lock grants voting power used in gauge votes and can be extended or increased over time. Unlocking burns veERC4626 and returns the underlying tokens when the lock expires.[^8]
+The veERC4626 contract is the system’s governance primitive. The protocol token is the $4626 Zora Creator Coin; when its vault is created, the vault share token is ■4626, and that share token is what users lock to mint ve■4626. Voting power scales linearly with lock duration (up to 4 years). This lock grants voting power used in gauge votes and can be extended or increased over time. Unlocking burns ve■4626 and returns the underlying ■4626 when the lock expires.[^8]
 
 Key design features:
 
