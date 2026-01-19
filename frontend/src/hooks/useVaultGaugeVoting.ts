@@ -30,8 +30,8 @@ const VAULT_GAUGE_VOTING_ABI = parseAbi([
   'function MAX_VAULTS_PER_VOTE() external view returns (uint256)',
 ])
 
-// veAKITA ABI (relevant functions only)
-const VE_AKITA_ABI = parseAbi([
+// ve4626 ABI (relevant functions only)
+const VE_4626_ABI = parseAbi([
   'function getVotingPower(address user) external view returns (uint256)',
   'function getTotalVotingPower() external view returns (uint256)',
   'function hasActiveLock(address user) external view returns (bool)',
@@ -65,10 +65,10 @@ export interface VotingPowerInfo {
 
 interface UseVaultGaugeVotingProps {
   votingAddress?: `0x${string}`
-  veAkitaAddress?: `0x${string}`
+  ve4626Address?: `0x${string}`
 }
 
-export function useVaultGaugeVoting({ votingAddress, veAkitaAddress }: UseVaultGaugeVotingProps) {
+export function useVaultGaugeVoting({ votingAddress, ve4626Address }: UseVaultGaugeVotingProps) {
   const { address: userAddress } = useAccount()
   const [pendingTxHash, setPendingTxHash] = useState<`0x${string}` | undefined>()
 
@@ -136,39 +136,39 @@ export function useVaultGaugeVoting({ votingAddress, veAkitaAddress }: UseVaultG
     query: { enabled: !!votingAddress && !!userAddress },
   })
 
-  // Read user's voting power from veAKITA
+  // Read user's voting power from ve4626
   const { data: userVotingPower } = useReadContract({
-    address: veAkitaAddress,
-    abi: VE_AKITA_ABI,
+    address: ve4626Address,
+    abi: VE_4626_ABI,
     functionName: 'getVotingPower',
     args: userAddress ? [userAddress] : undefined,
-    query: { enabled: !!veAkitaAddress && !!userAddress },
+    query: { enabled: !!ve4626Address && !!userAddress },
   })
 
-  // Read total voting power from veAKITA
+  // Read total voting power from ve4626
   const { data: totalVotingPower } = useReadContract({
-    address: veAkitaAddress,
-    abi: VE_AKITA_ABI,
+    address: ve4626Address,
+    abi: VE_4626_ABI,
     functionName: 'getTotalVotingPower',
-    query: { enabled: !!veAkitaAddress },
+    query: { enabled: !!ve4626Address },
   })
 
   // Read if user has active lock
   const { data: hasActiveLock } = useReadContract({
-    address: veAkitaAddress,
-    abi: VE_AKITA_ABI,
+    address: ve4626Address,
+    abi: VE_4626_ABI,
     functionName: 'hasActiveLock',
     args: userAddress ? [userAddress] : undefined,
-    query: { enabled: !!veAkitaAddress && !!userAddress },
+    query: { enabled: !!ve4626Address && !!userAddress },
   })
 
   // Read remaining lock time
   const { data: remainingLockTime } = useReadContract({
-    address: veAkitaAddress,
-    abi: VE_AKITA_ABI,
+    address: ve4626Address,
+    abi: VE_4626_ABI,
     functionName: 'getRemainingLockTime',
     args: userAddress ? [userAddress] : undefined,
-    query: { enabled: !!veAkitaAddress && !!userAddress },
+    query: { enabled: !!ve4626Address && !!userAddress },
   })
 
   // Write contract hooks

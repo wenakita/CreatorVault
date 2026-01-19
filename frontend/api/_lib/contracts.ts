@@ -24,7 +24,11 @@ export type ApiContracts = {
   vaultActivationBatcher: ContractAddress
   creatorVaultBatcher?: ContractAddress
   protocolTreasury: ContractAddress
-  vaultActivator: ContractAddress
+  vaultGaugeVoting?: ContractAddress
+  voterRewardsDistributor?: ContractAddress
+  bribesFactory?: ContractAddress
+  ve4626?: ContractAddress
+  veBoostManager?: ContractAddress
   poolManager: ContractAddress
   taxHook: ContractAddress
   positionManager?: ContractAddress
@@ -81,7 +85,11 @@ export function getApiContracts(): ApiContracts {
     vaultActivationBatcher: pickAddressProdSafe('VAULT_ACTIVATION_BATCHER', BASE_DEFAULTS.vaultActivationBatcher)!,
     creatorVaultBatcher: pickAddressProdSafe('CREATOR_VAULT_BATCHER', BASE_DEFAULTS.creatorVaultBatcher),
     protocolTreasury: pickAddress('PROTOCOL_TREASURY', BASE_DEFAULTS.protocolTreasury)!,
-    vaultActivator: pickAddress('VAULT_ACTIVATOR', BASE_DEFAULTS.vaultActivator)!,
+    vaultGaugeVoting: pickAddressProdSafe('VAULT_GAUGE_VOTING'),
+    voterRewardsDistributor: pickAddressProdSafe('VOTER_REWARDS_DISTRIBUTOR'),
+    bribesFactory: pickAddressProdSafe('BRIBES_FACTORY'),
+    ve4626: pickAddressProdSafe('VE4626'),
+    veBoostManager: pickAddressProdSafe('VE_BOOST_MANAGER'),
     poolManager: pickAddress('POOL_MANAGER', BASE_DEFAULTS.poolManager)!,
     taxHook: pickAddress('TAX_HOOK', BASE_DEFAULTS.taxHook)!,
     positionManager: pickAddress('POSITION_MANAGER'),

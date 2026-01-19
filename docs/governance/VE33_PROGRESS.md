@@ -6,7 +6,7 @@ This doc tracks the current state of the **ve(3,3)** module for CreatorVault and
 
 ### 1) Weekly epoch voting (vault gauges)
 - **Contract**: `contracts/governance/VaultGaugeVoting.sol`
-- **Purpose**: veAKITA holders vote weekly to allocate a bounded **probability budget** across creator vaults.
+- **Purpose**: ve4626 holders vote weekly to allocate a bounded **probability budget** across creator vaults.
 - **Key properties**
   - Weekly epochs (`currentEpoch()`), epoch‑scoped vote storage:
     - `getVaultWeightAtEpoch(epoch, vault)`

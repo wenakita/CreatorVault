@@ -5,9 +5,15 @@
 
 import { AKITA_DEFAULTS, BASE_DEFAULTS, ERC4626_DEFAULTS } from './contracts.defaults'
 
-// Prefer env overrides for deployment flexibility. Use fallbacks for known Base mainnet addresses.
+// Prefer env overrides for local/dev flexibility. In production, default to repo-controlled BASE_DEFAULTS
+// to avoid mismatches between frontend + backend configs (which can break paymaster validation).
 function envAddress(name: string, fallback?: `0x${string}` | undefined): `0x${string}` | undefined {
-  const v = (import.meta as any)?.env?.[name] as string | undefined
+  const env: any = (import.meta as any)?.env ?? {}
+  const isProd = Boolean(env.PROD)
+  const allowOverrides = String(env.VITE_ALLOW_CONTRACT_OVERRIDES ?? '').trim() === '1'
+  if (isProd && !allowOverrides) return fallback
+
+  const v = env?.[name] as string | undefined
   if (!v) return fallback
   const trimmed = v.trim()
   if (!trimmed) return fallback
@@ -38,14 +44,18 @@ export const CONTRACTS = {
 
   // Phase 1/2 (AA): Vault activation batcher (approve + deposit + wrap + launch auction)
   vaultActivationBatcher: envAddress('VITE_VAULT_ACTIVATION_BATCHER', BASE_DEFAULTS.vaultActivationBatcher),
-  // Phase 2 (AA): One-call deploy+launch primitive (optional; used for deterministic AA deployments)
+  // Phased deploy orchestrator (Phases 1–3): deterministic deploy+launch across multiple txs on Base.
   creatorVaultBatcher: envAddress('VITE_CREATOR_VAULT_BATCHER', BASE_DEFAULTS.creatorVaultBatcher),
 
   // Protocol treasury / multisig (receives protocol fee slice from GaugeController)
   protocolTreasury: envAddress('VITE_PROTOCOL_TREASURY', BASE_DEFAULTS.protocolTreasury)!,
 
-  // Legacy activator (older 2-click flow). Kept for backwards compatibility.
-  vaultActivator: BASE_DEFAULTS.vaultActivator,
+  // ve(3,3) + rewards ecosystem (optional until deployed)
+  vaultGaugeVoting: envAddress('VITE_VAULT_GAUGE_VOTING'),
+  voterRewardsDistributor: envAddress('VITE_VOTER_REWARDS_DISTRIBUTOR'),
+  bribesFactory: envAddress('VITE_BRIBES_FACTORY'),
+  ve4626: envAddress('VITE_VE4626'),
+  veBoostManager: envAddress('VITE_VE_BOOST_MANAGER'),
 
   // External - Uniswap V4
   poolManager: envAddress('VITE_V4_POOL_MANAGER', BASE_DEFAULTS.poolManager)!,

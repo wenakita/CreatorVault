@@ -64,7 +64,7 @@ export function Home() {
             <Link to="/dashboard" className="btn-accent">
               Start Earning <ArrowRight className="w-4 h-4 inline ml-2" />
             </Link>
-            <Link to="/launch" className="btn-primary">
+            <Link to="/deploy" className="btn-primary">
               Create Vault
             </Link>
           </motion.div>
@@ -105,7 +105,7 @@ export function Home() {
                 this mints <span className="font-mono text-brand-primary">5,000,000 {SHARE_TOKEN}</span> and runs a{' '}
                 <span className="text-uniswap">Uniswap CCA</span> auction before the vault deploys the deposit across strategies.
               </p>
-              <Link to="/launch" className="btn-accent inline-block">
+              <Link to="/deploy" className="btn-accent inline-block">
                 Create Vault <ArrowRight className="w-4 h-4 inline ml-2" />
               </Link>
             </motion.div>

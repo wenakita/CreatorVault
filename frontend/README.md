@@ -56,18 +56,14 @@ frontend/
 | Route | Description |
 |-------|-------------|
 | `/` | Landing page with features |
-| `/launch` | One-click vault launcher |
+| `/deploy` | Deploy + activate vault (canonical) |
 | `/dashboard` | Browse all creator vaults |
 | `/vault/:address` | Deposit/withdraw from vault |
+| `/launch` | Redirects to `/deploy` (legacy) |
 
 ## Deployed Contracts (Base)
 
-| Contract | Address |
-|----------|---------|
-| Registry | `0x777e28d7617ADb6E2fE7b7C49864A173e36881EF` |
-| Factory | `0x6205c91941A207A622fD00481b92cA04308a2819` |
-| LotteryManager | `0xe2C39D39FF92c0cF7A0e9eD16FcE1d6F14bB38fD` |
-| VaultActivator | `0x1bf02C90B226C028720D25dE535b345e5FfB9743` |
+Base mainnet defaults live in `frontend/src/config/contracts.defaults.ts` (and are used by both the SPA and Vercel functions).
 
 ## Mini App Integration
 
@@ -113,7 +109,7 @@ npm run build
 ## Admin: approve creator access
 
 - Approvals are managed at `/admin/creator-access`.
-- Requests are submitted from `/deploy` (per coin) and `/launch` (wallet-only).
+- Requests are submitted from `/deploy`.
 - Admin access is controlled by `CREATOR_ACCESS_ADMIN_ADDRESSES` (comma/space separated).
 
 ## License

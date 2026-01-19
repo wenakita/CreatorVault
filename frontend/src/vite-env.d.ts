@@ -7,7 +7,6 @@ interface ImportMetaEnv {
   readonly VITE_REGISTRY_ADDRESS: string
   readonly VITE_FACTORY_ADDRESS: string
   readonly VITE_LOTTERY_MANAGER_ADDRESS: string
-  readonly VITE_VAULT_ACTIVATOR_ADDRESS: string
   readonly VITE_AKITA_TOKEN: string
   readonly VITE_AKITA_VAULT: string
   readonly VITE_AKITA_WRAPPER: string

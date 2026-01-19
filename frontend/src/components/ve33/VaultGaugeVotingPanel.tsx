@@ -3,11 +3,9 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { useVaultGaugeVoting, useTimeRemaining, formatVotingPower } from '../../hooks/useVaultGaugeVoting'
 import { logger } from '@/lib/logger'
 import { toShareSymbol } from '@/lib/tokenSymbols'
+import { CONTRACTS } from '@/config/contracts'
 
-// Temporary placeholder - replace with actual addresses when deployed
-const VAULT_GAUGE_VOTING_ADDRESS = undefined as `0x${string}` | undefined
-const VE_AKITA_ADDRESS = undefined as `0x${string}` | undefined
-const SHARE_SYMBOL = toShareSymbol('AKITA')
+const SHARE_SYMBOL = toShareSymbol('4626')
 
 interface VaultVoteAllocation {
   vault: string
@@ -40,8 +38,8 @@ export function VaultGaugeVotingPanel({ vaults = [], className = '' }: VaultGaug
     isVoting,
     txSuccess,
   } = useVaultGaugeVoting({
-    votingAddress: VAULT_GAUGE_VOTING_ADDRESS,
-    veAkitaAddress: VE_AKITA_ADDRESS,
+    votingAddress: CONTRACTS.vaultGaugeVoting,
+    ve4626Address: CONTRACTS.ve4626,
   })
 
   const [allocations, setAllocations] = useState<VaultVoteAllocation[]>([])
@@ -98,14 +96,14 @@ export function VaultGaugeVotingPanel({ vaults = [], className = '' }: VaultGaug
   }
 
   // If contracts not deployed, show placeholder
-  if (!VAULT_GAUGE_VOTING_ADDRESS || !VE_AKITA_ADDRESS) {
+  if (!CONTRACTS.vaultGaugeVoting || !CONTRACTS.ve4626) {
     return (
       <div className={`bg-zinc-900/50 border border-zinc-800 rounded-2xl p-6 ${className}`}>
         <h3 className="text-xl font-bold text-brand-primary mb-4">ve(3,3) Gauge Voting</h3>
         <div className="text-center py-8">
           <div className="text-zinc-500 mb-2">Coming Soon</div>
           <p className="text-sm text-zinc-600">
-            Vote with your veAKITA to direct jackpot probability to your favorite creator vaults.
+            Vote with your ve4626 to direct jackpot probability to your favorite creator vaults.
           </p>
         </div>
       </div>
@@ -263,13 +261,13 @@ export function VaultGaugeVotingPanel({ vaults = [], className = '' }: VaultGaug
 // Compact version for embedding in vault pages
 export function VaultGaugeVotingMini({ className = '' }: { className?: string }) {
   const { epochInfo, votingPowerInfo, hasVotedThisEpoch } = useVaultGaugeVoting({
-    votingAddress: VAULT_GAUGE_VOTING_ADDRESS,
-    veAkitaAddress: VE_AKITA_ADDRESS,
+    votingAddress: CONTRACTS.vaultGaugeVoting,
+    ve4626Address: CONTRACTS.ve4626,
   })
 
   const timeRemaining = useTimeRemaining(epochInfo?.timeRemaining ?? 0)
 
-  if (!VAULT_GAUGE_VOTING_ADDRESS) {
+  if (!CONTRACTS.vaultGaugeVoting) {
     return null
   }
 
@@ -290,7 +288,7 @@ export function VaultGaugeVotingMini({ className = '' }: { className?: string })
       
       {votingPowerInfo && (
         <div className="mt-2 text-xs text-zinc-500">
-          Your power: {formatVotingPower(votingPowerInfo.userPower)} veAKITA
+          Your power: {formatVotingPower(votingPowerInfo.userPower)} ve4626
         </div>
       )}
     </div>

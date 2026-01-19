@@ -34,11 +34,11 @@ export const BASE_DEFAULTS = {
   // AA helpers
   vaultActivationBatcher: addr('4b67e3a4284090e5191c27B8F24248eC82DF055D'),
   // v2-infra CreatorVaultBatcher (deterministic, deployed via CREATE2 factory)
-  creatorVaultBatcher: addr('3a3D5e0643b22a188E07DCD894B4c9F347C8f763'),
+  // NOTE: This is the phased `CreatorVaultDeployer` (Phases 1–3).
+  creatorVaultBatcher: addr('72b61C857966b277cd7edA62bFd0B4C70Fcf4279'),
 
   // Treasury
   protocolTreasury: addr('7d429eCbdcE5ff516D6e0a93299cbBa97203f2d3'),
-  vaultActivator: addr('1bf02C90B226C028720D25dE535b345e5FfB9743'),
 
   // Uniswap V4 core + hook
   poolManager: addr('498581fF718922c3f8e6A244956aF099B2652b2b'),

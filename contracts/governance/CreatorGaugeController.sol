@@ -511,7 +511,7 @@ contract CreatorGaugeController is Ownable, ReentrancyGuard {
             toCreator = 0;
         }
         
-        // Voter rewards (9.61% default): route to veERC4626 voters (bribes/fees)
+        // Voter rewards (9.61% default): route to ve4626 voters (bribes/fees)
         if (toProtocol > 0 && address(voterRewardsDistributor) != address(0)) {
             vaultShares.forceApprove(address(voterRewardsDistributor), toProtocol);
             voterRewardsDistributor.notifyRewards(address(vault), address(vaultShares), toProtocol);

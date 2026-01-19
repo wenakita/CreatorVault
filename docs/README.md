@@ -1,115 +1,13 @@
 # CreatorVault Documentation
 
-This repo keeps the root clean (only `README.md`) and stores project documentation under `docs/`.
-There is **no separate hosted docs site** today — the canonical docs live in this folder, with HTML diagrams in `docs/html/`.
+This repo keeps the root clean (only `README.md`) and historically stored project documentation under `docs/`.
 
-## Guides
+## Status
 
-### Deployment
+Most legacy docs have been **archived** to `archive/docs/` as part of cleaning up deprecated deployment flows.
+If you’re looking for guides, check:
 
-- `deployment/PRODUCTION_DEPLOYMENT.md`
-- `deployment/CREATOR_LAUNCH_GUIDE.md`
-- `deployment/DEPLOYMENT_APPROVALS_GUIDE.md`
-- `deployment/REQUIRED_APPROVALS_CHECKLIST.md`
-- `deployment/PRE_LAUNCH_VERIFICATION.md`
-- `deployment/CCA_DEPLOYMENT_VERIFICATION.md`
-- `deployment/CREATE2_REGISTRY.md`
-- `deployment/launch/LAUNCH_CHECKLIST.md`
-- `deployment/launch/LAUNCH_READY.md`
-- `deployment/launch/LAUNCH_VERIFICATION.md`
+- `archive/docs/` (historical docs; stubs may point you to git history for full content)
+- `README.md` (current high-level overview)
 
-### Multisig
-
-- `deployment/multisig/MULTISIG_OWNER_SETUP.md`
-- `deployment/multisig/DEPLOYMENT_WITH_MULTISIG.md`
-- `deployment/multisig/FINAL_MULTISIG_DEPLOYMENT_GUIDE.md`
-
-### Account Abstraction (AA)
-
-- `aa/AA_READY_NOW.md`
-- `aa/AA_DEPLOYMENT_FLOW.md`
-- `aa/AA_STRATEGY_DEPLOYMENT.md`
-- `aa/AA_ACTIVATION.md`
-- `aa/FULL_AA_SOLUTION.md`
-
-## Strategies
-
-### Ajna
-
-- `strategies/ajna/AJNA_DEPLOYMENT.md`
-- `strategies/ajna/AJNA_BUCKET_CALCULATOR.md`
-- `strategies/ajna/CREATOR_AJNA_GUIDE.md`
-- `strategies/ajna/AJNA_ERC4626_VAULT_REVIEW.md`
-
-### Univ3 (Charm)
-
-- `strategies/univ3/CREATOR_CHARM_GUIDE.md`
-- `strategies/univ3/CREATOR_USDC_DEPLOYMENT.md`
-- `strategies/univ3/CREATOR_WETH_ANALYSIS.md`
-
-## Architecture / Design
-
-- `architecture/FULL_PLATFORM_ARCHITECTURE.md`
-- `architecture/STRATEGY_ARCHITECTURE.md`
-- `architecture/FEE_ARCHITECTURE.md`
-- `architecture/CONTRACT_SIZE_ISSUE.md`
-- `architecture/FINAL_SOLUTION.md`
-- `architecture/GOVERNANCE_ACCEPTANCE_EXPLAINED.md`
-
-## Naming
-
-- `naming/STANDARD_NAMING_PATTERN.md`
-- `naming/CUSTOM_VAULT_NAMING.md`
-
-## Automation
-
-- `automation/CREATOR_AUTOMATION_GUIDE.md`
-- `automation/AUTOMATED_COMPLETION_OPTIONS.md`
-- `automation/AUTOMATED_DEPLOYMENT_QUICK_START.md`
-- `automation/FULL_AUTOMATION_IMPLEMENTED.md`
-
-## Ops / Hosting
-
-- `ops/VERCEL_PROJECT_FIX.md`
-- `ops/CUSTOM_DOMAIN_SETUP.md`
-- `ops/CLOUDFLARE_SETUP.md`
-- `ops/DOMAIN_SETUP_FINAL.md`
-
-## Integrations
-
-- `FRONTEND_INTEGRATION_GUIDE.md`
-- `create2/CREATE2_DEPLOYMENT_GUIDE.md`
-- `integrations/solana-integration.md`
-
-## Troubleshooting
-
-- `troubleshooting/COMPILATION_STATUS.md`
-- `troubleshooting/DELAYED_COMPLETION_ANALYSIS.md`
-
-## Lottery
-
-- `lottery/LOTTERY_INTEGRATION_FIX.md`
-- `lottery/LOTTERY_OMNIDRAGON_PATTERN.md`
-- `lottery/MULTI_TOKEN_JACKPOT.md`
-- `lottery/MULTI_STRATEGY_ALLOCATION.md`
-
-## Visual Docs (HTML)
-
-All HTML docs live in `docs/html/`:
-
-- `html/feearchitecture.html`
-- `html/cca.html`
-- `html/ajnastrategy.html`
-- `html/vrf.html`
-- `html/solana.html`
-- `html/basesolana.html`
-- `html/basesolana2.html`
-
-## Examples
-
-- `examples/aa.js`
-- `examples/AKITA_LAUNCH_NOW.md`
-
-## Governance (ve(3,3))
-
-- `governance/VE33_PROGRESS.md`
+If you need anything restored or re-written as “current canonical docs”, say which flow you want documented (deploy, activate, rewards/bribes, etc.) and I’ll regenerate a clean, accurate guide.

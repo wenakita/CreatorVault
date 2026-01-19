@@ -7,7 +7,7 @@ pragma solidity ^0.8.20;
  * @notice ve(3,3) style gauge voting for directing jackpot probability to creator vaults
  * 
  * @dev VOTING MECHANISM:
- *      veERC4626 holders vote to direct jackpot probability to specific creator vaults.
+ *      ve4626 holders vote to direct jackpot probability to specific creator vaults.
  *      This is similar to how veCRV/veVELO holders vote to direct emissions to pools,
  *      but instead of emissions, we're directing PROBABILITY.
  * 
@@ -18,16 +18,16 @@ pragma solidity ^0.8.20;
  *      - Historical weights are stored per epoch
  * 
  * @dev VOTING POWER:
- *      - Voting power comes from veERC4626 (locked ■4626)
+ *      - Voting power comes from ve4626 (locked ■4626)
  *      - Users can split votes across multiple vaults
- *      - Votes are normalized by user's total veERC4626 balance
+ *      - Votes are normalized by user's total ve4626 balance
  */
 
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import {EnumerableSet} from "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 
-interface IveERC4626 {
+interface Ive4626 {
     function getVotingPower(address user) external view returns (uint256);
     function getTotalVotingPower() external view returns (uint256);
     function hasActiveLock(address user) external view returns (bool);
@@ -91,8 +91,8 @@ contract VaultGaugeVoting is IVaultGaugeVoting, Ownable, ReentrancyGuard {
     // STATE
     // ================================
 
-    /// @notice veERC4626 token for voting power
-    IveERC4626 public immutable veERC4626;
+    /// @notice ve4626 token for voting power
+    Ive4626 public immutable ve4626;
 
     /// @notice Optional registry for auto-whitelisting vaults
     ICreatorRegistry public registry;
@@ -113,7 +113,7 @@ contract VaultGaugeVoting is IVaultGaugeVoting, Ownable, ReentrancyGuard {
     /**
      * @notice Total gauge probability budget (in bps) is derived from creator count (and optionally TVL).
      *
-     * The intent: veERC4626 votes allocate a bounded pool of "probability bps" each week,
+     * The intent: ve4626 votes allocate a bounded pool of "probability bps" each week,
      * analogous to emissions in ve(3,3) systems.
      *
      * Example target behavior:
@@ -135,7 +135,7 @@ contract VaultGaugeVoting is IVaultGaugeVoting, Ownable, ReentrancyGuard {
     // VOTE STORAGE (PER-EPOCH)
     // ================================
 
-    /// @notice Vault votes per epoch: epoch => vault => total votes (veERC4626-weighted)
+    /// @notice Vault votes per epoch: epoch => vault => total votes (ve4626-weighted)
     mapping(uint256 => mapping(address => uint256)) private _epochVaultVotes;
 
     /// @notice Total votes per epoch: epoch => total votes
@@ -180,12 +180,12 @@ contract VaultGaugeVoting is IVaultGaugeVoting, Ownable, ReentrancyGuard {
 
     /**
      * @notice Constructor
-     * @param _veERC4626 veERC4626 token address
+     * @param _ve4626 ve4626 token address
      * @param owner_ Owner address
      */
-    constructor(address _veERC4626, address owner_) Ownable(owner_) {
-        if (_veERC4626 == address(0)) revert ZeroAddress();
-        veERC4626 = IveERC4626(_veERC4626);
+    constructor(address _ve4626, address owner_) Ownable(owner_) {
+        if (_ve4626 == address(0)) revert ZeroAddress();
+        ve4626 = Ive4626(_ve4626);
 
         // Set genesis to the next Thursday 00:00 UTC.
         uint256 currentTime = block.timestamp;
@@ -218,7 +218,7 @@ contract VaultGaugeVoting is IVaultGaugeVoting, Ownable, ReentrancyGuard {
         if (vaults.length != weights.length) revert ArrayLengthMismatch();
         if (vaults.length > MAX_VAULTS_PER_VOTE) revert TooManyVaults();
 
-        uint256 userPower = veERC4626.getVotingPower(msg.sender);
+        uint256 userPower = ve4626.getVotingPower(msg.sender);
         if (userPower == 0) revert NoVotingPower();
 
         uint256 epoch = currentEpoch();
@@ -385,7 +385,7 @@ contract VaultGaugeVoting is IVaultGaugeVoting, Ownable, ReentrancyGuard {
 
     /**
      * @notice Vault's vote-directed probability boost in PPM.
-     * @dev This is the vault's share of the total gauge probability budget, based on veERC4626 votes.
+     * @dev This is the vault's share of the total gauge probability budget, based on ve4626 votes.
      *
      * Rules:
      * - If totalVotes == 0: equal split across whitelisted vaults

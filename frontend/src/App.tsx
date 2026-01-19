@@ -3,11 +3,6 @@ import { Routes, Route, Navigate } from 'react-router-dom'
 import { Layout } from './components/Layout'
 import { Home } from './pages/Home'
 
-const Launch = lazy(async () => {
-  const m = await import('./pages/Launch')
-  return { default: m.Launch }
-})
-
 const Vault = lazy(async () => {
   const m = await import('./pages/Vault')
   return { default: m.Vault }
@@ -16,11 +11,6 @@ const Vault = lazy(async () => {
 const CompleteAuction = lazy(async () => {
   const m = await import('./pages/CompleteAuction')
   return { default: m.CompleteAuction }
-})
-
-const ActivateAkita = lazy(async () => {
-  const m = await import('./pages/ActivateAkita')
-  return { default: m.ActivateAkita }
 })
 
 const AuctionBid = lazy(async () => {
@@ -161,7 +151,7 @@ function App() {
           <Route path="/swap" element={<Swap />} />
           <Route path="/positions" element={<Positions />} />
           <Route path="/portfolio" element={<Portfolio />} />
-          <Route path="/launch" element={<Launch />} />
+          <Route path="/launch" element={<Navigate to="/deploy" replace />} />
           <Route path="/deploy" element={<DeployVault />} />
           <Route path="/coin/:address/manage" element={<CoinManage />} />
           <Route path="/creator/earnings" element={<CreatorEarnings />} />
@@ -173,7 +163,7 @@ function App() {
           <Route path="/admin/miniapp" element={<AdminMiniApp />} />
           <Route path="/admin/deploy-strategies" element={<AdminDeployStrategies />} />
           <Route path="/vote" element={<GaugeVoting />} />
-          <Route path="/activate-akita" element={<ActivateAkita />} />
+          <Route path="/activate-akita" element={<Navigate to="/deploy" replace />} />
           <Route path="/auction/bid/:address" element={<AuctionBid />} />
           <Route path="/complete-auction" element={<CompleteAuction />} />
           <Route path="/complete-auction/:strategy" element={<CompleteAuction />} />

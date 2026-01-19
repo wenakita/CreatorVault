@@ -3,6 +3,7 @@ import type { VercelRequest, VercelResponse } from '@vercel/node'
 import {
   concatHex,
   decodeFunctionData,
+  encodeAbiParameters,
   encodePacked,
   getAddress,
   getCreate2Address,
@@ -15,6 +16,7 @@ import {
 import { getApiContracts } from './_lib/contracts.js'
 import { logger } from './_lib/logger.js'
 import { ensureCreatorAccessSchema, getDb, isDbConfigured } from './_lib/postgres.js'
+import { getActiveDeploySessionForSender, getDeploySessionByTokenHash, hashDeployToken, signDeployToken } from './_lib/deploySessions.js'
 import { getSupabaseAdmin, isSupabaseAdminConfigured } from './_lib/supabaseAdmin.js'
 import { handleOptions, readJsonBody, readSessionFromRequest, setCors, setNoStore } from './auth/_shared.js'
 
@@ -279,11 +281,9 @@ const SELECTOR_ERC20_APPROVE = '0x095ea7b3'
 const SELECTOR_COIN_SET_PAYOUT_RECIPIENT = '0x46bb5954'
 const SELECTOR_PERMIT2_PERMIT_TRANSFER_FROM = '0x30f28b7a'
 
-const SELECTOR_BATCHER_DEPLOY_AND_LAUNCH = '0xa3e15e3e'
-const SELECTOR_BATCHER_DEPLOY_AND_LAUNCH_WITH_PERMIT = '0x662ab161'
-const SELECTOR_BATCHER_DEPLOY_AND_LAUNCH_WITH_PERMIT2 = '0xa3342a28'
-const SELECTOR_BATCHER_DEPLOY_AND_LAUNCH_WITH_PERMIT2_OPERATOR_IDENTITY_FUNDED = '0x8fa5407c'
-const SELECTOR_BATCHER_DEPLOY_AND_LAUNCH_WITH_PERMIT2_OPERATOR_OPERATOR_FUNDED = '0xbe388971'
+// Coinbase Smart Wallet owner management (used for deploy sessions)
+const SELECTOR_CSW_ADD_OWNER_ADDRESS = '0x0f0f3f24' // addOwnerAddress(address)
+const SELECTOR_CSW_REMOVE_OWNER_AT_INDEX = '0x89625b57' // removeOwnerAtIndex(uint256,bytes)
 
 // Two-step batcher selectors (Base)
 const SELECTOR_BATCHER_DEPLOY_PHASE1 = '0x3c51ca4e'
@@ -300,11 +300,6 @@ const SELECTOR_VAULT_SET_BURN_STREAM = '0xf3a1c8b6' // setBurnStream(address)
 const SELECTOR_VAULT_SET_WHITELIST = '0x53d6fd59' // setWhitelist(address,bool)
 
 const ALLOWED_BATCHER_SELECTORS = new Set<string>([
-  SELECTOR_BATCHER_DEPLOY_AND_LAUNCH,
-  SELECTOR_BATCHER_DEPLOY_AND_LAUNCH_WITH_PERMIT,
-  SELECTOR_BATCHER_DEPLOY_AND_LAUNCH_WITH_PERMIT2,
-  SELECTOR_BATCHER_DEPLOY_AND_LAUNCH_WITH_PERMIT2_OPERATOR_IDENTITY_FUNDED,
-  SELECTOR_BATCHER_DEPLOY_AND_LAUNCH_WITH_PERMIT2_OPERATOR_OPERATOR_FUNDED,
   SELECTOR_BATCHER_DEPLOY_PHASE1,
   SELECTOR_BATCHER_DEPLOY_PHASE2_AND_LAUNCH,
   SELECTOR_BATCHER_DEPLOY_PHASE2_AND_LAUNCH_WITH_PERMIT,
@@ -318,6 +313,40 @@ const ALLOWED_ACTIVATION_SELECTORS = new Set<string>([
 
 const ALLOWED_TOKEN_SELECTORS = new Set<string>([SELECTOR_ERC20_APPROVE, SELECTOR_COIN_SET_PAYOUT_RECIPIENT])
 const ALLOWED_PERMIT2_SELECTORS = new Set<string>([SELECTOR_PERMIT2_PERMIT_TRANSFER_FROM])
+const ALLOWED_SELF_SELECTORS = new Set<string>([SELECTOR_CSW_ADD_OWNER_ADDRESS, SELECTOR_CSW_REMOVE_OWNER_AT_INDEX])
+
+const COINBASE_SMART_WALLET_OWNER_MGMT_ABI = [
+  {
+    type: 'function',
+    name: 'addOwnerAddress',
+    stateMutability: 'nonpayable',
+    inputs: [{ name: 'owner', type: 'address' }],
+    outputs: [],
+  },
+  {
+    type: 'function',
+    name: 'removeOwnerAtIndex',
+    stateMutability: 'nonpayable',
+    inputs: [
+      { name: 'index', type: 'uint256' },
+      { name: 'owner', type: 'bytes' },
+    ],
+    outputs: [],
+  },
+] as const
+
+function asOwnerBytes(owner: Address): Hex {
+  return encodeAbiParameters([{ type: 'address' }], [owner]) as Hex
+}
+
+function readDeploySessionHeaders(req: VercelRequest): { token: string; signature: string } | null {
+  const rawToken = (req.headers?.['x-cv-deploy-session'] ?? '') as any
+  const rawSig = (req.headers?.['x-cv-deploy-session-signature'] ?? '') as any
+  const token = typeof rawToken === 'string' ? rawToken.trim() : ''
+  const signature = typeof rawSig === 'string' ? rawSig.trim() : ''
+  if (!token || !signature) return null
+  return { token, signature }
+}
 
 // Payout routing (Base mainnet)
 const PAYOUT_ROUTER_CODE_ID = `0x${'ec3a19f83778a374ef791c3df99ec79478b68b0319515a6a7898b3c5d614a107'}` as const
@@ -618,7 +647,7 @@ async function assertSessionOwnsSender(params: { sender: Address; sessionAddress
   if (getAddress(expected as Address) !== params.sender) throw new Error('sender_address_mismatch')
 }
 
-async function validateInnerCalls(params: { sender: Address; sessionAddress: Address; callData: Hex }) {
+async function validateInnerCalls(params: { sender: Address; sessionAddress: Address; callData: Hex; deploySessionOwner?: Address | null }) {
   const contracts = getApiContracts()
   if (!contracts.creatorVaultBatcher) throw new Error('creator_vault_batcher_not_configured')
   const creatorVaultBatcher = getAddress(contracts.creatorVaultBatcher)
@@ -776,6 +805,31 @@ async function validateInnerCalls(params: { sender: Address; sessionAddress: Add
   // Pass 2: validate each inner call fits the expected patterns.
   for (const c of innerCalls) {
     const selector = getSelector(c.data)
+
+    // Self-calls (Coinbase Smart Wallet owner mgmt) for deploy-session automation.
+    if (c.target === params.sender && ALLOWED_SELF_SELECTORS.has(selector)) {
+      // Find the active deploy session so we can bind the session owner address.
+      const ds =
+        params.deploySessionOwner && isAddress(params.deploySessionOwner)
+          ? ({ sessionOwner: params.deploySessionOwner } as any)
+          : await getActiveDeploySessionForSender({ sessionAddress: params.sessionAddress, smartWallet: params.sender })
+      if (!ds?.sessionOwner || !isAddress(ds.sessionOwner)) throw new Error('deploy_session_missing')
+
+      const decodedSelf = decodeFunctionData({ abi: COINBASE_SMART_WALLET_OWNER_MGMT_ABI, data: c.data })
+      if (decodedSelf.functionName === 'addOwnerAddress') {
+        const ownerArg = getAddress(decodedSelf.args[0] as Address)
+        if (ownerArg !== getAddress(ds.sessionOwner as Address)) throw new Error('deploy_session_owner_mismatch')
+        continue
+      }
+      if (decodedSelf.functionName === 'removeOwnerAtIndex') {
+        const ownerBytes = decodedSelf.args[1] as Hex
+        const expected = asOwnerBytes(getAddress(ds.sessionOwner as Address))
+        if (String(ownerBytes).toLowerCase() !== String(expected).toLowerCase()) throw new Error('deploy_session_owner_mismatch')
+        continue
+      }
+
+      throw new Error('selfcall_not_allowed')
+    }
 
     if (c.target === creatorVaultBatcher) {
       if (!ALLOWED_BATCHER_SELECTORS.has(selector)) throw new Error('batcher_selector_not_allowed')
@@ -975,8 +1029,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
   }
 
-  // Require an active SIWE session for any sponsorship-related method.
-  // Accept either the HttpOnly cookie OR an Authorization bearer token (for embedded contexts).
+  // Require an active session for any sponsorship-related method.
+  // - Primary: SIWE session (cookie or Authorization bearer token).
+  // - Secondary: deploy-session token (server-driven completion after one user signature).
   const session = readSessionFromRequest(req)
 
   try {
@@ -1014,7 +1069,26 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }
 
       const sender = getAddress(senderRaw)
-      const sessionAddress = getAddress(session.address)
+
+      let sessionAddress: Address | null = null
+      let deploySessionOwner: Address | null = null
+
+      if (session?.address) {
+        sessionAddress = getAddress(session.address)
+      } else {
+        const hdr = readDeploySessionHeaders(req)
+        if (!hdr) throw new Error('no_session')
+        // Ensure header signature matches (prevents leaked DB token from being used externally).
+        if (signDeployToken(hdr.token) !== hdr.signature) throw new Error('invalid_deploy_session_signature')
+        const ds = await getDeploySessionByTokenHash(hashDeployToken(hdr.token))
+        if (!ds) throw new Error('no_session')
+        if (Date.parse(ds.expiresAt) <= Date.now()) throw new Error('deploy_session_expired')
+        if (ds.step === 'completed' || ds.step === 'failed') throw new Error('deploy_session_inactive')
+        sessionAddress = getAddress(ds.sessionAddress)
+        deploySessionOwner = getAddress(ds.sessionOwner)
+      }
+
+      if (!sessionAddress) throw new Error('no_session')
       const initCode = isHexString(initCodeRaw) ? (initCodeRaw as Hex) : null
 
       // Only sponsor approved creators (Supabase/Postgres allowlist).
@@ -1023,8 +1097,20 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       // Ensure this session is an onchain owner of the Coinbase Smart Wallet sender.
       await assertSessionOwnsSender({ sender, sessionAddress, initCode })
 
+      // If this is a server-driven deploy session request, also ensure the session owner is installed.
+      if (deploySessionOwner) {
+        const client = await getBaseClient()
+        const ok = await client.readContract({
+          address: sender,
+          abi: COINBASE_SMART_WALLET_OWNER_ABI,
+          functionName: 'isOwnerAddress',
+          args: [deploySessionOwner],
+        })
+        if (!ok) throw new Error('deploy_session_owner_not_installed')
+      }
+
       // Validate inner calls match CreatorVault patterns.
-      await validateInnerCalls({ sender, sessionAddress, callData: callDataRaw })
+      await validateInnerCalls({ sender, sessionAddress, callData: callDataRaw, deploySessionOwner })
     }
   } catch (err: unknown) {
     if (err instanceof Error && err.message === 'rate_limited') {

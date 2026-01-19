@@ -99,7 +99,11 @@ CreatorVault’s architecture is built for **provenance, identity, and execution
 - **Execution (Smart Wallet AA)**: creators can deploy and operate vault infrastructure via EIP-4337/EIP-5792-style batching.
 - **Social context (Farcaster → Base)**: Farcaster identity is used as a trust signal in the app, and Base group chats are the natural coordination surface.
 
-Onchain, CreatorVault consists of modular contracts deployed atomically in a single transaction:
+Onchain, CreatorVault consists of:
+
+- **Shared infrastructure** (deployed once per chain, referenced via `CreatorRegistry`)
+- **Per-creator vault stack** (deployed per creator coin)
+- **Optional incentives layer** (ve(3,3) voting, voter rewards, bribes)
 
 ### Core Contracts (Text Description of Data Flow)
 
@@ -117,19 +121,25 @@ Onchain, CreatorVault consists of modular contracts deployed atomically in a sin
 3. **CreatorShareOFT** (LayerZero V2 OFT)
    - **Omnichain fungible token** - same token on all chains.
    - Collects **6.9% fee on all DEX trades** (buys and sells) via `setAddressType` for DEX pools.
-   - Routes fees to **GaugeController** -> **CreatorLotteryManager**.
+   - Routes fees to **CreatorGaugeController** (which funds the lottery and, when enabled, voter rewards).
    - Triggers automatic lottery entries for all traders.
 
 4. **CreatorGaugeController**
    - Receives 100% of trading fees from all share tokens.
-   - Routes fees to lottery prize pools.
-   - Manages fee distribution across multiple vaults (if platform expands).
+   - Unwraps fees into vault shares and routes them by configured splits:
+     - jackpot reserve (default: 69%)
+     - burn / PPS increase (default: 21.39%, off by default)
+     - voter rewards (default: 9.61%) to `VoterRewardsDistributor` when configured (otherwise falls back to `protocolTreasury`)
 
 5. **CreatorLotteryManager**
+   - **Shared service** (one per chain): triggered by approved swap contracts.
    - Manages lottery entries (percentage-based: $1 traded = 0.0004% chance).
    - Integrates **Chainlink VRF 2.5** for provably fair randomness.
    - Holds prize pool (accumulated fees) and distributes prizes to winners.
    - Executes prize draws (weekly/monthly cadence).
+   - Optional boosts:
+     - personal boost via `ve4626BoostManager`
+     - vote-directed boost via `VaultGaugeVoting` (bounded weekly budget)
 
 6. **CreatorCCAStrategy** (Uniswap CCA Integration)
    - Allocates vault assets to **Uniswap Continuous Clearing Auction** for fair launch price discovery.
@@ -144,27 +154,27 @@ Onchain, CreatorVault consists of modular contracts deployed atomically in a sin
    - Maps Creator Coins -> (Vault, Wrapper, OFT, GaugeController, Lottery).
    - Stores chain configurations (LayerZero endpoints, DEX infrastructure).
 
-### Deployment Flow (One Transaction)
+### Deployment Flow (CreatorVaultDeployer Phases 1–3 + Activation)
 
-**Via EIP-4337 smart wallet + EIP-5792 batching:**
+**User-facing goal**: one creator flow from `/deploy` (wallet/bundler may execute multiple transactions under the hood).
 
 ```
-User clicks "Deploy" -> Single signature request
+User clicks "Deploy" -> wallet/bundler executes a phased sequence
 
-Backend batches these calls:
-1. Deploy CreatorOVault (vault)
-2. Deploy CreatorOVaultWrapper (wrapper)
-3. Deploy CreatorShareOFT (OFT)
-4. Deploy CreatorGaugeController (fee router)
-5. Deploy CreatorLotteryManager (lottery)
-6. Deploy CreatorCCAStrategy (fair launch)
-7. Deploy CreatorOracle (price feed)
-8. Wire contracts (setVault, setWrapper, setGaugeController, etc.)
-9. Register in CreatorRegistry
-10. Deposit initial 50M tokens + launch CCA
+Phase 1 — deterministic deploy (CreatorVaultDeployer):
+- deploy per-creator contracts (vault, wrapper, share OFT, gauge controller, oracle, CCA strategy, etc.)
+- register them in CreatorRegistry
 
--> All contracts deployed + auction live
--> Gas fees sponsored by Coinbase CDP paymaster (zero cost to creator)
+Phase 2 — configuration (CreatorVaultDeployer):
+- wire roles + addresses (vault↔wrapper↔OFT, gauge controller config, oracle config, etc.)
+- set required approvals/launch permissions
+
+Phase 3 — optional activation + launch:
+- for “go live” actions (deposit → wrap → start CCA), use `VaultActivationBatcher`
+- wallets that support batching can combine approve+activate; otherwise execute sequentially
+
+Notes:
+- Gas sponsorship depends on the configured paymaster/bundler; not all wallets/chains will be sponsored.
 ```
 
 ### Token Flow Diagram (Text)
@@ -191,11 +201,21 @@ User trades ■AKITA on Uniswap V4 (buy or sell)
 CreatorShareOFT.transfer hook
    v Send fee
 CreatorGaugeController
-   v Route 100% to lottery
+   v Route by configured split (jackpot reserve + optional burn + optional voter rewards slice)
 CreatorLotteryManager (prize pool)
    v Calculate percentage-based chances ($1 = 0.0004%)
 User accumulates chances -> Weekly VRF draw -> Winner receives prize pool
 ```
+
+### Incentives Layer (optional): ve4626 + ve(3,3)
+
+This layer can be deployed and enabled after the core system is live.
+
+- **ve4626**: vote-escrow token that represents locked power.
+- **ve4626BoostManager**: exposes personal boost signals used by `CreatorLotteryManager`.
+- **VaultGaugeVoting**: weekly voting that allocates a bounded probability budget across whitelisted vaults.
+- **VoterRewardsDistributor**: receives the voter slice (9.61% default) from each `CreatorGaugeController` and lets voters claim pro-rata per epoch/vault.
+- **BribesFactory / BribeDepot**: optional external bribes per vault (epoch-scoped).
 
 ---
 
@@ -285,9 +305,9 @@ pnpm dev
 1. **User connects** with Coinbase Smart Wallet (or any EIP-5792 compatible wallet).
 2. **Deploy button clicked** -> Frontend prepares batch call.
 3. **Single signature request** -> User signs once to authorize entire deployment.
-4. **Backend batches** all deployment transactions atomically (vault, wrapper, OFT, oracle, CCA, lottery).
+4. **Backend batches** all deployment transactions (vault, wrapper, OFT, oracle, CCA, lottery).
 5. **Paymaster sponsors gas** -> Coinbase CDP covers gas fees.
-6. **Atomic execution** -> All contracts deployed + auction launched in one bundle.
+6. **Execution** -> Contracts deployed + auction launched (may be multiple txs; still one creator “flow”).
 7. **Fallbacks** -> If paymaster unavailable, user pays gas. If batching unsupported, falls back to multi-tx flow.
 
 ### Benefits
@@ -371,7 +391,8 @@ CreatorVault/
       CreatorShareOFT.sol
     governance/                   # Tokenomics
       CreatorGaugeController.sol
-      veERC4626.sol
+      ve4626.sol
+      ve4626BoostManager.sol
     services/lottery/             # Lottery system
       CreatorLotteryManager.sol
       vrf/                        # Chainlink VRF

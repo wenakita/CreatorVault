@@ -5,7 +5,8 @@ import "forge-std/Script.sol";
 import "../contracts/helpers/infra/UniversalBytecodeStore.sol";
 
 /**
- * @dev Seed UniversalBytecodeStore with all creation codes used by CreatorVaultBatcher.
+ * @dev Seed UniversalBytecodeStore with all creation codes used by the phased deploy flow
+ * (`CreatorVaultDeployer`, Phases 1–3).
  *
  * Run:
  *  forge script script/SeedUniversalBytecodeStore.s.sol:SeedUniversalBytecodeStore --rpc-url $BASE_RPC_URL --broadcast

@@ -89,7 +89,7 @@ interface IChainlinkVRFIntegrator {
     function requestRandomWordsPayable(uint32 targetEid) external payable returns (MessagingReceipt memory, uint64);
 }
 
-interface IveERC4626BoostManager {
+interface Ive4626BoostManager {
     function calculateBoost(address user) external view returns (uint256 boostBps);
     function getTotalProbabilityBoost(address user) external view returns (uint256 boostBps);
     function hasBoost(address user) external view returns (bool);
@@ -119,7 +119,7 @@ contract CreatorLotteryManager is OApp, OAppOptionsType3, ReentrancyGuard, Pausa
     uint128 public constant DEFAULT_GAS_LIMIT = 200_000;
     uint128 public constant DEFAULT_MSG_VALUE = 0;
     
-    /// @notice Maximum boost for veERC4626 lockers (2.5x = 25000 bps)
+    /// @notice Maximum boost for ve4626 lockers (2.5x = 25000 bps)
     uint256 public constant MAX_VE_BOOST = 25000;
 
     // ================================
@@ -139,8 +139,8 @@ contract CreatorLotteryManager is OApp, OAppOptionsType3, ReentrancyGuard, Pausa
     bool public useLocalVRF;
     mapping(address => bool) public trustedVrfIntegrators;
 
-    /// @notice Boost manager for veERC4626 lockers
-    IveERC4626BoostManager public boostManager;
+    /// @notice Boost manager for ve4626 lockers
+    Ive4626BoostManager public boostManager;
 
     /// @notice VaultGaugeVoting for ve(3,3) vault probability direction
     IVaultGaugeVoting public vaultGaugeVoting;
@@ -525,7 +525,7 @@ contract CreatorLotteryManager is OApp, OAppOptionsType3, ReentrancyGuard, Pausa
      *
      * Where:
      * - BasePPM: derived from swap size
-     * - PersonalBoost: veERC4626 (up to 2.5x)
+     * - PersonalBoost: ve4626 (up to 2.5x)
      * - LockDurationBoostPPM: additional additive boost from lock duration
      * - VaultGaugeBoostPPM: additive boost allocated from a bounded weekly gauge budget
      */
@@ -537,7 +537,7 @@ contract CreatorLotteryManager is OApp, OAppOptionsType3, ReentrancyGuard, Pausa
     ) internal view returns (uint256 boostedWinChance) {
         boostedWinChance = baseWinChance;
 
-        // STEP 1: Apply personal veERC4626 boost (up to 2.5x)
+        // STEP 1: Apply personal ve4626 boost (up to 2.5x)
         if (address(boostManager) != address(0)) {
             try boostManager.calculateBoost(user) returns (uint256 boostBPS) {
                 if (boostBPS > 10000) {
@@ -810,7 +810,7 @@ contract CreatorLotteryManager is OApp, OAppOptionsType3, ReentrancyGuard, Pausa
     }
 
     function setBoostManager(address _manager) external onlyOwner {
-        boostManager = IveERC4626BoostManager(_manager);
+        boostManager = Ive4626BoostManager(_manager);
         emit BoostManagerUpdated(_manager);
     }
 
