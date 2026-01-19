@@ -112,6 +112,162 @@ const COINBASE_SMART_WALLET_FACTORY_ABI = [
   },
 ] as const
 
+// Minimal CreatorVaultBatcher ABI for decoding the two-step (phase1/2/3) functions.
+// These functions take a tuple as the first argument, so we MUST decode via ABI (not by word offset).
+const CREATOR_VAULT_BATCHER_PHASE_ABI = [
+  {
+    type: 'function',
+    name: 'deployPhase1',
+    stateMutability: 'nonpayable',
+    inputs: [
+      {
+        name: 'params',
+        type: 'tuple',
+        components: [
+          { name: 'creatorToken', type: 'address' },
+          { name: 'owner', type: 'address' },
+          { name: 'vaultName', type: 'string' },
+          { name: 'vaultSymbol', type: 'string' },
+          { name: 'shareName', type: 'string' },
+          { name: 'shareSymbol', type: 'string' },
+          { name: 'version', type: 'string' },
+        ],
+      },
+      {
+        name: 'codeIds',
+        type: 'tuple',
+        components: [
+          { name: 'vault', type: 'bytes32' },
+          { name: 'wrapper', type: 'bytes32' },
+          { name: 'shareOFT', type: 'bytes32' },
+          { name: 'gauge', type: 'bytes32' },
+          { name: 'cca', type: 'bytes32' },
+          { name: 'oracle', type: 'bytes32' },
+          { name: 'oftBootstrap', type: 'bytes32' },
+        ],
+      },
+    ],
+    outputs: [],
+  },
+  {
+    type: 'function',
+    name: 'deployPhase2AndLaunch',
+    stateMutability: 'nonpayable',
+    inputs: [
+      {
+        name: 'params',
+        type: 'tuple',
+        components: [
+          { name: 'creatorToken', type: 'address' },
+          { name: 'owner', type: 'address' },
+          { name: 'creatorTreasury', type: 'address' },
+          { name: 'payoutRecipient', type: 'address' },
+          { name: 'vault', type: 'address' },
+          { name: 'wrapper', type: 'address' },
+          { name: 'shareOFT', type: 'address' },
+          { name: 'shareSymbol', type: 'string' },
+          { name: 'version', type: 'string' },
+          { name: 'depositAmount', type: 'uint256' },
+          { name: 'auctionPercent', type: 'uint8' },
+          { name: 'requiredRaise', type: 'uint128' },
+          { name: 'floorPriceQ96', type: 'uint256' },
+          { name: 'auctionSteps', type: 'bytes' },
+        ],
+      },
+      {
+        name: 'codeIds',
+        type: 'tuple',
+        components: [
+          { name: 'gauge', type: 'bytes32' },
+          { name: 'cca', type: 'bytes32' },
+          { name: 'oracle', type: 'bytes32' },
+        ],
+      },
+    ],
+    outputs: [],
+  },
+  {
+    type: 'function',
+    name: 'deployPhase2AndLaunchWithPermit',
+    stateMutability: 'nonpayable',
+    inputs: [
+      {
+        name: 'params',
+        type: 'tuple',
+        components: [
+          { name: 'creatorToken', type: 'address' },
+          { name: 'owner', type: 'address' },
+          { name: 'creatorTreasury', type: 'address' },
+          { name: 'payoutRecipient', type: 'address' },
+          { name: 'vault', type: 'address' },
+          { name: 'wrapper', type: 'address' },
+          { name: 'shareOFT', type: 'address' },
+          { name: 'shareSymbol', type: 'string' },
+          { name: 'version', type: 'string' },
+          { name: 'depositAmount', type: 'uint256' },
+          { name: 'auctionPercent', type: 'uint8' },
+          { name: 'requiredRaise', type: 'uint128' },
+          { name: 'floorPriceQ96', type: 'uint256' },
+          { name: 'auctionSteps', type: 'bytes' },
+        ],
+      },
+      {
+        name: 'codeIds',
+        type: 'tuple',
+        components: [
+          { name: 'gauge', type: 'bytes32' },
+          { name: 'cca', type: 'bytes32' },
+          { name: 'oracle', type: 'bytes32' },
+        ],
+      },
+      {
+        name: 'permit',
+        type: 'tuple',
+        components: [
+          { name: 'deadline', type: 'uint256' },
+          { name: 'v', type: 'uint8' },
+          { name: 'r', type: 'bytes32' },
+          { name: 's', type: 'bytes32' },
+        ],
+      },
+    ],
+    outputs: [],
+  },
+  {
+    type: 'function',
+    name: 'deployPhase3Strategies',
+    stateMutability: 'nonpayable',
+    inputs: [
+      {
+        name: 'params',
+        type: 'tuple',
+        components: [
+          { name: 'creatorToken', type: 'address' },
+          { name: 'owner', type: 'address' },
+          { name: 'vault', type: 'address' },
+          { name: 'version', type: 'string' },
+          { name: 'initialSqrtPriceX96', type: 'uint160' },
+          { name: 'charmVaultName', type: 'string' },
+          { name: 'charmVaultSymbol', type: 'string' },
+          { name: 'charmWeightBps', type: 'uint256' },
+          { name: 'ajnaWeightBps', type: 'uint256' },
+          { name: 'enableAutoAllocate', type: 'bool' },
+        ],
+      },
+      {
+        name: 'codeIds',
+        type: 'tuple',
+        components: [
+          { name: 'charmAlphaVaultDeploy', type: 'bytes32' },
+          { name: 'creatorCharmStrategy', type: 'bytes32' },
+          { name: 'ajnaStrategy', type: 'bytes32' },
+        ],
+      },
+    ],
+    outputs: [],
+  },
+] as const
+
 // Coinbase Smart Wallet factories (see viem's `toCoinbaseSmartAccount` implementation).
 const COINBASE_SMART_WALLET_FACTORIES = new Set<Address>([
   getAddress('0x0ba5ed0c6aa8c49038f819e587e2633c4a9f428a'), // v1
@@ -503,24 +659,49 @@ async function validateInnerCalls(params: { sender: Address; sessionAddress: Add
     const selector = getSelector(c.data)
     if (c.target === creatorVaultBatcher) {
       if (!ALLOWED_BATCHER_SELECTORS.has(selector)) throw new Error('batcher_selector_not_allowed')
-      const creatorToken = decodeAddressArgFromCalldata(c.data, 0)
-      const owner = decodeAddressArgFromCalldata(c.data, 1)
-      if (!creatorToken || !owner) throw new Error('batcher_decode_failed')
-      if (owner !== params.sender) throw new Error('batcher_owner_mismatch')
-      // Two-step batcher: in phase2+ we can safely reference the deployed vault address from calldata.
-      if (selector === SELECTOR_BATCHER_DEPLOY_PHASE1) {
-        mode = 'deploy_phase1'
-      } else if (selector === SELECTOR_BATCHER_DEPLOY_PHASE2_AND_LAUNCH || selector === SELECTOR_BATCHER_DEPLOY_PHASE2_AND_LAUNCH_WITH_PERMIT) {
-        mode = 'deploy_phase2'
-        expectedVault = decodeAddressArgFromCalldata(c.data, 4) // Phase2Params.vault
-        if (!expectedVault) throw new Error('batcher_vault_decode_failed')
-      } else if (selector === SELECTOR_BATCHER_DEPLOY_PHASE3_STRATEGIES) {
-        mode = 'deploy_phase3'
-        expectedVault = decodeAddressArgFromCalldata(c.data, 2) // Phase3Params.vault
-        if (!expectedVault) throw new Error('batcher_vault_decode_failed')
+      let creatorToken: Address | null = null
+      let owner: Address | null = null
+
+      // Phase-based functions encode params as a tuple (with strings/bytes), so decode via ABI.
+      if (
+        selector === SELECTOR_BATCHER_DEPLOY_PHASE1 ||
+        selector === SELECTOR_BATCHER_DEPLOY_PHASE2_AND_LAUNCH ||
+        selector === SELECTOR_BATCHER_DEPLOY_PHASE2_AND_LAUNCH_WITH_PERMIT ||
+        selector === SELECTOR_BATCHER_DEPLOY_PHASE3_STRATEGIES
+      ) {
+        let decodedBatcher: any
+        try {
+          decodedBatcher = decodeFunctionData({ abi: CREATOR_VAULT_BATCHER_PHASE_ABI as any, data: c.data })
+        } catch {
+          throw new Error('batcher_decode_failed')
+        }
+
+        const p = decodedBatcher?.args?.[0]
+        creatorToken = p && isAddress(p.creatorToken) ? getAddress(p.creatorToken) : null
+        owner = p && isAddress(p.owner) ? getAddress(p.owner) : null
+        if (!creatorToken || !owner) throw new Error('batcher_decode_failed')
+        if (owner !== params.sender) throw new Error('batcher_owner_mismatch')
+
+        if (selector === SELECTOR_BATCHER_DEPLOY_PHASE1) {
+          mode = 'deploy_phase1'
+        } else if (selector === SELECTOR_BATCHER_DEPLOY_PHASE2_AND_LAUNCH || selector === SELECTOR_BATCHER_DEPLOY_PHASE2_AND_LAUNCH_WITH_PERMIT) {
+          mode = 'deploy_phase2'
+          expectedVault = p && isAddress(p.vault) ? getAddress(p.vault) : null
+          if (!expectedVault) throw new Error('batcher_vault_decode_failed')
+        } else if (selector === SELECTOR_BATCHER_DEPLOY_PHASE3_STRATEGIES) {
+          mode = 'deploy_phase3'
+          expectedVault = p && isAddress(p.vault) ? getAddress(p.vault) : null
+          if (!expectedVault) throw new Error('batcher_vault_decode_failed')
+        }
       } else {
+        // Legacy one-call deploy functions have owner/creatorToken as the first two static args.
+        creatorToken = decodeAddressArgFromCalldata(c.data, 0)
+        owner = decodeAddressArgFromCalldata(c.data, 1)
+        if (!creatorToken || !owner) throw new Error('batcher_decode_failed')
+        if (owner !== params.sender) throw new Error('batcher_owner_mismatch')
         mode = 'deploy'
       }
+
       expectedCreatorToken = creatorToken
       break
     }

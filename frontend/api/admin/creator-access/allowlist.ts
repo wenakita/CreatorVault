@@ -65,7 +65,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           approvedBy: typeof row?.approved_by === 'string' ? String(row.approved_by).toLowerCase() : null,
           note: typeof row?.note === 'string' ? row.note : null,
         }))
-        .filter((e) => isAddressLike(e.address))
+        .filter((e: AllowlistedEntry) => isAddressLike(e.address))
 
       return res.status(200).json({
         success: true,
@@ -108,7 +108,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       approvedBy: row?.approved_by ? String(row.approved_by).toLowerCase() : null,
       note: row?.note ? String(row.note) : null,
     }))
-    .filter((e) => isAddressLike(e.address))
+    .filter((e: AllowlistedEntry) => isAddressLike(e.address))
 
   return res.status(200).json({
     success: true,
