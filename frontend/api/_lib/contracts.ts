@@ -51,6 +51,15 @@ function pickAddress(envKey: string, fallback?: string): ContractAddress | undef
   return v as ContractAddress
 }
 
+function pickAddressProdSafe(envKey: string, fallback?: string): ContractAddress | undefined {
+  const isVercel = Boolean((process.env.VERCEL ?? '').trim())
+  const allowOverrides = (process.env.ALLOW_API_CONTRACT_OVERRIDES ?? '').trim() === '1'
+  // In production serverless, prefer repo defaults to avoid mismatched env overrides
+  // between frontend + backend that can cause paymaster validation failures.
+  if (isVercel && !allowOverrides) return (fallback ?? undefined) as ContractAddress | undefined
+  return pickAddress(envKey, fallback)
+}
+
 /**
  * Contract addresses for Base mainnet.
  *
@@ -69,8 +78,8 @@ export function getApiContracts(): ApiContracts {
       'UNIVERSAL_CREATE2_FROM_STORE',
       BASE_DEFAULTS.universalCreate2DeployerFromStore,
     ),
-    vaultActivationBatcher: pickAddress('VAULT_ACTIVATION_BATCHER', BASE_DEFAULTS.vaultActivationBatcher)!,
-    creatorVaultBatcher: pickAddress('CREATOR_VAULT_BATCHER', BASE_DEFAULTS.creatorVaultBatcher),
+    vaultActivationBatcher: pickAddressProdSafe('VAULT_ACTIVATION_BATCHER', BASE_DEFAULTS.vaultActivationBatcher)!,
+    creatorVaultBatcher: pickAddressProdSafe('CREATOR_VAULT_BATCHER', BASE_DEFAULTS.creatorVaultBatcher),
     protocolTreasury: pickAddress('PROTOCOL_TREASURY', BASE_DEFAULTS.protocolTreasury)!,
     vaultActivator: pickAddress('VAULT_ACTIVATOR', BASE_DEFAULTS.vaultActivator)!,
     poolManager: pickAddress('POOL_MANAGER', BASE_DEFAULTS.poolManager)!,
