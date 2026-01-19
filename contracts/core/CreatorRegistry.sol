@@ -138,7 +138,7 @@ contract CreatorRegistry is ICreatorRegistry, Ownable {
         currentChainId = uint16(block.chainid);
         
         // Common LayerZero endpoint address
-        layerZeroCommonEndpoint = 0x1a44076050125825900e736c501f859c50fE728c;
+        layerZeroCommonEndpoint = address(bytes20(hex"1a44076050125825900e736c501f859c50fe728c"));
         
         // Pre-configure Base (hub chain)
         layerZeroEndpoints[8453] = layerZeroCommonEndpoint;

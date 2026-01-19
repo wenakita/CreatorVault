@@ -89,7 +89,7 @@ export function Web3Gate({ children }: { children: ReactNode }) {
 
   return (
     <Web3Context.Provider value={ctxValue}>
-      <RouteDebugBadge />
+      {import.meta.env.DEV ? <RouteDebugBadge /> : null}
       {status === 'ready' && Providers ? (
         <Providers>{children}</Providers>
       ) : status === 'loading' ? (

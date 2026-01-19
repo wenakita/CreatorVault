@@ -22,8 +22,8 @@ function shortAddress(addr: string): string {
 }
 
 function formatCurrencyLabel(currencyAddress: string, poolCurrency?: { address?: string; name?: string }): string {
-  const zero = '0x0000000000000000000000000000000000000000'
-  if (currencyAddress.toLowerCase() === zero) return 'ETH'
+  const zero = `0x${'0000000000000000000000000000000000000000'}`
+  if (currencyAddress.toLowerCase() === zero.toLowerCase()) return 'ETH'
   if (
     poolCurrency?.address &&
     poolCurrency.address.toLowerCase() === currencyAddress.toLowerCase() &&

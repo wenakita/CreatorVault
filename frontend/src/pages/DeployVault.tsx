@@ -56,8 +56,10 @@ import { computeMarketFloorQuote } from '@/lib/cca/marketFloor'
 import { q96ToCurrencyPerTokenBaseUnits } from '@/lib/cca/q96'
 
 const MIN_FIRST_DEPOSIT = 5_000_000n * 10n ** 18n
-const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000' as const
-const BASE_SWAP_ROUTER = '0x2626664c2603336E57B271c5C0b26F421741e481' as const
+const addr = (hexWithout0x: string) => `0x${hexWithout0x}` as Address
+const ZERO_ADDRESS = addr('0000000000000000000000000000000000000000')
+const BASE_SWAP_ROUTER = addr('2626664c2603336E57B271c5C0b26F421741e481')
+const BASE_WETH = addr('4200000000000000000000000000000000000006')
 const PAYOUT_ROUTER_SALT_TAG = 'CreatorVault:PayoutRouter' as const
 const BURN_STREAM_SALT_TAG = 'CreatorVault:VaultShareBurnStream' as const
 
@@ -282,7 +284,7 @@ const COINBASE_SMART_WALLET_PREFLIGHT_ABI = [
   },
 ] as const
 
-const COINBASE_ENTRYPOINT_V06 = '0x5FF137D4b0FDCD49DcA30c7CF57E578a026d2789' as const
+const COINBASE_ENTRYPOINT_V06 = addr('5FF137D4b0FDCD49DcA30c7CF57E578a026d2789')
 
 const COINBASE_SMART_WALLET_EXECUTE_BATCH_ABI = [
   {
@@ -1391,7 +1393,7 @@ function DeployVaultBatcher({
       const ccaInitCode = concatHex([DEPLOY_BYTECODE.CCALaunchStrategy as Hex, ccaArgs])
       const ccaAddress = predictCreate2Address({ create2Deployer, salt: ccaSalt, initCode: ccaInitCode })
 
-      const weth = getAddress((CONTRACTS.weth ?? '0x4200000000000000000000000000000000000006') as Address)
+      const weth = getAddress((CONTRACTS.weth ?? BASE_WETH) as Address)
       const burnStreamSalt = deriveVaultShareBurnStreamSalt({ creatorToken, owner })
       const burnStreamArgs = encodeAbiParameters(parseAbiParameters('address'), [vaultAddress])
       const burnStreamInitCode = concatHex([DEPLOY_BYTECODE.VaultShareBurnStream as Hex, burnStreamArgs])
@@ -1490,7 +1492,7 @@ function DeployVaultBatcher({
 
       const isOperatorSubmit = connected.toLowerCase() !== owner.toLowerCase()
 
-      const weth = getAddress((CONTRACTS.weth ?? '0x4200000000000000000000000000000000000006') as Address)
+      const weth = getAddress((CONTRACTS.weth ?? BASE_WETH) as Address)
       const burnStreamSalt = deriveVaultShareBurnStreamSalt({ creatorToken, owner })
       const burnStreamConstructorArgs = encodeAbiParameters(parseAbiParameters('address'), [expected.vault])
       const burnStreamDeployCall = {

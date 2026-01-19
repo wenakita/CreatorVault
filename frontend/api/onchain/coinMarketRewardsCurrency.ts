@@ -1,30 +1,17 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
+import { handleOptions, setCors } from '../auth/_shared.js'
 
 declare const process: { env: Record<string, string | undefined> }
 
 // Zora v4 coin hook on Base (from `uniswapV4PoolKey.hookAddress`).
-const DEFAULT_HOOK = '0xc8d077444625eb300a427a6dfb2b1dbf9b159040'
+const DEFAULT_HOOK = `0x${'c8d077444625eb300a427a6dfb2b1dbf9b159040'}`
 // First Base block where the hook has bytecode (binary-searched via BASE_RPC_URL).
 const DEFAULT_HOOK_DEPLOY_BLOCK = 36237338n
 
 const ERC20_TRANSFER_EVENT = 'event Transfer(address indexed from,address indexed to,uint256 value)'
 
-function setCors(res: VercelResponse) {
-  res.setHeader('Access-Control-Allow-Origin', '*')
-  res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS')
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type')
-}
-
 function setCache(res: VercelResponse, seconds: number = 300) {
   res.setHeader('Cache-Control', `public, s-maxage=${seconds}, stale-while-revalidate=${seconds * 2}`)
-}
-
-function handleOptions(req: VercelRequest, res: VercelResponse): boolean {
-  if (req.method === 'OPTIONS') {
-    res.status(200).end()
-    return true
-  }
-  return false
 }
 
 function isAddressLike(value: string): boolean {
@@ -72,7 +59,7 @@ function getConcurrency(): number {
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
-  setCors(res)
+  setCors(req, res)
   if (handleOptions(req, res)) return
 
   if (req.method !== 'GET') {

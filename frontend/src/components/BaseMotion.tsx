@@ -86,6 +86,20 @@ export function SquareWipe({ children, delay = 0, className = '' }: SquareWipePr
 
 const GLYPHS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%'
 
+function rand(): number {
+  if (typeof crypto !== 'undefined' && typeof crypto.getRandomValues === 'function') {
+    const a = new Uint32Array(1)
+    crypto.getRandomValues(a)
+    return a[0]! / 2 ** 32
+  }
+  return 0.123456789
+}
+
+function randInt(maxExclusive: number): number {
+  const m = Math.max(1, Math.floor(maxExclusive))
+  return Math.floor(rand() * m)
+}
+
 interface TechScrambleProps {
   text: string
   className?: string
@@ -119,11 +133,11 @@ export function TechScramble({
             const charProgress = (progress - (i * 0.03)) * 2
             
             if (charProgress >= 1) return char
-            if (charProgress < 0) return GLYPHS[Math.floor(Math.random() * GLYPHS.length)]
+            if (charProgress < 0) return GLYPHS[randInt(GLYPHS.length)]
             
             // Transition zone - mix of scramble and reveal
-            return Math.random() > charProgress 
-              ? GLYPHS[Math.floor(Math.random() * GLYPHS.length)]
+            return rand() > charProgress 
+              ? GLYPHS[randInt(GLYPHS.length)]
               : char
           })
           .join('')

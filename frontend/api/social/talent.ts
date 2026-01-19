@@ -1,26 +1,12 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 import { logger } from '../_lib/logger.js'
+import { handleOptions, setCors } from '../auth/_shared.js'
 
 declare const process: { env: Record<string, string | undefined> }
 
 const TALENT_API_BASE = 'https://api.talentprotocol.com'
-// Prefer server-only env var, but keep backward compatibility with older configs.
-const TALENT_API_KEY = process.env.TALENT_API_KEY || process.env.VITE_TALENT_API_KEY || ''
-
-function setCors(res: VercelResponse) {
-  res.setHeader('Access-Control-Allow-Origin', '*')
-  res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS')
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type')
-}
-
-function handleOptions(req: VercelRequest, res: VercelResponse): boolean {
-  if (req.method === 'OPTIONS') {
-    setCors(res)
-    res.status(200).end()
-    return true
-  }
-  return false
-}
+// Server-only secret. Do NOT use client-exposed env vars here.
+const TALENT_API_KEY = process.env.TALENT_API_KEY || ''
 
 type Mode = 'passport' | 'socials'
 
@@ -31,7 +17,7 @@ function parseMode(value: unknown): Mode {
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
-  setCors(res)
+  setCors(req, res)
   if (handleOptions(req, res)) return
 
   if (req.method !== 'GET') {

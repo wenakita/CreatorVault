@@ -17,7 +17,7 @@ type ApproveResponse = {
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
-  setCors(res)
+  setCors(req, res)
   setNoStore(res)
   if (handleOptions(req, res)) return
 
@@ -96,38 +96,41 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   await ensureCreatorAccessSchema()
+  if (!db.query) {
+    return res.status(500).json({ success: false, error: 'Database driver missing query()' } satisfies ApiEnvelope<never>)
+  }
 
   // Resolve wallet address from the request row.
-  const r = await db.sql`
-    SELECT wallet_address FROM creator_access_requests WHERE id = ${requestId} LIMIT 1;
-  `
+  const r = await db.query(`SELECT wallet_address FROM creator_access_requests WHERE id = $1 LIMIT 1;`, [requestId])
   const wallet = r.rows?.[0]?.wallet_address ? String(r.rows[0].wallet_address).toLowerCase() : ''
   if (!wallet) {
     return res.status(404).json({ success: false, error: 'Request not found' } satisfies ApiEnvelope<never>)
   }
 
   // Upsert allowlist entry.
-  await db.sql`
-    INSERT INTO creator_allowlist (address, approved_by, approved_at, revoked_at, note)
-    VALUES (${wallet}, ${admin}, NOW(), NULL, ${note})
-    ON CONFLICT (address)
-    DO UPDATE SET
-      approved_by = EXCLUDED.approved_by,
-      approved_at = NOW(),
-      revoked_at = NULL,
-      note = EXCLUDED.note;
-  `
+  await db.query(
+    `INSERT INTO creator_allowlist (address, approved_by, approved_at, revoked_at, note)
+     VALUES ($1, $2, NOW(), NULL, $3)
+     ON CONFLICT (address)
+     DO UPDATE SET
+       approved_by = EXCLUDED.approved_by,
+       approved_at = NOW(),
+       revoked_at = NULL,
+       note = EXCLUDED.note;`,
+    [wallet, admin, note],
+  )
 
   // Mark request as approved.
-  await db.sql`
-    UPDATE creator_access_requests
-      SET status = 'approved',
-          reviewed_at = NOW(),
-          reviewed_by = ${admin},
-          decision_note = ${note},
-          updated_at = NOW()
-    WHERE id = ${requestId};
-  `
+  await db.query(
+    `UPDATE creator_access_requests
+       SET status = 'approved',
+           reviewed_at = NOW(),
+           reviewed_by = $1,
+           decision_note = $2,
+           updated_at = NOW()
+     WHERE id = $3;`,
+    [admin, note, requestId],
+  )
 
   return res.status(200).json({
     success: true,

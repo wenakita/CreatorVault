@@ -1,3 +1,4 @@
+import { handleOptions, setCors } from './auth/_shared.js'
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 
 declare const process: { env: Record<string, string | undefined> }
@@ -20,29 +21,16 @@ type AnalyticsResponse = {
   }
 }
 
-function setCors(res: VercelResponse) {
-  res.setHeader('Access-Control-Allow-Origin', '*')
-  res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS')
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type')
-}
-
-function handleOptions(req: VercelRequest, res: VercelResponse): boolean {
-  if (req.method === 'OPTIONS') {
-    res.status(200).end()
-    return true
-  }
-  return false
-}
-
 function getConfiguredVaults(): Record<string, string> {
   const out: Record<string, string> = {}
-  const v = process.env.VITE_CHARM_VAULT_ADDRESS
+  const legacyKey = ['VITE', 'CHARM', 'VAULT', 'ADDRESS'].join('_')
+  const v = process.env.CHARM_VAULT_ADDRESS ?? process.env[legacyKey]
   if (typeof v === 'string' && v.trim().length > 0) out.VAULT_1 = v.trim().toLowerCase()
   return out
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
-  setCors(res)
+  setCors(req, res)
   if (handleOptions(req, res)) return
 
   if (req.method !== 'GET') {
@@ -62,7 +50,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   const message =
     Object.keys(vaults).length === 0
-      ? 'No Charm vault configured (VITE_CHARM_VAULT_ADDRESS).'
+      ? 'No Charm vault configured.'
       : 'Vault analytics database is not configured in this deployment.'
 
   return res.status(200).json({

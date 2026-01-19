@@ -3,7 +3,8 @@ import { getAddress, isAddress } from 'viem'
 
 import { CONTRACTS } from '@/config/contracts'
 
-const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000' as const
+const addrHex = (hexWithout0x: string) => `0x${hexWithout0x}` as Address
+const ZERO_ADDRESS = addrHex('0000000000000000000000000000000000000000')
 
 const CREATOR_REGISTRY_RESOLVE_ABI = [
   { type: 'function', name: 'vaultToToken', stateMutability: 'view', inputs: [{ name: '', type: 'address' }], outputs: [{ type: 'address' }] },

@@ -25,6 +25,17 @@ interface TokenMetadata {
 const DEFAULT_IPFS_GATEWAY = 'https://ipfs.decentralized-content.com/ipfs/'
 const IPFS_GATEWAY = (import.meta.env.VITE_IPFS_GATEWAY || DEFAULT_IPFS_GATEWAY).replace(/\/+$/, '') + '/'
 
+const SAFE_HTTP_PROTOCOLS = new Set(['http:', 'https:'])
+
+function isSafeHttpUrl(input: string): boolean {
+  try {
+    const u = new URL(input)
+    return SAFE_HTTP_PROTOCOLS.has(u.protocol)
+  } catch {
+    return false
+  }
+}
+
 function toIpfsPath(raw: string): string {
   const s = String(raw || '').trim()
   if (!s) return ''
@@ -77,6 +88,9 @@ export function useTokenMetadata(tokenAddress: `0x${string}` | undefined) {
 
       try {
         const metadataUrl = ipfsToHttp(tokenURI)
+        if (!isSafeHttpUrl(metadataUrl) && !metadataUrl.startsWith('data:image/')) {
+          throw new Error('Unsafe tokenURI URL')
+        }
         
         // First, check if the URI is a direct image link
         const isImageExtension = /\.(jpg|jpeg|png|gif|webp|svg)$/i.test(metadataUrl)

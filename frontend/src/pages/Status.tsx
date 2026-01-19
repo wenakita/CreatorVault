@@ -525,7 +525,12 @@ export function Status() {
       }
     }
 
-    if (ajnaStrategy && ajnaSuggestedBucket != null && (ajnaBucket == null || ajnaBucket !== ajnaSuggestedBucket)) {
+    if (
+      ajnaStrategy &&
+      ajnaSuggestedBucket !== null &&
+      ajnaSuggestedBucket !== undefined &&
+      (ajnaBucket === null || ajnaBucket === undefined || ajnaBucket !== ajnaSuggestedBucket)
+    ) {
       actions.push({
         id: 'fix-ajna-bucket',
         title: 'Set Ajna bucket (suggested)',

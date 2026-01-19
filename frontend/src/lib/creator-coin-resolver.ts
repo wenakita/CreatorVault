@@ -1,11 +1,12 @@
 // Utility to resolve CreatorCoin contract addresses to actual creator addresses
-// Based on: https://basescan.org/token/0x5b674196812451b7cec024fe9d22d2c0b172fa75
+// Based on a CreatorCoin token page on BaseScan.
 
 import { createPublicClient, http, type Address } from 'viem'
 import { base } from 'viem/chains'
 import { logger } from './logger'
 
 const CREATOR_COIN_DEBUG = import.meta.env.DEV && import.meta.env.VITE_DEBUG_LOGS === 'true'
+const ZERO_ADDRESS = `0x${'0000000000000000000000000000000000000000'}` as Address
 
 const publicClient = createPublicClient({
   chain: base,
@@ -119,14 +120,14 @@ export async function resolveCreatorAddress(addressOrCoin: Address): Promise<Add
   try {
     // First try to get payout recipient
     const payoutRecipient = await getPayoutRecipient(addressOrCoin)
-    if (payoutRecipient && payoutRecipient !== '0x0000000000000000000000000000000000000000') {
+    if (payoutRecipient && payoutRecipient !== ZERO_ADDRESS) {
       if (CREATOR_COIN_DEBUG) logger.debug('[CreatorCoin] Using payout recipient', { payoutRecipient })
       return payoutRecipient
     }
     
     // Fallback to owner at index 2 (main EOA)
     const mainEOA = await getOwnerAt(addressOrCoin, 2)
-    if (mainEOA && mainEOA !== '0x0000000000000000000000000000000000000000') {
+    if (mainEOA && mainEOA !== ZERO_ADDRESS) {
       if (CREATOR_COIN_DEBUG) logger.debug('[CreatorCoin] Using owner at index 2', { owner: mainEOA })
       return mainEOA
     }

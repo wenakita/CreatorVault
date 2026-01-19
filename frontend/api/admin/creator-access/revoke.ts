@@ -38,7 +38,7 @@ async function revokeViaSupabase(params: { address: `0x${string}`; note: string 
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
-  setCors(res)
+  setCors(req, res)
   setNoStore(res)
   if (handleOptions(req, res)) return
 
@@ -79,16 +79,20 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (!db) {
     return res.status(500).json({ success: false, error: 'Database not configured' } satisfies ApiEnvelope<never>)
   }
+  if (!db.query) {
+    return res.status(500).json({ success: false, error: 'Database driver missing query()' } satisfies ApiEnvelope<never>)
+  }
 
-  const r = await db.sql`
-    UPDATE creator_allowlist
-      SET revoked_at = NOW(),
-          note = ${note}
-    WHERE address = ${address}
-    RETURNING address;
-  `
+  const out = await db.query(
+    `UPDATE creator_allowlist
+       SET revoked_at = NOW(),
+           note = $1
+     WHERE address = $2
+     RETURNING address;`,
+    [note, address],
+  )
 
-  if (r.rows.length === 0) {
+  if (out.rows.length === 0) {
     return res.status(404).json({ success: false, error: 'Address not found' } satisfies ApiEnvelope<never>)
   }
 

@@ -44,7 +44,7 @@ const METHODS_REQUIRING_USEROP = new Set<string>([
   'eth_estimateUserOperationGas',
 ])
 
-const ENTRYPOINT_V06 = getAddress('0x5ff137d4b0fdcd49dca30c7cf57e578a026d2789')
+const ENTRYPOINT_V06 = getAddress(`0x${'5ff137d4b0fdcd49dca30c7cf57e578a026d2789'}`)
 const BASE_CHAIN_ID = 8453
 
 // Coinbase Smart Wallet callData
@@ -270,8 +270,8 @@ const CREATOR_VAULT_BATCHER_PHASE_ABI = [
 
 // Coinbase Smart Wallet factories (see viem's `toCoinbaseSmartAccount` implementation).
 const COINBASE_SMART_WALLET_FACTORIES = new Set<Address>([
-  getAddress('0x0ba5ed0c6aa8c49038f819e587e2633c4a9f428a'), // v1
-  getAddress('0xba5ed110efdba3d005bfc882d75358acbbb85842'), // v1.1
+  getAddress(`0x${'0ba5ed0c6aa8c49038f819e587e2633c4a9f428a'}`), // v1
+  getAddress(`0x${'ba5ed110efdba3d005bfc882d75358acbbb85842'}`), // v1.1
 ])
 
 // Allowed inner call selectors
@@ -320,15 +320,15 @@ const ALLOWED_TOKEN_SELECTORS = new Set<string>([SELECTOR_ERC20_APPROVE, SELECTO
 const ALLOWED_PERMIT2_SELECTORS = new Set<string>([SELECTOR_PERMIT2_PERMIT_TRANSFER_FROM])
 
 // Payout routing (Base mainnet)
-const PAYOUT_ROUTER_CODE_ID = '0xec3a19f83778a374ef791c3df99ec79478b68b0319515a6a7898b3c5d614a107' as const
-const VAULT_SHARE_BURN_STREAM_CODE_ID = '0x9b5e26f68c206df4fb41253da53c3c1d377334db21d566adbf41ac43fc711a21' as const
+const PAYOUT_ROUTER_CODE_ID = `0x${'ec3a19f83778a374ef791c3df99ec79478b68b0319515a6a7898b3c5d614a107'}` as const
+const VAULT_SHARE_BURN_STREAM_CODE_ID = `0x${'9b5e26f68c206df4fb41253da53c3c1d377334db21d566adbf41ac43fc711a21'}` as const
 
 // CreatorOVault runtime bytecode hash (EIP-170 safe; used for validating phase2 vault address)
 const CREATOR_OVAULT_RUNTIME_CODE_HASH =
-  '0xc78233e39d6cd4a86de4d70868329f503db425770d59d2341f874d41364c5f2f' as const
+  `0x${'c78233e39d6cd4a86de4d70868329f503db425770d59d2341f874d41364c5f2f'}` as const
 
-const BASE_WETH = getAddress('0x4200000000000000000000000000000000000006')
-const BASE_SWAP_ROUTER = getAddress('0x2626664c2603336E57B271c5C0b26F421741e481')
+const BASE_WETH = getAddress(`0x${'4200000000000000000000000000000000000006'}`)
+const BASE_SWAP_ROUTER = getAddress(`0x${'2626664c2603336E57B271c5C0b26F421741e481'}`)
 const PAYOUT_ROUTER_SALT_TAG = 'CreatorVault:PayoutRouter' as const
 const BURN_STREAM_SALT_TAG = 'CreatorVault:VaultShareBurnStream' as const
 
@@ -388,7 +388,8 @@ async function isCreatorAllowlisted(sessionAddress: Address): Promise<{ mode: Al
     const db = await getDb()
     if (!db) throw new Error('allowlist_check_failed')
     await ensureCreatorAccessSchema()
-    const { rows } = await db.sql`SELECT address FROM creator_allowlist WHERE address = ${addr} AND revoked_at IS NULL LIMIT 1;`
+    if (!db.query) throw new Error('allowlist_check_failed')
+    const { rows } = await db.query(`SELECT address FROM creator_allowlist WHERE address = $1 AND revoked_at IS NULL LIMIT 1;`, [addr])
     return { mode: 'enforced', allowed: rows.length > 0 }
   }
 
@@ -932,7 +933,7 @@ async function validateInnerCalls(params: { sender: Address; sessionAddress: Add
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
-  setCors(res)
+  setCors(req, res)
   setNoStore(res)
   if (handleOptions(req, res)) return
 

@@ -44,7 +44,7 @@ async function restoreViaSupabase(params: { address: `0x${string}`; admin: `0x${
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
-  setCors(res)
+  setCors(req, res)
   setNoStore(res)
   if (handleOptions(req, res)) return
 
@@ -84,17 +84,21 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (!db) {
     return res.status(500).json({ success: false, error: 'Database not configured' } satisfies ApiEnvelope<never>)
   }
+  if (!db.query) {
+    return res.status(500).json({ success: false, error: 'Database driver missing query()' } satisfies ApiEnvelope<never>)
+  }
 
-  await db.sql`
-    INSERT INTO creator_allowlist (address, approved_by, approved_at, revoked_at, note)
-    VALUES (${address}, ${admin}, NOW(), NULL, ${note})
-    ON CONFLICT (address)
-    DO UPDATE SET
-      approved_by = EXCLUDED.approved_by,
-      approved_at = NOW(),
-      revoked_at = NULL,
-      note = COALESCE(EXCLUDED.note, creator_allowlist.note);
-  `
+  await db.query(
+    `INSERT INTO creator_allowlist (address, approved_by, approved_at, revoked_at, note)
+     VALUES ($1, $2, NOW(), NULL, $3)
+     ON CONFLICT (address)
+     DO UPDATE SET
+       approved_by = EXCLUDED.approved_by,
+       approved_at = NOW(),
+       revoked_at = NULL,
+       note = COALESCE(EXCLUDED.note, creator_allowlist.note);`,
+    [address, admin, note],
+  )
 
   return res.status(200).json({
     success: true,

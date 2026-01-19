@@ -2,7 +2,8 @@ import { createClient, type SupabaseClient } from '@supabase/supabase-js'
 
 declare const process: { env: Record<string, string | undefined> }
 
-const supabaseUrl = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL
+// Server-only config. Do NOT use client-exposed env vars in API routes.
+const supabaseUrl = process.env.SUPABASE_URL
 const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
 
 const supabaseAdmin =

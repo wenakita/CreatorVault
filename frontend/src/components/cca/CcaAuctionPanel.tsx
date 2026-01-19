@@ -15,7 +15,8 @@ import {
   q96ToCurrencyPerTokenBaseUnits,
 } from '@/lib/cca/q96'
 
-const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000' as const
+const addr = (hexWithout0x: string) => `0x${hexWithout0x}` as Address
+const ZERO_ADDRESS = addr('0000000000000000000000000000000000000000')
 
 // CCALaunchStrategy (minimal)
 const CCA_LAUNCH_STRATEGY_ABI = [

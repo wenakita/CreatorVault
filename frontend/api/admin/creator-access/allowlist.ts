@@ -22,7 +22,7 @@ function isAddressLike(value: string): boolean {
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
-  setCors(res)
+  setCors(req, res)
   setNoStore(res)
   if (handleOptions(req, res)) return
 
@@ -85,21 +85,28 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   await ensureCreatorAccessSchema()
 
   const like = q ? `%${q}%` : null
-  const r = q
-    ? await db.sql`
-        SELECT address, approved_at, approved_by, note
-        FROM creator_allowlist
-        WHERE revoked_at IS NULL AND address LIKE ${like}
-        ORDER BY approved_at DESC NULLS LAST
-        LIMIT 200;
-      `
-    : await db.sql`
-        SELECT address, approved_at, approved_by, note
-        FROM creator_allowlist
-        WHERE revoked_at IS NULL
-        ORDER BY approved_at DESC NULLS LAST
-        LIMIT 200;
-      `
+  if (!db.query) {
+    return res.status(500).json({ success: false, error: 'Database driver missing query()' } satisfies ApiEnvelope<never>)
+  }
+
+  const r =
+    q && like
+      ? await db.query(
+          `SELECT address, approved_at, approved_by, note
+           FROM creator_allowlist
+           WHERE revoked_at IS NULL AND address LIKE $1
+           ORDER BY approved_at DESC NULLS LAST
+           LIMIT 200;`,
+          [like],
+        )
+      : await db.query(
+          `SELECT address, approved_at, approved_by, note
+           FROM creator_allowlist
+           WHERE revoked_at IS NULL
+           ORDER BY approved_at DESC NULLS LAST
+           LIMIT 200;`,
+          [],
+        )
 
   const allowlist: AllowlistedEntry[] = r.rows
     .map((row: any) => ({

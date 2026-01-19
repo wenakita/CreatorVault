@@ -18,6 +18,21 @@ const COMPLEX_CHARS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*()_+-=[]{}|;:
 
 type ScrambleChar = { char: string; style: React.CSSProperties }
 
+function rand(): number {
+  // Prefer CSPRNG in browsers; fall back to Math.random in non-browser contexts.
+  if (typeof crypto !== 'undefined' && typeof crypto.getRandomValues === 'function') {
+    const a = new Uint32Array(1)
+    crypto.getRandomValues(a)
+    return a[0]! / 2 ** 32
+  }
+  return 0.123456789
+}
+
+function randInt(maxExclusive: number): number {
+  const m = Math.max(1, Math.floor(maxExclusive))
+  return Math.floor(rand() * m)
+}
+
 export function TextScramble({
   text,
   className = '',
@@ -50,9 +65,9 @@ export function TextScramble({
 
         if (index < resolved) return { char, style: {} }
 
-        let randomChar = SIMPLE_SYMBOLS[Math.floor(Math.random() * SIMPLE_SYMBOLS.length)]
-        if (isComplex && Math.random() > 0.3) {
-          randomChar = COMPLEX_CHARS[Math.floor(Math.random() * COMPLEX_CHARS.length)]
+        let randomChar = SIMPLE_SYMBOLS[randInt(SIMPLE_SYMBOLS.length)]
+        if (isComplex && rand() > 0.3) {
+          randomChar = COMPLEX_CHARS[randInt(COMPLEX_CHARS.length)]
         }
 
         let style: React.CSSProperties = {
@@ -63,13 +78,13 @@ export function TextScramble({
         }
 
         if (isComplex) {
-          const rotate = Math.floor(Math.random() * 180) - 90
-          const scale = 0.8 + Math.random() * 0.4
+          const rotate = randInt(180) - 90
+          const scale = 0.8 + rand() * 0.4
           style = {
             ...style,
             transform: `rotate(${rotate}deg) scale(${scale})`,
-            color: Math.random() > 0.8 ? '#0052FF' : 'inherit',
-            filter: Math.random() > 0.9 ? 'blur(1px)' : 'none',
+            color: rand() > 0.8 ? '#0052FF' : 'inherit',
+            filter: rand() > 0.9 ? 'blur(1px)' : 'none',
           }
         }
 

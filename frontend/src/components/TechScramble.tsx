@@ -20,6 +20,20 @@ interface TechScrambleProps {
 
 const CHARS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789'
 
+function rand(): number {
+  if (typeof crypto !== 'undefined' && typeof crypto.getRandomValues === 'function') {
+    const a = new Uint32Array(1)
+    crypto.getRandomValues(a)
+    return a[0]! / 2 ** 32
+  }
+  return 0.123456789
+}
+
+function randInt(maxExclusive: number): number {
+  const m = Math.max(1, Math.floor(maxExclusive))
+  return Math.floor(rand() * m)
+}
+
 export function TechScramble({
   text,
   className = '',
@@ -53,7 +67,7 @@ export function TechScramble({
             }
             
             // Random character
-            return CHARS[Math.floor(Math.random() * CHARS.length)]
+            return CHARS[randInt(CHARS.length)]
           })
           .join('')
       )

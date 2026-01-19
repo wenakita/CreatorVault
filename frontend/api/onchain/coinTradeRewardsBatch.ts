@@ -1,4 +1,5 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
+import { handleOptions, setCors } from '../auth/_shared.js'
 
 declare const process: { env: Record<string, string | undefined> }
 
@@ -12,22 +13,8 @@ const DEFAULT_MARGIN_BLOCKS = 20_000n
 const COIN_TRADE_REWARDS_EVENT =
   'event CoinTradeRewards(address indexed payoutRecipient,address indexed platformReferrer,address indexed tradeReferrer,address protocolRewardRecipient,uint256 creatorReward,uint256 platformReferrerReward,uint256 traderReferrerReward,uint256 protocolReward,address currency)'
 
-function setCors(res: VercelResponse) {
-  res.setHeader('Access-Control-Allow-Origin', '*')
-  res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS')
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type')
-}
-
 function setCache(res: VercelResponse, seconds: number = 300) {
   res.setHeader('Cache-Control', `public, s-maxage=${seconds}, stale-while-revalidate=${seconds * 2}`)
-}
-
-function handleOptions(req: VercelRequest, res: VercelResponse): boolean {
-  if (req.method === 'OPTIONS') {
-    res.status(200).end()
-    return true
-  }
-  return false
 }
 
 function isAddressLike(value: string): boolean {
@@ -83,7 +70,7 @@ function parsePairs(raw: string): Array<{ coin: string; currency: string; create
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
-  setCors(res)
+  setCors(req, res)
   if (handleOptions(req, res)) return
 
   if (req.method !== 'GET') {

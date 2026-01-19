@@ -6,6 +6,15 @@ import { useMiniAppContext } from '@/hooks'
 type SignManifestResult = { header: string; payload: string; signature: string }
 
 const DEFAULT_DOMAIN = '4626.fun'
+const MAX_DOMAIN_LEN = 255
+
+function normalizeDomain(input: string): string {
+  const s = String(input || '').trim().slice(0, MAX_DOMAIN_LEN)
+  if (!s) return DEFAULT_DOMAIN
+  // Basic allowlist: hostname chars + dots + optional port.
+  if (!/^[a-z0-9.-]+(?::\d{1,5})?$/i.test(s)) return DEFAULT_DOMAIN
+  return s
+}
 
 function tryParseJson(input: string): unknown | null {
   try {
@@ -23,10 +32,10 @@ export function AdminMiniApp() {
   const [domain, setDomain] = useState<string>(() => {
     if (typeof window === 'undefined') return DEFAULT_DOMAIN
     const qs = new URLSearchParams(window.location.search)
-    const fromQuery = (qs.get('domain') || '').trim()
-    if (fromQuery) return fromQuery
+    const fromQuery = qs.get('domain')
+    if (fromQuery) return normalizeDomain(fromQuery)
     const host = (window.location.hostname || '').trim()
-    return host || DEFAULT_DOMAIN
+    return normalizeDomain(host || DEFAULT_DOMAIN)
   })
 
   const [result, setResult] = useState<SignManifestResult | null>(null)

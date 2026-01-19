@@ -23,7 +23,7 @@ type CreatorAccessStatus =
   | null
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
-  setCors(res)
+  setCors(req, res)
   setNoStore(res)
   if (handleOptions(req, res)) return
 
@@ -58,7 +58,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
       const row = Array.isArray(reqRes.data) ? reqRes.data[0] : null
       const request =
-        row && (row as any).id != null
+        row && (row as any).id !== null && (row as any).id !== undefined
           ? {
               id: typeof (row as any).id === 'number' ? (row as any).id : Number((row as any).id),
               coin: typeof (row as any).coin_address === 'string' ? String((row as any).coin_address) : null,
@@ -88,23 +88,27 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   await ensureCreatorAccessSchema()
+  if (!db.query) {
+    return res.status(500).json({ success: false, error: 'Database driver missing query()' } satisfies ApiEnvelope<never>)
+  }
 
-  const allow = await db.sql`
-    SELECT address FROM creator_allowlist WHERE address = ${sessionAddress} AND revoked_at IS NULL LIMIT 1;
-  `
+  const allow = await db.query(`SELECT address FROM creator_allowlist WHERE address = $1 AND revoked_at IS NULL LIMIT 1;`, [
+    sessionAddress,
+  ])
   const approved = allow.rows.length > 0
 
-  const r = await db.sql`
-    SELECT id, coin_address, status, created_at, reviewed_at, decision_note
-    FROM creator_access_requests
-    WHERE wallet_address = ${sessionAddress}
-    ORDER BY created_at DESC
-    LIMIT 1;
-  `
+  const r = await db.query(
+    `SELECT id, coin_address, status, created_at, reviewed_at, decision_note
+     FROM creator_access_requests
+     WHERE wallet_address = $1
+     ORDER BY created_at DESC
+     LIMIT 1;`,
+    [sessionAddress],
+  )
 
   const row = r.rows?.[0] as any
   const request =
-    row && row.id != null
+    row && row.id !== null && row.id !== undefined
       ? {
           id: typeof row.id === 'number' ? row.id : Number(row.id),
           coin: typeof row.coin_address === 'string' ? row.coin_address : null,

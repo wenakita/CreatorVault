@@ -70,18 +70,18 @@ contract SolanaBridgeAdapter is Ownable, ReentrancyGuard {
     // ================================
 
     /// @notice Base-Solana Bridge on Base Mainnet
-    address public constant BRIDGE = 0x3eff766C76a1be2Ce1aCF2B69c78bCae257D5188;
+    address public constant BRIDGE = address(bytes20(hex"3eff766c76a1be2ce1acf2b69c78bcae257d5188"));
     
     /// @notice CrossChainERC20Factory for wrapped tokens
-    address public constant TOKEN_FACTORY = 0xDD56781d0509650f8C2981231B6C917f2d5d7dF2;
+    address public constant TOKEN_FACTORY = address(bytes20(hex"dd56781d0509650f8c2981231b6c917f2d5d7df2"));
     
     /// @notice Wrapped SOL on Base
-    address public constant SOL_ON_BASE = 0x311935Cd80B76769bF2ecC9D8Ab7635b2139cf82;
+    address public constant SOL_ON_BASE = address(bytes20(hex"311935cd80b76769bf2ecc9d8ab7635b2139cf82"));
 
     /// @notice Sentinel Solana pubkey used by the Base bridge to denote native SOL on Solana.
     /// @dev Source: Base bridge `TokenLib.NATIVE_SOL_PUBKEY`.
     bytes32 public constant NATIVE_SOL_PUBKEY =
-        0x069be72ab836d4eacc02525b7350a78a395da2f1253a40ebafd6630000000000;
+        bytes32(hex"069be72ab836d4eacc02525b7350a78a395da2f1253a40ebafd6630000000000");
 
     // ================================
     // STATE

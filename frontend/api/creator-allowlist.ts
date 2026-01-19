@@ -42,8 +42,6 @@ function parseAllowlist(raw: string | undefined): Set<string> {
 function getBaseRpcUrl(): string {
   const env = process.env.BASE_RPC_URL
   if (env && env.length > 0) return env
-  const vite = process.env.VITE_BASE_RPC
-  if (vite && vite.length > 0) return vite
   return 'https://mainnet.base.org'
 }
 
@@ -110,7 +108,7 @@ async function supabaseIsAllowlisted(addresses: string[]): Promise<boolean> {
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
-  setCors(res)
+  setCors(req, res)
   setNoStore(res)
   if (handleOptions(req, res)) return
 

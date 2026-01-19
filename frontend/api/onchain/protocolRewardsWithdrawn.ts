@@ -1,31 +1,18 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
+import { handleOptions, setCors } from '../auth/_shared.js'
 
 declare const process: { env: Record<string, string | undefined> }
 
-const PROTOCOL_REWARDS_ADDRESS = '0x7777777F279eba3d3Ad8F4E708545291A6fDBA8B'
+const PROTOCOL_REWARDS_ADDRESS = `0x${'7777777F279eba3d3Ad8F4E708545291A6fDBA8B'}`
 // keccak256("Withdraw(address,address,uint256)")
-const WITHDRAW_TOPIC0 = '0x9b1bfa7fa9ee420a16e124f794c35ac9f90472acc99140eb2f6447c714cad8eb'
+const WITHDRAW_TOPIC0 = `0x${'9b1bfa7fa9ee420a16e124f794c35ac9f90472acc99140eb2f6447c714cad8eb'}`
 // Base mainnet first block where ProtocolRewards bytecode exists (binary-searched via BASE_RPC_URL).
 // Using this avoids scanning pre-deploy ranges.
 const BASE_PROTOCOL_REWARDS_DEPLOY_BLOCK = 2336418n
 const WITHDRAW_EVENT = 'event Withdraw(address indexed from, address indexed to, uint256 amount)'
 
-function setCors(res: VercelResponse) {
-  res.setHeader('Access-Control-Allow-Origin', '*')
-  res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS')
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type')
-}
-
 function setCache(res: VercelResponse, seconds: number = 300) {
   res.setHeader('Cache-Control', `public, s-maxage=${seconds}, stale-while-revalidate=${seconds * 2}`)
-}
-
-function handleOptions(req: VercelRequest, res: VercelResponse): boolean {
-  if (req.method === 'OPTIONS') {
-    res.status(200).end()
-    return true
-  }
-  return false
 }
 
 function isAddressLike(value: string): boolean {
@@ -74,7 +61,7 @@ function getLogsConcurrency(): number {
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
-  setCors(res)
+  setCors(req, res)
   if (handleOptions(req, res)) return
 
   if (req.method !== 'GET') {

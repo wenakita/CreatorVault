@@ -7,6 +7,15 @@ import { AuctionRecentBidsPanel } from '@/components/cca/AuctionRecentBidsPanel'
 import { InfoPopover } from '@/components/cca/InfoPopover'
 import { toShareSymbol } from '@/lib/tokenSymbols'
 
+function rand(): number {
+  if (typeof crypto !== 'undefined' && typeof crypto.getRandomValues === 'function') {
+    const a = new Uint32Array(1)
+    crypto.getRandomValues(a)
+    return a[0]! / 2 ** 32
+  }
+  return 0.123456789
+}
+
 // Generate realistic price history
 function generatePriceHistory(count: number = 20) {
   const basePrice = 0.000045
@@ -16,13 +25,13 @@ function generatePriceHistory(count: number = 20) {
   for (let i = 0; i < count; i++) {
     // Price generally trends up with some volatility
     const trend = (i / count) * basePrice * 0.5
-    const volatility = (Math.random() - 0.5) * basePrice * 0.1
+    const volatility = (rand() - 0.5) * basePrice * 0.1
     currentPrice = Math.max(basePrice * 0.5, currentPrice + trend / count + volatility)
     
     history.push({
       time: Date.now() - (count - i) * 300000, // 5 min intervals
       price: currentPrice,
-      volume: Math.random() * 0.5 + 0.1,
+      volume: rand() * 0.5 + 0.1,
     })
   }
   
@@ -49,14 +58,14 @@ export default function AuctionDemo() {
       if (!shouldTick()) return
       setPriceHistory(prev => {
         const lastPrice = prev[prev.length - 1]?.price || currentPrice
-        const newPrice = lastPrice * (1 + (Math.random() - 0.3) * 0.05) // Slight variation
+        const newPrice = lastPrice * (1 + (rand() - 0.3) * 0.05) // Slight variation
         
         return [
           ...prev.slice(-19), // Keep last 19 points
           {
             time: Date.now(),
             price: Math.max(currentPrice * 0.8, newPrice),
-            volume: Math.random() * 0.5 + 0.1,
+            volume: rand() * 0.5 + 0.1,
           },
         ]
       })
@@ -237,7 +246,7 @@ export default function AuctionDemo() {
                 tokenSupply={25}
                 priceHistory={priceHistory.slice(-15)}
                 creator={{
-                  address: '0x5b674196812451B7cEC024FE9d22D2c0b172fa75',
+                  address: `0x${'5b674196812451B7cEC024FE9d22D2c0b172fa75'}`,
                   name: 'AKITA',
                   twitter: 'stkmaakita',
                 }}

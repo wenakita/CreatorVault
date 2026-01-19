@@ -26,7 +26,7 @@ function isAddressLike(value: string): boolean {
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
-  setCors(res)
+  setCors(req, res)
   setNoStore(res)
   if (handleOptions(req, res)) return
 
@@ -75,7 +75,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       if (existing.error) throw new Error(existing.error.message)
 
       const existingRow = Array.isArray(existing.data) ? existing.data[0] : null
-      const existingId = existingRow && (existingRow as any).id != null ? Number((existingRow as any).id) : null
+      const existingId =
+        existingRow && (existingRow as any).id !== null && (existingRow as any).id !== undefined
+          ? Number((existingRow as any).id)
+          : null
 
       if (existingId && Number.isFinite(existingId) && existingId > 0) {
         const u = await supabase
@@ -121,11 +124,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   await ensureCreatorAccessSchema()
+  if (!db.query) {
+    return res.status(500).json({ success: false, error: 'Database driver missing query()' } satisfies ApiEnvelope<never>)
+  }
 
   // If already allowlisted, short-circuit.
-  const allow = await db.sql`
-    SELECT address FROM creator_allowlist WHERE address = ${sessionAddress} AND revoked_at IS NULL LIMIT 1;
-  `
+  const allow = await db.query(`SELECT address FROM creator_allowlist WHERE address = $1 AND revoked_at IS NULL LIMIT 1;`, [
+    sessionAddress,
+  ])
   if (allow.rows.length > 0) {
     return res.status(200).json({
       success: true,
@@ -138,15 +144,16 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const coin = isAddressLike(coinRaw) ? (coinRaw.toLowerCase() as `0x${string}`) : null
 
   // Create (or update) a pending request.
-  const inserted = await db.sql`
-    INSERT INTO creator_access_requests (wallet_address, coin_address, status)
-    VALUES (${sessionAddress}, ${coin}, 'pending')
-    ON CONFLICT (wallet_address) WHERE status = 'pending'
-    DO UPDATE SET
-      coin_address = COALESCE(EXCLUDED.coin_address, creator_access_requests.coin_address),
-      updated_at = NOW()
-    RETURNING id;
-  `
+  const inserted = await db.query(
+    `INSERT INTO creator_access_requests (wallet_address, coin_address, status)
+     VALUES ($1, $2, 'pending')
+     ON CONFLICT (wallet_address) WHERE status = 'pending'
+     DO UPDATE SET
+       coin_address = COALESCE(EXCLUDED.coin_address, creator_access_requests.coin_address),
+       updated_at = NOW()
+     RETURNING id;`,
+    [sessionAddress, coin],
+  )
 
   const id = inserted.rows?.[0]?.id
   const requestId = typeof id === 'number' ? id : typeof id === 'string' ? Number(id) : undefined

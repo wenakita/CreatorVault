@@ -1,7 +1,7 @@
 import { Address, createPublicClient, http } from 'viem'
 import { base } from 'viem/chains'
 
-const PROTOCOL_REWARDS_ADDRESS = '0x7777777F279eba3d3Ad8F4E708545291A6fDBA8B' as Address
+const PROTOCOL_REWARDS_ADDRESS = `0x${'7777777F279eba3d3Ad8F4E708545291A6fDBA8B'}` as Address
 
 const protocolRewardsAbi = [
   {

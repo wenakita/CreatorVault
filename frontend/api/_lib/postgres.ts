@@ -36,7 +36,12 @@ function withRequiredSsl(connectionString: string): string {
   return `${cs}${cs.includes('?') ? '&' : '?'}sslmode=require`
 }
 
-type DbPool = { sql: (strings: TemplateStringsArray, ...values: any[]) => Promise<{ rows: any[] }> }
+type DbResult = { rows: any[] }
+type DbPool = {
+  sql: (strings: TemplateStringsArray, ...values: any[]) => Promise<DbResult>
+  // Preferred: explicit query API (helps satisfy scanners and is unambiguous parameterization).
+  query?: (text: string, params?: any[]) => Promise<DbResult>
+}
 
 let cachedDb: DbPool | null = null
 let initError: string | null = null

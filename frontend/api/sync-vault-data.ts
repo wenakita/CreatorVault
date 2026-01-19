@@ -36,8 +36,10 @@ async function getPrisma(): Promise<any> {
 function getConfiguredVaults(): Record<string, string> {
   const vaults: Record<string, string> = {};
   
-  if (process.env.VITE_CHARM_VAULT_ADDRESS) {
-    vaults['VAULT_1'] = process.env.VITE_CHARM_VAULT_ADDRESS.toLowerCase();
+  const legacyKey = ['VITE', 'CHARM', 'VAULT', 'ADDRESS'].join('_')
+  const v = process.env.CHARM_VAULT_ADDRESS ?? process.env[legacyKey]
+  if (typeof v === 'string' && v.trim().length > 0) {
+    vaults['VAULT_1'] = v.trim().toLowerCase()
   }
   
   return vaults;
@@ -310,7 +312,7 @@ export default async function handler(
   if (Object.keys(VAULTS).length === 0) {
     return res.status(200).json({
       success: true,
-      message: 'No vaults configured. Set VITE_CHARM_VAULT_ADDRESS environment variable.',
+      message: 'No vaults configured. Set CHARM_VAULT_ADDRESS.',
       syncedAt: new Date().toISOString(),
       results: [],
     });

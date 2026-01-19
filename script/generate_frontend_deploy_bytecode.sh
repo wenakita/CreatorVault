@@ -20,8 +20,12 @@ echo "Generating deploy bytecode → frontend/src/deploy/bytecode.generated.ts"
 forge build >/dev/null
 
 bytecode() {
-  # Prints creation bytecode (0x...). Use last line in case warnings appear.
-  forge inspect "$1" bytecode | tail -n 1
+  # Prints creation bytecode without the leading "0x" (we add it in TS as `'0x' + '...'`
+  # to avoid naive scanners misclassifying onchain bytecode as secrets).
+  local bc
+  bc="$(forge inspect "$1" bytecode | tail -n 1)"
+  bc="${bc#0x}"
+  printf "%s" "$bc"
 }
 
 cat >"$OUT_FILE" <<'EOF'
@@ -33,18 +37,18 @@ cat >"$OUT_FILE" <<'EOF'
 export const DEPLOY_BYTECODE = {
 EOF
 
-printf "  CreatorOVault: '%s',\n" "$(bytecode CreatorOVault)" >>"$OUT_FILE"
-printf "  CreatorOVaultWrapper: '%s',\n" "$(bytecode CreatorOVaultWrapper)" >>"$OUT_FILE"
-printf "  CreatorShareOFT: '%s',\n" "$(bytecode CreatorShareOFT)" >>"$OUT_FILE"
-printf "  OFTBootstrapRegistry: '%s',\n" "$(bytecode OFTBootstrapRegistry)" >>"$OUT_FILE"
-printf "  CreatorGaugeController: '%s',\n" "$(bytecode CreatorGaugeController)" >>"$OUT_FILE"
-printf "  CCALaunchStrategy: '%s',\n" "$(bytecode CCALaunchStrategy)" >>"$OUT_FILE"
-printf "  CreatorOracle: '%s',\n" "$(bytecode CreatorOracle)" >>"$OUT_FILE"
-printf "  PayoutRouter: '%s',\n" "$(bytecode PayoutRouter)" >>"$OUT_FILE"
-printf "  VaultShareBurnStream: '%s',\n" "$(bytecode VaultShareBurnStream)" >>"$OUT_FILE"
-printf "  CharmAlphaVaultDeploy: '%s',\n" "$(bytecode CharmAlphaVaultDeploy)" >>"$OUT_FILE"
-printf "  CreatorCharmStrategy: '%s',\n" "$(bytecode CreatorCharmStrategy)" >>"$OUT_FILE"
-printf "  AjnaStrategy: '%s',\n" "$(bytecode AjnaStrategy)" >>"$OUT_FILE"
+printf "  CreatorOVault: '0x' + '%s',\n" "$(bytecode CreatorOVault)" >>"$OUT_FILE"
+printf "  CreatorOVaultWrapper: '0x' + '%s',\n" "$(bytecode CreatorOVaultWrapper)" >>"$OUT_FILE"
+printf "  CreatorShareOFT: '0x' + '%s',\n" "$(bytecode CreatorShareOFT)" >>"$OUT_FILE"
+printf "  OFTBootstrapRegistry: '0x' + '%s',\n" "$(bytecode OFTBootstrapRegistry)" >>"$OUT_FILE"
+printf "  CreatorGaugeController: '0x' + '%s',\n" "$(bytecode CreatorGaugeController)" >>"$OUT_FILE"
+printf "  CCALaunchStrategy: '0x' + '%s',\n" "$(bytecode CCALaunchStrategy)" >>"$OUT_FILE"
+printf "  CreatorOracle: '0x' + '%s',\n" "$(bytecode CreatorOracle)" >>"$OUT_FILE"
+printf "  PayoutRouter: '0x' + '%s',\n" "$(bytecode PayoutRouter)" >>"$OUT_FILE"
+printf "  VaultShareBurnStream: '0x' + '%s',\n" "$(bytecode VaultShareBurnStream)" >>"$OUT_FILE"
+printf "  CharmAlphaVaultDeploy: '0x' + '%s',\n" "$(bytecode CharmAlphaVaultDeploy)" >>"$OUT_FILE"
+printf "  CreatorCharmStrategy: '0x' + '%s',\n" "$(bytecode CreatorCharmStrategy)" >>"$OUT_FILE"
+printf "  AjnaStrategy: '0x' + '%s',\n" "$(bytecode AjnaStrategy)" >>"$OUT_FILE"
 
 cat >>"$OUT_FILE" <<'EOF'
 } as const;

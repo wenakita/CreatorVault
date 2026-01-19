@@ -1,3 +1,16 @@
+function safeRandomHex(bytes: number): string {
+  const n = Math.max(1, Math.min(64, Math.floor(bytes)))
+  if (typeof crypto !== 'undefined' && typeof crypto.getRandomValues === 'function') {
+    const arr = new Uint8Array(n)
+    crypto.getRandomValues(arr)
+    return Array.from(arr)
+      .map((b) => b.toString(16).padStart(2, '0'))
+      .join('')
+  }
+  // Fallback: deterministic (demo-only)
+  return '00'.repeat(n)
+}
+
 import { motion, AnimatePresence, useReducedMotion } from 'framer-motion'
 import { useState, useEffect } from 'react'
 
@@ -8,6 +21,25 @@ interface Bid {
   maxPriceEthPerToken: number
   timestamp: number
   txHash: string
+}
+
+function rand(): number {
+  if (typeof crypto !== 'undefined' && typeof crypto.getRandomValues === 'function') {
+    const a = new Uint32Array(1)
+    crypto.getRandomValues(a)
+    return a[0]! / 2 ** 32
+  }
+  return 0.123456789
+}
+
+function randInt(maxExclusive: number): number {
+  const m = Math.max(1, Math.floor(maxExclusive))
+  return Math.floor(rand() * m)
+}
+
+function randomId(): string {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') return crypto.randomUUID()
+  return `${Date.now()}-${randInt(1_000_000_000)}`
 }
 
 // Generate mock recent commitments (CCA bids are commitments that settle later)
@@ -22,13 +54,13 @@ function generateMockBid(): Bid {
   ]
   
   return {
-    id: Math.random().toString(36).substr(2, 9),
-    address: addresses[Math.floor(Math.random() * addresses.length)],
-    amount: Math.random() * 0.5 + 0.01,
+    id: randomId(),
+    address: addresses[randInt(addresses.length)],
+    amount: rand() * 0.5 + 0.01,
     // "Max price" is what the bidder is willing to pay per token (simulated)
-    maxPriceEthPerToken: 0.00004 + Math.random() * 0.00004,
+    maxPriceEthPerToken: 0.00004 + rand() * 0.00004,
     timestamp: Date.now(),
-    txHash: '0x' + Math.random().toString(36).substr(2, 64),
+    txHash: `0x${safeRandomHex(32)}`,
   }
 }
 
@@ -51,7 +83,7 @@ export function RecentBidsActivity({
     const interval = setInterval(() => {
       const newBid = generateMockBid()
       setBids(prev => [newBid, ...prev.slice(0, 4)])
-    }, Math.random() * 15000 + 10000) // 10-25 seconds
+    }, rand() * 15000 + 10000) // 10-25 seconds
 
     return () => clearInterval(interval)
   }, [showLive])
@@ -175,7 +207,7 @@ export function RecentBidsActivity({
         transition={{ delay: 0.5 }}
       >
         <span className="w-1 h-1 rounded-full bg-uniswap" />
-        <span>Join {Math.floor(Math.random() * 10 + 40)} other participants</span>
+        <span>Join {40 + randInt(10)} other participants</span>
       </motion.div>
     </div>
   )

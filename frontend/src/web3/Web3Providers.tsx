@@ -76,7 +76,7 @@ export function Web3Providers({ children }: { children: ReactNode }) {
         }}
       >
         <MiniAppAutoConnect />
-        <WalletDebugPanel />
+        {import.meta.env.DEV ? <WalletDebugPanel /> : null}
         {children}
       </OnchainKitProvider>
     </WagmiProvider>

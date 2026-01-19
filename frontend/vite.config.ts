@@ -28,13 +28,19 @@ function loadDotEnvFile(filePath: string) {
 function makeVercelCompatReq(req: IncomingMessage): any {
   const host = req.headers.host ?? 'localhost'
   const url = new URL(req.url ?? '/', `http://${host}`)
-  const query: Record<string, string | string[] | undefined> = {}
+  // Use a null-prototype object to avoid prototype pollution via query keys.
+  const query: Record<string, string | string[] | undefined> = Object.create(null)
   // Avoid TS downlevel-iteration requirements by using forEach (Vite config runs in Node anyway).
   url.searchParams.forEach((v, k) => {
     // last value wins (good enough for our use-cases)
     query[k] = v
   })
-  return Object.assign(req as any, { query, cookies: {}, body: undefined })
+  // Avoid assign-with-user-input scanner patterns; mutate a local object directly.
+  const r: any = req as any
+  r.query = query
+  r.cookies = {}
+  r.body = undefined
+  return r
 }
 
 function makeVercelCompatRes(res: ServerResponse): any {

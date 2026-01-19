@@ -6,7 +6,7 @@ import { getSessionAddress, isAdminAddress } from '../_lib/session.js'
 type AdminResponse = { address: string; isAdmin: boolean } | null
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
-  setCors(res)
+  setCors(req, res)
   setNoStore(res)
   if (handleOptions(req, res)) return
 

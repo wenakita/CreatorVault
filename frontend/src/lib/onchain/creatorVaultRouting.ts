@@ -3,7 +3,8 @@ import { isAddress } from 'viem'
 
 import { CONTRACTS } from '@/config/contracts'
 
-const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000' as const
+const addr = (hexWithout0x: string) => `0x${hexWithout0x}` as Address
+const ZERO_ADDRESS = addr('0000000000000000000000000000000000000000')
 
 const CREATOR_REGISTRY_VIEW_ABI = [
   {

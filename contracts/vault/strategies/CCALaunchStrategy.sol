@@ -14,7 +14,7 @@ import {ICreatorOracle} from "../../interfaces/ICreatorOracle.sol";
 /**
  * @title ITaxHook
  * @notice Interface for the configurable tax hook
- * @dev Hook at 0xca975B9dAF772C71161f3648437c3616E5Be0088
+ * @dev Hook address is chain-dependent; configure via `setTaxHook`.
  */
 interface ITaxHook {
     function setTaxConfig(
@@ -83,10 +83,7 @@ interface IContinuousClearingAuction {
  *      - No MEV/sandwich attacks
  *      - Graduates to Uniswap V4 pool automatically
  * 
- * @dev CCA FACTORY ADDRESSES:
- *      Base:    0x0000ccaDF55C911a2FbC0BB9d2942Aa77c6FAa1D
- *      Mainnet: 0x0000ccaDF55C911a2FbC0BB9d2942Aa77c6FAa1D
- *      Unichain: 0x0000ccaDF55C911a2FbC0BB9d2942Aa77c6FAa1D
+ * @dev CCA Factory is chain-specific; configure via `CCA_FACTORY`.
  */
 contract CCALaunchStrategy is Ownable, ReentrancyGuard {
     using SafeERC20 for IERC20;
@@ -96,7 +93,7 @@ contract CCALaunchStrategy is Ownable, ReentrancyGuard {
     // ================================
 
     /// @notice CCA Factory address (same on all supported chains)
-    address public constant CCA_FACTORY = 0x0000ccaDF55C911a2FbC0BB9d2942Aa77c6FAa1D;
+    address public constant CCA_FACTORY = address(bytes20(hex"0000ccadf55c911a2fbc0bb9d2942aa77c6faa1d"));
     
     /// @notice Milli-basis points constant
     uint24 public constant MPS = 1e7;
@@ -126,10 +123,10 @@ contract CCALaunchStrategy is Ownable, ReentrancyGuard {
     /// @notice Oracle to configure with V4 pool on graduation
     address public oracle;
     
-    /// @notice V4 PoolManager (Base: 0x498581fF718922c3f8e6A244956aF099B2652b2b)
+    /// @notice V4 PoolManager (configure via `setPoolManager`)
     IPoolManager public poolManager;
     
-    /// @notice Tax hook for the V4 pool (0xca975B9dAF772C71161f3648437c3616E5Be0088 on Base)
+    /// @notice Tax hook for the V4 pool (configure via `setTaxHook`)
     address public taxHook;
     
     /// @notice Fee recipient for the tax hook (GaugeController)
@@ -393,7 +390,7 @@ contract CCALaunchStrategy is Ownable, ReentrancyGuard {
         }
         
         // NOTE: Tax hook must be configured separately by token owner!
-        // The SimpleSellTaxHook at 0xca975B9dAF772C71161f3648437c3616E5Be0088
+        // The SimpleSellTaxHook
         // requires msg.sender == token.owner() to call setTaxConfig.
         // Use getTaxHookCalldata() to get the exact calldata for ERC-4337 batching.
         

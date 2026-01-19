@@ -96,12 +96,69 @@ export function setNoStore(res: VercelResponse) {
   res.setHeader('Cache-Control', 'no-store')
 }
 
-export function setCors(res: VercelResponse) {
-  // Same-origin in our app; keep permissive for local dev simplicity.
-  res.setHeader('Access-Control-Allow-Origin', '*')
-  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
+function addVary(res: VercelResponse, value: string) {
+  const existing = res.getHeader('Vary')
+  const cur = typeof existing === 'string' ? existing : Array.isArray(existing) ? existing.join(',') : ''
+  const parts = cur
+    .split(',')
+    .map((s) => s.trim())
+    .filter(Boolean)
+  if (!parts.includes(value)) parts.push(value)
+  res.setHeader('Vary', parts.join(', '))
+}
+
+function getAllowedOrigins(): Set<string> {
+  const out = new Set<string>([
+    // Production
+    'https://creatorvault.fun',
+    'https://www.creatorvault.fun',
+    'https://4626.fun',
+    'https://www.4626.fun',
+    // Local dev
+    'http://localhost:5173',
+    'http://localhost:3000',
+    'http://127.0.0.1:5173',
+    'http://127.0.0.1:3000',
+  ])
+
+  const vercelUrl = (process.env.VERCEL_URL ?? '').trim()
+  if (vercelUrl) out.add(`https://${vercelUrl}`)
+
+  const extra = (process.env.CORS_ALLOWED_ORIGINS ?? '').trim()
+  if (extra) {
+    for (const raw of extra.split(/[\s,]+/g)) {
+      if (!raw) continue
+      try {
+        out.add(new URL(raw).origin)
+      } catch {
+        // ignore invalid
+      }
+    }
+  }
+
+  return out
+}
+
+export function setCors(req: VercelRequest, res: VercelResponse) {
   // Allow Authorization so embedded contexts can pass a session token when cookies are blocked.
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization')
+
+  const originHeader = typeof req.headers?.origin === 'string' ? req.headers.origin : ''
+  const origin = originHeader ? (() => {
+    try {
+      return new URL(originHeader).origin
+    } catch {
+      return null
+    }
+  })() : null
+
+  const allowed = getAllowedOrigins()
+  if (origin && allowed.has(origin)) {
+    res.setHeader('Access-Control-Allow-Origin', origin)
+    res.setHeader('Access-Control-Allow-Credentials', 'true')
+    addVary(res, 'Origin')
+  }
 }
 
 export function readSessionFromRequest(req: VercelRequest): { address: string } | null {
@@ -125,6 +182,7 @@ export function readSessionFromRequest(req: VercelRequest): { address: string } 
 
 export function handleOptions(req: VercelRequest, res: VercelResponse): boolean {
   if (req.method === 'OPTIONS') {
+    setCors(req, res)
     res.status(200).end()
     return true
   }

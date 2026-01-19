@@ -1,13 +1,14 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
+import { handleOptions, setCors } from '../auth/_shared.js'
 
 declare const process: { env: Record<string, string | undefined> }
 
 // Zora v4 coin hook on Base (from `uniswapV4PoolKey.hookAddress`).
-const DEFAULT_HOOK = '0xc8d077444625eb300a427a6dfb2b1dbf9b159040'
+const DEFAULT_HOOK = `0x${'c8d077444625eb300a427a6dfb2b1dbf9b159040'}`
 // First Base block where the hook has bytecode (binary-searched via BASE_RPC_URL).
 const DEFAULT_HOOK_DEPLOY_BLOCK = 36237338n
 
-const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000'
+const ZERO_ADDRESS = `0x${'0000000000000000000000000000000000000000'}`
 
 const ERC20_TRANSFER_EVENT = 'event Transfer(address indexed from,address indexed to,uint256 value)'
 
@@ -16,24 +17,10 @@ const COIN_MARKET_REWARDS_V4_EVENT =
   'event CoinMarketRewardsV4(address coin,address currency,address payoutRecipient,address platformReferrer,address tradeReferrer,address protocolRewardRecipient,address dopplerRecipient,(uint256 creatorPayoutAmountCurrency,uint256 creatorPayoutAmountCoin,uint256 platformReferrerAmountCurrency,uint256 platformReferrerAmountCoin,uint256 tradeReferrerAmountCurrency,uint256 tradeReferrerAmountCoin,uint256 protocolAmountCurrency,uint256 protocolAmountCoin,uint256 dopplerAmountCurrency,uint256 dopplerAmountCoin) marketRewards)'
 
 const COIN_MARKET_REWARDS_V4_TOPIC0 =
-  '0x35b5031218696db1dfd903223a47f38e66a1998e14a942a5d60fddaa49a685fc'
-
-function setCors(res: VercelResponse) {
-  res.setHeader('Access-Control-Allow-Origin', '*')
-  res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS')
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type')
-}
+  `0x${'35b5031218696db1dfd903223a47f38e66a1998e14a942a5d60fddaa49a685fc'}`
 
 function setCache(res: VercelResponse, seconds: number = 300) {
   res.setHeader('Cache-Control', `public, s-maxage=${seconds}, stale-while-revalidate=${seconds * 2}`)
-}
-
-function handleOptions(req: VercelRequest, res: VercelResponse): boolean {
-  if (req.method === 'OPTIONS') {
-    res.status(200).end()
-    return true
-  }
-  return false
 }
 
 function isAddressLike(value: string): boolean {
@@ -114,7 +101,7 @@ const CREATED_AT_BLOCK_MARGIN = 20_000
 const DEFAULT_HOOK_LOGS_RANGE = 4_000n
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
-  setCors(res)
+  setCors(req, res)
   if (handleOptions(req, res)) return
 
   if (req.method !== 'GET') {

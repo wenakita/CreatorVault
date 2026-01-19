@@ -16,7 +16,7 @@ type DenyResponse = {
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
-  setCors(res)
+  setCors(req, res)
   setNoStore(res)
   if (handleOptions(req, res)) return
 
@@ -76,17 +76,21 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   await ensureCreatorAccessSchema()
+  if (!db.query) {
+    return res.status(500).json({ success: false, error: 'Database driver missing query()' } satisfies ApiEnvelope<never>)
+  }
 
-  const u = await db.sql`
-    UPDATE creator_access_requests
-      SET status = 'denied',
-          reviewed_at = NOW(),
-          reviewed_by = ${admin},
-          decision_note = ${note},
-          updated_at = NOW()
-    WHERE id = ${requestId}
-    RETURNING id;
-  `
+  const u = await db.query(
+    `UPDATE creator_access_requests
+       SET status = 'denied',
+           reviewed_at = NOW(),
+           reviewed_by = $1,
+           decision_note = $2,
+           updated_at = NOW()
+     WHERE id = $3
+     RETURNING id;`,
+    [admin, note, requestId],
+  )
 
   if (u.rows.length === 0) {
     return res.status(404).json({ success: false, error: 'Request not found' } satisfies ApiEnvelope<never>)

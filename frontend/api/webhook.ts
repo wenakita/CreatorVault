@@ -5,7 +5,7 @@ import { type ApiEnvelope, handleOptions, setCors, setNoStore } from './auth/_sh
 type WebhookOk = { ok: true }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
-  setCors(res)
+  setCors(req, res)
   setNoStore(res)
   if (handleOptions(req, res)) return
 

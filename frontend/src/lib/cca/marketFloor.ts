@@ -6,7 +6,8 @@ import { CONTRACTS } from '@/config/contracts'
 import { BASE_DEFAULTS } from '@/config/contracts.defaults'
 import { currencyPerTokenBaseUnitsToQ96 } from '@/lib/cca/q96'
 
-const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000' as const
+const addr = (hexWithout0x: string) => `0x${hexWithout0x}` as const
+const ZERO_ADDRESS = addr('0000000000000000000000000000000000000000')
 
 // Uniswap V4 PoolManager state reads use `extsload` (see v4-core StateLibrary).
 const V4_EXTSLOAD_ABI = [
@@ -21,7 +22,7 @@ const V4_EXTSLOAD_ABI = [
 
 // v4-core StateLibrary constants (PoolManager storage layout)
 const V4_POOLS_SLOT =
-  '0x0000000000000000000000000000000000000000000000000000000000000006' as const
+  addr('0000000000000000000000000000000000000000000000000000000000000006')
 const V4_LIQUIDITY_OFFSET = 3n
 
 // Zora creator coin pool key (many Zora coins expose this)

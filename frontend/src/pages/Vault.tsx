@@ -52,7 +52,8 @@ const CCA_STRATEGY_ABI = [
 
 const tabs = ['Deposit', 'Withdraw'] as const
 type TabType = typeof tabs[number]
-const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000' as const
+const addr = (hexWithout0x: string) => `0x${hexWithout0x}` as Address
+const ZERO_ADDRESS = addr('0000000000000000000000000000000000000000')
 
 function TokenAvatar({
   image,

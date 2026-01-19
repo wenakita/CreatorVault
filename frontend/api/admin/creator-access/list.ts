@@ -19,7 +19,7 @@ type ListResponse = {
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
-  setCors(res)
+  setCors(req, res)
   setNoStore(res)
   if (handleOptions(req, res)) return
 
@@ -91,21 +91,25 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   await ensureCreatorAccessSchema()
+  if (!db.query) {
+    return res.status(500).json({ success: false, error: 'Database driver missing query()' } satisfies ApiEnvelope<never>)
+  }
 
-  const q = await db.sql`
-    SELECT
-      r.id,
-      r.wallet_address,
-      r.coin_address,
-      r.created_at,
-      CASE WHEN a.address IS NOT NULL THEN true ELSE false END AS allowlisted
-    FROM creator_access_requests r
-    LEFT JOIN creator_allowlist a
-      ON a.address = r.wallet_address AND a.revoked_at IS NULL
-    WHERE r.status = 'pending'
-    ORDER BY r.created_at DESC
-    LIMIT 200;
-  `
+  const q = await db.query(
+    `SELECT
+       r.id,
+       r.wallet_address,
+       r.coin_address,
+       r.created_at,
+       CASE WHEN a.address IS NOT NULL THEN true ELSE false END AS allowlisted
+     FROM creator_access_requests r
+     LEFT JOIN creator_allowlist a
+       ON a.address = r.wallet_address AND a.revoked_at IS NULL
+     WHERE r.status = 'pending'
+     ORDER BY r.created_at DESC
+     LIMIT 200;`,
+    [],
+  )
 
   const pending: PendingRequest[] = q.rows.map((row: any) => ({
     id: typeof row.id === 'number' ? row.id : Number(row.id),

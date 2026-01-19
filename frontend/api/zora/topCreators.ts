@@ -51,7 +51,7 @@ function mapPreviewImageFromDownloadableUri(url: unknown, blurhash: unknown) {
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
-  setCors(res)
+  setCors(req, res)
   if (handleOptions(req, res)) return
 
   if (req.method !== 'GET') {

@@ -99,7 +99,7 @@ const VAULT_ABI = [
   { name: 'owner', type: 'function', inputs: [], outputs: [{ type: 'address' }], stateMutability: 'view' },
 ] as const
 
-const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000' as const
+const ZERO_ADDRESS = `0x${'0000000000000000000000000000000000000000'}` as const
 
 export function CompleteAuction() {
   const { strategy } = useParams()
@@ -225,7 +225,7 @@ export function CompleteAuction() {
       functionName: 'setTaxConfig',
       args: [
         tokenAddress,           // ■TOKEN address
-        '0x0000000000000000000000000000000000000000' as `0x${string}`, // ETH
+        ZERO_ADDRESS as `0x${string}`, // ETH
         feeRecipient,           // GaugeController
         taxRate || 690n,        // 6.9%
         true,                   // counterIsEth

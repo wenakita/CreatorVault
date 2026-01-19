@@ -1,5 +1,6 @@
 import { motion } from 'framer-motion'
 import { Radio, ExternalLink } from 'lucide-react'
+import { useMemo } from 'react'
 
 interface ZoraLiveStreamProps {
   streamUrl: string
@@ -8,6 +9,15 @@ interface ZoraLiveStreamProps {
 }
 
 export function ZoraLiveStream({ streamUrl, title = 'Live Stream', isLive = true }: ZoraLiveStreamProps) {
+  const viewers = useMemo(() => {
+    if (typeof crypto !== 'undefined' && typeof crypto.getRandomValues === 'function') {
+      const a = new Uint32Array(1)
+      crypto.getRandomValues(a)
+      return 100 + (a[0]! % 500)
+    }
+    return 100 + Math.floor((Date.now() % 500) * 1)
+  }, [])
+
   return (
     <div className="bg-black border border-white/10 rounded-xl overflow-hidden">
       {/* Live stream container */}
@@ -73,7 +83,7 @@ export function ZoraLiveStream({ streamUrl, title = 'Live Stream', isLive = true
           {isLive && (
             <div className="text-right">
               <div className="text-cyan-400 font-mono text-sm font-bold">
-                {Math.floor(Math.random() * 500 + 100)}
+                {viewers}
               </div>
               <div className="text-zinc-600 text-[10px] uppercase tracking-wider">
                 Viewers

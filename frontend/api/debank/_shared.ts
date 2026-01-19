@@ -1,15 +1,15 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
+import { setCors as setCorsAllowlist } from '../auth/_shared.js'
 
 declare const process: { env: Record<string, string | undefined> }
 
-export function setCors(res: VercelResponse) {
-  res.setHeader('Access-Control-Allow-Origin', '*')
-  res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS')
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type')
+export function setCors(req: VercelRequest, res: VercelResponse) {
+  setCorsAllowlist(req, res)
 }
 
 export function handleOptions(req: VercelRequest, res: VercelResponse): boolean {
   if (req.method === 'OPTIONS') {
+    setCors(req, res)
     res.status(200).end()
     return true
   }

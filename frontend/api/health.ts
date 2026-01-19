@@ -55,7 +55,7 @@ async function checkSupabase(): Promise<{ ok: boolean; latencyMs: number | null;
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
-  setCors(res)
+  setCors(req, res)
   setNoStore(res)
   if (handleOptions(req, res)) return
 
@@ -69,8 +69,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     ? await checkDb(db)
     : { ok: false, latencyMs: null, error: getDbInitError() || 'Database not configured' }
 
-  const supabaseUrl = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL || ''
-  const supabaseAnon = process.env.VITE_SUPABASE_ANON_KEY || ''
+  // Server-only config. Do NOT use client-exposed env vars in API routes.
+  const supabaseUrl = process.env.SUPABASE_URL || ''
+  const supabaseAnon = process.env.SUPABASE_ANON_KEY || ''
   const supabaseServiceRole = process.env.SUPABASE_SERVICE_ROLE_KEY || ''
   const supabaseConfigured = isSupabaseAdminConfigured()
   const supabaseStatus = supabaseConfigured ? await checkSupabase() : { ok: false, latencyMs: null, error: null }

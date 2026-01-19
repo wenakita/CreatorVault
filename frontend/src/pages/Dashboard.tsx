@@ -276,7 +276,7 @@ function ZoraCoinRow({
   // Replace “direct payouts” label with “fees generated”.
   // This is an estimate derived from API-provided 24h volume (fast, no RPC).
   // Note: Zora's `volume24h` / `totalVolume` are displayed in USD on zora.co coin pages.
-  // Example: https://zora.co/coin/base:0x3dab2f1e41674760f174fd6cc70fc3d8f681fb02
+  // Example: https://zora.co/coin/base:<coinAddress>
   // Zora Coins (v2.2.0+) use a unified 1% total pool fee.
   // Source: https://docs.zora.co/coins/contracts/rewards
   const ZORA_POOL_FEE_RATE = 0.01 // 1%

@@ -20,8 +20,11 @@ import { resolveCdpPaymasterUrl } from '@/lib/aa/cdp';
 import { sendCoinbaseSmartWalletUserOperation } from '@/lib/aa/coinbaseErc4337';
 import { useZoraProfile } from '@/lib/zora/hooks';
 
+const addr = (hexWithout0x: string) => `0x${hexWithout0x}` as Address;
+const ZERO_ADDRESS = addr('0000000000000000000000000000000000000000');
+
 const VAULT_ACTIVATION_BATCHER = (CONTRACTS.vaultActivationBatcher ??
-  '0x0000000000000000000000000000000000000000') as Address;
+  ZERO_ADDRESS) as Address;
 
 const VaultActivationBatcherABI = [
   {
@@ -89,7 +92,7 @@ export function LaunchVaultAA({
       setError('Please connect your wallet');
       return;
     }
-    if (VAULT_ACTIVATION_BATCHER === '0x0000000000000000000000000000000000000000') {
+    if (VAULT_ACTIVATION_BATCHER === ZERO_ADDRESS) {
       setError('Vault activation batcher is not configured. Set VITE_VAULT_ACTIVATION_BATCHER.');
       return;
     }

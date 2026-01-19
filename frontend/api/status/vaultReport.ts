@@ -1,4 +1,5 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
+import { handleOptions, setCors } from '../auth/_shared.js'
 
 declare const process: { env: Record<string, string | undefined> }
 
@@ -19,22 +20,8 @@ type CheckSection = {
   checks: Check[]
 }
 
-function setCors(res: VercelResponse) {
-  res.setHeader('Access-Control-Allow-Origin', '*')
-  res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS')
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type')
-}
-
 function setCache(res: VercelResponse, seconds: number = 60) {
   res.setHeader('Cache-Control', `public, s-maxage=${seconds}, stale-while-revalidate=${seconds * 2}`)
-}
-
-function handleOptions(req: VercelRequest, res: VercelResponse): boolean {
-  if (req.method === 'OPTIONS') {
-    res.status(200).end()
-    return true
-  }
-  return false
 }
 
 function getReadRpcUrl(): string {
@@ -198,8 +185,8 @@ const UNISWAP_V3_POOL_ABI = [
 ] as const
 
 // Base mainnet constants (avoid path aliases in serverless handlers used by Vite config bundling)
-const BASE_USDC = '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913'
-const BASE_UNISWAP_V3_FACTORY = '0x33128a8fC17869897dcE68Ed026d694621f6FDfD'
+const BASE_USDC = `0x${'833589fCD6eDb6E08f4c7C32D4f71b54bdA02913'}`
+const BASE_UNISWAP_V3_FACTORY = `0x${'33128a8fC17869897dcE68Ed026d694621f6FDfD'}`
 
 function floorDiv(a: number, b: number): number {
   const q = Math.trunc(a / b)
@@ -223,7 +210,7 @@ function approxToken1PerToken0(tick: number, decimals0: number, decimals1: numbe
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
-  setCors(res)
+  setCors(req, res)
   if (handleOptions(req, res)) return
 
   if (req.method !== 'GET') {
@@ -246,7 +233,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       transport: http(rpcUrl, { timeout: 20_000 }),
     })
 
-    const ZERO = '0x0000000000000000000000000000000000000000'
+    const ZERO = `0x${'0'.repeat(40)}`
     const addrOk = (a: any): a is `0x${string}` => typeof a === 'string' && isAddress(a) && a !== ZERO
     const any429 = (results: any[]) =>
       results.some((r) => r?.status === 'failure' && isRateLimitError(errorToMessage((r as any)?.error)))
@@ -475,7 +462,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         if (ajnaPool) extras.push(`ajnaPool=${ajnaPool}`)
         if (collateral) extras.push(`collateral=${collateral}`)
         if (ajnaFactory) extras.push(`factory=${ajnaFactory}`)
-        if (bucketIndex != null) extras.push(`bucket=${bucketIndex.toString()}`)
+        if (bucketIndex !== null && bucketIndex !== undefined) extras.push(`bucket=${bucketIndex.toString()}`)
         if (stratOwner) extras.push(`owner=${stratOwner}`)
 
         strategyChecks.push({
@@ -622,10 +609,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             id: 'v3-price',
             label: 'CREATOR price (Uniswap V3)',
             status: 'info',
-            details: `spot≈${usdSpot != null ? fmt(usdSpot) : '—'} · twap≈${usdTwap != null ? fmt(usdTwap) : '—'}`,
+            details: `spot≈${usdSpot !== null && usdSpot !== undefined ? fmt(usdSpot) : '—'} · twap≈${
+              usdTwap !== null && usdTwap !== undefined ? fmt(usdTwap) : '—'
+            }`,
           })
 
-          if (v3ObservationCardinalityNext != null) {
+          if (v3ObservationCardinalityNext !== null && v3ObservationCardinalityNext !== undefined) {
             const ok = v3ObservationCardinalityNext >= 16
             pricingChecks.push({
               id: 'v3-oracle-capacity',
@@ -703,7 +692,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     // Compare Ajna bucket to suggested (best-effort)
-    if (suggestedAjnaBucket != null && ajnaBucketIndex != null && addrOk(ajnaStrategyAddress)) {
+    if (
+      suggestedAjnaBucket !== null &&
+      suggestedAjnaBucket !== undefined &&
+      ajnaBucketIndex !== null &&
+      ajnaBucketIndex !== undefined &&
+      addrOk(ajnaStrategyAddress)
+    ) {
       const ok = ajnaBucketIndex === BigInt(suggestedAjnaBucket)
       pricingChecks.push({
         id: 'ajna-bucket-match',

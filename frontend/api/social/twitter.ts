@@ -1,28 +1,15 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 import { logger } from '../_lib/logger.js'
+import { handleOptions, setCors } from '../auth/_shared.js'
 
 declare const process: { env: Record<string, string | undefined> }
 
-const TWITTER_BEARER_TOKEN = process.env.VITE_TWITTER_BEARER_TOKEN || ''
+// Server-only secret. Do NOT use client-exposed env vars here.
+const TWITTER_BEARER_TOKEN = process.env.TWITTER_BEARER_TOKEN || ''
 const TWITTER_API_BASE = 'https://api.twitter.com/2'
 
-function setCors(res: VercelResponse) {
-  res.setHeader('Access-Control-Allow-Origin', '*')
-  res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS')
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type')
-}
-
-function handleOptions(req: VercelRequest, res: VercelResponse): boolean {
-  if (req.method === 'OPTIONS') {
-    setCors(res)
-    res.status(200).end()
-    return true
-  }
-  return false
-}
-
 export default async function handler(req: VercelRequest, res: VercelResponse) {
-  setCors(res)
+  setCors(req, res)
   if (handleOptions(req, res)) return
 
   if (req.method !== 'GET') {
