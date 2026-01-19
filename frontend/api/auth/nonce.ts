@@ -1,9 +1,10 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 
-import { type ApiEnvelope, COOKIE_NONCE, handleOptions, makeNonce, setCookie, setCors, setNoStore } from './_shared.js'
+import { type ApiEnvelope, COOKIE_NONCE, handleOptions, makeNonce, makeNonceToken, setCookie, setCors, setNoStore } from './_shared.js'
 
 type NonceResponse = {
   nonce: string
+  nonceToken: string
   issuedAt: string
   domain: string
   uri: string
@@ -20,6 +21,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   const nonce = makeNonce()
+  const nonceToken = makeNonceToken({ nonce })
   const issuedAt = new Date().toISOString()
   const host = typeof req.headers?.host === 'string' ? req.headers.host : ''
   const domain = host || 'localhost'
@@ -33,6 +35,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     success: true,
     data: {
       nonce,
+      nonceToken,
       issuedAt,
       domain,
       uri,

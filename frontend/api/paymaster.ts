@@ -16,7 +16,7 @@ import { getApiContracts } from './_lib/contracts.js'
 import { logger } from './_lib/logger.js'
 import { ensureCreatorAccessSchema, getDb, isDbConfigured } from './_lib/postgres.js'
 import { getSupabaseAdmin, isSupabaseAdminConfigured } from './_lib/supabaseAdmin.js'
-import { COOKIE_SESSION, handleOptions, parseCookies, readJsonBody, readSessionToken, setCors, setNoStore } from './auth/_shared.js'
+import { handleOptions, readJsonBody, readSessionFromRequest, setCors, setNoStore } from './auth/_shared.js'
 
 declare const process: { env: Record<string, string | undefined> }
 
@@ -786,8 +786,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   // Require an active SIWE session for any sponsorship-related method.
-  const cookies = parseCookies(req)
-  const session = readSessionToken(cookies[COOKIE_SESSION])
+  // Accept either the HttpOnly cookie OR an Authorization bearer token (for embedded contexts).
+  const session = readSessionFromRequest(req)
 
   try {
     // Validate sponsorship requests (UserOperations only).

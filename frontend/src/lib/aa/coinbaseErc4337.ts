@@ -23,6 +23,18 @@ export type WalletClientLike = {
   signTransaction?: (args: any) => Promise<any>
 } & Record<string, any>
 
+const SESSION_TOKEN_KEY = 'cv_siwe_session_token'
+
+function getStoredSessionToken(): string | null {
+  try {
+    const v = localStorage.getItem(SESSION_TOKEN_KEY)
+    const t = typeof v === 'string' ? v.trim() : ''
+    return t.length > 0 ? t : null
+  } catch {
+    return null
+  }
+}
+
 const COINBASE_SMART_WALLET_OWNERS_ABI = [
   {
     type: 'function',
@@ -134,7 +146,13 @@ export async function sendCoinbaseSmartWalletUserOperation(params: {
   // CDP uses a single endpoint for bundler + paymaster JSON-RPC methods.
   // If `bundlerUrl` is our same-origin proxy (`/api/paymaster`), we MUST include cookies
   // so the backend can validate the SIWE session (`cv_auth_session`).
-  const transport = http(bundlerUrl, { fetchOptions: { credentials: 'include' } })
+  const sessionToken = typeof window !== 'undefined' ? getStoredSessionToken() : null
+  const transport = http(bundlerUrl, {
+    fetchOptions: {
+      credentials: 'include',
+      headers: sessionToken ? { Authorization: `Bearer ${sessionToken}` } : undefined,
+    },
+  })
   const paymasterClient = createPaymasterClient({ transport })
   const bundlerClient = createBundlerClient({
     client: publicClient as any,

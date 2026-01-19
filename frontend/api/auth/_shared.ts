@@ -67,7 +67,27 @@ export function setCors(res: VercelResponse) {
   // Same-origin in our app; keep permissive for local dev simplicity.
   res.setHeader('Access-Control-Allow-Origin', '*')
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type')
+  // Allow Authorization so embedded contexts can pass a session token when cookies are blocked.
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization')
+}
+
+export function readSessionFromRequest(req: VercelRequest): { address: string } | null {
+  // Primary: HttpOnly cookie session (preferred when available).
+  const cookies = parseCookies(req)
+  const cookieToken = cookies[COOKIE_SESSION]
+  const cookieSession = readSessionToken(cookieToken)
+  if (cookieSession) return cookieSession
+
+  // Fallback: Authorization bearer token (helps in embedded/mini-app contexts where cookies may be blocked).
+  const h = req.headers?.authorization
+  const auth = typeof h === 'string' ? h.trim() : ''
+  if (auth.toLowerCase().startsWith('bearer ')) {
+    const token = auth.slice('bearer '.length).trim()
+    const headerSession = readSessionToken(token)
+    if (headerSession) return headerSession
+  }
+
+  return null
 }
 
 export function handleOptions(req: VercelRequest, res: VercelResponse): boolean {
@@ -214,6 +234,61 @@ export function readSessionToken(token: string | null | undefined): { address: s
   if (!address || !isAddressLike(address)) return null
   if (!exp || exp < Date.now()) return null
   return { address: address.toLowerCase() }
+}
+
+type NonceTokenPayload = {
+  n: string
+  iat: number
+  exp: number
+}
+
+/**
+ * A signed nonce token used when cookies are blocked (embedded contexts).
+ * This mirrors the cookie nonce but is passed back explicitly by the client.
+ */
+export function makeNonceToken(params: { nonce: string; now?: number }): string {
+  const now = typeof params.now === 'number' ? params.now : Date.now()
+  const payload: NonceTokenPayload = {
+    n: params.nonce,
+    iat: now,
+    exp: now + NONCE_TTL_SECONDS * 1000,
+  }
+  const payloadB64 = base64UrlEncode(JSON.stringify(payload))
+  const sigB64 = base64UrlEncode(hmacSha256(getSessionSecret(), payloadB64))
+  return `${payloadB64}.${sigB64}`
+}
+
+export function readNonceToken(token: string | null | undefined): { nonce: string } | null {
+  if (!token) return null
+  const parts = token.split('.')
+  if (parts.length !== 2) return null
+  const [payloadB64, sigB64] = parts
+  if (!payloadB64 || !sigB64) return null
+
+  const expected = base64UrlEncode(hmacSha256(getSessionSecret(), payloadB64))
+  try {
+    const a = Buffer.from(sigB64, 'utf8')
+    const b = Buffer.from(expected, 'utf8')
+    if (a.length !== b.length) return null
+    if (!timingSafeEqual(a, b)) return null
+  } catch {
+    return null
+  }
+
+  const payloadRaw = base64UrlDecodeToString(payloadB64)
+  if (!payloadRaw) return null
+  let parsed: any
+  try {
+    parsed = JSON.parse(payloadRaw)
+  } catch {
+    return null
+  }
+
+  const nonce = typeof parsed?.n === 'string' ? parsed.n : ''
+  const exp = typeof parsed?.exp === 'number' ? parsed.exp : 0
+  if (!nonce) return null
+  if (!exp || exp < Date.now()) return null
+  return { nonce }
 }
 
 export type ParsedSiwe = {

@@ -7,9 +7,11 @@ import {
   COOKIE_SESSION,
   handleOptions,
   hostMatchesDomain,
+  makeNonceToken,
   makeSessionToken,
   parseCookies,
   parseSiweMessage,
+  readNonceToken,
   readJsonBody,
   setCookie,
   setCors,
@@ -17,10 +19,11 @@ import {
   verifySiweSignature,
 } from './_shared.js'
 
-type VerifyBody = { message?: string; signature?: string }
+type VerifyBody = { message?: string; signature?: string; nonceToken?: string }
 
 type VerifyResponse = {
   address: string
+  sessionToken: string
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
@@ -35,6 +38,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const body = await readJsonBody<VerifyBody>(req)
   const message = typeof body?.message === 'string' ? body.message : ''
   const signature = typeof body?.signature === 'string' ? body.signature : ''
+  const nonceTokenRaw = typeof body?.nonceToken === 'string' ? body.nonceToken : ''
   if (!message || !signature) {
     return res.status(400).json({ success: false, error: 'Missing message or signature' } satisfies ApiEnvelope<never>)
   }
@@ -51,8 +55,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   const cookies = parseCookies(req)
   const cookieNonce = cookies[COOKIE_NONCE] ?? ''
-  if (!cookieNonce || cookieNonce !== parsed.nonce) {
-    return res.status(400).json({ success: false, error: 'Nonce mismatch' } satisfies ApiEnvelope<never>)
+  const cookieMatches = cookieNonce && cookieNonce === parsed.nonce
+  if (!cookieMatches) {
+    // Fallback for embedded contexts where cookies may be blocked: validate the signed nonce token.
+    const nonceToken = nonceTokenRaw ? readNonceToken(nonceTokenRaw) : null
+    if (!nonceToken || nonceToken.nonce !== parsed.nonce) {
+      return res.status(400).json({ success: false, error: 'Nonce mismatch' } satisfies ApiEnvelope<never>)
+    }
   }
 
   // Best-effort replay window: message must be recent.
@@ -72,7 +81,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   return res.status(200).json({
     success: true,
-    data: { address: verified.address } satisfies VerifyResponse,
+    data: { address: verified.address, sessionToken: token } satisfies VerifyResponse,
   } satisfies ApiEnvelope<VerifyResponse>)
 }
 

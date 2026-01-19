@@ -1,6 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 
-import { type ApiEnvelope, COOKIE_SESSION, handleOptions, parseCookies, readSessionToken, setCors, setNoStore } from './_shared.js'
+import { type ApiEnvelope, handleOptions, readSessionFromRequest, setCors, setNoStore } from './_shared.js'
 
 type MeResponse = { address: string } | null
 
@@ -13,9 +13,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(405).json({ success: false, error: 'Method not allowed' } satisfies ApiEnvelope<never>)
   }
 
-  const cookies = parseCookies(req)
-  const token = cookies[COOKIE_SESSION]
-  const session = readSessionToken(token)
+  const session = readSessionFromRequest(req)
   return res.status(200).json({ success: true, data: session ? { address: session.address } : null } satisfies ApiEnvelope<MeResponse>)
 }
 

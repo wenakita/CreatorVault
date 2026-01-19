@@ -1,6 +1,6 @@
 import type { VercelRequest } from '@vercel/node'
 
-import { COOKIE_SESSION, parseCookies, readSessionToken } from '../auth/_shared.js'
+import { readSessionFromRequest } from '../auth/_shared.js'
 
 declare const process: { env: Record<string, string | undefined> }
 
@@ -9,9 +9,7 @@ function isAddressLike(value: string): boolean {
 }
 
 export function getSessionAddress(req: VercelRequest): `0x${string}` | null {
-  const cookies = parseCookies(req)
-  const token = cookies[COOKIE_SESSION]
-  const session = readSessionToken(token)
+  const session = readSessionFromRequest(req)
   const addr = session?.address ? String(session.address) : ''
   if (!isAddressLike(addr)) return null
   return addr.toLowerCase() as `0x${string}`
