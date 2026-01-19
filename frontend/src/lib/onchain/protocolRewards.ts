@@ -15,7 +15,9 @@ const protocolRewardsAbi = [
 
 function getBaseRpcUrl(): string {
   const url = import.meta.env.VITE_BASE_RPC
-  return typeof url === 'string' && url.length > 0 ? url : 'https://mainnet.base.org'
+  // Avoid defaulting to `mainnet.base.org` (can 429). Prefer community endpoints as best-effort fallback.
+  if (typeof url === 'string' && url.length > 0) return url
+  return 'https://base-mainnet.public.blastapi.io'
 }
 
 function getBasePublicClient() {

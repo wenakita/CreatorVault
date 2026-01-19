@@ -10,12 +10,15 @@ import { farcasterMiniApp } from '@farcaster/miniapp-wagmi-connector'
  * - We also include a small fallback set of public endpoints to reduce flakiness.
  */
 
+// Put `mainnet.base.org` LAST because it can 429 under load.
+// If a paid RPC is configured via `VITE_BASE_RPC`, it is always tried first.
 const DEFAULT_BASE_RPCS = [
-  'https://mainnet.base.org',
   // Public community RPCs (best-effort; can change over time)
   'https://base-mainnet.public.blastapi.io',
-  // Note: some public RPCs can lag behind chain head; keep them last.
+  // Note: some public RPCs can lag behind chain head; keep them last (before base.org).
   'https://base.llamarpc.com',
+  // Official public endpoint (convenient, but rate-limited)
+  'https://mainnet.base.org',
 ] as const
 
 const baseRpcUrls = (() => {
