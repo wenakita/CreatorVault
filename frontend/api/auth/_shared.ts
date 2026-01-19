@@ -30,33 +30,66 @@ const eip1271Abi = [
   },
 ] as const
 
-function getBaseRpcUrl(): string {
-  const rpc = process.env.BASE_RPC_URL
-  if (rpc && rpc.length > 0) return rpc
-  return 'https://mainnet.base.org'
+const DEFAULT_BASE_RPCS = [
+  // Public community RPCs (best-effort)
+  'https://base-mainnet.public.blastapi.io',
+  'https://base.llamarpc.com',
+  // Official public endpoint (rate limited)
+  'https://mainnet.base.org',
+] as const
+
+function normalizeRpcUrl(raw: string): string | null {
+  const t = raw.trim()
+  if (!t) return null
+  // Accept bare hostnames pasted by accident.
+  if (!t.startsWith('http://') && !t.startsWith('https://')) return `https://${t}`
+  return t
+}
+
+function getBaseRpcUrls(): string[] {
+  const raw = (process.env.BASE_RPC_URL ?? '').trim()
+  const parts = raw
+    ? raw
+        .split(/[\s,]+/g)
+        .map(normalizeRpcUrl)
+        .filter((x): x is string => Boolean(x))
+    : []
+  const urls = parts.length > 0 ? [...parts, ...DEFAULT_BASE_RPCS] : [...DEFAULT_BASE_RPCS]
+  return Array.from(new Set(urls))
 }
 
 async function verifyEip1271(params: { contract: `0x${string}`; message: string; signature: `0x${string}` }): Promise<boolean> {
   const { createPublicClient, hashMessage, http } = await import('viem')
   const { base } = await import('viem/chains')
 
-  const client = createPublicClient({
-    chain: base,
-    transport: http(getBaseRpcUrl(), { timeout: 12_000 }),
-  })
-
-  // If there is no code, we can't verify EIP-1271 (counterfactual wallets would need EIP-6492).
-  const code = await client.getBytecode({ address: params.contract })
-  if (!code || code === '0x') return false
-
+  const urls = getBaseRpcUrls()
   const digest = hashMessage(params.message)
-  const magic = await client.readContract({
-    address: params.contract,
-    abi: eip1271Abi,
-    functionName: 'isValidSignature',
-    args: [digest, params.signature],
-  })
-  return String(magic).toLowerCase() === EIP1271_MAGICVALUE
+
+  for (const url of urls) {
+    try {
+      const client = createPublicClient({
+        chain: base,
+        transport: http(url, { timeout: 12_000 }),
+      })
+
+      // If there is no code, we can't verify EIP-1271 (counterfactual wallets would need EIP-6492).
+      const code = await client.getBytecode({ address: params.contract })
+      if (!code || code === '0x') return false
+
+      const magic = await client.readContract({
+        address: params.contract,
+        abi: eip1271Abi,
+        functionName: 'isValidSignature',
+        args: [digest, params.signature],
+      })
+      return String(magic).toLowerCase() === EIP1271_MAGICVALUE
+    } catch {
+      // Try next RPC (handles 429/rate-limits and transient upstream issues).
+      continue
+    }
+  }
+
+  return false
 }
 
 export function setNoStore(res: VercelResponse) {
