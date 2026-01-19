@@ -718,7 +718,15 @@ async function validateInnerCalls(params: { sender: Address; sessionAddress: Add
     }
   }
 
-  if (!mode || !expectedCreatorToken) throw new Error('missing_primary_call')
+  if (!mode || !expectedCreatorToken) {
+    const sample = innerCalls
+      .slice(0, 3)
+      .map((c) => `${c.target}:${getSelector(c.data)}`)
+      .join(',')
+    throw new Error(
+      `missing_primary_call(expectedBatcher=${creatorVaultBatcher},expectedActivation=${vaultActivationBatcher},seen=${sample})`,
+    )
+  }
 
   const bytecodeStoreRaw = contracts.universalBytecodeStore
   if (!bytecodeStoreRaw) throw new Error('bytecode_store_not_configured')
