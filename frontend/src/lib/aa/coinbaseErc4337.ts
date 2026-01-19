@@ -95,8 +95,16 @@ function createWalletBackedLocalAccount(params: { walletClient: WalletClientLike
     sign: async ({ hash }) => {
       // NOTE: `eth_sign` signs a 32-byte digest (no EIP-191 prefix). Some wallets disable this method.
       // If it's unavailable, callers should fall back to a wallet-native AA path (e.g. wallet_sendCalls).
-      const sig = await (walletClient as any).request({ method: 'eth_sign', params: [address, hash] })
-      return sig as Hex
+      try {
+        const sig = await (walletClient as any).request({ method: 'eth_sign', params: [address, hash] })
+        return sig as Hex
+      } catch (e: unknown) {
+        const msg = e instanceof Error ? e.message : String(e)
+        // Rabby (and some other wallets) block eth_sign for safety.
+        throw new Error(
+          `Wallet does not support eth_sign (required for Coinbase Smart Wallet ERC-4337 UserOps). ${msg}`.trim(),
+        )
+      }
     },
     signMessage: async ({ message }) => {
       return (await walletClient.signMessage({ account: address, message })) as Hex

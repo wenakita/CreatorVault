@@ -1622,23 +1622,14 @@ function DeployVaultBatcher({
           // Only attempt sponsorship when we have an active SIWE session.
           // Otherwise, the paymaster will (correctly) 401 and we should fall back to direct execution.
           const cdpBundlerUrl = isSignedIn ? paymasterUrl : null
+          const sponsoredCapabilities = isSignedIn ? (capabilities as any) : undefined
+          let phase1Submitted = false
 
           const phase1Calls: Array<{ target: Address; value: bigint; data: Hex }> = []
           phase1Calls.push(phase1Call)
 
-          if (cdpBundlerUrl) {
-            const res1 = await sendCoinbaseSmartWalletUserOperation({
-              publicClient,
-              walletClient,
-              bundlerUrl: cdpBundlerUrl,
-              smartWallet: owner,
-              ownerAddress: connected,
-              calls: phase1Calls.map((c) => ({ to: c.target, value: c.value, data: c.data })),
-              version: '1',
-            })
-            setTxId(res1.transactionHash)
-          } else {
-            const executeBatchPhase1 = encodeFunctionData({
+          const executeBatchPhase1 = async () => {
+            const data = encodeFunctionData({
               abi: COINBASE_SMART_WALLET_EXECUTE_BATCH_ABI,
               functionName: 'executeBatch',
               args: [phase1Calls],
@@ -1647,11 +1638,58 @@ function DeployVaultBatcher({
               account: (walletClient as any).account,
               chain: base as any,
               to: owner,
-              data: executeBatchPhase1,
+              data,
               value: 0n,
             })
             await publicClient.waitForTransactionReceipt({ hash: hash1 })
             setTxId(hash1)
+          }
+
+          // Zora-style preference: try wallet-native `wallet_sendCalls` with paymasterService first.
+          // This avoids relying on eth_sign (which Rabby blocks).
+          if (cdpBundlerUrl) {
+            try {
+              const executeBatchData = encodeFunctionData({
+                abi: COINBASE_SMART_WALLET_EXECUTE_BATCH_ABI,
+                functionName: 'executeBatch',
+                args: [phase1Calls],
+              })
+              const res = await sendCallsAsync({
+                calls: [{ to: owner, data: executeBatchData, value: 0n }],
+                account: connected,
+                chainId: base.id,
+                forceAtomic: true,
+                capabilities: sponsoredCapabilities,
+              })
+              setTxId(res.id)
+              phase1Submitted = true
+            } catch {
+              // Fall back to our ERC-4337 path (below), then to direct tx if needed.
+            }
+          }
+
+          // If `wallet_sendCalls` succeeded, Phase 1 is already in-flight.
+          // Otherwise, try our ERC-4337 UserOp path (requires eth_sign) and finally direct tx fallback.
+          if (!phase1Submitted) {
+            if (cdpBundlerUrl) {
+              try {
+                const res1 = await sendCoinbaseSmartWalletUserOperation({
+                  publicClient,
+                  walletClient,
+                  bundlerUrl: cdpBundlerUrl,
+                  smartWallet: owner,
+                  ownerAddress: connected,
+                  calls: phase1Calls.map((c) => ({ to: c.target, value: c.value, data: c.data })),
+                  version: '1',
+                })
+                setTxId(res1.transactionHash)
+              } catch {
+                // If the connected wallet blocks eth_sign (e.g. Rabby), fall back to a direct executeBatch tx.
+                await executeBatchPhase1()
+              }
+            } else {
+              await executeBatchPhase1()
+            }
           }
 
           // Phase 2: (optional top-up) + approve + deployPhase2AndLaunch
@@ -1824,30 +1862,66 @@ function DeployVaultBatcher({
             },
           ]
 
+          // Prefer wallet-native `wallet_sendCalls` (Zora pattern): call the smart wallet's executeBatch for phase2+phase3.
           if (cdpBundlerUrl) {
-            const res2 = await sendCoinbaseSmartWalletUserOperation({
-              publicClient,
-              walletClient,
-              bundlerUrl: cdpBundlerUrl,
-              smartWallet: owner,
-              ownerAddress: connected,
-              calls: phase2Calls.map((c) => ({ to: c.target, value: c.value, data: c.data })),
-              version: '1',
-            })
-            setTxId(res2.transactionHash)
+            try {
+              const executeBatch2 = encodeFunctionData({
+                abi: COINBASE_SMART_WALLET_EXECUTE_BATCH_ABI,
+                functionName: 'executeBatch',
+                args: [phase2Calls],
+              })
+              const executeBatch3 = encodeFunctionData({
+                abi: COINBASE_SMART_WALLET_EXECUTE_BATCH_ABI,
+                functionName: 'executeBatch',
+                args: [phase3Calls],
+              })
+              const res = await sendCallsAsync({
+                calls: [
+                  { to: owner, data: executeBatch2, value: 0n },
+                  { to: owner, data: executeBatch3, value: 0n },
+                ],
+                account: connected,
+                chainId: base.id,
+                // Allow non-atomic so the wallet/paymaster can split across multiple userops/txs.
+                forceAtomic: false,
+                capabilities: sponsoredCapabilities,
+              })
+              setTxId(res.id)
+              onSuccess(expected)
+              return
+            } catch {
+              // Fall back to ERC-4337 UserOps / direct txs below.
+            }
+          }
 
-            const res3 = await sendCoinbaseSmartWalletUserOperation({
-              publicClient,
-              walletClient,
-              bundlerUrl: cdpBundlerUrl,
-              smartWallet: owner,
-              ownerAddress: connected,
-              calls: phase3Calls.map((c) => ({ to: c.target, value: c.value, data: c.data })),
-              version: '1',
-            })
-            setTxId(res3.transactionHash)
-            onSuccess(expected)
-            return
+          if (cdpBundlerUrl) {
+            try {
+              const res2 = await sendCoinbaseSmartWalletUserOperation({
+                publicClient,
+                walletClient,
+                bundlerUrl: cdpBundlerUrl,
+                smartWallet: owner,
+                ownerAddress: connected,
+                calls: phase2Calls.map((c) => ({ to: c.target, value: c.value, data: c.data })),
+                version: '1',
+              })
+              setTxId(res2.transactionHash)
+
+              const res3 = await sendCoinbaseSmartWalletUserOperation({
+                publicClient,
+                walletClient,
+                bundlerUrl: cdpBundlerUrl,
+                smartWallet: owner,
+                ownerAddress: connected,
+                calls: phase3Calls.map((c) => ({ to: c.target, value: c.value, data: c.data })),
+                version: '1',
+              })
+              setTxId(res3.transactionHash)
+              onSuccess(expected)
+              return
+            } catch {
+              // If the connected wallet blocks eth_sign (e.g. Rabby), fall back to direct executeBatch txs below.
+            }
           }
 
           const executeBatchPhase2 = encodeFunctionData({
