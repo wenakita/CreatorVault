@@ -1617,7 +1617,9 @@ function DeployVaultBatcher({
         // Smart wallet executeBatch path (EOA submits, SW executes)
         // =================================
         if (isOperatorSubmit && isExecuteBatchPath) {
-          const cdpBundlerUrl = paymasterUrl
+          // Only attempt sponsorship when we have an active SIWE session.
+          // Otherwise, the paymaster will (correctly) 401 and we should fall back to direct execution.
+          const cdpBundlerUrl = isSignedIn ? paymasterUrl : null
 
           const phase1Calls: Array<{ target: Address; value: bigint; data: Hex }> = []
           phase1Calls.push(phase1Call)
@@ -2295,7 +2297,9 @@ function DeployVaultBatcher({
         // ===========================================
         // If CDP bundler/paymaster is configured, send a UserOperation via EntryPoint v0.6.
         // This avoids direct EOA tx execution and enables sponsorship.
-        const cdpBundlerUrl = paymasterUrl
+        // Only attempt sponsorship when we have an active SIWE session.
+        // Otherwise, the paymaster will (correctly) 401 and we should fall back to direct execution.
+        const cdpBundlerUrl = isSignedIn ? paymasterUrl : null
 
         if (cdpBundlerUrl) {
           try {
