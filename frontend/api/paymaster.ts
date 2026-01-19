@@ -756,6 +756,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(500).json(jsonRpcError(null, -32000, 'CDP paymaster endpoint is not configured'))
   }
 
+  // In production serverless, SIWE sessions MUST be signed with a stable secret.
+  // If this is unset, /api/auth/verify and /api/paymaster may run on different instances and
+  // the paymaster will always see "not authenticated".
+  const sessionSecret = (process.env.AUTH_SESSION_SECRET ?? '').trim()
+  const isVercel = Boolean((process.env.VERCEL ?? '').trim())
+  if (isVercel && sessionSecret.length < 16) {
+    return res.status(500).json(jsonRpcError(null, -32000, 'Server misconfigured: AUTH_SESSION_SECRET is not set'))
+  }
+
   const body = await readJsonBody<unknown>(req)
   if (!body) {
     return res.status(400).json(jsonRpcError(null, -32600, 'Invalid JSON body'))

@@ -132,10 +132,13 @@ export async function sendCoinbaseSmartWalletUserOperation(params: {
   })
 
   // CDP uses a single endpoint for bundler + paymaster JSON-RPC methods.
-  const paymasterClient = createPaymasterClient({ transport: http(bundlerUrl) })
+  // If `bundlerUrl` is our same-origin proxy (`/api/paymaster`), we MUST include cookies
+  // so the backend can validate the SIWE session (`cv_auth_session`).
+  const transport = http(bundlerUrl, { fetchOptions: { credentials: 'include' } })
+  const paymasterClient = createPaymasterClient({ transport })
   const bundlerClient = createBundlerClient({
     client: publicClient as any,
-    transport: http(bundlerUrl),
+    transport,
   })
 
   const userOpHash = await sendUserOperation(bundlerClient, {
