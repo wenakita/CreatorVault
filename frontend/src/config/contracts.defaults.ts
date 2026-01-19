@@ -18,6 +18,9 @@ export const BASE_DEFAULTS = {
   vrfConsumer: '0x0265236984DE964CB0422BaeFbDb2de7C9d590F5' as ContractAddress,
   payoutRouterFactory: '0x9C53cEaA15AdDB436c89A1F929fF12ED2BD26ea9' as ContractAddress,
 
+  // Base↔Solana bridge integration
+  solanaBridgeAdapter: '0x5D0e33a4DFAA4e1EB4BDf41B953baa03CA73eA92' as ContractAddress,
+
   // CREATE2 infra
   create2Factory: '0x4e59b44847b379578588920cA78FbF26c0B4956C' as ContractAddress,
   create2Deployer: '0xaBf645362104F34D9C3FE48440bE7c99aaDE58E7' as ContractAddress,

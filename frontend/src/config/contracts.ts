@@ -21,6 +21,7 @@ export const CONTRACTS = {
   lotteryManager: envAddress('VITE_LOTTERY_MANAGER', BASE_DEFAULTS.lotteryManager)!,
   vrfConsumer: envAddress('VITE_VRF_CONSUMER', BASE_DEFAULTS.vrfConsumer)!,
   payoutRouterFactory: envAddress('VITE_PAYOUT_ROUTER_FACTORY', BASE_DEFAULTS.payoutRouterFactory)!,
+  solanaBridgeAdapter: envAddress('VITE_SOLANA_BRIDGE_ADAPTER', BASE_DEFAULTS.solanaBridgeAdapter)!,
   // Universal CREATE2 factory (EIP-2470-style; deployed on many chains)
   create2Factory: envAddress('VITE_CREATE2_FACTORY', BASE_DEFAULTS.create2Factory)!,
   // Phase 2 (AA): CREATE2 deployer for permissionless, one-signature deployments

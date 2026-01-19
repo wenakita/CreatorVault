@@ -115,7 +115,7 @@ bridge SOL + call depositFromSolana(
 | BridgeValidator | `0xAF24c1c24Ff3BF1e6D882518120fC25442d6794B` |
 | CrossChainERC20Factory | `0xDD56781d0509650f8C2981231B6C917f2d5d7dF2` |
 | SOL Token | `0x311935Cd80B76769bF2ecC9D8Ab7635b2139cf82` |
-| **SolanaBridgeAdapter** | *To be deployed* |
+| **SolanaBridgeAdapter** | `0x5D0e33a4DFAA4e1EB4BDf41B953baa03CA73eA92` |
 
 ### Solana Mainnet
 | Program | Address |
@@ -353,7 +353,7 @@ bridge SOL + call depositFromSolana(
 | BridgeValidator | `0xAF24c1c24Ff3BF1e6D882518120fC25442d6794B` |
 | CrossChainERC20Factory | `0xDD56781d0509650f8C2981231B6C917f2d5d7dF2` |
 | SOL Token | `0x311935Cd80B76769bF2ecC9D8Ab7635b2139cf82` |
-| **SolanaBridgeAdapter** | *To be deployed* |
+| **SolanaBridgeAdapter** | `0x5D0e33a4DFAA4e1EB4BDf41B953baa03CA73eA92` |
 
 ### Solana Mainnet
 | Program | Address |
