@@ -1158,6 +1158,37 @@ function DeployVaultBatcher({
   const [approveBusy, setApproveBusy] = useState(false)
   const [approveError, setApproveError] = useState<string | null>(null)
   const [approveTxId, setApproveTxId] = useState<string | null>(null)
+  const [showUserOpSignModal, setShowUserOpSignModal] = useState(false)
+  const [dontShowUserOpSignAgain, setDontShowUserOpSignAgain] = useState(true)
+  const [userOpSignModalResolve, setUserOpSignModalResolve] = useState<((ok: boolean) => void) | null>(null)
+
+  const USEROP_SIGNING_ACK_KEY = 'cv_ack_userop_hash_signing_v1'
+
+  const openUserOpSignModal = async (): Promise<boolean> => {
+    // Persisted “don’t show again”
+    try {
+      if (localStorage.getItem(USEROP_SIGNING_ACK_KEY) === '1') return true
+    } catch {
+      // ignore
+    }
+
+    return await new Promise<boolean>((resolve) => {
+      setUserOpSignModalResolve(() => resolve)
+      setShowUserOpSignModal(true)
+    })
+  }
+
+  const closeUserOpSignModal = (ok: boolean) => {
+    try {
+      if (ok && dontShowUserOpSignAgain) localStorage.setItem(USEROP_SIGNING_ACK_KEY, '1')
+    } catch {
+      // ignore
+    }
+    setShowUserOpSignModal(false)
+    const r = userOpSignModalResolve
+    setUserOpSignModalResolve(null)
+    r?.(ok)
+  }
 
   const batcherAddress = (CONTRACTS.creatorVaultBatcher ?? null) as Address | null
 
@@ -1683,6 +1714,11 @@ function DeployVaultBatcher({
           if (!phase1Submitted) {
             if (cdpBundlerUrl) {
               try {
+                // Show a small explainer before the wallet prompt.
+                // Rabby will label this “Unknown signature type” because it’s signing a raw 32-byte UserOp hash.
+                const ok = await openUserOpSignModal()
+                if (!ok) throw new Error('Cancelled')
+
                 const res1 = await sendCoinbaseSmartWalletUserOperation({
                   publicClient,
                   walletClient,
@@ -1907,6 +1943,9 @@ function DeployVaultBatcher({
 
           if (cdpBundlerUrl) {
             try {
+              const ok = await openUserOpSignModal()
+              if (!ok) throw new Error('Cancelled')
+
               const res2 = await sendCoinbaseSmartWalletUserOperation({
                 publicClient,
                 walletClient,
@@ -3225,12 +3264,83 @@ function DeployVaultBatcher({
               : '1‑Click Deploy (AA)'}
       </button>
 
+      {isExecuteBatchPath && isSignedIn ? (
+        <div className="text-[11px] text-zinc-500 leading-relaxed">
+          You may be asked to sign an <span className="text-zinc-200">“Unknown signature type”</span> hash in your wallet. That’s expected for
+          ERC‑4337 batched deploys.{' '}
+          <button type="button" className="underline text-zinc-300 hover:text-white" onClick={() => void openUserOpSignModal()}>
+            Learn why
+          </button>
+          .
+        </div>
+      ) : null}
+
       {marketFloorText ? <div className="text-[11px] text-zinc-500">Market floor: {marketFloorText}</div> : null}
 
       {error ? <div className="text-[11px] text-red-400/90">{error}</div> : null}
       {txId ? (
         <div className="text-[11px] text-zinc-500">
           Submitted: <span className="font-mono text-zinc-300 break-all">{txId}</span>
+        </div>
+      ) : null}
+
+      {showUserOpSignModal ? (
+        <div className="fixed inset-0 z-[100]">
+          <div className="absolute inset-0 bg-black/70" onClick={() => closeUserOpSignModal(false)} />
+          <div className="absolute inset-0 flex items-center justify-center p-4">
+            <div className="w-full max-w-lg rounded-xl border border-white/10 bg-zinc-950 shadow-2xl">
+              <div className="p-5 border-b border-white/10">
+                <div className="text-[14px] text-zinc-100 font-medium">Before you sign</div>
+                <div className="text-[11px] text-zinc-500 mt-1">
+                  Some wallets (like Rabby) show this as <span className="text-zinc-200">“Unknown signature type”</span>.
+                </div>
+              </div>
+
+              <div className="p-5 space-y-3 text-[12px] text-zinc-300 leading-relaxed">
+                <div>
+                  <span className="font-medium text-zinc-100">What you’re signing:</span> a short 32‑byte hash. It’s the ERC‑4337 “UserOp hash”
+                  that authorizes a single batched deploy.
+                </div>
+                <div>
+                  <span className="font-medium text-zinc-100">This is not a transaction:</span> signing alone does not move funds. After you sign,
+                  the bundler submits the actual onchain transaction.
+                </div>
+                <div>
+                  <span className="font-medium text-zinc-100">Why you saw another transaction:</span> after the signature, you’ll typically see an
+                  onchain transaction executed by the bundler/EntryPoint that triggers your{' '}
+                  <span className="font-mono text-zinc-200">{shortAddress(owner)}</span> smart wallet to run the batched deploy.
+                </div>
+
+                <div className="rounded-lg border border-white/10 bg-black/30 p-3 space-y-1 text-[11px] text-zinc-400">
+                  <div>
+                    <span className="text-zinc-500">Site:</span>{' '}
+                    <span className="font-mono text-zinc-200">{typeof window !== 'undefined' ? window.location.origin : '—'}</span>
+                  </div>
+                  <div>
+                    <span className="text-zinc-500">Smart wallet:</span> <span className="font-mono text-zinc-200">{owner}</span>
+                  </div>
+                </div>
+
+                <label className="flex items-center gap-2 pt-1 text-[11px] text-zinc-500 select-none">
+                  <input
+                    type="checkbox"
+                    checked={dontShowUserOpSignAgain}
+                    onChange={(e) => setDontShowUserOpSignAgain(e.target.checked)}
+                  />
+                  Don’t show this again on this device
+                </label>
+              </div>
+
+              <div className="p-5 border-t border-white/10 flex items-center justify-end gap-2">
+                <button type="button" className="btn-ghost" onClick={() => closeUserOpSignModal(false)}>
+                  Cancel
+                </button>
+                <button type="button" className="btn-accent" onClick={() => closeUserOpSignModal(true)}>
+                  Continue
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
       ) : null}
     </div>
