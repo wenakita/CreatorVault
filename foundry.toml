@@ -10,7 +10,10 @@ optimizer_runs = 200
 
 # Needed for scripts that read frontend-generated deploy bytecode (e.g. SeedUniversalBytecodeStore).
 # Keep this narrow (read-only) for safety.
-fs_permissions = [{ access = "read", path = "./frontend/src/deploy" }]
+fs_permissions = [
+    { access = "read", path = "./frontend/src/deploy" },
+    { access = "read", path = "./out" }
+]
 
 # Remappings for LayerZero and other deps
 remappings = [

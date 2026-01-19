@@ -15,8 +15,8 @@ import "../contracts/helpers/infra/UniversalBytecodeStore.sol";
  *  UNIVERSAL_BYTECODE_STORE (optional; defaults to Base mainnet store)
  */
 contract SeedUniversalBytecodeStore is Script {
-    address constant DEFAULT_BYTECODE_STORE = 0xCDf45B94348DBBABba4bE6f4a5341badb83D4dC4;
-    string constant FRONTEND_BYTECODE_PATH = "frontend/src/deploy/bytecode.generated.ts";
+    // Base mainnet: v2 chunked store (see `frontend/src/config/contracts.defaults.ts`).
+    address constant DEFAULT_BYTECODE_STORE = 0x35c189aBcb7289AB87A54b5067538668662e0702;
     uint256 constant MAX_SSTORE2_BYTES = 24_575; // EIP-170 runtime limit (24,576) minus STOP prefix.
 
     function run() external {
@@ -29,7 +29,6 @@ contract SeedUniversalBytecodeStore is Script {
 
         console2.log("UniversalBytecodeStore:", storeAddr);
         UniversalBytecodeStore store = UniversalBytecodeStore(storeAddr);
-        string memory src = vm.readFile(FRONTEND_BYTECODE_PATH);
 
         bool supportsChunking = _supportsChunking(storeAddr);
         console2.log("Store supports chunking:", supportsChunking);
@@ -43,38 +42,49 @@ contract SeedUniversalBytecodeStore is Script {
         }
 
         vm.startBroadcast(pk);
-        _storeIfMissing(store, _extractCreationCode(src, "OFTBootstrapRegistry"), "OFTBootstrapRegistry", supportsChunking);
-        _storeIfMissing(store, _extractCreationCode(src, "CreatorShareOFT"), "CreatorShareOFT", supportsChunking);
-        _storeIfMissing(store, _extractCreationCode(src, "CreatorOVault"), "CreatorOVault", supportsChunking);
-        _storeIfMissing(store, _extractCreationCode(src, "CreatorOVaultWrapper"), "CreatorOVaultWrapper", supportsChunking);
-        _storeIfMissing(store, _extractCreationCode(src, "CreatorGaugeController"), "CreatorGaugeController", supportsChunking);
-        _storeIfMissing(store, _extractCreationCode(src, "CCALaunchStrategy"), "CCALaunchStrategy", supportsChunking);
-        _storeIfMissing(store, _extractCreationCode(src, "CreatorOracle"), "CreatorOracle", supportsChunking);
-        _storeIfMissing(store, _extractCreationCode(src, "CharmAlphaVaultDeploy"), "CharmAlphaVaultDeploy", supportsChunking);
-        _storeIfMissing(store, _extractCreationCode(src, "CreatorCharmStrategy"), "CreatorCharmStrategy", supportsChunking);
-        _storeIfMissing(store, _extractCreationCode(src, "AjnaStrategy"), "AjnaStrategy", supportsChunking);
+        _storeIfMissing(
+            store,
+            vm.getCode("out/OFTBootstrapRegistry.sol/OFTBootstrapRegistry.json"),
+            "OFTBootstrapRegistry",
+            supportsChunking
+        );
+        _storeIfMissing(store, vm.getCode("out/CreatorShareOFT.sol/CreatorShareOFT.json"), "CreatorShareOFT", supportsChunking);
+        _storeIfMissing(store, vm.getCode("out/CreatorOVault.sol/CreatorOVault.json"), "CreatorOVault", supportsChunking);
+        _storeIfMissing(
+            store,
+            vm.getCode("out/CreatorOVaultWrapper.sol/CreatorOVaultWrapper.json"),
+            "CreatorOVaultWrapper",
+            supportsChunking
+        );
+        _storeIfMissing(
+            store,
+            vm.getCode("out/CreatorGaugeController.sol/CreatorGaugeController.json"),
+            "CreatorGaugeController",
+            supportsChunking
+        );
+        _storeIfMissing(store, vm.getCode("out/CCALaunchStrategy.sol/CCALaunchStrategy.json"), "CCALaunchStrategy", supportsChunking);
+        _storeIfMissing(store, vm.getCode("out/CreatorOracle.sol/CreatorOracle.json"), "CreatorOracle", supportsChunking);
+        _storeIfMissing(store, vm.getCode("out/PayoutRouter.sol/PayoutRouter.json"), "PayoutRouter", supportsChunking);
+        _storeIfMissing(
+            store,
+            vm.getCode("out/VaultShareBurnStream.sol/VaultShareBurnStream.json"),
+            "VaultShareBurnStream",
+            supportsChunking
+        );
+        _storeIfMissing(
+            store,
+            vm.getCode("out/CharmAlphaVaultDeploy.sol/CharmAlphaVaultDeploy.json"),
+            "CharmAlphaVaultDeploy",
+            supportsChunking
+        );
+        _storeIfMissing(
+            store,
+            vm.getCode("out/CreatorCharmStrategy.sol/CreatorCharmStrategy.json"),
+            "CreatorCharmStrategy",
+            supportsChunking
+        );
+        _storeIfMissing(store, vm.getCode("out/AjnaStrategy.sol/AjnaStrategy.json"), "AjnaStrategy", supportsChunking);
         vm.stopBroadcast();
-    }
-
-    function _extractCreationCode(string memory src, string memory key) internal pure returns (bytes memory) {
-        string memory needle = string.concat(key, ": '");
-        uint256 start = _indexOf(src, needle);
-        require(start != type(uint256).max, "BYTECODE_KEY_NOT_FOUND");
-        start += bytes(needle).length;
-
-        bytes memory s = bytes(src);
-        uint256 end = start;
-        while (end < s.length && s[end] != bytes1("'")) {
-            end++;
-        }
-        require(end > start && end < s.length, "BYTECODE_UNTERMINATED");
-
-        bytes memory hexBytes = new bytes(end - start);
-        for (uint256 i = 0; i < hexBytes.length; i++) {
-            hexBytes[i] = s[start + i];
-        }
-
-        return _fromHexString(string(hexBytes));
     }
 
     function _storeIfMissing(
@@ -110,46 +120,5 @@ contract SeedUniversalBytecodeStore is Script {
         // `UniversalBytecodeStoreV2` exposes `chunkCount(bytes32)` for debugging.
         // v1 stores will not recognize the selector, causing the call to fail.
         (ok, ) = storeAddr.staticcall(abi.encodeWithSignature("chunkCount(bytes32)", bytes32(0)));
-    }
-
-    function _indexOf(string memory haystack, string memory needle) internal pure returns (uint256) {
-        bytes memory h = bytes(haystack);
-        bytes memory n = bytes(needle);
-        if (n.length == 0 || h.length < n.length) return type(uint256).max;
-
-        for (uint256 i = 0; i <= h.length - n.length; i++) {
-            bool ok = true;
-            for (uint256 j = 0; j < n.length; j++) {
-                if (h[i + j] != n[j]) {
-                    ok = false;
-                    break;
-                }
-            }
-            if (ok) return i;
-        }
-        return type(uint256).max;
-    }
-
-    function _fromHexChar(uint8 c) internal pure returns (uint8) {
-        if (c >= 48 && c <= 57) return c - 48; // 0-9
-        if (c >= 97 && c <= 102) return c - 87; // a-f
-        if (c >= 65 && c <= 70) return c - 55; // A-F
-        revert("INVALID_HEX_CHAR");
-    }
-
-    function _fromHexString(string memory str) internal pure returns (bytes memory) {
-        bytes memory s = bytes(str);
-        require(s.length >= 4, "HEX_TOO_SHORT");
-        require(s[0] == bytes1("0") && (s[1] == bytes1("x") || s[1] == bytes1("X")), "HEX_PREFIX");
-        uint256 len = s.length - 2;
-        require(len % 2 == 0, "HEX_ODD_LEN");
-
-        bytes memory out = new bytes(len / 2);
-        for (uint256 i = 0; i < out.length; i++) {
-            uint8 hi = _fromHexChar(uint8(s[2 + (2 * i)]));
-            uint8 lo = _fromHexChar(uint8(s[3 + (2 * i)]));
-            out[i] = bytes1((hi << 4) | lo);
-        }
-        return out;
     }
 }

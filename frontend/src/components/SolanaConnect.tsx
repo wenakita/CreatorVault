@@ -198,7 +198,7 @@ export function SolanaBridgeCard({ publicKey, onBridge }: SolanaBridgeCardProps)
         <label className="text-sm text-surface-400">Action on Base</label>
         <div className="grid grid-cols-3 gap-2">
           {[
-            { id: 'lottery', label: '🎰 Lottery', desc: 'Buy wsToken' },
+            { id: 'lottery', label: '🎰 Lottery', desc: 'Buy ■TOKEN' },
             { id: 'cca', label: '🏷️ CCA Bid', desc: 'Fair launch' },
             { id: 'deposit', label: '🏦 Deposit', desc: 'Into vault' },
           ].map((opt) => (
@@ -221,7 +221,7 @@ export function SolanaBridgeCard({ publicKey, onBridge }: SolanaBridgeCardProps)
       {/* Info box */}
       <div className="p-3 rounded-lg bg-brand-primary/5 border border-brand-primary/20 text-sm">
         <p className="text-brand-300">
-          {action === 'lottery' && 'Bridge SOL → Swap for wsToken → Enter lottery automatically!'}
+          {action === 'lottery' && 'Bridge SOL → Swap for ■TOKEN → Enter lottery automatically!'}
           {action === 'cca' && 'Bridge SOL → Submit bid to CCA auction for fair token distribution'}
           {action === 'deposit' && 'Bridge SOL → Swap for Creator Coin → Deposit into vault'}
         </p>

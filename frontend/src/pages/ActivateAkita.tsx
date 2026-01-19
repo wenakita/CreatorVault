@@ -16,7 +16,7 @@ export function ActivateAkita() {
   const protocolName = 'ERC4626'
   const protocolSymbol = '4626'
   // Fixed parameters for ERC4626 launch
-  const depositAmount = '50000000' // 50M ERC4626 (locked)
+  const depositAmount = '5000000' // 5M ERC4626 (temporary)
   const auctionPercent = 50 // 50% to auction, 50% stays in vault (locked)
   const [requiredRaise, setRequiredRaise] = useState('0.1') // 0.1 ETH minimum
   const SHARE_SYMBOL = toShareSymbol(protocolSymbol)
@@ -82,7 +82,7 @@ export function ActivateAkita() {
               1
             </div>
             <div className="flex-1">
-              <p className="text-white font-medium">Approve 50M {protocolName}</p>
+              <p className="text-white font-medium">Approve 5M {protocolName}</p>
               <p className="text-slate-500">To the activation batcher</p>
             </div>
           </div>
@@ -113,7 +113,7 @@ export function ActivateAkita() {
             </div>
             <div className="flex-1">
               <p className="text-white font-medium">Launch CCA + {SHARE_SYMBOL}/ETH V4 Pool</p>
-              <p className="text-slate-500">25M {SHARE_SYMBOL} auction · 0.3% fee tier with 6.9% hook</p>
+              <p className="text-slate-500">2.5M {SHARE_SYMBOL} auction · 0.3% fee tier with 6.9% hook</p>
             </div>
           </div>
         </div>
@@ -135,13 +135,13 @@ export function ActivateAkita() {
           <div className="grid grid-cols-2 gap-4 p-4 rounded-lg bg-white/[0.02] border border-white/10">
             <div>
               <p className="text-xs text-slate-500 mb-1">Deposit Amount</p>
-              <p className="text-2xl font-bold text-white">50M {protocolName}</p>
+              <p className="text-2xl font-bold text-white">5M {protocolName}</p>
               <p className="text-xs text-slate-400 mt-1">Fixed launch size</p>
             </div>
             <div>
               <p className="text-xs text-slate-500 mb-1">Allocation</p>
               <p className="text-2xl font-bold text-white">50/50</p>
-              <p className="text-xs text-slate-400 mt-1">25M auction + 25M stays with creator</p>
+              <p className="text-xs text-slate-400 mt-1">2.5M auction + 2.5M stays with creator</p>
             </div>
           </div>
 
@@ -173,7 +173,7 @@ export function ActivateAkita() {
               <div className="p-3 rounded-lg bg-yellow-500/10 border border-yellow-500/20 text-xs">
                 <p className="text-yellow-300 font-medium mb-1">⚠️ Prerequisites</p>
                 <p className="text-yellow-400/80">
-                  Recommended: deploy strategies + set weights (69% Charm LP / 21.39% Ajna) and set minimumTotalIdle (4.805M = 9.61%) before launching.
+                  Recommended: deploy strategies + set weights (69% Charm LP / 21.39% Ajna) and set minimumTotalIdle (480,500 = 9.61%) before launching.
                 </p>
                 <p className="text-yellow-400/80 mt-2">
                   Use <a className="underline hover:text-yellow-300" href="/admin/deploy-strategies">/admin/deploy-strategies</a>.

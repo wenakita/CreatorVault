@@ -35,9 +35,9 @@ interface ICCALaunchStrategy {
  * 
  * @dev After deploying via script, creator calls activate() to:
  *      1. Deposit their tokens to vault
- *      2. Wrap shares to wsTokens
+ *      2. Wrap shares to ■TOKEN
  *      3. Start CCA auction
- *      4. Send remaining wsTokens to creator
+ *      4. Send remaining ■TOKEN to creator
  * 
  * @dev FLOW:
  *      Step 1: forge script DeployCreatorVault (deploys 6 contracts)
@@ -114,7 +114,7 @@ contract VaultActivator is ReentrancyGuard {
         
         // ============ STEP 2: WRAP SHARES ============
         
-        // Approve and wrap to wsTokens
+        // Approve and wrap to ■TOKEN
         IERC20(vault).forceApprove(wrapper, shares);
         uint256 wsTokens = ICreatorOVaultWrapper(wrapper).wrap(shares);
         

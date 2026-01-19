@@ -11,6 +11,7 @@ import {
   encodePacked,
   erc20Abi,
   formatUnits,
+  getAddress,
   getCreate2Address,
   hashTypedData,
   isAddress,
@@ -54,8 +55,11 @@ import { appendPermit2SignatureType, buildPermit2PermitTransferFrom } from '@/li
 import { computeMarketFloorQuote } from '@/lib/cca/marketFloor'
 import { q96ToCurrencyPerTokenBaseUnits } from '@/lib/cca/q96'
 
-const MIN_FIRST_DEPOSIT = 50_000_000n * 10n ** 18n
+const MIN_FIRST_DEPOSIT = 5_000_000n * 10n ** 18n
 const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000' as const
+const BASE_SWAP_ROUTER = '0x2626664c2603336E57B271c5C0b26F421741e481' as const
+const PAYOUT_ROUTER_SALT_TAG = 'CreatorVault:PayoutRouter' as const
+const BURN_STREAM_SALT_TAG = 'CreatorVault:VaultShareBurnStream' as const
 
 // Uniswap CCA uses Q96 fixed-point prices + a compact step schedule.
 const DEFAULT_REQUIRED_RAISE_WEI = 100_000_000_000_000_000n // 0.1 ETH
@@ -205,6 +209,18 @@ function saltFor(baseSalt: Hex, label: string): Hex {
   return keccak256(encodePacked(['bytes32', 'string'], [baseSalt, label]))
 }
 
+function derivePayoutRouterSalt(params: { creatorToken: Address; owner: Address }): Hex {
+  return keccak256(
+    encodePacked(['string', 'address', 'address'], [PAYOUT_ROUTER_SALT_TAG, params.creatorToken, params.owner]),
+  )
+}
+
+function deriveVaultShareBurnStreamSalt(params: { creatorToken: Address; owner: Address }): Hex {
+  return keccak256(
+    encodePacked(['string', 'address', 'address'], [BURN_STREAM_SALT_TAG, params.creatorToken, params.owner]),
+  )
+}
+
 function deriveShareOftSalt(params: { owner: Address; shareSymbol: string; version: string }): Hex {
   const base = keccak256(encodePacked(['address', 'string'], [params.owner, params.shareSymbol.toLowerCase()]))
   return keccak256(encodePacked(['bytes32', 'string'], [base, `CreatorShareOFT:${params.version}`]))
@@ -294,6 +310,40 @@ const COIN_PAYOUT_RECIPIENT_ABI = [
     name: 'setPayoutRecipient',
     stateMutability: 'nonpayable',
     inputs: [{ name: 'newPayoutRecipient', type: 'address' }],
+    outputs: [],
+  },
+] as const
+
+const UNIVERSAL_CREATE2_DEPLOY_FROM_STORE_ABI = [
+  {
+    type: 'function',
+    name: 'deploy',
+    stateMutability: 'nonpayable',
+    inputs: [
+      { name: 'salt', type: 'bytes32' },
+      { name: 'codeId', type: 'bytes32' },
+      { name: 'constructorArgs', type: 'bytes' },
+    ],
+    outputs: [{ name: 'deployed', type: 'address' }],
+  },
+] as const
+
+const CREATOR_VAULT_ADMIN_ABI = [
+  {
+    type: 'function',
+    name: 'setBurnStream',
+    stateMutability: 'nonpayable',
+    inputs: [{ name: 'burnStream', type: 'address' }],
+    outputs: [],
+  },
+  {
+    type: 'function',
+    name: 'setWhitelist',
+    stateMutability: 'nonpayable',
+    inputs: [
+      { name: 'account', type: 'address' },
+      { name: 'status', type: 'bool' },
+    ],
     outputs: [],
   },
 ] as const
@@ -1240,6 +1290,14 @@ function DeployVaultBatcher({
     } as const
   }, [])
 
+  const payoutRouterCodeId = useMemo(() => {
+    return keccak256(DEPLOY_BYTECODE.PayoutRouter as Hex)
+  }, [])
+
+  const vaultShareBurnStreamCodeId = useMemo(() => {
+    return keccak256(DEPLOY_BYTECODE.VaultShareBurnStream as Hex)
+  }, [])
+
   const strategyCodeIds = useMemo(() => {
     return {
       charmAlphaVaultDeploy: keccak256(DEPLOY_BYTECODE.CharmAlphaVaultDeploy as Hex),
@@ -1331,6 +1389,24 @@ function DeployVaultBatcher({
       const ccaInitCode = concatHex([DEPLOY_BYTECODE.CCALaunchStrategy as Hex, ccaArgs])
       const ccaAddress = predictCreate2Address({ create2Deployer, salt: ccaSalt, initCode: ccaInitCode })
 
+      const weth = getAddress((CONTRACTS.weth ?? '0x4200000000000000000000000000000000000006') as Address)
+      const burnStreamSalt = deriveVaultShareBurnStreamSalt({ creatorToken, owner })
+      const burnStreamArgs = encodeAbiParameters(parseAbiParameters('address'), [vaultAddress])
+      const burnStreamInitCode = concatHex([DEPLOY_BYTECODE.VaultShareBurnStream as Hex, burnStreamArgs])
+      const burnStreamAddress = predictCreate2Address({ create2Deployer, salt: burnStreamSalt, initCode: burnStreamInitCode })
+
+      const payoutRouterSalt = derivePayoutRouterSalt({ creatorToken, owner })
+      const payoutRouterArgs = encodeAbiParameters(parseAbiParameters('address,address,address,address,address,address'), [
+        creatorToken,
+        vaultAddress,
+        burnStreamAddress,
+        owner,
+        getAddress(BASE_SWAP_ROUTER as Address),
+        weth,
+      ])
+      const payoutRouterInitCode = concatHex([DEPLOY_BYTECODE.PayoutRouter as Hex, payoutRouterArgs])
+      const payoutRouterAddress = predictCreate2Address({ create2Deployer, salt: payoutRouterSalt, initCode: payoutRouterInitCode })
+
       // NOTE: Oracle address depends on batcher immutables (registry/chainlink feed). We don't need it for gating.
       // Still return placeholders for UI consistency.
       const oracleInitCode = concatHex([DEPLOY_BYTECODE.CreatorOracle as Hex, '0x' as Hex])
@@ -1347,18 +1423,23 @@ function DeployVaultBatcher({
           gaugeController: gaugeAddress,
           ccaStrategy: ccaAddress,
           oracle: ZERO_ADDRESS as Address,
+          burnStream: burnStreamAddress,
+          payoutRouter: payoutRouterAddress,
         },
       }
     },
   })
 
   const expected = expectedQuery.data?.expected ?? null
+  const expectedCreate2Deployer = expectedQuery.data?.create2Deployer ?? null
   const expectedGauge = expected?.gaugeController ?? null
+  const expectedBurnStream = expected?.burnStream ?? null
+  const expectedPayoutRouter = expected?.payoutRouter ?? null
 
   const payoutMismatch =
-    !!expectedGauge &&
+    !!expectedPayoutRouter &&
     !!currentPayoutRecipient &&
-    expectedGauge.toLowerCase() !== currentPayoutRecipient.toLowerCase()
+    expectedPayoutRouter.toLowerCase() !== currentPayoutRecipient.toLowerCase()
 
   const submit = async () => {
     setBusy(true)
@@ -1369,7 +1450,8 @@ function DeployVaultBatcher({
       if (!batcherAddress) throw new Error('CreatorVaultBatcher is not configured. Set VITE_CREATOR_VAULT_BATCHER.')
       if (!publicClient) throw new Error('Network client not ready')
       if (!walletClient) throw new Error('Wallet not ready')
-      if (!expected || !expectedGauge) throw new Error('Failed to compute expected deployment addresses')
+      if (!expected || !expectedGauge || !expectedBurnStream || !expectedPayoutRouter || !expectedCreate2Deployer)
+        throw new Error('Failed to compute expected deployment addresses')
       if (!floorPriceQ96Aligned || floorPriceQ96Aligned <= 0n) {
         throw new Error('Market floor price not available. Wait for pricing to load.')
       }
@@ -1405,6 +1487,68 @@ function DeployVaultBatcher({
       const permit2 = await resolvePermit2()
 
       const isOperatorSubmit = connected.toLowerCase() !== owner.toLowerCase()
+
+      const weth = getAddress((CONTRACTS.weth ?? '0x4200000000000000000000000000000000000006') as Address)
+      const burnStreamSalt = deriveVaultShareBurnStreamSalt({ creatorToken, owner })
+      const burnStreamConstructorArgs = encodeAbiParameters(parseAbiParameters('address'), [expected.vault])
+      const burnStreamDeployCall = {
+        target: expectedCreate2Deployer,
+        value: 0n,
+        data: encodeFunctionData({
+          abi: UNIVERSAL_CREATE2_DEPLOY_FROM_STORE_ABI,
+          functionName: 'deploy',
+          args: [burnStreamSalt, vaultShareBurnStreamCodeId, burnStreamConstructorArgs],
+        }),
+      } as const
+
+      const burnStreamAlreadyDeployed = await (async () => {
+        const bc = await publicClient.getBytecode({ address: expectedBurnStream })
+        return !!bc && bc !== '0x'
+      })()
+
+      const payoutRouterSalt = derivePayoutRouterSalt({ creatorToken, owner })
+      const payoutRouterConstructorArgs = encodeAbiParameters(parseAbiParameters('address,address,address,address,address,address'), [
+        creatorToken,
+        expected.vault,
+        expectedBurnStream,
+        owner,
+        getAddress(BASE_SWAP_ROUTER as Address),
+        weth,
+      ])
+      const payoutRouterDeployCall = {
+        target: expectedCreate2Deployer,
+        value: 0n,
+        data: encodeFunctionData({
+          abi: UNIVERSAL_CREATE2_DEPLOY_FROM_STORE_ABI,
+          functionName: 'deploy',
+          args: [payoutRouterSalt, payoutRouterCodeId, payoutRouterConstructorArgs],
+        }),
+      } as const
+
+      const payoutRouterAlreadyDeployed = await (async () => {
+        const bc = await publicClient.getBytecode({ address: expectedPayoutRouter })
+        return !!bc && bc !== '0x'
+      })()
+
+      const vaultSetBurnStreamCall = {
+        target: expected.vault,
+        value: 0n,
+        data: encodeFunctionData({
+          abi: CREATOR_VAULT_ADMIN_ABI,
+          functionName: 'setBurnStream',
+          args: [expectedBurnStream],
+        }),
+      } as const
+
+      const vaultWhitelistRouterCall = {
+        target: expected.vault,
+        value: 0n,
+        data: encodeFunctionData({
+          abi: CREATOR_VAULT_ADMIN_ABI,
+          functionName: 'setWhitelist',
+          args: [expectedPayoutRouter, true],
+        }),
+      } as const
 
       // ===========================
       // Two-step batcher (Phase 1 + Phase 2) path
@@ -1476,17 +1620,6 @@ function DeployVaultBatcher({
           const cdpBundlerUrl = paymasterUrl
 
           const phase1Calls: Array<{ target: Address; value: bigint; data: Hex }> = []
-          if (payoutMismatch) {
-            phase1Calls.push({
-              target: creatorToken,
-              value: 0n,
-              data: encodeFunctionData({
-                abi: COIN_PAYOUT_RECIPIENT_ABI,
-                functionName: 'setPayoutRecipient',
-                args: [expectedGauge],
-              }),
-            })
-          }
           phase1Calls.push(phase1Call)
 
           if (cdpBundlerUrl) {
@@ -1654,6 +1787,27 @@ function DeployVaultBatcher({
             }),
           })
 
+          // Post-deploy config (owner-only):
+          // - deploy burn stream + payout router
+          // - set vault burn stream
+          // - whitelist router (future-proof if whitelistEnabled is turned on)
+          // - set coin payoutRecipient to router
+          if (!burnStreamAlreadyDeployed) phase2Calls.push(burnStreamDeployCall)
+          if (!payoutRouterAlreadyDeployed) phase2Calls.push(payoutRouterDeployCall)
+          phase2Calls.push(vaultSetBurnStreamCall)
+          phase2Calls.push(vaultWhitelistRouterCall)
+          if (payoutMismatch) {
+            phase2Calls.push({
+              target: creatorToken,
+              value: 0n,
+              data: encodeFunctionData({
+                abi: COIN_PAYOUT_RECIPIENT_ABI,
+                functionName: 'setPayoutRecipient',
+                args: [expectedPayoutRouter],
+              }),
+            })
+          }
+
           const phase3Calls: Array<{ target: Address; value: bigint; data: Hex }> = [
             {
               target: batcherAddress,
@@ -1737,18 +1891,6 @@ function DeployVaultBatcher({
         try {
           const calls: { to: Address; data: Hex; value?: bigint }[] = []
 
-          if (payoutMismatch) {
-            calls.push({
-              to: creatorToken,
-              data: encodeFunctionData({
-                abi: COIN_PAYOUT_RECIPIENT_ABI,
-                functionName: 'setPayoutRecipient',
-                args: [expectedGauge],
-              }),
-              value: 0n,
-            })
-          }
-
           // Phase 1
           calls.push({ to: batcherAddress, data: phase1Call.data, value: 0n })
 
@@ -1794,6 +1936,23 @@ function DeployVaultBatcher({
             value: 0n,
           })
 
+          // Post-deploy config (owner-only)
+          if (!burnStreamAlreadyDeployed) calls.push({ to: burnStreamDeployCall.target, data: burnStreamDeployCall.data, value: 0n })
+          if (!payoutRouterAlreadyDeployed) calls.push({ to: payoutRouterDeployCall.target, data: payoutRouterDeployCall.data, value: 0n })
+          calls.push({ to: vaultSetBurnStreamCall.target, data: vaultSetBurnStreamCall.data, value: 0n })
+          calls.push({ to: vaultWhitelistRouterCall.target, data: vaultWhitelistRouterCall.data, value: 0n })
+          if (payoutMismatch) {
+            calls.push({
+              to: creatorToken,
+              data: encodeFunctionData({
+                abi: COIN_PAYOUT_RECIPIENT_ABI,
+                functionName: 'setPayoutRecipient',
+                args: [expectedPayoutRouter],
+              }),
+              value: 0n,
+            })
+          }
+
           // Phase 3 (strategies)
           calls.push({
             to: batcherAddress,
@@ -1821,21 +1980,6 @@ function DeployVaultBatcher({
         }
 
         // Fallback: sequential txs (will require multiple confirmations).
-        if (payoutMismatch) {
-          const hashPayout = await walletClient.sendTransaction({
-            account: (walletClient as any).account,
-            chain: base as any,
-            to: creatorToken,
-            data: encodeFunctionData({
-              abi: COIN_PAYOUT_RECIPIENT_ABI,
-              functionName: 'setPayoutRecipient',
-              args: [expectedGauge],
-            }),
-            value: 0n,
-          })
-          await publicClient.waitForTransactionReceipt({ hash: hashPayout })
-        }
-
         const hash1 = await walletClient.sendTransaction({
           account: (walletClient as any).account,
           chain: base as any,
@@ -1895,6 +2039,61 @@ function DeployVaultBatcher({
         })
         await publicClient.waitForTransactionReceipt({ hash: hash2 })
         setTxId(hash2)
+
+        // Post-deploy config (owner-only)
+        if (!burnStreamAlreadyDeployed) {
+          const hashBurnStream = await walletClient.sendTransaction({
+            account: (walletClient as any).account,
+            chain: base as any,
+            to: burnStreamDeployCall.target,
+            data: burnStreamDeployCall.data,
+            value: 0n,
+          })
+          await publicClient.waitForTransactionReceipt({ hash: hashBurnStream })
+        }
+        if (!payoutRouterAlreadyDeployed) {
+          const hashRouter = await walletClient.sendTransaction({
+            account: (walletClient as any).account,
+            chain: base as any,
+            to: payoutRouterDeployCall.target,
+            data: payoutRouterDeployCall.data,
+            value: 0n,
+          })
+          await publicClient.waitForTransactionReceipt({ hash: hashRouter })
+        }
+
+        const hashSetBurnStream = await walletClient.sendTransaction({
+          account: (walletClient as any).account,
+          chain: base as any,
+          to: vaultSetBurnStreamCall.target,
+          data: vaultSetBurnStreamCall.data,
+          value: 0n,
+        })
+        await publicClient.waitForTransactionReceipt({ hash: hashSetBurnStream })
+
+        const hashWhitelist = await walletClient.sendTransaction({
+          account: (walletClient as any).account,
+          chain: base as any,
+          to: vaultWhitelistRouterCall.target,
+          data: vaultWhitelistRouterCall.data,
+          value: 0n,
+        })
+        await publicClient.waitForTransactionReceipt({ hash: hashWhitelist })
+
+        if (payoutMismatch) {
+          const hashPayout = await walletClient.sendTransaction({
+            account: (walletClient as any).account,
+            chain: base as any,
+            to: creatorToken,
+            data: encodeFunctionData({
+              abi: COIN_PAYOUT_RECIPIENT_ABI,
+              functionName: 'setPayoutRecipient',
+              args: [expectedPayoutRouter],
+            }),
+            value: 0n,
+          })
+          await publicClient.waitForTransactionReceipt({ hash: hashPayout })
+        }
 
         const hash3 = await walletClient.sendTransaction({
           account: (walletClient as any).account,
@@ -2019,18 +2218,6 @@ function DeployVaultBatcher({
           })
         }
 
-        if (payoutMismatch) {
-          calls.push({
-            target: creatorToken,
-            value: 0n,
-            data: encodeFunctionData({
-              abi: COIN_PAYOUT_RECIPIENT_ABI,
-              functionName: 'setPayoutRecipient',
-              args: [expectedGauge],
-            }),
-          })
-        }
-
         // Ensure the smart wallet has approved the batcher to pull the full depositAmount.
         const swAllowanceToBatcher = (await publicClient.readContract({
           address: creatorToken,
@@ -2089,6 +2276,19 @@ function DeployVaultBatcher({
             ],
           }),
         })
+
+        if (!payoutRouterAlreadyDeployed) calls.push(payoutRouterDeployCall)
+        if (payoutMismatch) {
+          calls.push({
+            target: creatorToken,
+            value: 0n,
+            data: encodeFunctionData({
+              abi: COIN_PAYOUT_RECIPIENT_ABI,
+              functionName: 'setPayoutRecipient',
+              args: [expectedPayoutRouter],
+            }),
+          })
+        }
 
         // ===========================================
         // Preferred: "true" ERC-4337 UserOperation path
@@ -2439,18 +2639,6 @@ function DeployVaultBatcher({
 
           const permitCalls: { to: Address; data: Hex; value?: bigint }[] = []
 
-          if (payoutMismatch) {
-            permitCalls.push({
-              to: creatorToken,
-              data: encodeFunctionData({
-                abi: COIN_PAYOUT_RECIPIENT_ABI,
-                functionName: 'setPayoutRecipient',
-                args: [expectedGauge],
-              }),
-              value: 0n,
-            })
-          }
-
           permitCalls.push({
             to: batcherAddress,
             data: encodeFunctionData({
@@ -2477,6 +2665,21 @@ function DeployVaultBatcher({
             }),
           })
 
+          if (!payoutRouterAlreadyDeployed) {
+            permitCalls.push({ to: payoutRouterDeployCall.target, data: payoutRouterDeployCall.data, value: 0n })
+          }
+          if (payoutMismatch) {
+            permitCalls.push({
+              to: creatorToken,
+              data: encodeFunctionData({
+                abi: COIN_PAYOUT_RECIPIENT_ABI,
+                functionName: 'setPayoutRecipient',
+                args: [expectedPayoutRouter],
+              }),
+              value: 0n,
+            })
+          }
+
           try {
             const res = await sendCallsAsync({
               calls: permitCalls.map((c) => ({ to: c.to, data: c.data, value: c.value ?? 0n })),
@@ -2493,15 +2696,17 @@ function DeployVaultBatcher({
           }
 
           assertSequentialAllowed()
-          const hash = await walletClient.sendTransaction({
-            account: (walletClient as any).account,
-            chain: base as any,
-            to: batcherAddress,
-            data: permitCalls[0]!.data,
-            value: 0n,
-          })
-          await publicClient.waitForTransactionReceipt({ hash })
-          setTxId(hash)
+          for (const c of permitCalls) {
+            const hash = await walletClient.sendTransaction({
+              account: (walletClient as any).account,
+              chain: base as any,
+              to: c.to,
+              data: c.data,
+              value: c.value ?? 0n,
+            })
+            await publicClient.waitForTransactionReceipt({ hash })
+            setTxId(hash)
+          }
           onSuccess(expected)
           return
         } catch (permitErr) {
@@ -2511,17 +2716,6 @@ function DeployVaultBatcher({
       }
 
       const calls: { to: Address; data: Hex; value?: bigint }[] = []
-      if (payoutMismatch) {
-        calls.push({
-          to: creatorToken,
-          data: encodeFunctionData({
-            abi: COIN_PAYOUT_RECIPIENT_ABI,
-            functionName: 'setPayoutRecipient',
-            args: [expectedGauge],
-          }),
-          value: 0n,
-        })
-      }
 
       // ===========================
       // Permit2-first path
@@ -2619,6 +2813,21 @@ function DeployVaultBatcher({
           }),
         })
 
+        if (!payoutRouterAlreadyDeployed) {
+          calls.push({ to: payoutRouterDeployCall.target, data: payoutRouterDeployCall.data, value: 0n })
+        }
+        if (payoutMismatch) {
+          calls.push({
+            to: creatorToken,
+            data: encodeFunctionData({
+              abi: COIN_PAYOUT_RECIPIENT_ABI,
+              functionName: 'setPayoutRecipient',
+              args: [expectedPayoutRouter],
+            }),
+            value: 0n,
+          })
+        }
+
         // Prefer atomic EIP-5792 batching when supported.
         try {
           const res = await sendCallsAsync({
@@ -2660,17 +2869,6 @@ function DeployVaultBatcher({
       // Approve fallback path
       // ===========================
       const fallbackCalls: { to: Address; data: Hex; value?: bigint }[] = []
-      if (payoutMismatch) {
-        fallbackCalls.push({
-          to: creatorToken,
-          data: encodeFunctionData({
-            abi: COIN_PAYOUT_RECIPIENT_ABI,
-            functionName: 'setPayoutRecipient',
-            args: [expectedGauge],
-          }),
-          value: 0n,
-        })
-      }
       fallbackCalls.push({
         to: creatorToken,
         data: encodeFunctionData({
@@ -2703,6 +2901,21 @@ function DeployVaultBatcher({
           ],
         }),
       })
+
+      if (!payoutRouterAlreadyDeployed) {
+        fallbackCalls.push({ to: payoutRouterDeployCall.target, data: payoutRouterDeployCall.data, value: 0n })
+      }
+      if (payoutMismatch) {
+        fallbackCalls.push({
+          to: creatorToken,
+          data: encodeFunctionData({
+            abi: COIN_PAYOUT_RECIPIENT_ABI,
+            functionName: 'setPayoutRecipient',
+            args: [expectedPayoutRouter],
+          }),
+          value: 0n,
+        })
+      }
 
       try {
         const res = await sendCallsAsync({
@@ -3316,7 +3529,7 @@ export function DeployVault() {
   }, [coinSmartWallet, connector, isConnected])
 
   // If the coin was created from a smart wallet (Privy/Coinbase Smart Wallet), prefer using that
-  // as the execution account for deployment + the 50M initial deposit.
+  // as the execution account for deployment + the 5M initial deposit.
   //
   // - `coinSmartWallet`: smart wallet address that matches the coin's creator or payoutRecipient.
   // - Fallback to the connected wallet when we cannot confidently identify a smart wallet.
@@ -3514,6 +3727,9 @@ export function DeployVault() {
       cca: keccak256(DEPLOY_BYTECODE.CCALaunchStrategy as Hex),
       oracle: keccak256(DEPLOY_BYTECODE.CreatorOracle as Hex),
       oftBootstrap: keccak256(DEPLOY_BYTECODE.OFTBootstrapRegistry as Hex),
+      // Newly required per-vault contracts (deployed via UniversalCreate2DeployerFromStore)
+      payoutRouter: keccak256(DEPLOY_BYTECODE.PayoutRouter as Hex),
+      vaultShareBurnStream: keccak256(DEPLOY_BYTECODE.VaultShareBurnStream as Hex),
       charmAlphaVaultDeploy: keccak256(DEPLOY_BYTECODE.CharmAlphaVaultDeploy as Hex),
       creatorCharmStrategy: keccak256(DEPLOY_BYTECODE.CreatorCharmStrategy as Hex),
       ajnaStrategy: keccak256(DEPLOY_BYTECODE.AjnaStrategy as Hex),
@@ -3532,6 +3748,8 @@ export function DeployVault() {
       deployCodeIds.cca,
       deployCodeIds.oracle,
       deployCodeIds.oftBootstrap,
+      deployCodeIds.payoutRouter,
+      deployCodeIds.vaultShareBurnStream,
       deployCodeIds.charmAlphaVaultDeploy,
       deployCodeIds.creatorCharmStrategy,
       deployCodeIds.ajnaStrategy,
@@ -3589,6 +3807,8 @@ export function DeployVault() {
         { key: 'gauge', label: 'CreatorGaugeController', codeId: deployCodeIds.gauge },
         { key: 'cca', label: 'CCALaunchStrategy', codeId: deployCodeIds.cca },
         { key: 'oracle', label: 'CreatorOracle', codeId: deployCodeIds.oracle },
+        { key: 'vaultShareBurnStream', label: 'VaultShareBurnStream', codeId: deployCodeIds.vaultShareBurnStream },
+        { key: 'payoutRouter', label: 'PayoutRouter', codeId: deployCodeIds.payoutRouter },
         { key: 'charmAlphaVaultDeploy', label: 'CharmAlphaVaultDeploy', codeId: deployCodeIds.charmAlphaVaultDeploy },
         { key: 'creatorCharmStrategy', label: 'CreatorCharmStrategy', codeId: deployCodeIds.creatorCharmStrategy },
         { key: 'ajnaStrategy', label: 'AjnaStrategy', codeId: deployCodeIds.ajnaStrategy },
@@ -3652,7 +3872,7 @@ export function DeployVault() {
 
   const minFirstDeposit = useMemo(() => {
     if (typeof resolvedTokenDecimals === 'number' && resolvedTokenDecimals >= 0) {
-      return 50_000_000n * 10n ** BigInt(resolvedTokenDecimals)
+      return 5_000_000n * 10n ** BigInt(resolvedTokenDecimals)
     }
     return MIN_FIRST_DEPOSIT
   }, [resolvedTokenDecimals])
@@ -3785,7 +4005,7 @@ export function DeployVault() {
       hint: authReady
         ? fundingReady
           ? 'ready'
-          : `needs 50,000,000 ${underlyingSymbolUpper || 'TOKENS'}`
+          : `needs 5,000,000 ${underlyingSymbolUpper || 'TOKENS'}`
         : 'not authorized',
     },
     {
@@ -3826,7 +4046,7 @@ export function DeployVault() {
                   : !isAuthorizedDeployerOrOperator
                     ? 'Connect the creator or payout recipient wallet.'
                     : !fundingGateOk
-                      ? `Needs 50,000,000 ${underlyingSymbolUpper || 'TOKENS'} to deploy.`
+                      ? `Needs 5,000,000 ${underlyingSymbolUpper || 'TOKENS'} to deploy.`
                       : identity.blockingReason && !executeBatchEligible && !operatorModeEligible
                         ? identity.blockingReason
                     : bytecodeInfraQuery.isFetching
@@ -4279,7 +4499,7 @@ export function DeployVault() {
                         ) : (
                           <>
                             Deployment executes onchain from your <span className="text-white">connected wallet</span>. It must hold the first{' '}
-                            <span className="text-white font-medium">50,000,000 {underlyingSymbolUpper || 'TOKENS'}</span> deposit.
+                            <span className="text-white font-medium">5,000,000 {underlyingSymbolUpper || 'TOKENS'}</span> deposit.
                           </>
                         )}
                       </div>
@@ -4451,7 +4671,7 @@ export function DeployVault() {
                   disabled
                   className="w-full py-4 bg-black/30 border border-zinc-900/60 rounded-lg text-zinc-600 text-sm cursor-not-allowed"
                 >
-                  {`Your wallet needs 50,000,000 ${underlyingSymbolUpper || 'TOKENS'} to deploy & launch`}
+                  {`Your wallet needs 5,000,000 ${underlyingSymbolUpper || 'TOKENS'} to deploy & launch`}
                 </button>
               ) : canDeploy ? (
                 <>
@@ -4502,7 +4722,7 @@ export function DeployVault() {
               ) : null}
 
               <div className="text-xs text-zinc-600">
-                Requires a 50,000,000 {underlyingSymbolUpper || 'TOKENS'} deposit. Some wallets may prompt multiple confirmations.
+                Requires a 5,000,000 {underlyingSymbolUpper || 'TOKENS'} deposit. Some wallets may prompt multiple confirmations.
               </div>
             </div>
 
@@ -4572,7 +4792,7 @@ export function DeployVault() {
                   label="Share token"
                   title={`${derivedShareName || '—'} (${derivedShareSymbol || '—'})`}
                   contractName="CreatorShareOFT"
-                  note="Wrapped vault shares token (wsToken) used for routing fees."
+                  note="Wrapped vault shares token (■TOKEN) used for routing fees."
                   metaLine={
                     <>
                       <span className="inline-flex items-center gap-1.5 text-zinc-400">
@@ -4598,7 +4818,7 @@ export function DeployVault() {
                   label="Wrapper"
                   title="Vault Wrapper"
                   contractName="CreatorOVaultWrapper"
-                  note="Wraps/unlocks vault shares into the wsToken."
+                  note="Wraps/unlocks vault shares into ■TOKEN."
                 />
 
                 <ExplainerRow

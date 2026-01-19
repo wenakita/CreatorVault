@@ -107,7 +107,7 @@ Step 3: CreatorVaultBatcher deploys + wires + launches
 
 ### **For Creators:**
 - ✅ 1-click CCA launch (via VaultActivationBatcher)
-- ✅ Cross-chain wsTokens (LayerZero OFT)
+- ✅ Cross-chain ■TOKEN (LayerZero OFT)
 - ✅ Automated fee distribution
 - ✅ Uniswap V4 integration
 - ✅ Yield strategies (optional)

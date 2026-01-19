@@ -28,7 +28,7 @@ export const BASE_DEFAULTS = {
   // AA helpers
   vaultActivationBatcher: '0x4b67e3a4284090e5191c27B8F24248eC82DF055D' as ContractAddress,
   // v2-infra CreatorVaultBatcher (deterministic, deployed via CREATE2 factory)
-  creatorVaultBatcher: '0xa06d34f47c8e784e8fa6d1352092e6bb6186e35b' as ContractAddress,
+  creatorVaultBatcher: '0x3a3D5e0643b22a188E07DCD894B4c9F347C8f763' as ContractAddress,
 
   // Treasury
   protocolTreasury: '0x7d429eCbdcE5ff516D6e0a93299cbBa97203f2d3' as ContractAddress,
@@ -62,6 +62,8 @@ export const BASE_DEFAULTS = {
 } as const
 
 export const AKITA_DEFAULTS = {
+  // NOTE: This is an example creator coin stack.
+  // If/when you redeploy the AKITA vault stack, update these addresses to the new deployment outputs.
   token: '0x5b674196812451b7cec024fe9d22d2c0b172fa75' as ContractAddress,
   vault: '0xA015954E2606d08967Aee3787456bB3A86a46A42' as ContractAddress,
   wrapper: '0x58Cd1E9248F89138208A601e95A531d3c0fa0c4f' as ContractAddress,
@@ -72,6 +74,8 @@ export const AKITA_DEFAULTS = {
 } as const
 
 export const ERC4626_DEFAULTS = {
+  // TODO: Replace these with the real protocol coin ($4626) creator-coin stack once it exists.
+  // Until then, we mirror AKITA so the app has a working default example without requiring env vars.
   token: AKITA_DEFAULTS.token,
   vault: AKITA_DEFAULTS.vault,
   wrapper: AKITA_DEFAULTS.wrapper,

@@ -95,7 +95,7 @@ contract VaultActivationBatcher is ReentrancyGuard {
      * @param wrapper The wrapper contract
      * @param ccaStrategy The CCA strategy contract
      * @param depositAmount Amount of creator tokens to deposit
-     * @param auctionPercent Percent of wsTokens to auction (0-100)
+     * @param auctionPercent Percent of ■TOKEN to auction (0-100)
      * @param requiredRaise Minimum ETH to raise in auction
      * @return auction The auction contract address
      *
@@ -123,12 +123,12 @@ contract VaultActivationBatcher is ReentrancyGuard {
         IERC20(creatorToken).forceApprove(vault, depositAmount);
         uint256 shares = IVault(vault).deposit(depositAmount, address(this));
 
-        // ============ STEP 3: Wrap shares to wsTokens ============
+        // ============ STEP 3: Wrap shares to ■TOKEN ============
         address vaultTokenAddress = vault; // Vault token = vault address
         IERC20(vaultTokenAddress).forceApprove(wrapper, shares);
         uint256 wsTokens = IWrapper(wrapper).wrap(shares);
 
-        // Get wsToken address from wrapper
+        // Get ■TOKEN address from wrapper
         address wsToken = IWrapper(wrapper).shareOFT();
         
         // ============ STEP 4: Launch auction ============
@@ -140,7 +140,7 @@ contract VaultActivationBatcher is ReentrancyGuard {
             auction = ICCAStrategy(ccaStrategy).launchAuctionSimple(auctionAmount, requiredRaise);
         }
 
-        // ============ STEP 5: Return remaining wsTokens to user ============
+        // ============ STEP 5: Return remaining ■TOKEN to user ============
         uint256 remainingWsTokens = wsTokens - auctionAmount;
         if (remainingWsTokens > 0) {
             IERC20(wsToken).safeTransfer(msg.sender, remainingWsTokens);
@@ -191,12 +191,12 @@ contract VaultActivationBatcher is ReentrancyGuard {
         IERC20(creatorToken).forceApprove(vault, depositAmount);
         uint256 shares = IVault(vault).deposit(depositAmount, address(this));
 
-        // ============ STEP 3: Wrap shares to wsTokens ============
+        // ============ STEP 3: Wrap shares to ■TOKEN ============
         address vaultTokenAddress = vault; // Vault token = vault address
         IERC20(vaultTokenAddress).forceApprove(wrapper, shares);
         uint256 wsTokens = IWrapper(wrapper).wrap(shares);
 
-        // Get wsToken address from wrapper
+        // Get ■TOKEN address from wrapper
         address wsToken = IWrapper(wrapper).shareOFT();
 
         // ============ STEP 4: Launch auction ============

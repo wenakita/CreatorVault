@@ -1,0 +1,14 @@
+{
+  "contractName": "SolanaBridgeAdapter",
+  "network": "Base",
+  "chainId": 8453,
+  "address": "0x5D0e33a4DFAA4e1EB4BDf41B953baa03CA73eA92",
+  "deployedBy": "0xd836414eF13a165cC5Ba63De10b4a46b8d1F5A80",
+  "deployedAt": "2026-01-19T07:17:35Z",
+  "notes": [
+    "Deployed via script/DeploySolanaBridgeAdapter.s.sol",
+    "Constructor: (creatorRegistry, owner)",
+    "Twin-only auth enforced via Bridge.getPredictedTwinAddress(bytes32)"
+  ]
+}
+

@@ -428,7 +428,7 @@ contract CreatorShareOFT is OFT, ReentrancyGuard {
     /**
      * @notice Set the tax config delegate (for future custom hooks)
      * @dev NOTE: The existing SimpleSellTaxHook at 0xca975B9dAF772C71161f3648437c3616E5Be0088
-     *      checks msg.sender == token.owner(), so ONLY the wsToken owner can configure it.
+     *      checks msg.sender == token.owner(), so ONLY the ■TOKEN owner can configure it.
      *      This delegate feature is for future hooks that accept delegated configuration.
      * @param _delegate Address that can call configureTaxHook on behalf of this token
      */

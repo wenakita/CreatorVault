@@ -83,9 +83,9 @@ contract CreatorOVault is ERC4626, Ownable, ReentrancyGuard, EIP712 {
      *      2. Ensures creator launches have real liquidity
      * 
      * @custom:security Prevents "dust deposit → inflate → drain" attack vector
-     * @custom:economics 50M tokens = 5% of typical 1B supply
+     * @custom:economics TEMP: 5M tokens = 0.5% of typical 1B supply
      */
-    uint256 public constant MINIMUM_FIRST_DEPOSIT = 50_000_000e18; // 50,000,000 tokens minimum (5%)
+    uint256 public constant MINIMUM_FIRST_DEPOSIT = 5_000_000e18; // TEMP: 5,000,000 tokens minimum
     
     /**
      * @notice Maximum price change per transaction (in basis points)
@@ -126,6 +126,10 @@ contract CreatorOVault is ERC4626, Ownable, ReentrancyGuard, EIP712 {
     
     /// @notice GaugeController (can burn shares)
     address public gaugeController;
+
+    /// @notice Burn stream contract (can burn its own shares for PPS increase)
+    /// @dev Set once (immutable-by-policy) to avoid "trust me bro" rug vectors.
+    address internal burnStream;
 
     // =================================
     // PERFORMANCE FEES
@@ -1314,13 +1318,16 @@ contract CreatorOVault is ERC4626, Ownable, ReentrancyGuard, EIP712 {
     /**
      * @notice Burn shares to increase price (called by GaugeController)
      */
-    function burnSharesForPriceIncrease(uint256 shares) external onlyGaugeController {
+    function burnSharesForPriceIncrease(uint256 shares) external {
         if (shares == 0) revert ZeroAmount();
-        
-        _burn(msg.sender, shares);
+
+        address sender = msg.sender;
+        if (sender != gaugeController && sender != burnStream) revert OnlyGaugeController();
+
+        _burn(sender, shares);
         totalSharesBurned += shares;
         
-        emit SharesBurnedForPrice(msg.sender, shares, pricePerShare());
+        emit SharesBurnedForPrice(sender, shares, pricePerShare());
     }
 
     // =================================
@@ -1496,6 +1503,17 @@ contract CreatorOVault is ERC4626, Ownable, ReentrancyGuard, EIP712 {
         address old = gaugeController;
         gaugeController = _gaugeController;
         emit UpdateGaugeController(old, _gaugeController);
+    }
+
+    /**
+     * @notice Set the burn stream contract (ONE-TIME).
+     * @dev This is intentionally one-way to make streamed-burn enforceable.
+     *      Once set, vault shares minted to the burn stream cannot be withdrawn — only burned.
+     */
+    function setBurnStream(address _burnStream) external onlyOwner {
+        if (_burnStream == address(0)) revert ZeroAddress();
+        if (burnStream != address(0)) revert Unauthorized();
+        burnStream = _burnStream;
     }
     
     function setKeeper(address _keeper) external onlyManagement {

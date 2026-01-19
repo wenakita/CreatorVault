@@ -149,7 +149,7 @@ const tokenTarget = await ccaStrategy.tokenTarget();
 ### **3. Test All User Flows**
 - [ ] Creator activation flow
 - [ ] Bidder flow (connect → bid → confirm)
-- [ ] Holder flow (deposit → get wsTokens)
+- [ ] Holder flow (deposit → get ■TOKEN)
 - [ ] Auction completion flow
 
 ---

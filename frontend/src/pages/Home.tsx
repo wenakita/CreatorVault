@@ -101,8 +101,8 @@ export function Home() {
                 <span className="text-uniswap">Uniswap</span>
               </div>
               <p className="text-zinc-500 text-lg font-light leading-relaxed">
-                Minimum deposit is <span className="font-mono text-zinc-200">50,000,000 TOKEN</span>. In the default launch,
-                this mints <span className="font-mono text-brand-primary">50,000,000 {SHARE_TOKEN}</span> and runs a{' '}
+                Minimum deposit is <span className="font-mono text-zinc-200">5,000,000 TOKEN</span>. In the default launch,
+                this mints <span className="font-mono text-brand-primary">5,000,000 {SHARE_TOKEN}</span> and runs a{' '}
                 <span className="text-uniswap">Uniswap CCA</span> auction before the vault deploys the deposit across strategies.
               </p>
               <Link to="/launch" className="btn-accent inline-block">
@@ -123,19 +123,19 @@ export function Home() {
                 <div className="mt-6 space-y-0">
                   <div className="data-row">
                     <span className="label">Minimum deposit</span>
-                    <div className="value mono">50,000,000 TOKEN</div>
+                    <div className="value mono">5,000,000 TOKEN</div>
                   </div>
                   <div className="data-row">
                     <span className="label">Minted shares</span>
-                    <div className="value mono text-brand-primary">{`50,000,000 ${SHARE_TOKEN}`}</div>
+                    <div className="value mono text-brand-primary">{`5,000,000 ${SHARE_TOKEN}`}</div>
                   </div>
                   <div className="data-row">
                     <span className="label">Uniswap CCA auction</span>
-                    <div className="value mono">25,000,000 {SHARE_TOKEN}</div>
+                    <div className="value mono">2,500,000 {SHARE_TOKEN}</div>
                   </div>
                   <div className="data-row">
                     <span className="label">Creator allocation</span>
-                    <div className="value mono">25,000,000 {SHARE_TOKEN}</div>
+                    <div className="value mono">2,500,000 {SHARE_TOKEN}</div>
                   </div>
                   <div className="data-row border-none">
                     <span className="label">Fair Launch</span>

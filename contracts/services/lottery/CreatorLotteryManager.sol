@@ -291,7 +291,7 @@ contract CreatorLotteryManager is OApp, OAppOptionsType3, ReentrancyGuard, Pausa
     /**
      * @notice Process swap-based lottery entry for ANY Creator Coin
      * @param buyer User who made the swap (from tx.origin)
-     * @param tokenIn Token swapped (wsToken/ShareOFT)
+     * @param tokenIn Token swapped (■TOKEN / ShareOFT)
      * @param amountIn Amount swapped
      * @return entryId VRF request ID (0 if no entry)
      */
@@ -304,7 +304,7 @@ contract CreatorLotteryManager is OApp, OAppOptionsType3, ReentrancyGuard, Pausa
         if (tokenIn == address(0)) revert ZeroAddress();
         if (amountIn == 0) revert InvalidAmount();
         
-        // Derive creator coin from tokenIn (wsToken)
+        // Derive creator coin from tokenIn (■TOKEN)
         address creatorCoin = registry.getTokenForShareOFT(tokenIn);
         if (creatorCoin == address(0)) {
             // Silently skip unregistered tokens (no lottery entry)

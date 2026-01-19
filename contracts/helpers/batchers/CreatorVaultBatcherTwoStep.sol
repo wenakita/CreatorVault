@@ -89,6 +89,7 @@ interface ICreatorOVaultStrategyManager {
 
 /**
  * @title CreatorVaultBatcherTwoStep
+ * @author 0xakita.eth
  * @notice Two-transaction CreatorVault deployment (Phase 1 + Phase 2).
  * @dev We can no longer deploy the full stack in one transaction on Base due to code-deposit gas limits.
  *      This contract splits deployment into two calls:

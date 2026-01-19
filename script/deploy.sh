@@ -7,7 +7,6 @@
 # Usage:
 #   ./script/deploy.sh infrastructure    - Deploy all core contracts
 #   ./script/deploy.sh vault <TOKEN>     - Deploy vault for a creator coin
-#   ./script/deploy.sh router <WRAPPER>  - Deploy PayoutRouter
 #   ./script/deploy.sh aa <TOKEN>        - Deploy via ERC-4337 (gasless)
 #
 # Environment:
@@ -51,7 +50,6 @@ print_usage() {
     echo -e "${YELLOW}Usage:${NC}"
     echo "  ./script/deploy.sh infrastructure         Deploy all core contracts"
     echo "  ./script/deploy.sh vault <TOKEN_ADDRESS>  Deploy vault for creator coin"
-    echo "  ./script/deploy.sh router <WRAPPER>       Deploy PayoutRouter"
     echo "  ./script/deploy.sh aa <TOKEN> [--gasless] Deploy via ERC-4337"
     echo ""
     echo -e "${YELLOW}Examples:${NC}"
@@ -63,7 +61,7 @@ print_usage() {
     echo "  PRIVATE_KEY         - Your deployer private key"
     echo "  RPC_URL             - Base RPC URL (default: mainnet.base.org)"
     echo "  ETHERSCAN_API_KEY   - For contract verification"
-    echo "  CREATOR_FACTORY     - Factory address (for vault/router deployment)"
+    echo "  CREATOR_FACTORY     - Factory address (for vault deployment)"
     echo ""
 }
 
@@ -128,33 +126,6 @@ deploy_vault() {
     echo -e "${GREEN}✓ Creator Vault deployed successfully!${NC}"
 }
 
-# Deploy PayoutRouter
-deploy_router() {
-    local wrapper=$1
-    
-    if [ -z "$wrapper" ]; then
-        echo -e "${RED}Error: Wrapper address required${NC}"
-        echo "Usage: ./script/deploy.sh router <WRAPPER_ADDRESS>"
-        exit 1
-    fi
-    
-    if [ -z "$PAYOUT_ROUTER_FACTORY" ]; then
-        echo -e "${RED}Error: PAYOUT_ROUTER_FACTORY environment variable not set${NC}"
-        exit 1
-    fi
-    
-    echo -e "${GREEN}Deploying PayoutRouter for $wrapper...${NC}"
-    echo ""
-    
-    WRAPPER_ADDRESS=$wrapper forge script script/DeployInfrastructure.s.sol:DeployPayoutRouter \
-        --rpc-url "$RPC_URL" \
-        --broadcast \
-        -vvvv
-    
-    echo ""
-    echo -e "${GREEN}✓ PayoutRouter deployed successfully!${NC}"
-}
-
 # Deploy via ERC-4337
 deploy_aa() {
     local token=$1
@@ -201,10 +172,6 @@ main() {
         "vault")
             check_prereqs
             deploy_vault "$@"
-            ;;
-        "router")
-            check_prereqs
-            deploy_router "$@"
             ;;
         "aa"|"4337")
             deploy_aa "$@"

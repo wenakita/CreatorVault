@@ -3,7 +3,7 @@
  * 
  * RENDERING STRATEGY:
  * - Regular tokens: Fetch from IPFS/URL, display directly
- * - wsTokens: On-the-fly CSS transformation (no database storage)
+ * - ■TOKEN (wrapped shares): On-the-fly CSS transformation (no database storage)
  * - Gracefully handles case where web3 isn't loaded yet
  */
 

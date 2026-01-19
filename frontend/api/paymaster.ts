@@ -1,6 +1,16 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 
-import { decodeFunctionData, getAddress, isAddress, type Address, type Hex } from 'viem'
+import {
+  concatHex,
+  decodeFunctionData,
+  encodePacked,
+  getAddress,
+  getCreate2Address,
+  isAddress,
+  keccak256,
+  type Address,
+  type Hex,
+} from 'viem'
 
 import { getApiContracts } from './_lib/contracts.js'
 import { logger } from './_lib/logger.js'
@@ -119,8 +129,19 @@ const SELECTOR_BATCHER_DEPLOY_AND_LAUNCH_WITH_PERMIT2 = '0xa3342a28'
 const SELECTOR_BATCHER_DEPLOY_AND_LAUNCH_WITH_PERMIT2_OPERATOR_IDENTITY_FUNDED = '0x8fa5407c'
 const SELECTOR_BATCHER_DEPLOY_AND_LAUNCH_WITH_PERMIT2_OPERATOR_OPERATOR_FUNDED = '0xbe388971'
 
+// Two-step batcher selectors (Base)
+const SELECTOR_BATCHER_DEPLOY_PHASE1 = '0x3c51ca4e'
+const SELECTOR_BATCHER_DEPLOY_PHASE2_AND_LAUNCH = '0x669fb9e2'
+const SELECTOR_BATCHER_DEPLOY_PHASE2_AND_LAUNCH_WITH_PERMIT = '0xd76fbd95'
+const SELECTOR_BATCHER_DEPLOY_PHASE3_STRATEGIES = '0x6e3f91b0'
+
 const SELECTOR_ACTIVATION_BATCH_ACTIVATE = '0xc5c1e920'
 const SELECTOR_ACTIVATION_BATCH_ACTIVATE_WITH_PERMIT2_FOR = '0xdc5de72c'
+
+const SELECTOR_CREATE2_DEPLOY_FROM_STORE = '0xd76fad23' // deploy(bytes32,bytes32,bytes)
+
+const SELECTOR_VAULT_SET_BURN_STREAM = '0xf3a1c8b6' // setBurnStream(address)
+const SELECTOR_VAULT_SET_WHITELIST = '0x53d6fd59' // setWhitelist(address,bool)
 
 const ALLOWED_BATCHER_SELECTORS = new Set<string>([
   SELECTOR_BATCHER_DEPLOY_AND_LAUNCH,
@@ -128,6 +149,10 @@ const ALLOWED_BATCHER_SELECTORS = new Set<string>([
   SELECTOR_BATCHER_DEPLOY_AND_LAUNCH_WITH_PERMIT2,
   SELECTOR_BATCHER_DEPLOY_AND_LAUNCH_WITH_PERMIT2_OPERATOR_IDENTITY_FUNDED,
   SELECTOR_BATCHER_DEPLOY_AND_LAUNCH_WITH_PERMIT2_OPERATOR_OPERATOR_FUNDED,
+  SELECTOR_BATCHER_DEPLOY_PHASE1,
+  SELECTOR_BATCHER_DEPLOY_PHASE2_AND_LAUNCH,
+  SELECTOR_BATCHER_DEPLOY_PHASE2_AND_LAUNCH_WITH_PERMIT,
+  SELECTOR_BATCHER_DEPLOY_PHASE3_STRATEGIES,
 ])
 
 const ALLOWED_ACTIVATION_SELECTORS = new Set<string>([
@@ -137,6 +162,19 @@ const ALLOWED_ACTIVATION_SELECTORS = new Set<string>([
 
 const ALLOWED_TOKEN_SELECTORS = new Set<string>([SELECTOR_ERC20_APPROVE, SELECTOR_COIN_SET_PAYOUT_RECIPIENT])
 const ALLOWED_PERMIT2_SELECTORS = new Set<string>([SELECTOR_PERMIT2_PERMIT_TRANSFER_FROM])
+
+// Payout routing (Base mainnet)
+const PAYOUT_ROUTER_CODE_ID = '0xec3a19f83778a374ef791c3df99ec79478b68b0319515a6a7898b3c5d614a107' as const
+const VAULT_SHARE_BURN_STREAM_CODE_ID = '0x9b5e26f68c206df4fb41253da53c3c1d377334db21d566adbf41ac43fc711a21' as const
+
+// CreatorOVault runtime bytecode hash (EIP-170 safe; used for validating phase2 vault address)
+const CREATOR_OVAULT_RUNTIME_CODE_HASH =
+  '0xc78233e39d6cd4a86de4d70868329f503db425770d59d2341f874d41364c5f2f' as const
+
+const BASE_WETH = getAddress('0x4200000000000000000000000000000000000006')
+const BASE_SWAP_ROUTER = getAddress('0x2626664c2603336E57B271c5C0b26F421741e481')
+const PAYOUT_ROUTER_SALT_TAG = 'CreatorVault:PayoutRouter' as const
+const BURN_STREAM_SALT_TAG = 'CreatorVault:VaultShareBurnStream' as const
 
 type InnerCall = { target: Address; value: bigint; data: Hex }
 
@@ -251,6 +289,93 @@ function decodeAddressArgFromCalldata(data: Hex, argIndex: number): Address | nu
   return getAddress(addr)
 }
 
+function decodeAddressArgFromAbiEncodedBytes(data: Hex, argIndex: number): Address | null {
+  // abi.encode packs each arg in 32 byte slots (no selector).
+  const start = 2 + argIndex * 64
+  const word = data.slice(start, start + 64)
+  if (word.length !== 64) return null
+  const addr = `0x${word.slice(24)}` // last 20 bytes
+  if (!isAddress(addr)) return null
+  return getAddress(addr)
+}
+
+function expectedPayoutRouterSalt(params: { creatorToken: Address; sender: Address }): Hex {
+  return keccak256(
+    encodePacked(['string', 'address', 'address'], [PAYOUT_ROUTER_SALT_TAG, params.creatorToken, params.sender]),
+  )
+}
+
+function expectedBurnStreamSalt(params: { creatorToken: Address; sender: Address }): Hex {
+  return keccak256(
+    encodePacked(['string', 'address', 'address'], [BURN_STREAM_SALT_TAG, params.creatorToken, params.sender]),
+  )
+}
+
+function decodeBoolArgFromCalldata(data: Hex, argIndex: number): boolean | null {
+  const start = 10 + argIndex * 64
+  const word = data.slice(start, start + 64)
+  if (word.length !== 64) return null
+  try {
+    const v = BigInt(`0x${word}`)
+    if (v === 0n) return false
+    if (v === 1n) return true
+    // Non-canonical bool encoding; treat as invalid.
+    return null
+  } catch {
+    return null
+  }
+}
+
+function abiEncodeAddresses(addrs: Address[]): Hex {
+  // abi.encode(address...) (static types only)
+  // Each address is left-padded to 32 bytes.
+  let out = '0x'
+  for (const a of addrs) {
+    const hex = a.toLowerCase().replace(/^0x/, '')
+    out += '0'.repeat(24 * 2) + hex
+  }
+  return out as Hex
+}
+
+const BYTECODE_STORE_GET_ABI = [
+  {
+    type: 'function',
+    name: 'get',
+    stateMutability: 'view',
+    inputs: [{ name: 'codeId', type: 'bytes32' }],
+    outputs: [{ name: 'creationCode', type: 'bytes' }],
+  },
+] as const
+
+const _creationCodeCache: Map<string, Hex> = new Map()
+
+async function getCreationCodeFromStore(params: { store: Address; codeId: Hex }): Promise<Hex> {
+  const key = `${params.store.toLowerCase()}:${params.codeId.toLowerCase()}`
+  const cached = _creationCodeCache.get(key)
+  if (cached) return cached
+  const client = await getBaseClient()
+  const code = (await client.readContract({
+    address: params.store,
+    abi: BYTECODE_STORE_GET_ABI,
+    functionName: 'get',
+    args: [params.codeId],
+  })) as Hex
+  _creationCodeCache.set(key, code)
+  return code
+}
+
+async function computeCreate2AddressFromStore(params: {
+  store: Address
+  deployer: Address
+  salt: Hex
+  codeId: Hex
+  constructorArgs: Hex
+}): Promise<Address> {
+  const creationCode = await getCreationCodeFromStore({ store: params.store, codeId: params.codeId })
+  const initCodeHash = keccak256(concatHex([creationCode, params.constructorArgs]))
+  return getCreate2Address({ from: params.deployer, salt: params.salt, bytecodeHash: initCodeHash })
+}
+
 function enforceRateLimit(key: string) {
   const now = Date.now()
   const cur = rateLimitBuckets.get(key)
@@ -342,6 +467,9 @@ async function validateInnerCalls(params: { sender: Address; sessionAddress: Add
   const creatorVaultBatcher = getAddress(contracts.creatorVaultBatcher)
   const vaultActivationBatcher = getAddress(contracts.vaultActivationBatcher)
   const permit2 = getAddress(contracts.permit2)
+  const create2DeployerFromStoreRaw = contracts.universalCreate2DeployerFromStore
+  if (!create2DeployerFromStoreRaw) throw new Error('create2_deployer_from_store_not_configured')
+  const create2DeployerFromStore = getAddress(create2DeployerFromStoreRaw)
 
   const decoded = decodeFunctionData({ abi: COINBASE_SMART_WALLET_ABI, data: params.callData })
   const innerCalls: InnerCall[] =
@@ -367,8 +495,9 @@ async function validateInnerCalls(params: { sender: Address; sessionAddress: Add
   }
 
   // Pass 1: detect the "primary" token from the deploy/activate call.
-  let mode: 'deploy' | 'activate' | null = null
+  let mode: 'deploy_phase1' | 'deploy_phase2' | 'deploy_phase3' | 'deploy' | 'activate' | null = null
   let expectedCreatorToken: Address | null = null
+  let expectedVault: Address | null = null
 
   for (const c of innerCalls) {
     const selector = getSelector(c.data)
@@ -378,7 +507,20 @@ async function validateInnerCalls(params: { sender: Address; sessionAddress: Add
       const owner = decodeAddressArgFromCalldata(c.data, 1)
       if (!creatorToken || !owner) throw new Error('batcher_decode_failed')
       if (owner !== params.sender) throw new Error('batcher_owner_mismatch')
-      mode = 'deploy'
+      // Two-step batcher: in phase2+ we can safely reference the deployed vault address from calldata.
+      if (selector === SELECTOR_BATCHER_DEPLOY_PHASE1) {
+        mode = 'deploy_phase1'
+      } else if (selector === SELECTOR_BATCHER_DEPLOY_PHASE2_AND_LAUNCH || selector === SELECTOR_BATCHER_DEPLOY_PHASE2_AND_LAUNCH_WITH_PERMIT) {
+        mode = 'deploy_phase2'
+        expectedVault = decodeAddressArgFromCalldata(c.data, 4) // Phase2Params.vault
+        if (!expectedVault) throw new Error('batcher_vault_decode_failed')
+      } else if (selector === SELECTOR_BATCHER_DEPLOY_PHASE3_STRATEGIES) {
+        mode = 'deploy_phase3'
+        expectedVault = decodeAddressArgFromCalldata(c.data, 2) // Phase3Params.vault
+        if (!expectedVault) throw new Error('batcher_vault_decode_failed')
+      } else {
+        mode = 'deploy'
+      }
       expectedCreatorToken = creatorToken
       break
     }
@@ -397,12 +539,62 @@ async function validateInnerCalls(params: { sender: Address; sessionAddress: Add
 
   if (!mode || !expectedCreatorToken) throw new Error('missing_primary_call')
 
+  const bytecodeStoreRaw = contracts.universalBytecodeStore
+  if (!bytecodeStoreRaw) throw new Error('bytecode_store_not_configured')
+  const bytecodeStore = getAddress(bytecodeStoreRaw)
+
+  // In Phase 2, validate the vault address is the expected CreatorOVault runtime code.
+  // This prevents sponsoring calls that route through the batcher into arbitrary contracts.
+  let expectedBurnStream: Address | null = null
+  let expectedPayoutRouter: Address | null = null
+  if (mode === 'deploy_phase2') {
+    if (!expectedVault) throw new Error('missing_vault')
+    const client = await getBaseClient()
+    const vaultCode = (await client.getBytecode({ address: expectedVault })) as Hex | undefined
+    if (!vaultCode || vaultCode === '0x') throw new Error('vault_not_deployed')
+    const vaultCodeHash = keccak256(vaultCode)
+    if (vaultCodeHash.toLowerCase() !== CREATOR_OVAULT_RUNTIME_CODE_HASH.toLowerCase()) {
+      throw new Error('vault_code_hash_mismatch')
+    }
+
+    const burnSalt = expectedBurnStreamSalt({ creatorToken: expectedCreatorToken, sender: params.sender })
+    expectedBurnStream = await computeCreate2AddressFromStore({
+      store: bytecodeStore,
+      deployer: create2DeployerFromStore,
+      salt: burnSalt,
+      codeId: VAULT_SHARE_BURN_STREAM_CODE_ID as Hex,
+      constructorArgs: abiEncodeAddresses([expectedVault]),
+    })
+
+    const routerSalt = expectedPayoutRouterSalt({ creatorToken: expectedCreatorToken, sender: params.sender })
+    expectedPayoutRouter = await computeCreate2AddressFromStore({
+      store: bytecodeStore,
+      deployer: create2DeployerFromStore,
+      salt: routerSalt,
+      codeId: PAYOUT_ROUTER_CODE_ID as Hex,
+      constructorArgs: abiEncodeAddresses([
+        expectedCreatorToken,
+        expectedVault,
+        expectedBurnStream,
+        params.sender,
+        BASE_SWAP_ROUTER,
+        BASE_WETH,
+      ]),
+    })
+  }
+
   // Pass 2: validate each inner call fits the expected patterns.
   for (const c of innerCalls) {
     const selector = getSelector(c.data)
 
-    if (c.target === creatorVaultBatcher) continue
-    if (c.target === vaultActivationBatcher) continue
+    if (c.target === creatorVaultBatcher) {
+      if (!ALLOWED_BATCHER_SELECTORS.has(selector)) throw new Error('batcher_selector_not_allowed')
+      continue
+    }
+    if (c.target === vaultActivationBatcher) {
+      if (!ALLOWED_ACTIVATION_SELECTORS.has(selector)) throw new Error('activation_selector_not_allowed')
+      continue
+    }
 
     if (c.target === permit2) {
       if (!ALLOWED_PERMIT2_SELECTORS.has(selector)) throw new Error('permit2_selector_not_allowed')
@@ -453,6 +645,82 @@ async function validateInnerCalls(params: { sender: Address; sessionAddress: Add
       continue
     }
 
+    // Deterministic CREATE2 deploy via UniversalCreate2DeployerFromStore (used for burn stream + payout router).
+    if (c.target === create2DeployerFromStore) {
+      if (mode !== 'deploy_phase2') throw new Error('create2_deploy_not_allowed')
+      if (!expectedVault || !expectedBurnStream || !expectedPayoutRouter) throw new Error('missing_expected_addresses')
+      if (selector !== SELECTOR_CREATE2_DEPLOY_FROM_STORE) throw new Error('create2_selector_not_allowed')
+
+      const create2Abi = [
+        {
+          type: 'function',
+          name: 'deploy',
+          stateMutability: 'nonpayable',
+          inputs: [
+            { name: 'salt', type: 'bytes32' },
+            { name: 'codeId', type: 'bytes32' },
+            { name: 'constructorArgs', type: 'bytes' },
+          ],
+          outputs: [{ name: 'addr', type: 'address' }],
+        },
+      ] as const
+
+      const decodedDeploy = decodeFunctionData({ abi: create2Abi, data: c.data })
+      if (decodedDeploy.functionName !== 'deploy') throw new Error('create2_decode_failed')
+
+      const salt = decodedDeploy.args[0] as Hex
+      const codeId = decodedDeploy.args[1] as Hex
+      const ctorArgs = decodedDeploy.args[2] as Hex
+
+      const codeIdLc = String(codeId).toLowerCase()
+      if (codeIdLc === String(VAULT_SHARE_BURN_STREAM_CODE_ID).toLowerCase()) {
+        const expectedSalt = expectedBurnStreamSalt({ creatorToken: expectedCreatorToken, sender: params.sender })
+        if (String(salt).toLowerCase() !== String(expectedSalt).toLowerCase()) throw new Error('create2_salt_not_allowed')
+        const vaultArg = decodeAddressArgFromAbiEncodedBytes(ctorArgs, 0)
+        if (!vaultArg || vaultArg !== expectedVault) throw new Error('burn_stream_vault_mismatch')
+      } else if (codeIdLc === String(PAYOUT_ROUTER_CODE_ID).toLowerCase()) {
+        const expectedSalt = expectedPayoutRouterSalt({ creatorToken: expectedCreatorToken, sender: params.sender })
+        if (String(salt).toLowerCase() !== String(expectedSalt).toLowerCase()) throw new Error('create2_salt_not_allowed')
+
+        // PayoutRouter constructor args:
+        // constructor(address creatorCoin, address vault, address burnStream, address owner, address swapRouter, address weth)
+        const creatorCoinArg = decodeAddressArgFromAbiEncodedBytes(ctorArgs, 0)
+        const vaultArg = decodeAddressArgFromAbiEncodedBytes(ctorArgs, 1)
+        const burnStreamArg = decodeAddressArgFromAbiEncodedBytes(ctorArgs, 2)
+        const ownerArg = decodeAddressArgFromAbiEncodedBytes(ctorArgs, 3)
+        const swapRouterArg = decodeAddressArgFromAbiEncodedBytes(ctorArgs, 4)
+        const wethArg = decodeAddressArgFromAbiEncodedBytes(ctorArgs, 5)
+
+        if (!creatorCoinArg || creatorCoinArg !== expectedCreatorToken) throw new Error('payout_router_creator_mismatch')
+        if (!vaultArg || vaultArg !== expectedVault) throw new Error('payout_router_vault_mismatch')
+        if (!burnStreamArg || burnStreamArg !== expectedBurnStream) throw new Error('payout_router_burn_stream_mismatch')
+        if (!ownerArg || ownerArg !== params.sender) throw new Error('payout_router_owner_mismatch')
+        if (!swapRouterArg || swapRouterArg !== BASE_SWAP_ROUTER) throw new Error('payout_router_swap_router_mismatch')
+        if (!wethArg || wethArg !== BASE_WETH) throw new Error('payout_router_weth_mismatch')
+      } else {
+        throw new Error('create2_codeid_not_allowed')
+      }
+
+      continue
+    }
+
+    // Vault admin calls (phase2 only)
+    if (mode === 'deploy_phase2' && expectedVault && expectedBurnStream && expectedPayoutRouter && c.target === expectedVault) {
+      if (selector !== SELECTOR_VAULT_SET_BURN_STREAM && selector !== SELECTOR_VAULT_SET_WHITELIST) {
+        throw new Error('vault_selector_not_allowed')
+      }
+      if (selector === SELECTOR_VAULT_SET_BURN_STREAM) {
+        const burnStreamArg = decodeAddressArgFromCalldata(c.data, 0)
+        if (!burnStreamArg || burnStreamArg !== expectedBurnStream) throw new Error('vault_burn_stream_mismatch')
+      } else {
+        const accountArg = decodeAddressArgFromCalldata(c.data, 0)
+        const statusArg = decodeBoolArgFromCalldata(c.data, 1)
+        if (!accountArg || accountArg !== expectedPayoutRouter) throw new Error('vault_whitelist_account_mismatch')
+        if (statusArg !== true) throw new Error('vault_whitelist_status_mismatch')
+      }
+      continue
+    }
+
     // Dynamic token calls: only allow calls to the same creatorToken used in the primary call.
     if (c.target !== expectedCreatorToken) throw new Error('called_address_not_allowed')
     if (!ALLOWED_TOKEN_SELECTORS.has(selector)) throw new Error('token_selector_not_allowed')
@@ -462,6 +730,14 @@ async function validateInnerCalls(params: { sender: Address; sessionAddress: Add
       if (!spender) throw new Error('approve_decode_failed')
       const allowedSpenders = new Set<Address>([creatorVaultBatcher, vaultActivationBatcher, permit2])
       if (!allowedSpenders.has(spender)) throw new Error('approve_spender_not_allowed')
+      continue
+    }
+
+    if (selector === SELECTOR_COIN_SET_PAYOUT_RECIPIENT) {
+      if (mode !== 'deploy_phase2' || !expectedPayoutRouter) throw new Error('payout_recipient_not_allowed')
+      const recipient = decodeAddressArgFromCalldata(c.data, 0)
+      if (!recipient || recipient !== expectedPayoutRouter) throw new Error('payout_recipient_mismatch')
+      continue
     }
   }
 }

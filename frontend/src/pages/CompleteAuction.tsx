@@ -224,7 +224,7 @@ export function CompleteAuction() {
       abi: TAX_HOOK_ABI,
       functionName: 'setTaxConfig',
       args: [
-        tokenAddress,           // wsToken address
+        tokenAddress,           // ■TOKEN address
         '0x0000000000000000000000000000000000000000' as `0x${string}`, // ETH
         feeRecipient,           // GaugeController
         taxRate || 690n,        // 6.9%

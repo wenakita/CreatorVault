@@ -19,7 +19,7 @@ CreatorVault supports Solana users from Day 1 via the **Base-Solana Bridge**.
 │                                              ┌────────────────────────┐     │
 │                                              │   Execute Call on Base │     │
 │                                              │   - CCA Bid            │     │
-│                                              │   - Buy wsToken (🎰)   │     │
+│                                              │   - Buy ■TOKEN (🎰)    │     │
 │                                              │   - Deposit to Vault   │     │
 │                                              └────────────────────────┘     │
 │                                                                             │
@@ -30,11 +30,12 @@ CreatorVault supports Solana users from Day 1 via the **Base-Solana Bridge**.
 
 ### 1. 🏷️ Participate in CCA (Fair Launch)
 
-Solana users can bid in Continuous Clearing Auctions to get wsTokens at fair prices:
+Solana users can bid in Continuous Clearing Auctions to get **■TOKEN** at fair prices:
 
 ```typescript
 // From Solana wallet
 bridge SOL + call submitCCABidFromSolana(
+  solanaPubkey, // bytes32 (Solana public key)
   ccaAuction,
   maxPrice,
   amount,
@@ -51,14 +52,14 @@ bridge SOL + call submitCCABidFromSolana(
 
 ### 2. 🎰 Enter Buy-To-Win Lottery
 
-Every BUY of wsToken is a lottery entry! Solana users can participate:
+Every BUY of **■TOKEN** is a lottery entry! Solana users can participate:
 
 ```typescript
 // From Solana wallet
 bridge SOL + call buyAndEnterLottery(
-  router,
-  tokenIn,      // SOL
-  wsToken,      // e.g., ■AKITA
+  solanaPubkey,   // bytes32 (Solana public key)
+  creatorToken,   // Creator Coin (Base ERC20)
+  tokenIn,        // e.g., SOL_ON_BASE / WETH / USDC
   amountIn,
   amountOutMin,
   recipient     // Twin contract or any address
@@ -68,10 +69,28 @@ bridge SOL + call buyAndEnterLottery(
 **Flow:**
 1. User locks SOL on Solana
 2. SOL minted on Base
-3. Adapter swaps SOL → wsToken on Uniswap V4
+3. Adapter swaps SOL → **■TOKEN** on Uniswap V4
 4. **Tax hook captures 6.9% fee**
 5. **Lottery entry registered for the buyer**
 6. User could win the jackpot!
+
+#### One-time setup: approve the adapter (required)
+`SolanaBridgeAdapter` pulls ERC20s from the Twin via `transferFrom`, so the Twin must approve it **once per input token** (e.g. `SOL_ON_BASE`, `USDC`, `WETH`, and any Creator Coin you want to deposit).
+
+You can do this as a **separate Solana→Base call** (no token transfer required) by having the Twin call:
+
+- `ERC20(token).approve(SOLANA_BRIDGE_ADAPTER, MAX_UINT256)`
+
+After that, subsequent bridge+call actions can spend those tokens without additional approvals.
+
+#### One-time setup: approve the adapter (required)
+`SolanaBridgeAdapter` pulls ERC20s from the Twin via `transferFrom`, so the Twin must approve it **once per input token** (e.g. `SOL_ON_BASE`, `USDC`, `WETH`, and any Creator Coin you want to deposit).
+
+You can do this as a **separate Solana→Base call** (no token transfer required) by having the Twin call:
+
+- `ERC20(token).approve(SOLANA_BRIDGE_ADAPTER, MAX_UINT256)`
+
+After that, subsequent bridge+call actions can spend those tokens without additional approvals.
 
 ### 3. 🏦 Deposit into Vaults
 
@@ -80,8 +99,8 @@ Solana users can deposit into CreatorVaults:
 ```typescript
 // From Solana wallet  
 bridge SOL + call depositFromSolana(
-  vault,
-  token,
+  solanaPubkey,  // bytes32 (Solana public key)
+  creatorToken,  // Creator Coin (vault asset)
   amount,
   recipient
 )
@@ -119,6 +138,17 @@ Solana Wallet: 9aYkCA...
                     │
                     └──► msg.sender when executing calls
 ```
+
+### Twin address derivation (production)
+The adapter enforces **Twin-only** authorization by checking:
+
+- `Bridge.getPredictedTwinAddress(bytes32 solanaPubkey)` on Base
+
+So your client should compute:
+- `solanaPubkey = pubkeyToBytes32(phantomPublicKey)`
+- `twin = await readContract(BRIDGE, "getPredictedTwinAddress", [solanaPubkey])`
+
+and use `twin` as the recipient for actions where appropriate.
 
 ## Auto-Relay (Gasless for Solana Users)
 
@@ -162,13 +192,13 @@ const ixs = [
   )
 ];
 
-// 3. Attach call to buy wsToken + enter lottery
+// 3. Attach call to buy ■TOKEN + enter lottery
 const call = {
   target: SOLANA_BRIDGE_ADAPTER,
   data: encodeLotteryEntryCall({
-    router: UNISWAP_V4_ROUTER,
+    solanaPubkey: pubkeyToBytes32(publicKey),
+    creatorToken: AKITA_CREATOR_COIN, // Base ERC20 (creator coin)
     tokenIn: SOL_ON_BASE,
-    wsToken: WSAKITA,
     amountIn: BigInt(0.1 * 10**9),
     amountOutMin: 0n,
     recipient: getTwinAddress(publicKey)
@@ -184,7 +214,7 @@ const signature = await buildAndSendTransaction(
 );
 
 // 5. Wait for bridge + execution (~5 minutes)
-// User's Twin contract receives SOL, swaps for wsToken
+// User's Twin contract receives SOL, swaps for ■TOKEN
 // Lottery entry automatically registered!
 ```
 
@@ -245,7 +275,7 @@ CreatorVault supports Solana users from Day 1 via the **Base-Solana Bridge**.
 │                                              ┌────────────────────────┐     │
 │                                              │   Execute Call on Base │     │
 │                                              │   - CCA Bid            │     │
-│                                              │   - Buy wsToken (🎰)   │     │
+│                                              │   - Buy ■TOKEN (🎰)    │     │
 │                                              │   - Deposit to Vault   │     │
 │                                              └────────────────────────┘     │
 │                                                                             │
@@ -256,11 +286,12 @@ CreatorVault supports Solana users from Day 1 via the **Base-Solana Bridge**.
 
 ### 1. 🏷️ Participate in CCA (Fair Launch)
 
-Solana users can bid in Continuous Clearing Auctions to get wsTokens at fair prices:
+Solana users can bid in Continuous Clearing Auctions to get **■TOKEN** at fair prices:
 
 ```typescript
 // From Solana wallet
 bridge SOL + call submitCCABidFromSolana(
+  solanaPubkey, // bytes32 (Solana public key)
   ccaAuction,
   maxPrice,
   amount,
@@ -277,14 +308,14 @@ bridge SOL + call submitCCABidFromSolana(
 
 ### 2. 🎰 Enter Buy-To-Win Lottery
 
-Every BUY of wsToken is a lottery entry! Solana users can participate:
+Every BUY of **■TOKEN** is a lottery entry! Solana users can participate:
 
 ```typescript
 // From Solana wallet
 bridge SOL + call buyAndEnterLottery(
-  router,
-  tokenIn,      // SOL
-  wsToken,      // e.g., ■AKITA
+  solanaPubkey,   // bytes32 (Solana public key)
+  creatorToken,   // Creator Coin (Base ERC20)
+  tokenIn,        // e.g., SOL_ON_BASE / WETH / USDC
   amountIn,
   amountOutMin,
   recipient     // Twin contract or any address
@@ -294,7 +325,7 @@ bridge SOL + call buyAndEnterLottery(
 **Flow:**
 1. User locks SOL on Solana
 2. SOL minted on Base
-3. Adapter swaps SOL → wsToken on Uniswap V4
+3. Adapter swaps SOL → **■TOKEN** on Uniswap V4
 4. **Tax hook captures 6.9% fee**
 5. **Lottery entry registered for the buyer**
 6. User could win the jackpot!
@@ -306,8 +337,8 @@ Solana users can deposit into CreatorVaults:
 ```typescript
 // From Solana wallet  
 bridge SOL + call depositFromSolana(
-  vault,
-  token,
+  solanaPubkey,  // bytes32 (Solana public key)
+  creatorToken,  // Creator Coin (vault asset)
   amount,
   recipient
 )
@@ -388,13 +419,13 @@ const ixs = [
   )
 ];
 
-// 3. Attach call to buy wsToken + enter lottery
+// 3. Attach call to buy ■TOKEN + enter lottery
 const call = {
   target: SOLANA_BRIDGE_ADAPTER,
   data: encodeLotteryEntryCall({
-    router: UNISWAP_V4_ROUTER,
+    solanaPubkey: pubkeyToBytes32(publicKey),
+    creatorToken: AKITA_CREATOR_COIN, // Base ERC20 (creator coin)
     tokenIn: SOL_ON_BASE,
-    wsToken: WSAKITA,
     amountIn: BigInt(0.1 * 10**9),
     amountOutMin: 0n,
     recipient: getTwinAddress(publicKey)
@@ -410,7 +441,7 @@ const signature = await buildAndSendTransaction(
 );
 
 // 5. Wait for bridge + execution (~5 minutes)
-// User's Twin contract receives SOL, swaps for wsToken
+// User's Twin contract receives SOL, swaps for ■TOKEN
 // Lottery entry automatically registered!
 ```
 

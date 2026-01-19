@@ -404,7 +404,7 @@ export function Launch() {
                     onChange={(e) => setAuctionPercent(e.target.value)}
                     className="input-field"
                   />
-                  <p className="text-xs text-surface-500">% of wsTokens for fair launch</p>
+                  <p className="text-xs text-surface-500">% of ■TOKEN for fair launch</p>
                 </div>
               </div>
               <div className="space-y-2">

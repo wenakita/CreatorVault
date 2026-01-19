@@ -455,7 +455,7 @@ contract CCALaunchStrategy is Ownable, ReentrancyGuard {
         target = taxHook;
         data = abi.encodeWithSelector(
             ITaxHook.setTaxConfig.selector,
-            address(auctionToken),  // The wsToken
+            address(auctionToken),  // The ■TOKEN
             currency,               // Counter asset (address(0) for ETH)
             feeRecipient,           // GaugeController receives fees
             taxRateBps,             // 690 = 6.9%

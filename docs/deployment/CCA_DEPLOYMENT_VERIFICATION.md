@@ -19,20 +19,20 @@ User → VaultActivationBatcher.batchActivate()
    → Receive vault shares (sTokens)
     ↓
 3. Wrap shares via CreatorOVaultWrapper
-   → Receive wsTokens (ShareOFT)
+   → Receive ■TOKEN (ShareOFT)
     ↓
-4. Approve CCA strategy to spend wsTokens
+4. Approve CCA strategy to spend ■TOKEN
     ↓
 5. Call CCALaunchStrategy.launchAuctionSimple()
     ↓
     → CCALaunchStrategy.launchAuction()
         ↓
-        a. Transfer wsTokens from batcher to CCALaunchStrategy
-        b. Approve CCA_FACTORY to spend wsTokens
+        a. Transfer ■TOKEN from batcher to CCALaunchStrategy
+        b. Approve CCA_FACTORY to spend ■TOKEN
         c. Call CCA_FACTORY.initializeDistribution()
         d. Returns auction address
     ↓
-6. Return remaining wsTokens to user
+6. Return remaining ■TOKEN to user
 ```
 
 ---
@@ -76,7 +76,7 @@ Batcher pulls tokens ✅
     ↓
 Batcher deposits to vault ✅
     ↓
-Batcher wraps to wsTokens ✅
+Batcher wraps to ■TOKEN ✅
     ↓
 Batcher approves CCA strategy ✅
     ↓
@@ -107,7 +107,7 @@ function launchAuctionSimple(
 ```
 
 **Pros:**
-- ✅ Anyone with wsTokens can launch auction
+- ✅ Anyone with ■TOKEN can launch auction
 - ✅ Works with VaultActivationBatcher
 - ✅ Simple fix
 
@@ -158,7 +158,7 @@ vault.deposit(amount, user);
 wrapper.wrap(shares);
 
 // Step 2: User approves CCALaunchStrategy
-wsToken.approve(ccaStrategy, auctionAmount);
+shareOFT.approve(ccaStrategy, auctionAmount); // ■TOKEN
 
 // Step 3: Owner (creator) launches auction with user's tokens
 ccaStrategy.launchAuctionSimple(auctionAmount, requiredRaise);
@@ -238,11 +238,11 @@ ccaStrategy.setApprovedLauncher(address(vaultActivationBatcher), true);
     ↓
 5. Batcher pulls tokens ✅
 6. Batcher deposits to vault ✅
-7. Batcher wraps to wsTokens ✅
+7. Batcher wraps to ■TOKEN ✅
 8. Batcher approves CCA strategy ✅
 9. Batcher calls launchAuctionSimple() ✅
 10. CCA checks: msg.sender (batcher) is approved ✅
-11. CCA pulls wsTokens from batcher ✅
+11. CCA pulls ■TOKEN from batcher ✅
 12. CCA creates auction ✅
 13. Returns auction address ✅
 14. Batcher returns remaining tokens to user ✅

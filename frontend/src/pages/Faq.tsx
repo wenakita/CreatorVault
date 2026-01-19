@@ -227,15 +227,15 @@ const FAQ_SECTIONS: FaqSection[] = [
       {
         id: 'min-first-deposit',
         question: 'Is there a minimum deposit?',
-        search: 'minimum first deposit 50m',
+        search: 'minimum first deposit 5m',
         answer: (
           <>
             <p>
-              Yes — the vault enforces a minimum <span className="text-white">first</span> deposit of <span className="mono">50,000,000</span> creator tokens.
+              Yes — the vault enforces a minimum <span className="text-white">first</span> deposit of <span className="mono">5,000,000</span> creator tokens.
               This is designed to ensure the vault starts with meaningful liquidity.
             </p>
             <p className="text-zinc-600">
-              Later deposits can be smaller; the “50M” rule is specifically about initializing a brand‑new vault.
+              Later deposits can be smaller; the “5M” rule is specifically about initializing a brand‑new vault.
             </p>
           </>
         ),
@@ -485,8 +485,8 @@ const FAQ_SECTIONS: FaqSection[] = [
       },
       {
         id: 'who-needs-50m',
-        question: 'Which wallet needs to hold the 50,000,000 tokens?',
-        search: '50m minimum first deposit which wallet owner',
+        question: 'Which wallet needs to hold the 5,000,000 tokens?',
+        search: '5m minimum first deposit which wallet owner',
         answer: (
           <>
             <p>
@@ -755,7 +755,7 @@ export function Faq() {
                       ref={searchRef}
                       value={query}
                       onChange={(e) => setQuery(e.target.value)}
-                      placeholder="Try: CCA, withdraw, oracle, 50M…"
+                      placeholder="Try: CCA, withdraw, oracle, 5M…"
                       className="w-full bg-transparent outline-none text-sm text-zinc-200 placeholder:text-zinc-700"
                     />
                     {normalizedQuery ? (
@@ -782,7 +782,7 @@ export function Faq() {
 
                   {!normalizedQuery ? (
                     <div className="mt-4 flex flex-wrap gap-2">
-                      {['CCA', 'Withdraw', 'Oracle', '50M', 'Bridge'].map((t) => (
+                      {['CCA', 'Withdraw', 'Oracle', '5M', 'Bridge'].map((t) => (
                         <button
                           key={t}
                           type="button"

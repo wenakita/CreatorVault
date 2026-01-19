@@ -78,8 +78,8 @@ export function DeployStrategies({ vaultAddress, tokenAddress }: DeployStrategie
   // Allocation weights are basis points (relative). Idle reserve is controlled by `minimumTotalIdle`.
   const [charmWeightBps, setCharmWeightBps] = useState<number>(6900)
   const [ajnaWeightBps, setAjnaWeightBps] = useState<number>(2139)
-  // AKITA default: 9.61% idle of 50,000,000 = 4,805,000
-  const [minimumIdle, setMinimumIdle] = useState<string>('4805000')
+  // AKITA default (temporary): 9.61% idle of 5,000,000 = 480,500
+  const [minimumIdle, setMinimumIdle] = useState<string>('480500')
 
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)

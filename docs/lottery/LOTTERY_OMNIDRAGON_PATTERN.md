@@ -63,7 +63,7 @@ function processSwapLottery(
 
 **Internal Logic:**
 ```solidity
-// Derive creator coin from wsToken (reverse lookup)
+// Derive creator coin from ■TOKEN (reverse lookup)
 address creatorCoin = registry.getTokenForShareOFT(tokenIn);
 if (creatorCoin == address(0)) {
     return 0;  // Silently skip unregistered

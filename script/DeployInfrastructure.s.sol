@@ -7,7 +7,6 @@ import {IERC20Metadata} from "@openzeppelin/contracts/token/ERC20/extensions/IER
 // Core Infrastructure
 import {CreatorRegistry} from "../contracts/core/CreatorRegistry.sol";
 import {CreatorOVaultFactory} from "../contracts/factories/CreatorOVaultFactory.sol";
-import {PayoutRouterFactory} from "../contracts/factories/PayoutRouterFactory.sol";
 
 // Shared Services
 import {CreatorLotteryManager} from "../contracts/services/lottery/CreatorLotteryManager.sol";
@@ -32,9 +31,8 @@ import {CreatorOracle} from "../contracts/services/oracles/CreatorOracle.sol";
  *      │  ────────────────────────────────────────────────────────────   │
  *      │  1. CreatorRegistry         - Central registry for all data    │
  *      │  2. CreatorOVaultFactory    - Deploys per-creator contracts    │
- *      │  3. PayoutRouterFactory     - Deploys PayoutRouters            │
- *      │  4. CreatorLotteryManager   - Shared lottery service           │
- *      │  5. CreatorVRFConsumerV2_5  - Chainlink VRF hub                │
+ *      │  3. CreatorLotteryManager   - Shared lottery service           │
+ *      │  4. CreatorVRFConsumerV2_5  - Chainlink VRF hub                │
  *      └─────────────────────────────────────────────────────────────────┘
  *      
  *      ┌─────────────────────────────────────────────────────────────────┐
@@ -94,7 +92,6 @@ contract DeployInfrastructure is Script {
     
     CreatorRegistry public registry;
     CreatorOVaultFactory public vaultFactory;
-    PayoutRouterFactory public payoutRouterFactory;
     CreatorLotteryManager public lotteryManager;
     CreatorVRFConsumerV2_5 public vrfConsumer;
     
@@ -120,30 +117,25 @@ contract DeployInfrastructure is Script {
         console.log(unicode"╚════════════════════════════════════════════════════════════════╝");
         
         // 1. CreatorRegistry
-        console.log("\n[1/5] Deploying CreatorRegistry...");
+        console.log("\n[1/4] Deploying CreatorRegistry...");
         registry = new CreatorRegistry(deployer);
         console.log("       Address:", address(registry));
         
         // 2. CreatorOVaultFactory
-        console.log("\n[2/5] Deploying CreatorOVaultFactory...");
+        console.log("\n[2/4] Deploying CreatorOVaultFactory...");
         vaultFactory = new CreatorOVaultFactory(address(registry), deployer);
         console.log("       Address:", address(vaultFactory));
         
-        // 3. PayoutRouterFactory
-        console.log("\n[3/5] Deploying PayoutRouterFactory...");
-        payoutRouterFactory = new PayoutRouterFactory(deployer);
-        console.log("       Address:", address(payoutRouterFactory));
-        
-        // 4. CreatorLotteryManager (shared service)
-        console.log("\n[4/5] Deploying CreatorLotteryManager...");
+        // 3. CreatorLotteryManager (shared service)
+        console.log("\n[3/4] Deploying CreatorLotteryManager...");
         lotteryManager = new CreatorLotteryManager(
             address(registry),
             deployer
         );
         console.log("       Address:", address(lotteryManager));
         
-        // 5. CreatorVRFConsumerV2_5 (VRF hub)
-        console.log("\n[5/5] Deploying CreatorVRFConsumerV2_5...");
+        // 4. CreatorVRFConsumerV2_5 (VRF hub)
+        console.log("\n[4/4] Deploying CreatorVRFConsumerV2_5...");
         vrfConsumer = new CreatorVRFConsumerV2_5(
             address(registry),
             deployer
@@ -238,7 +230,6 @@ contract DeployInfrastructure is Script {
         console.log(unicode"│                                                                 │");
         console.log("   CreatorRegistry:        ", address(registry));
         console.log("   CreatorOVaultFactory:   ", address(vaultFactory));
-        console.log("   PayoutRouterFactory:    ", address(payoutRouterFactory));
         console.log("   CreatorLotteryManager:  ", address(lotteryManager));
         console.log("   CreatorVRFConsumerV2_5: ", address(vrfConsumer));
         console.log(unicode"│                                                                 │");
@@ -261,7 +252,6 @@ contract DeployInfrastructure is Script {
         console.log(unicode"│                                                                 │");
         console.log("   # Add to your .env file:");
         console.log("   CREATOR_FACTORY=", address(vaultFactory));
-        console.log("   PAYOUT_ROUTER_FACTORY=", address(payoutRouterFactory));
         console.log("   CREATOR_REGISTRY=", address(registry));
         console.log("   LOTTERY_MANAGER=", address(lotteryManager));
         console.log(unicode"│                                                                 │");
@@ -275,9 +265,6 @@ contract DeployInfrastructure is Script {
         console.log(unicode"│                                                                 │");
         console.log("   1. CreatorOVaultFactory:    ", address(vaultFactory));
         console.log("      Function: deploy(address)");
-        console.log(unicode"│                                                                 │");
-        console.log("   2. PayoutRouterFactory:     ", address(payoutRouterFactory));
-        console.log("      Function: deploy(address,address)");
         console.log(unicode"│                                                                 │");
         console.log(unicode"└─────────────────────────────────────────────────────────────────┘");
         
@@ -564,58 +551,5 @@ contract DeployCreatorVault is Script {
             }
         }
         return string(bUpper);
-    }
-}
-
-/**
- * @title DeployPayoutRouter
- * @notice Deploy PayoutRouter for a specific Creator Vault
- * @dev Run with:
- *      WRAPPER_ADDRESS=0x... forge script script/DeployInfrastructure.s.sol:DeployPayoutRouter \
- *          --rpc-url base --broadcast -vvvv
- */
-contract DeployPayoutRouter is Script {
-    
-    function run() external {
-        uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
-        address deployer = vm.addr(deployerPrivateKey);
-        
-        address payoutRouterFactoryAddr = vm.envAddress("PAYOUT_ROUTER_FACTORY");
-        address wrapperAddr = vm.envAddress("WRAPPER_ADDRESS");
-        
-        console.log("\n");
-        console.log(unicode"╔════════════════════════════════════════════════════════════════╗");
-        console.log(unicode"║              Deploy PayoutRouter                               ║");
-        console.log(unicode"╚════════════════════════════════════════════════════════════════╝");
-        console.log("\n");
-        console.log("Factory: ", payoutRouterFactoryAddr);
-        console.log("Wrapper: ", wrapperAddr);
-        console.log("Owner:   ", deployer);
-        
-        vm.startBroadcast(deployerPrivateKey);
-        
-        PayoutRouterFactory factory = PayoutRouterFactory(payoutRouterFactoryAddr);
-        
-        address payoutRouter = factory.deploy(wrapperAddr, deployer);
-        
-        vm.stopBroadcast();
-        
-        console.log("\n");
-        console.log(unicode"┌─────────────────────────────────────────────────────────────────┐");
-        console.log(unicode"│  DEPLOYED                                                       │");
-        console.log(unicode"├─────────────────────────────────────────────────────────────────┤");
-        console.log("   PayoutRouter: ", payoutRouter);
-        console.log(unicode"└─────────────────────────────────────────────────────────────────┘");
-        
-        console.log("\n");
-        console.log(unicode"┌─────────────────────────────────────────────────────────────────┐");
-        console.log(unicode"│  NEXT STEP                                                      │");
-        console.log(unicode"├─────────────────────────────────────────────────────────────────┤");
-        console.log(unicode"│  Change your Zora token's payoutRecipient to:                   │");
-        console.log("   ", payoutRouter);
-        console.log(unicode"│                                                                 │");
-        console.log(unicode"│  This will redirect Zora trading fees to:                       │");
-        console.log(unicode"│  Vault → Wrap → Weekly Burn                                     │");
-        console.log(unicode"└─────────────────────────────────────────────────────────────────┘");
     }
 }
