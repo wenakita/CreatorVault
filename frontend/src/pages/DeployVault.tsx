@@ -1090,6 +1090,7 @@ function DeployVaultBatcher({
   connectedWalletAddress,
   connectedSmartWalletAddress,
   executeBatchEligible = false,
+  isSignedIn,
   minFirstDeposit,
   tokenDecimals,
   depositSymbol,
@@ -1109,6 +1110,7 @@ function DeployVaultBatcher({
   connectedWalletAddress: Address | null
   connectedSmartWalletAddress: Address | null
   executeBatchEligible?: boolean
+  isSignedIn: boolean
   minFirstDeposit: bigint
   tokenDecimals: number | null
   depositSymbol: string
@@ -4697,6 +4699,7 @@ export function DeployVault() {
                     connectedWalletAddress={connectedWalletAddress}
                     connectedSmartWalletAddress={detectedSmartWalletContract}
                     executeBatchEligible={executeBatchEligible}
+                    isSignedIn={isSignedIn}
                     minFirstDeposit={minFirstDeposit}
                     tokenDecimals={typeof tokenDecimals === 'number' ? tokenDecimals : null}
                     depositSymbol={underlyingSymbolUpper || 'TOKENS'}
