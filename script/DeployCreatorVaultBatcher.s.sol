@@ -23,15 +23,17 @@ import "../contracts/helpers/batchers/CreatorVaultBatcher.sol";
  *  PERMIT2
  */
 contract DeployCreatorVaultBatcher is Script {
-    address constant DEFAULT_REGISTRY = 0x777e28d7617ADb6E2fE7b7C49864A173e36881EF;
-    address constant DEFAULT_BYTECODE_STORE = 0xbec0c922835136949032223860C021484b0Cbdfa;
-    address constant DEFAULT_CREATE2_FROM_STORE = 0x6E01e598e450F07551200e7b2db333BEcC66b35e;
+    // NOTE: Defaults must match the currently deployed Base infra.
+    // Keep these aligned with `frontend/src/config/contracts.defaults.ts` (BASE_DEFAULTS).
+    address constant DEFAULT_REGISTRY = 0x02c8031c39E10832A831b954Df7a2c1bf9Df052D;
+    address constant DEFAULT_BYTECODE_STORE = 0x35c189aBcb7289AB87A54b5067538668662e0702;
+    address constant DEFAULT_CREATE2_FROM_STORE = 0x24a2137950257a227A28663C76515FBFfD2475c3;
     address constant DEFAULT_PROTOCOL_TREASURY = 0x7d429eCbdcE5ff516D6e0a93299cbBa97203f2d3;
     address constant DEFAULT_POOL_MANAGER = 0x498581fF718922c3f8e6A244956aF099B2652b2b;
     address constant DEFAULT_TAX_HOOK = 0xca975B9dAF772C71161f3648437c3616E5Be0088;
     address constant DEFAULT_CHAINLINK_ETH_USD = 0x71041dddad3595F9CEd3DcCFBe3D1F4b0a16Bb70;
-    address constant DEFAULT_VAULT_ACTIVATION_BATCHER = 0x6d796554698f5Ddd74Ff20d745304096aEf93CB6;
-    address constant DEFAULT_LOTTERY_MANAGER = 0xe2C39D39FF92c0cF7A0e9eD16FcE1d6F14bB38fD;
+    address constant DEFAULT_VAULT_ACTIVATION_BATCHER = 0x4b67e3a4284090e5191c27B8F24248eC82DF055D;
+    address constant DEFAULT_LOTTERY_MANAGER = 0xA02A858E67c98320dCFB218831B645692E8f3483;
     address constant DEFAULT_PERMIT2 = 0x000000000022D473030F116dDEE9F6B43aC78BA3;
 
     function run() external {

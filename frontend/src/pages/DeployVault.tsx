@@ -1091,6 +1091,7 @@ function DeployVaultBatcher({
   owner,
   connectedWalletAddress,
   connectedSmartWalletAddress,
+  connectorId,
   executeBatchEligible = false,
   isSignedIn,
   minFirstDeposit,
@@ -1111,6 +1112,7 @@ function DeployVaultBatcher({
   owner: Address
   connectedWalletAddress: Address | null
   connectedSmartWalletAddress: Address | null
+  connectorId?: string | null
   executeBatchEligible?: boolean
   isSignedIn: boolean
   minFirstDeposit: bigint
@@ -1625,6 +1627,12 @@ function DeployVaultBatcher({
           // Otherwise, the paymaster will (correctly) 401 and we should fall back to direct execution.
           const cdpBundlerUrl = isSignedIn ? paymasterUrl : null
           const sponsoredCapabilities = isSignedIn ? (capabilities as any) : undefined
+          // Prefer `eth_sign` only when using Coinbase Wallet connectors (they support it).
+          // For Rabby and other injected wallets, avoid `eth_sign` entirely and sign via `personal_sign` (EIP-191),
+          // which removes Rabby's warning prompt while still supporting an ERC-4337 path if the account accepts it.
+          const resolvedConnectorId = String(connectorId ?? '')
+          const userOpSignMode =
+            resolvedConnectorId === 'coinbaseWallet' || resolvedConnectorId === 'coinbaseSmartWallet' ? 'eth_sign' : 'signMessage'
           let phase1Submitted = false
 
           const phase1Calls: Array<{ target: Address; value: bigint; data: Hex }> = []
@@ -1683,10 +1691,11 @@ function DeployVaultBatcher({
                   ownerAddress: connected,
                   calls: phase1Calls.map((c) => ({ to: c.target, value: c.value, data: c.data })),
                   version: '1',
+                  userOpSignMode,
                 })
                 setTxId(res1.transactionHash)
               } catch {
-                // If the connected wallet blocks eth_sign (e.g. Rabby), fall back to a direct executeBatch tx.
+                // If UserOps fail (unsupported signature scheme, paymaster rejection, etc), fall back to direct tx.
                 await executeBatchPhase1()
               }
             } else {
@@ -1906,6 +1915,7 @@ function DeployVaultBatcher({
                 ownerAddress: connected,
                 calls: phase2Calls.map((c) => ({ to: c.target, value: c.value, data: c.data })),
                 version: '1',
+                userOpSignMode,
               })
               setTxId(res2.transactionHash)
 
@@ -1917,6 +1927,7 @@ function DeployVaultBatcher({
                 ownerAddress: connected,
                 calls: phase3Calls.map((c) => ({ to: c.target, value: c.value, data: c.data })),
                 version: '1',
+                userOpSignMode,
               })
               setTxId(res3.transactionHash)
               onSuccess(expected)
@@ -4774,6 +4785,7 @@ export function DeployVault() {
                     owner={identity.canonicalIdentity.address as Address}
                     connectedWalletAddress={connectedWalletAddress}
                     connectedSmartWalletAddress={detectedSmartWalletContract}
+                    connectorId={String((connector as any)?.id ?? '')}
                     executeBatchEligible={executeBatchEligible}
                     isSignedIn={isSignedIn}
                     minFirstDeposit={minFirstDeposit}

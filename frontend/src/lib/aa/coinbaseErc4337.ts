@@ -86,24 +86,44 @@ async function findCoinbaseSmartWalletOwnerIndex(params: {
   return { ownerIndex: null, ownerCount: count }
 }
 
-function createWalletBackedLocalAccount(params: { walletClient: WalletClientLike; address: Address }) {
-  const { walletClient, address } = params
+type UserOpSignMode = 'eth_sign' | 'signMessage' | 'auto'
+
+function createWalletBackedLocalAccount(params: {
+  walletClient: WalletClientLike
+  address: Address
+  userOpSignMode?: UserOpSignMode
+}) {
+  const { walletClient, address, userOpSignMode = 'auto' } = params
 
   return toAccount({
     address,
     // Required for Coinbase Smart Wallet userOp signatures (sign raw digest).
     sign: async ({ hash }) => {
-      // NOTE: `eth_sign` signs a 32-byte digest (no EIP-191 prefix). Some wallets disable this method.
-      // If it's unavailable, callers should fall back to a wallet-native AA path (e.g. wallet_sendCalls).
-      try {
+      // Coinbase Smart Wallet UserOps are signed over the 32-byte UserOp hash.
+      //
+      // - Prefer `eth_sign` when available (no EIP-191 prefix).
+      // - Some wallets (notably Rabby) block `eth_sign`. In that case, try `personal_sign` via `signMessage({ raw })`
+      //   which produces an EIP-191 signature. If the account implementation does not accept that, the bundler
+      //   simulation will reject the UserOp (no onchain tx), and callers can fall back to other paths.
+      const tryEthSign = async () => {
         const sig = await (walletClient as any).request({ method: 'eth_sign', params: [address, hash] })
         return sig as Hex
-      } catch (e: unknown) {
-        const msg = e instanceof Error ? e.message : String(e)
-        // Rabby (and some other wallets) block eth_sign for safety.
-        throw new Error(
-          `Wallet does not support eth_sign (required for Coinbase Smart Wallet ERC-4337 UserOps). ${msg}`.trim(),
-        )
+      }
+      const tryPersonalSign = async () => {
+        return (await walletClient.signMessage({
+          account: address,
+          // `raw` signs the 32-byte payload (still EIP-191 prefixed at the JSON-RPC layer).
+          message: { raw: hash },
+        })) as Hex
+      }
+
+      if (userOpSignMode === 'eth_sign') return await tryEthSign()
+      if (userOpSignMode === 'signMessage') return await tryPersonalSign()
+
+      try {
+        return await tryEthSign()
+      } catch {
+        return await tryPersonalSign()
       }
     },
     signMessage: async ({ message }) => {
@@ -128,8 +148,9 @@ export async function sendCoinbaseSmartWalletUserOperation(params: {
   ownerAddress: Address
   calls: Array<{ to: Address; value?: bigint; data?: Hex }>
   version?: '1' | '1.1'
+  userOpSignMode?: UserOpSignMode
 }): Promise<{ userOpHash: Hex; transactionHash: Hex }> {
-  const { publicClient, walletClient, bundlerUrl, smartWallet, ownerAddress, calls, version = '1' } = params
+  const { publicClient, walletClient, bundlerUrl, smartWallet, ownerAddress, calls, version = '1', userOpSignMode = 'auto' } = params
   if (!bundlerUrl) throw new Error('Missing bundler URL')
 
   const { ownerIndex, ownerCount } = await findCoinbaseSmartWalletOwnerIndex({
@@ -142,7 +163,7 @@ export async function sendCoinbaseSmartWalletUserOperation(params: {
     throw new Error('Connected wallet is not an onchain owner of this Coinbase Smart Wallet.')
   }
 
-  const owner = createWalletBackedLocalAccount({ walletClient, address: ownerAddress })
+  const owner = createWalletBackedLocalAccount({ walletClient, address: ownerAddress, userOpSignMode })
   const account = await toCoinbaseSmartAccount({
     client: publicClient as any,
     address: smartWallet,
