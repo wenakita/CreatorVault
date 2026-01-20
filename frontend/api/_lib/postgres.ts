@@ -36,6 +36,15 @@ function withRequiredSsl(connectionString: string): string {
   return `${cs}${cs.includes('?') ? '&' : '?'}sslmode=require`
 }
 
+function requiresSsl(connectionString: string): boolean {
+  const cs = (connectionString ?? '').trim().toLowerCase()
+  if (!cs) return false
+  if (cs.includes('localhost') || cs.includes('127.0.0.1')) return false
+  // If explicitly disabled, respect it (useful for local tunnels / unusual setups).
+  if (cs.includes('sslmode=disable')) return false
+  return true
+}
+
 type DbResult = { rows: any[] }
 type DbPool = {
   sql: (strings: TemplateStringsArray, ...values: any[]) => Promise<DbResult>
@@ -80,12 +89,13 @@ export async function getDb(): Promise<DbPool | null> {
         const csRaw = getConnectionString()
         const cs = csRaw ? withRequiredSsl(csRaw) : null
         if (!cs) return null
+        const ssl = requiresSsl(cs) ? 'require' : undefined
 
         // Prefer pooled connections when possible (recommended for serverless),
         // but fall back to a direct client if the provided connection string is direct-only.
         try {
           if (typeof createPool === 'function') {
-            const pool = createPool({ connectionString: cs })
+            const pool = createPool({ connectionString: cs, ssl })
             // Some drivers only surface "invalid_connection_string" on first query.
             // If this happens, fall back to createClient() below.
             try {
@@ -111,7 +121,7 @@ export async function getDb(): Promise<DbPool | null> {
           return null
         }
 
-        const client = createClient({ connectionString: cs })
+        const client = createClient({ connectionString: cs, ssl })
         try {
           if (typeof client?.connect === 'function') await client.connect()
         } catch (e) {
