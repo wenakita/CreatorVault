@@ -91,6 +91,7 @@ function getCdpEndpoint(): string | null {
 async function checkCdpRpc(endpoint: string): Promise<{ ok: boolean; latencyMs: number | null; error: string | null }> {
   const start = Date.now()
   try {
+    // 1) Bundler reachability
     const ctrl = new AbortController()
     const t = setTimeout(() => ctrl.abort(), 8_000)
     const upstream = await fetch(endpoint, {
@@ -115,6 +116,51 @@ async function checkCdpRpc(endpoint: string): Promise<{ ok: boolean; latencyMs: 
       return { ok: false, latencyMs: Date.now() - start, error: msg }
     }
     if (errMsg) return { ok: false, latencyMs: Date.now() - start, error: errMsg }
+
+    // 2) Paymaster sponsorship status (best-effort)
+    // Some CDP configurations allow bundler methods while returning "Paymaster disabled" for paymaster methods.
+    // We probe with a dummy UserOp and only fail the check if we see that explicit message.
+    const ctrl2 = new AbortController()
+    const t2 = setTimeout(() => ctrl2.abort(), 8_000)
+    const pm = await fetch(endpoint, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        jsonrpc: '2.0',
+        id: 2,
+        method: 'pm_getPaymasterStubData',
+        params: [
+          {
+            sender: '0x0000000000000000000000000000000000000000',
+            nonce: '0x0',
+            initCode: '0x',
+            callData: '0x',
+            callGasLimit: '0x0',
+            verificationGasLimit: '0x0',
+            preVerificationGas: '0x0',
+            maxFeePerGas: '0x0',
+            maxPriorityFeePerGas: '0x0',
+            signature: '0x',
+          },
+          '0x5FF137D4b0FDCD49DcA30c7CF57E578a026d2789',
+          '0x2105',
+          null,
+        ],
+      }),
+      signal: ctrl2.signal,
+    })
+    clearTimeout(t2)
+    const pmText = await pm.text()
+    try {
+      const j = JSON.parse(pmText)
+      const msg = j?.error?.message ? String(j.error.message) : ''
+      if (msg.toLowerCase().includes('paymaster disabled')) {
+        return { ok: false, latencyMs: Date.now() - start, error: msg }
+      }
+    } catch {
+      // ignore parse errors
+    }
+
     return { ok: true, latencyMs: Date.now() - start, error: null }
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : 'CDP check failed'

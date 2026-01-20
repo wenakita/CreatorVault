@@ -999,12 +999,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (handleOptions(req, res)) return
 
   if (req.method !== 'POST') {
-    return res.status(405).json(jsonRpcError(null, -32600, 'Method not allowed'))
+    // Keep JSON-RPC clients happy (avoid transport-level failure masking).
+    return res.status(200).json(jsonRpcError(null, -32600, 'Method not allowed'))
   }
 
   const cdpEndpoint = getCdpEndpoint()
   if (!cdpEndpoint) {
-    return res.status(500).json(jsonRpcError(null, -32000, 'CDP paymaster endpoint is not configured'))
+    return res.status(200).json(jsonRpcError(null, -32000, 'CDP paymaster endpoint is not configured'))
   }
 
   // In production serverless, SIWE sessions MUST be signed with a stable secret.
@@ -1013,26 +1014,26 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const sessionSecret = (process.env.AUTH_SESSION_SECRET ?? '').trim()
   const isVercel = Boolean((process.env.VERCEL ?? '').trim())
   if (isVercel && sessionSecret.length < 16) {
-    return res.status(500).json(jsonRpcError(null, -32000, 'Server misconfigured: AUTH_SESSION_SECRET is not set'))
+    return res.status(200).json(jsonRpcError(null, -32000, 'Server misconfigured: AUTH_SESSION_SECRET is not set'))
   }
 
   const body = await readJsonBody<unknown>(req)
   if (!body) {
-    return res.status(400).json(jsonRpcError(null, -32600, 'Invalid JSON body'))
+    return res.status(200).json(jsonRpcError(null, -32600, 'Invalid JSON body'))
   }
 
   const requests: JsonRpcRequest[] = isRequestArray(body) ? body : isRequestObject(body) ? [body] : []
   if (requests.length === 0) {
-    return res.status(400).json(jsonRpcError(null, -32600, 'Invalid JSON-RPC payload'))
+    return res.status(200).json(jsonRpcError(null, -32600, 'Invalid JSON-RPC payload'))
   }
 
   for (const r of requests) {
     const method = typeof r?.method === 'string' ? r.method : ''
     if (!method) {
-      return res.status(400).json(jsonRpcError((r as any)?.id ?? null, -32600, 'Missing method'))
+      return res.status(200).json(jsonRpcError((r as any)?.id ?? null, -32600, 'Missing method'))
     }
     if (!ALLOWED_METHODS.has(method)) {
-      return res.status(403).json(jsonRpcError((r as any)?.id ?? null, -32601, `Method not allowed: ${method}`))
+      return res.status(200).json(jsonRpcError((r as any)?.id ?? null, -32601, `Method not allowed: ${method}`))
     }
   }
 
@@ -1048,24 +1049,24 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       if (!METHODS_REQUIRING_USEROP.has(method)) continue
       const extracted = extractUserOpAndEntryPoint(method, r.params)
       if (!extracted) {
-        return res.status(400).json(jsonRpcError((r as any)?.id ?? null, -32602, 'Invalid params'))
+        return res.status(200).json(jsonRpcError((r as any)?.id ?? null, -32602, 'Invalid params'))
       }
 
       if (extracted.entryPoint !== ENTRYPOINT_V06) {
-        return res.status(403).json(jsonRpcError((r as any)?.id ?? null, -32002, 'request denied - unsupported entryPoint'))
+        return res.status(200).json(jsonRpcError((r as any)?.id ?? null, -32002, 'request denied - unsupported entryPoint'))
       }
       if (typeof extracted.chainId === 'number' && extracted.chainId !== BASE_CHAIN_ID) {
-        return res.status(403).json(jsonRpcError((r as any)?.id ?? null, -32002, 'request denied - unsupported chainId'))
+        return res.status(200).json(jsonRpcError((r as any)?.id ?? null, -32002, 'request denied - unsupported chainId'))
       }
 
       const senderRaw = extracted.userOp?.sender
       const callDataRaw = extracted.userOp?.callData
       const initCodeRaw = extracted.userOp?.initCode
       if (typeof senderRaw !== 'string' || !isAddress(senderRaw)) {
-        return res.status(400).json(jsonRpcError((r as any)?.id ?? null, -32602, 'Invalid userOperation.sender'))
+        return res.status(200).json(jsonRpcError((r as any)?.id ?? null, -32602, 'Invalid userOperation.sender'))
       }
       if (!isHexString(callDataRaw) || callDataRaw === '0x') {
-        return res.status(400).json(jsonRpcError((r as any)?.id ?? null, -32602, 'Invalid userOperation.callData'))
+        return res.status(200).json(jsonRpcError((r as any)?.id ?? null, -32602, 'Invalid userOperation.callData'))
       }
 
       const sender = getAddress(senderRaw)
@@ -1094,7 +1095,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }
 
       if (!sessionAddress) {
-        return res.status(401).json(jsonRpcError((r as any)?.id ?? null, -32002, 'request denied - not authenticated'))
+        return res.status(200).json(jsonRpcError((r as any)?.id ?? null, -32002, 'request denied - not authenticated'))
       }
 
       // Basic rate limit: per session address.
@@ -1156,18 +1157,18 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
   } catch (err: unknown) {
     if (err instanceof Error && err.message === 'rate_limited') {
-      return res.status(429).json(jsonRpcError(null, -32002, 'request denied - rate limited'))
+      return res.status(200).json(jsonRpcError(null, -32002, 'request denied - rate limited'))
     }
     if (err instanceof Error && err.message === 'not_allowlisted') {
-      return res.status(403).json(jsonRpcError(null, -32002, 'request denied - creator not approved'))
+      return res.status(200).json(jsonRpcError(null, -32002, 'request denied - creator not approved'))
     }
     if (err instanceof Error && err.message === 'allowlist_check_failed') {
       logger.error('[paymaster-proxy] allowlist check failed')
-      return res.status(503).json(jsonRpcError(null, -32002, 'request denied - allowlist unavailable'))
+      return res.status(200).json(jsonRpcError(null, -32002, 'request denied - allowlist unavailable'))
     }
     const msg = err instanceof Error ? err.message : 'request denied'
     logger.warn('[paymaster-proxy] validation denied', { msg })
-    return res.status(403).json(jsonRpcError(null, -32002, `request denied - ${msg}`))
+    return res.status(200).json(jsonRpcError(null, -32002, `request denied - ${msg}`))
   }
 
   // Forward to CDP if validation passed.
