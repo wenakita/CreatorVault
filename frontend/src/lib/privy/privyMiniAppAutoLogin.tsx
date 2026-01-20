@@ -1,0 +1,90 @@
+import { useEffect, useRef, useState } from 'react'
+import { usePrivy } from '@privy-io/react-auth'
+import { useLoginToMiniApp } from '@privy-io/react-auth/farcaster'
+import { useMiniAppContext } from '@/hooks'
+import { logger } from '@/lib/logger'
+
+/**
+ * Farcaster Mini App → Privy seamless auth
+ *
+ * This uses the Mini Apps SDK to produce a FIP-11 SIWF credential, then passes it
+ * to Privy's `loginToMiniApp` for authentication.
+ *
+ * Notes:
+ * - We set `acceptAuthAddress: true` to support auth-address signing (e.g. Base App wallet).
+ * - This does NOT create embedded wallets automatically (per Privy Mini App limitation).
+ */
+export function PrivyMiniAppAutoLogin() {
+  const mini = useMiniAppContext()
+  const { ready, authenticated } = usePrivy()
+  const { initLoginToMiniApp, loginToMiniApp } = useLoginToMiniApp()
+
+  const attemptedRef = useRef(false)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (mini.isMiniApp !== true) return
+    if (!ready) return
+    if (authenticated) return
+    if (attemptedRef.current) return
+
+    attemptedRef.current = true
+    let cancelled = false
+
+    ;(async () => {
+      try {
+        setError(null)
+
+        const { nonce } = await initLoginToMiniApp()
+        if (!nonce) throw new Error('Missing Farcaster nonce')
+
+        const { sdk } = await import('@farcaster/miniapp-sdk')
+        if (!sdk?.actions?.signIn) throw new Error('Mini App host does not support Farcaster sign-in')
+
+        const result = await sdk.actions.signIn({ nonce, acceptAuthAddress: true })
+        if (!result?.message || !result?.signature) throw new Error('Missing Farcaster signature')
+
+        await loginToMiniApp({ message: result.message, signature: result.signature })
+      } catch (e: unknown) {
+        const msg = e instanceof Error ? e.message : 'Mini App login failed'
+        logger.warn('[PrivyMiniAppAutoLogin] failed', { msg })
+        if (!cancelled) setError(msg)
+      }
+    })()
+
+    return () => {
+      cancelled = true
+    }
+  }, [authenticated, initLoginToMiniApp, loginToMiniApp, mini.isMiniApp, ready])
+
+  // Dev-only, non-intrusive status badge (keeps production UI clean).
+  if (import.meta.env.DEV) {
+    const status =
+      mini.isMiniApp !== true
+        ? 'Not in Mini App'
+        : !ready
+          ? 'Privy not ready'
+          : authenticated
+            ? 'Privy authenticated'
+            : error
+              ? 'Mini App auth failed'
+              : attemptedRef.current
+                ? 'Authenticating…'
+                : 'Waiting…'
+
+    return (
+      <div className="fixed bottom-4 right-4 z-[10000] pointer-events-none">
+        <div className="card px-3 py-2 bg-black/70">
+          <div className="label">{status}</div>
+          {error ? (
+            <div className="mt-1 text-[10px] text-red-400/90 max-w-[260px] break-words">{error}</div>
+          ) : null}
+        </div>
+      </div>
+    )
+  }
+
+  // Silent by default in production; keep error accessible for debugging if needed.
+  return error ? <div className="sr-only">{error}</div> : null
+}
+

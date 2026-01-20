@@ -2942,13 +2942,6 @@ export function DeployVault() {
                 ) : null}
               </div>
 
-              {!isConnected ? (
-                <div className="space-y-3">
-                  <div className="label">Wallet</div>
-                  <ConnectButton />
-                </div>
-              ) : null}
-
               {/* Creator Coin */}
               <div className="space-y-2">
                 <label className="label">Creator Coin</label>
@@ -3286,12 +3279,10 @@ export function DeployVault() {
               ) : null}
 
               {!isConnected ? (
-                <button
-                  disabled
-                  className="w-full py-4 bg-black/30 border border-zinc-900/60 rounded-lg text-zinc-600 text-sm cursor-not-allowed"
-                >
-                  Connect wallet to deploy
-                </button>
+                <div className="space-y-2">
+                  <ConnectButton variant="deploy" />
+                  <div className="text-[11px] text-zinc-600">Connect a wallet to deploy your vault.</div>
+                </div>
               ) : !tokenIsValid && creatorAllowlistQuery.isLoading ? (
                 <button
                   disabled

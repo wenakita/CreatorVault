@@ -2,6 +2,7 @@ import { http, fallback, createConfig as createWagmiConfig } from 'wagmi'
 import { base } from 'wagmi/chains'
 import { injected, walletConnect } from 'wagmi/connectors'
 import { farcasterMiniApp } from '@farcaster/miniapp-wagmi-connector'
+import { zoraGlobalWalletConnector } from '@/lib/privy/zoraGlobalWalletConnector'
 
 /**
  * Base RPC notes:
@@ -57,6 +58,8 @@ export const wagmiConfig = createWagmiConfig({
       metadata: walletConnectMetadata,
       showQrModal: true,
     }),
+    // Privy Global Wallet (Requester): Zora embedded wallet (read-only provider).
+    zoraGlobalWalletConnector(),
   ],
   // Avoid multi-injected provider discovery issues (MetaMask/Rabby conflicts, etc).
   multiInjectedProviderDiscovery: false,

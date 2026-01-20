@@ -8,7 +8,7 @@ const ConnectButtonWeb3 = lazy(async () => {
   return { default: m.ConnectButtonWeb3 }
 })
 
-export function ConnectButton() {
+export function ConnectButton({ variant = 'default' }: { variant?: 'default' | 'deploy' }) {
   const { status, enable } = useWeb3()
   const [autoConnect, setAutoConnect] = useState(false)
 
@@ -21,7 +21,7 @@ export function ConnectButton() {
     return (
       <button onClick={startWeb3} className="btn-accent">
         <Wallet className="w-4 h-4 inline mr-2" />
-        <span className="label">Connect Wallet</span>
+        <span className="label">{variant === 'deploy' ? 'Continue' : 'Connect Wallet'}</span>
       </button>
     )
   }
@@ -44,7 +44,7 @@ export function ConnectButton() {
         </button>
       }
     >
-      <ConnectButtonWeb3 autoConnect={autoConnect} />
+      <ConnectButtonWeb3 autoConnect={autoConnect} variant={variant} />
     </Suspense>
   )
 }

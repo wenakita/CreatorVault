@@ -1,0 +1,152 @@
+import type { ComponentType, ReactNode } from 'react'
+import { createContext, useContext, useEffect, useMemo, useState } from 'react'
+import { getPrivyAppId, isPrivyClientEnabled } from '@/lib/flags'
+
+type PrivyClientStatus = 'disabled' | 'loading' | 'ready'
+
+const PrivyClientContext = createContext<PrivyClientStatus>('disabled')
+
+export function usePrivyClientStatus(): PrivyClientStatus {
+  return useContext(PrivyClientContext)
+}
+
+type PrivyProviderComponent = ComponentType<{
+  appId: string
+  config?: any
+  children: ReactNode
+}>
+
+type PrivyMiniAppAutoLoginComponent = ComponentType<Record<string, never>>
+type PrivyBaseAppDevBadgeComponent = ComponentType<Record<string, never>>
+type PrivyBaseSubAccountsDevPanelComponent = ComponentType<Record<string, never>>
+
+export function PrivyClientProvider({ children }: { children: ReactNode }) {
+  const enabled = isPrivyClientEnabled()
+  const appId = enabled ? getPrivyAppId() : null
+
+  const [PrivyProvider, setPrivyProvider] = useState<PrivyProviderComponent | null>(null)
+  const [MiniAppAutoLogin, setMiniAppAutoLogin] = useState<PrivyMiniAppAutoLoginComponent | null>(null)
+  const [BaseAppDevBadge, setBaseAppDevBadge] = useState<PrivyBaseAppDevBadgeComponent | null>(null)
+  const [BaseSubAccountsDevPanel, setBaseSubAccountsDevPanel] = useState<PrivyBaseSubAccountsDevPanelComponent | null>(null)
+
+  useEffect(() => {
+    if (!enabled || !appId) return
+
+    let cancelled = false
+    import('@privy-io/react-auth')
+      .then((m) => {
+        if (cancelled) return
+        setPrivyProvider(() => (m as any).PrivyProvider as PrivyProviderComponent)
+      })
+      .catch(() => {
+        // If Privy fails to load, we silently fall back to manual email entry.
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [enabled, appId])
+
+  useEffect(() => {
+    // Only load Mini App login glue when Privy is actually present.
+    if (!enabled || !appId) return
+    if (!PrivyProvider) return
+    if (MiniAppAutoLogin) return
+
+    let cancelled = false
+    import('./privyMiniAppAutoLogin')
+      .then((m) => {
+        if (cancelled) return
+        setMiniAppAutoLogin(() => (m as any).PrivyMiniAppAutoLogin as PrivyMiniAppAutoLoginComponent)
+      })
+      .catch(() => {
+        // Optional enhancement; ignore if it can't load.
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [MiniAppAutoLogin, PrivyProvider, appId, enabled])
+
+  useEffect(() => {
+    // Dev-only helper: confirm Base App integration wiring without digging through logs.
+    if (!import.meta.env.DEV) return
+    if (!enabled || !appId) return
+    if (!PrivyProvider) return
+    if (BaseAppDevBadge) return
+
+    let cancelled = false
+    import('./privyBaseAppDevBadge')
+      .then((m) => {
+        if (cancelled) return
+        setBaseAppDevBadge(() => (m as any).PrivyBaseAppDevBadge as PrivyBaseAppDevBadgeComponent)
+      })
+      .catch(() => {
+        // Optional enhancement; ignore if it can't load.
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [BaseAppDevBadge, PrivyProvider, appId, enabled])
+
+  useEffect(() => {
+    // Dev-only helper: test Base Sub Accounts flow interactively.
+    if (!import.meta.env.DEV) return
+    if (!enabled || !appId) return
+    if (!PrivyProvider) return
+    if (BaseSubAccountsDevPanel) return
+
+    let cancelled = false
+    import('./privyBaseSubAccountsDevPanel')
+      .then((m) => {
+        if (cancelled) return
+        setBaseSubAccountsDevPanel(() => (m as any).PrivyBaseSubAccountsDevPanel as PrivyBaseSubAccountsDevPanelComponent)
+      })
+      .catch(() => {
+        // Optional enhancement; ignore if it can't load.
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [BaseSubAccountsDevPanel, PrivyProvider, appId, enabled])
+
+  const status: PrivyClientStatus = !enabled || !appId ? 'disabled' : PrivyProvider ? 'ready' : 'loading'
+  const ctx = useMemo(() => status, [status])
+
+  if (status !== 'ready' || !PrivyProvider || !appId) {
+    return <PrivyClientContext.Provider value={ctx}>{children}</PrivyClientContext.Provider>
+  }
+
+  return (
+    <PrivyClientContext.Provider value="ready">
+      <PrivyProvider
+        appId={appId}
+        config={{
+          // Keep this focused: a few high-signal login options for the waitlist.
+          // Methods must also be enabled in the Privy dashboard.
+          appearance: {
+            // Show Base App (Base Account) as an external wallet option in Privy UI.
+            // This is safe to include even if the user never opens Privy wallet connect.
+            walletList: ['base_account'],
+          },
+          // Required for Sub Accounts controlled by an embedded wallet.
+          // Note: Mini Apps may not support automatic embedded wallet creation; this is still safe for web.
+          embedded: {
+            ethereum: {
+              createOnLogin: 'all-users',
+            },
+          },
+          loginMethodsAndOrder: {
+            // Include Farcaster for Mini App + Base App auth-address support.
+            primary: ['farcaster', 'google', 'twitter', 'telegram'],
+            overflow: [],
+          },
+        }}
+      >
+        {MiniAppAutoLogin ? <MiniAppAutoLogin /> : null}
+        {BaseAppDevBadge ? <BaseAppDevBadge /> : null}
+        {BaseSubAccountsDevPanel ? <BaseSubAccountsDevPanel /> : null}
+        {children}
+      </PrivyProvider>
+    </PrivyClientContext.Provider>
+  )
+}
+

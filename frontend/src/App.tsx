@@ -1,7 +1,10 @@
 import { lazy } from 'react'
 import { Routes, Route, Navigate } from 'react-router-dom'
 import { Layout } from './components/Layout'
+import { MarketingLayout } from './components/MarketingLayout'
 import { Home } from './pages/Home'
+import { isPublicSiteMode } from './lib/flags'
+import { getHostMode, getAppBaseUrl } from './lib/host'
 
 const Vault = lazy(async () => {
   const m = await import('./pages/Vault')
@@ -21,6 +24,16 @@ const AuctionBid = lazy(async () => {
 const DeployVault = lazy(async () => {
   const m = await import('./pages/DeployVault')
   return { default: m.DeployVault }
+})
+
+const Waitlist = lazy(async () => {
+  const m = await import('./pages/Waitlist')
+  return { default: m.Waitlist }
+})
+
+const WaitlistLanding = lazy(async () => {
+  const m = await import('./pages/WaitlistLanding')
+  return { default: m.WaitlistLanding }
 })
 
 const CoinManage = lazy(async () => {
@@ -128,49 +141,87 @@ const Portfolio = lazy(async () => {
   return { default: m.Portfolio }
 })
 
+function ExternalRedirect({ to }: { to: string }) {
+  if (typeof window !== 'undefined') window.location.replace(to)
+  return null
+}
+
 function App() {
+  const publicMode = isPublicSiteMode()
+  const hostMode = getHostMode()
+  const appBase = getAppBaseUrl()
+
   return (
     <>
       {/* Noise texture overlay */}
       <div className="noise-overlay" />
       
       <Routes>
-        <Route element={<Layout />}>
-          <Route path="/" element={<Home />} />
-          <Route path="/explore" element={<Navigate to="/explore/creators" replace />} />
-          <Route path="/explore/creators" element={<ExploreCreators />} />
-          <Route path="/explore/content" element={<ExploreContent />} />
-          <Route path="/explore/transactions" element={<ExploreTransactions />} />
-          <Route path="/explore/creators/:chain/:tokenAddress" element={<ExploreCreatorDetail />} />
-          <Route path="/explore/creators/:chain/:tokenAddress/transactions" element={<ExploreCreatorTransactions />} />
-          <Route path="/explore/content/:chain/:contentCoinAddress" element={<ExploreContentDetail />} />
-          <Route path="/explore/content/:chain/:contentCoinAddress/transactions" element={<ExploreContentTransactions />} />
-          <Route path="/explore/content/:chain/pool/:poolIdOrPoolKeyHash" element={<ExploreContentPoolAlias />} />
-          <Route path="/explore/tokens" element={<Navigate to="/explore/creators" replace />} />
-          <Route path="/explore/pools" element={<Navigate to="/explore/content" replace />} />
-          <Route path="/swap" element={<Swap />} />
-          <Route path="/positions" element={<Positions />} />
-          <Route path="/portfolio" element={<Portfolio />} />
-          <Route path="/launch" element={<Navigate to="/deploy" replace />} />
-          <Route path="/deploy" element={<DeployVault />} />
-          <Route path="/coin/:address/manage" element={<CoinManage />} />
-          <Route path="/creator/earnings" element={<CreatorEarnings />} />
-          <Route path="/creator/:identifier/earnings" element={<CreatorEarnings />} />
-          <Route path="/faq" element={<Faq />} />
-          <Route path="/faq/how-it-works" element={<FaqHowItWorks />} />
-          <Route path="/status" element={<Status />} />
-          <Route path="/admin/creator-access" element={<AdminCreatorAccess />} />
-          <Route path="/admin/miniapp" element={<AdminMiniApp />} />
-          <Route path="/admin/deploy-strategies" element={<AdminDeployStrategies />} />
-          <Route path="/vote" element={<GaugeVoting />} />
-          <Route path="/activate-akita" element={<Navigate to="/deploy" replace />} />
-          <Route path="/auction/bid/:address" element={<AuctionBid />} />
-          <Route path="/complete-auction" element={<CompleteAuction />} />
-          <Route path="/complete-auction/:strategy" element={<CompleteAuction />} />
-          <Route path="/dashboard" element={<Navigate to="/explore/creators" replace />} />
-          <Route path="/vault/:address" element={<Vault />} />
-          <Route path="/auction-demo" element={<AuctionDemo />} />
-        </Route>
+        {hostMode === 'marketing' ? (
+          <Route element={<MarketingLayout />}>
+            <Route path="/" element={<WaitlistLanding />} />
+            {/* Back-compat */}
+            <Route path="/waitlist" element={<Navigate to="/" replace />} />
+
+            {/* If someone hits an app route on the marketing domain, push them to app.* */}
+            <Route path="/explore/*" element={<ExternalRedirect to={`${appBase}/explore`} />} />
+            <Route path="/deploy" element={<ExternalRedirect to={`${appBase}/deploy`} />} />
+            <Route path="/dashboard" element={<ExternalRedirect to={`${appBase}/explore`} />} />
+            <Route path="/vault/*" element={<ExternalRedirect to={`${appBase}/vault`} />} />
+            <Route path="/coin/*" element={<ExternalRedirect to={`${appBase}/coin`} />} />
+            <Route path="/creator/*" element={<ExternalRedirect to={`${appBase}/creator`} />} />
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Route>
+        ) : (
+          <Route element={<Layout />}>
+            {/* App host */}
+            <Route path="/" element={<Navigate to="/explore" replace />} />
+            {/* Keep /waitlist route as a redirect for old links */}
+            <Route path="/waitlist" element={<Waitlist />} />
+            {/* Optional: keep existing Home page available at /home if you still want it */}
+            <Route path="/home" element={<Home />} />
+            {publicMode ? (
+              <Route path="*" element={<Navigate to="/" replace />} />
+            ) : (
+              <>
+                <Route path="/explore" element={<Navigate to="/explore/creators" replace />} />
+                <Route path="/explore/creators" element={<ExploreCreators />} />
+                <Route path="/explore/content" element={<ExploreContent />} />
+                <Route path="/explore/transactions" element={<ExploreTransactions />} />
+                <Route path="/explore/creators/:chain/:tokenAddress" element={<ExploreCreatorDetail />} />
+                <Route path="/explore/creators/:chain/:tokenAddress/transactions" element={<ExploreCreatorTransactions />} />
+                <Route path="/explore/content/:chain/:contentCoinAddress" element={<ExploreContentDetail />} />
+                <Route path="/explore/content/:chain/:contentCoinAddress/transactions" element={<ExploreContentTransactions />} />
+                <Route path="/explore/content/:chain/pool/:poolIdOrPoolKeyHash" element={<ExploreContentPoolAlias />} />
+                <Route path="/explore/tokens" element={<Navigate to="/explore/creators" replace />} />
+                <Route path="/explore/pools" element={<Navigate to="/explore/content" replace />} />
+                <Route path="/swap" element={<Swap />} />
+                <Route path="/positions" element={<Positions />} />
+                <Route path="/portfolio" element={<Portfolio />} />
+                <Route path="/launch" element={<Navigate to="/deploy" replace />} />
+                <Route path="/deploy" element={<DeployVault />} />
+                <Route path="/coin/:address/manage" element={<CoinManage />} />
+                <Route path="/creator/earnings" element={<CreatorEarnings />} />
+                <Route path="/creator/:identifier/earnings" element={<CreatorEarnings />} />
+                <Route path="/faq" element={<Faq />} />
+                <Route path="/faq/how-it-works" element={<FaqHowItWorks />} />
+                <Route path="/status" element={<Status />} />
+                <Route path="/admin/creator-access" element={<AdminCreatorAccess />} />
+                <Route path="/admin/miniapp" element={<AdminMiniApp />} />
+                <Route path="/admin/deploy-strategies" element={<AdminDeployStrategies />} />
+                <Route path="/vote" element={<GaugeVoting />} />
+                <Route path="/activate-akita" element={<Navigate to="/deploy" replace />} />
+                <Route path="/auction/bid/:address" element={<AuctionBid />} />
+                <Route path="/complete-auction" element={<CompleteAuction />} />
+                <Route path="/complete-auction/:strategy" element={<CompleteAuction />} />
+                <Route path="/dashboard" element={<Navigate to="/explore/creators" replace />} />
+                <Route path="/vault/:address" element={<Vault />} />
+                <Route path="/auction-demo" element={<AuctionDemo />} />
+                <Route path="*" element={<Navigate to="/" replace />} />
+              </>
+            )}
+          </Route>
+        )}
       </Routes>
     </>
   )

@@ -4,6 +4,7 @@ import { Menu } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 
 import { ConnectButton } from '@/components/ConnectButton'
+import { isPublicSiteMode } from '@/lib/flags'
 import { Logo } from './Logo'
 
 type NavItem = {
@@ -19,7 +20,25 @@ const NAV_ITEMS: NavItem[] = [
   { label: 'FAQ', to: '/faq', activePrefixes: ['/faq'] },
 ]
 
-function isActivePath(pathname: string, item: NavItem): boolean {
+const NAV_ITEMS_PUBLIC: NavItem[] = [
+  { label: 'HOME', to: '/', activePrefixes: ['/'] },
+]
+
+function isActiveLink(location: { pathname: string; hash?: string }, item: NavItem): boolean {
+  const pathname = location.pathname
+  const hash = location.hash ?? ''
+
+  // Hash links (e.g. "/#waitlist") are active only when both match.
+  if (item.to.includes('#')) {
+    const [toPath, toHash = ''] = item.to.split('#')
+    const wantPath = toPath || '/'
+    const wantHash = `#${toHash}`
+    if (pathname === wantPath && hash === wantHash) return true
+    // Back-compat: allow `/waitlist` route to count as active for the waitlist item.
+    const prefixes = item.activePrefixes && item.activePrefixes.length > 0 ? item.activePrefixes : [item.to]
+    return prefixes.includes('/waitlist') && pathname === '/waitlist'
+  }
+
   if (item.to === '/') return pathname === '/'
   const prefixes = item.activePrefixes && item.activePrefixes.length > 0 ? item.activePrefixes : [item.to]
   return prefixes.some((p) => (p === '/' ? pathname === '/' : pathname === p || pathname.startsWith(`${p}/`)))
@@ -28,6 +47,8 @@ function isActivePath(pathname: string, item: NavItem): boolean {
 export function VaultNavBar() {
   const location = useLocation()
   const [isHovered, setIsHovered] = useState<number | null>(null)
+  const publicMode = isPublicSiteMode()
+  const items = publicMode ? NAV_ITEMS_PUBLIC : NAV_ITEMS
 
   return (
     <header className="sticky top-0 left-0 right-0 z-50 transition-all duration-500">
@@ -53,8 +74,8 @@ export function VaultNavBar() {
         </Link>
 
         <nav className="hidden md:flex items-center gap-10">
-          {NAV_ITEMS.map((item, i) => {
-            const active = isActivePath(location.pathname, item)
+          {items.map((item, i) => {
+            const active = isActiveLink(location, item)
             return (
               <Link
                 key={item.to}
@@ -94,9 +115,11 @@ export function VaultNavBar() {
           })}
         </nav>
 
-        <div className="hidden md:block">
-          <ConnectButton />
-        </div>
+        {!publicMode ? (
+          <div className="hidden md:block">
+            <ConnectButton />
+          </div>
+        ) : null}
 
         <div className="md:hidden text-white/50 hover:text-white cursor-pointer" title="Menu">
           <Menu />

@@ -3,7 +3,7 @@ pragma solidity ^0.8.20;
 
 /**
  * @title VoterRewardsDistributor
- * @author CreatorVault
+ * @author 0xakita.eth
  * @notice Distributes the "protocol" fee slice to ve4626 voters (ve(3,3) mechanics)
  *
  * @dev Inspired by ve(3,3) systems where voters receive fees/bribes for voting on gauges.

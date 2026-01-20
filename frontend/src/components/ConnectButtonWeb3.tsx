@@ -36,14 +36,23 @@ function withTimeout<T>(p: Promise<T>, ms: number): Promise<T> {
   })
 }
 
-function ConnectButtonWeb3Wagmi({ autoConnect = false }: { autoConnect?: boolean }) {
-  const { address, isConnected, chain } = useAccount()
+type ConnectButtonVariant = 'default' | 'deploy'
+
+function ConnectButtonWeb3Wagmi({
+  autoConnect = false,
+  variant = 'default',
+}: {
+  autoConnect?: boolean
+  variant?: ConnectButtonVariant
+}) {
+  const { address, isConnected, chain, connector } = useAccount()
   const { connectAsync, connectors, isPending, reset } = useConnect()
   const { disconnect } = useDisconnect()
   const { switchChain } = useSwitchChain()
   const { signMessageAsync } = useSignMessage()
   const miniApp = useMiniAppContext()
   const [showMenu, setShowMenu] = useState(false)
+  const [showOptions, setShowOptions] = useState(false)
   const [copied, setCopied] = useState(false)
   const [connectError, setConnectError] = useState<string | null>(null)
   const [authAddress, setAuthAddress] = useState<string | null>(null)
@@ -58,6 +67,7 @@ function ConnectButtonWeb3Wagmi({ autoConnect = false }: { autoConnect?: boolean
   })
   const walletConnectConnector = connectors.find((c) => String(c.id) === 'walletConnect' || String(c.name ?? '').toLowerCase().includes('walletconnect'))
   const rabbyConnector = connectors.find((c) => String(c.id ?? '').toLowerCase() === 'rabby' || String(c.name ?? '').toLowerCase().includes('rabby'))
+  const zoraReadOnlyConnector = connectors.find((c) => String(c.id ?? '').toLowerCase() === 'privy-zora' || String(c.name ?? '').toLowerCase().includes('zora'))
 
   const injectedProvider = typeof window !== 'undefined' ? (window as any)?.ethereum : null
   const isRabbyPresent =
@@ -75,6 +85,29 @@ function ConnectButtonWeb3Wagmi({ autoConnect = false }: { autoConnect?: boolean
     walletConnectConnector ??
     rabbyConnector ??
     connectors[0]
+
+  const connectDirect = useCallback(
+    async (c: Connector | null | undefined, opts?: { timeoutMs?: number; label?: string }) => {
+      if (!c) return
+      setConnectError(null)
+      try {
+        const timeoutMs = typeof opts?.timeoutMs === 'number' ? opts.timeoutMs : 60_000
+        await withTimeout(connectAsync({ connector: c }), timeoutMs)
+        setShowOptions(false)
+      } catch (e: unknown) {
+        const msg = e instanceof Error ? e.message : String(e)
+        const name = typeof (e as any)?.name === 'string' ? String((e as any).name) : ''
+        logger.warn('[ConnectButtonWeb3] connectDirect failed', { connector: { id: c.id, name: c.name }, name, msg })
+        reset()
+        if (name.toLowerCase().includes('userrejected') || msg.toLowerCase().includes('user rejected')) {
+          setConnectError('Connection rejected')
+          return
+        }
+        setConnectError(opts?.label ? `Unable to connect (${opts.label})` : 'Unable to connect')
+      }
+    },
+    [connectAsync, reset],
+  )
 
   const connectBestEffort = useCallback(async () => {
     if (!preferredConnector) return
@@ -146,6 +179,11 @@ function ConnectButtonWeb3Wagmi({ autoConnect = false }: { autoConnect?: boolean
     walletConnectConnector,
   ])
 
+  const connectZoraReadOnly = useCallback(async () => {
+    // Cross-app consent can require a user popup/confirm.
+    await connectDirect(zoraReadOnlyConnector, { timeoutMs: 60_000, label: 'Zora' })
+  }, [connectDirect, zoraReadOnlyConnector])
+
   // Best-effort: preserve a single "Connect Wallet" click when Web3 is lazily enabled.
   useEffect(() => {
     if (!autoConnect) return
@@ -189,8 +227,14 @@ function ConnectButtonWeb3Wagmi({ autoConnect = false }: { autoConnect?: boolean
   const isSignedIn =
     !!address && !!authAddress && authAddress.toLowerCase() === address.toLowerCase()
 
+  const isReadOnlyConnector = String(connector?.id ?? '').toLowerCase() === 'privy-zora'
+
   async function signIn() {
     if (!address) return
+    if (isReadOnlyConnector) {
+      setAuthError('Zora wallet is read-only — connect a signing wallet to sign in')
+      return
+    }
     setAuthBusy(true)
     setAuthError(null)
     try {
@@ -313,11 +357,19 @@ function ConnectButtonWeb3Wagmi({ autoConnect = false }: { autoConnect?: boolean
                     setShowMenu(false)
                   }}
                   className="w-full text-left py-3 px-4 hover:bg-zinc-950 transition-colors disabled:opacity-50"
-                  disabled={authBusy}
-                  title="Proves you control this wallet (no transaction)"
+                  disabled={authBusy || isReadOnlyConnector}
+                  title={
+                    isReadOnlyConnector
+                      ? 'Zora connector is read-only (no signatures)'
+                      : 'Proves you control this wallet (no transaction)'
+                  }
                 >
-                  <span className="label block mb-1">{isSignedIn ? 'Signed in' : 'Sign in'}</span>
-                  <span className="text-xs text-zinc-600">{isSignedIn ? 'Verified for this session' : 'No transaction'}</span>
+                  <span className="label block mb-1">
+                    {isReadOnlyConnector ? 'Sign in (unavailable)' : isSignedIn ? 'Signed in' : 'Sign in'}
+                  </span>
+                  <span className="text-xs text-zinc-600">
+                    {isReadOnlyConnector ? 'Read-only connector' : isSignedIn ? 'Verified for this session' : 'No transaction'}
+                  </span>
                 </button>
                 {authError ? (
                   <div className="px-4 text-[11px] text-red-400/90">{authError}</div>
@@ -354,8 +406,11 @@ function ConnectButtonWeb3Wagmi({ autoConnect = false }: { autoConnect?: boolean
     )
   }
 
+  const isDeployVariant = variant === 'deploy'
+  const primaryLabel = isDeployVariant ? 'Continue' : 'Connect Wallet'
+
   return (
-    <div className="flex flex-col items-end gap-1">
+    <div className={`flex flex-col gap-2 ${isDeployVariant ? 'items-stretch' : 'items-end'}`}>
       <button
         type="button"
         disabled={isPending || !preferredConnector}
@@ -370,13 +425,93 @@ function ConnectButtonWeb3Wagmi({ autoConnect = false }: { autoConnect?: boolean
         }
       >
         <Wallet className="w-4 h-4" />
-        <span className="label">{isPending ? 'Connecting…' : 'Connect Wallet'}</span>
+        <span className="label">{isPending ? 'Connecting…' : primaryLabel}</span>
       </button>
+      {!miniApp.isMiniApp && isDeployVariant ? (
+        <div className="relative">
+          <button
+            type="button"
+            disabled={isPending}
+            onClick={() => setShowOptions((v) => !v)}
+            className="btn-primary w-full px-6 py-2 disabled:opacity-50"
+            title="More connection options"
+          >
+            <span className="label">More options</span>
+          </button>
+
+          <AnimatePresence>
+            {showOptions ? (
+              <>
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  className="fixed inset-0 z-40"
+                  onClick={() => setShowOptions(false)}
+                />
+                <motion.div
+                  initial={{ opacity: 0, y: -10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -10 }}
+                  className="absolute left-0 top-full mt-3 w-[min(360px,calc(100vw-2rem))] card p-3 z-50 space-y-2"
+                >
+                  {rabbyConnector ? (
+                    <button
+                      type="button"
+                      disabled={isPending}
+                      className="w-full text-left py-3 px-4 hover:bg-zinc-950 transition-colors disabled:opacity-50"
+                      onClick={() => void connectDirect(rabbyConnector, { timeoutMs: 6_000, label: 'Rabby' })}
+                    >
+                      <span className="label block mb-1">Rabby (extension)</span>
+                      <span className="text-xs text-zinc-600">Fastest on desktop if installed.</span>
+                    </button>
+                  ) : null}
+
+                  {walletConnectConnector ? (
+                    <button
+                      type="button"
+                      disabled={isPending}
+                      className="w-full text-left py-3 px-4 hover:bg-zinc-950 transition-colors disabled:opacity-50"
+                      onClick={() => void connectDirect(walletConnectConnector, { timeoutMs: 90_000, label: 'WalletConnect' })}
+                    >
+                      <span className="label block mb-1">WalletConnect (QR)</span>
+                      <span className="text-xs text-zinc-600">Use any wallet on mobile.</span>
+                    </button>
+                  ) : null}
+
+                  {zoraReadOnlyConnector ? (
+                    <button
+                      type="button"
+                      disabled={isPending}
+                      className="w-full text-left py-3 px-4 hover:bg-zinc-950 transition-colors disabled:opacity-50"
+                      onClick={() => void connectZoraReadOnly()}
+                      title="Import your Zora embedded wallet address (read-only)"
+                    >
+                      <span className="label block mb-1">Import Zora wallet (read-only)</span>
+                      <span className="text-xs text-zinc-600">Imports address only — can’t sign.</span>
+                    </button>
+                  ) : null}
+                </motion.div>
+              </>
+            ) : null}
+          </AnimatePresence>
+        </div>
+      ) : !miniApp.isMiniApp && zoraReadOnlyConnector ? (
+        <button
+          type="button"
+          disabled={isPending}
+          onClick={() => void connectZoraReadOnly()}
+          className="btn-primary px-6 py-2 disabled:opacity-50"
+          title="Import your Zora embedded wallet address (read-only)"
+        >
+          <span className="label">Connect Zora wallet</span>
+        </button>
+      ) : null}
       {connectError ? <div className="text-[10px] text-zinc-500">{connectError}</div> : null}
     </div>
   )
 }
 
-export function ConnectButtonWeb3({ autoConnect = false }: { autoConnect?: boolean }) {
-  return <ConnectButtonWeb3Wagmi autoConnect={autoConnect} />
+export function ConnectButtonWeb3({ autoConnect = false, variant = 'default' }: { autoConnect?: boolean; variant?: ConnectButtonVariant }) {
+  return <ConnectButtonWeb3Wagmi autoConnect={autoConnect} variant={variant} />
 }

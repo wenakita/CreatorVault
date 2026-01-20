@@ -109,6 +109,28 @@
   .btn-accent {
     @apply bg-brand-primary/10 border border-brand-primary/20 text-brand-accent hover:bg-brand-primary/20 px-8 py-3 transition-all duration-300 font-light tracking-wide;
   }
+
+  /* Waitlist (Typeform-style) polish */
+  .kbd-hint {
+    @apply inline-flex items-center rounded-md border border-white/10 bg-black/40 px-2 py-1 text-[10px] uppercase tracking-[0.18em] text-zinc-500;
+  }
+
+  /* Style Farcaster AuthKit button to match our system */
+  .fc-authkit-signin-button button,
+  .fc-authkit-signin-button > button {
+    @apply rounded-xl bg-brand-primary/10 border border-brand-primary/20 text-brand-accent hover:bg-brand-primary/20 px-8 py-3 transition-all duration-300 font-light tracking-wide;
+  }
+
+  .fc-authkit-signin-button button:disabled,
+  .fc-authkit-signin-button > button:disabled {
+    @apply opacity-60 cursor-not-allowed;
+  }
+
+  .fc-authkit-signin-button button:focus-visible,
+  .fc-authkit-signin-button > button:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 2px rgba(0, 82, 255, 0.25);
+  }
   
   /* Input - Terminal style */
   .input-field {

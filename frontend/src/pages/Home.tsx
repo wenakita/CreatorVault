@@ -1,11 +1,29 @@
-import { Link } from 'react-router-dom'
+import { Link, useLocation } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { ArrowRight } from 'lucide-react'
 import { SHARE_SYMBOL_PREFIX } from '@/lib/tokenSymbols'
+import { isPublicSiteMode } from '@/lib/flags'
+import { WaitlistSection } from '@/components/waitlist/WaitlistSection'
+import { useEffect } from 'react'
 
 const SHARE_TOKEN = `${SHARE_SYMBOL_PREFIX}TOKEN`
 
 export function Home() {
+  const publicMode = isPublicSiteMode()
+  const location = useLocation()
+
+  useEffect(() => {
+    if (!location.hash) return
+    const id = location.hash.replace('#', '').trim()
+    if (!id) return
+    const el = document.getElementById(id)
+    if (!el) return
+    // Wait a tick for layout/animations to mount.
+    requestAnimationFrame(() => {
+      el.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    })
+  }, [location.hash])
+
   return (
     <div className="relative">
       {/* Subtle particle atmosphere */}
@@ -61,12 +79,23 @@ export function Home() {
             transition={{ duration: 0.8, delay: 1.284 }}
             className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-8"
           >
-            <Link to="/dashboard" className="btn-accent">
-              Start Earning <ArrowRight className="w-4 h-4 inline ml-2" />
-            </Link>
-            <Link to="/deploy" className="btn-primary">
-              Create Vault
-            </Link>
+            {publicMode ? (
+              <Link to="/#waitlist" className="btn-accent">
+                Join waitlist <ArrowRight className="w-4 h-4 inline ml-2" />
+              </Link>
+            ) : (
+              <>
+                <Link to="/dashboard" className="btn-accent">
+                  Start Earning <ArrowRight className="w-4 h-4 inline ml-2" />
+                </Link>
+                <Link to="/deploy" className="btn-primary">
+                  Create Vault
+                </Link>
+                <Link to="/#waitlist" className="btn-primary">
+                  Join waitlist
+                </Link>
+              </>
+            )}
           </motion.div>
         </div>
       </section>
@@ -105,9 +134,15 @@ export function Home() {
                 this mints <span className="font-mono text-brand-primary">5,000,000 {SHARE_TOKEN}</span> and runs a{' '}
                 <span className="text-uniswap">Uniswap CCA</span> auction before the vault deploys the deposit across strategies.
               </p>
-              <Link to="/deploy" className="btn-accent inline-block">
-                Create Vault <ArrowRight className="w-4 h-4 inline ml-2" />
-              </Link>
+              {publicMode ? (
+                <Link to="/#waitlist" className="btn-accent inline-block">
+                  Join waitlist <ArrowRight className="w-4 h-4 inline ml-2" />
+                </Link>
+              ) : (
+                <Link to="/deploy" className="btn-accent inline-block">
+                  Create Vault <ArrowRight className="w-4 h-4 inline ml-2" />
+                </Link>
+              )}
             </motion.div>
 
             <motion.div
@@ -233,6 +268,8 @@ export function Home() {
           </motion.div>
         </div>
       </section>
+
+      <WaitlistSection />
     </div>
   )
 }

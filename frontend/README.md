@@ -57,6 +57,7 @@ frontend/
 |-------|-------------|
 | `/` | Landing page with features |
 | `/deploy` | Deploy + activate vault (canonical) |
+| `/waitlist` | Collect emails for early access |
 | `/dashboard` | Browse all creator vaults |
 | `/vault/:address` | Deposit/withdraw from vault |
 | `/launch` | Redirects to `/deploy` (legacy) |
@@ -105,6 +106,25 @@ npm run build
 | `AUTH_SESSION_SECRET` | Recommended | server | SIWE session secret (stable in production) |
 | `CREATOR_ACCESS_ADMIN_ADDRESSES` | Optional | server | Admin wallets allowed to approve/deny creator access |
 | `CREATOR_ALLOWLIST` | Optional | server | Legacy fallback allowlist (env-based, only used if DB is not configured) |
+| `PRIVY_APP_ID` | Optional | server | Privy App ID (server-side). Used by `/api/waitlist` when enabled |
+| `PRIVY_APP_SECRET` | Optional | server | Privy App Secret (server-side). Used by `/api/waitlist` when enabled |
+| `PRIVY_WAITLIST_PREGENERATE` | Optional | server | If true, `/api/waitlist` creates/fetches a Privy user and pregenerates an embedded Ethereum wallet |
+
+## Waitlist (DB)
+
+The waitlist API stores signups in Postgres. Create the table once:
+
+```sql
+CREATE TABLE IF NOT EXISTS waitlist_signups (
+  id BIGSERIAL PRIMARY KEY,
+  email TEXT NOT NULL UNIQUE,
+  primary_wallet TEXT NULL,
+  privy_user_id TEXT NULL,
+  embedded_wallet TEXT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+```
 
 ## Admin: approve creator access
 
