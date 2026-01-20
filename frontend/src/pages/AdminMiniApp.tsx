@@ -155,7 +155,7 @@ export function AdminMiniApp() {
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <a
-                  href={`https://${(domain.trim() || DEFAULT_DOMAIN).replace(/^https?:\/\//, '')}/.well-known/farcaster.json?t=${Date.now()}`}
+                  href={`https://${normalizeDomain(domain)}/.well-known/farcaster.json?t=${Date.now()}`}
                   target="_blank"
                   rel="noreferrer"
                   className="rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-sm text-zinc-200 hover:border-white/20 transition-colors inline-flex items-center justify-between"
