@@ -114,8 +114,9 @@ async function createDeploySession(params: {
       creatorToken: params.creatorToken,
       ownerAddress: params.ownerAddress,
       version: params.version ?? '',
-      phase2Calls: params.phase2Calls.map((c) => ({ to: c.target, value: c.value, data: c.data })),
-      phase3Calls: params.phase3Calls.map((c) => ({ to: c.target, value: c.value, data: c.data })),
+      // JSON can't serialize bigint; stringify values for server-side BigInt() parsing.
+      phase2Calls: params.phase2Calls.map((c) => ({ to: c.target, value: c.value.toString(), data: c.data })),
+      phase3Calls: params.phase3Calls.map((c) => ({ to: c.target, value: c.value.toString(), data: c.data })),
     }),
   })
   const json = (await res.json().catch(() => null)) as ApiEnvelope<DeploySessionCreateResponse> | null
