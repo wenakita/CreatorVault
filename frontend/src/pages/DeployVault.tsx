@@ -3278,7 +3278,11 @@ export function DeployVault() {
                       <div className="flex items-center justify-between gap-3 text-[11px]">
                         <div className="text-zinc-500">Paymaster / bundler (server)</div>
                         <div className={healthQuery.data.paymaster.ok ? 'text-emerald-300' : 'text-amber-300/90'}>
-                          {healthQuery.data.paymaster.ok ? 'OK' : 'Needs endpoint'}
+                          {healthQuery.data.paymaster.ok
+                            ? 'OK'
+                            : healthQuery.data.paymaster.endpointConfigured
+                              ? 'Blocked'
+                              : 'Needs endpoint'}
                         </div>
                       </div>
 
