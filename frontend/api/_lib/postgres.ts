@@ -45,6 +45,16 @@ function requiresSsl(connectionString: string): boolean {
   return true
 }
 
+function sslOptionsForConnection(connectionString: string): any | undefined {
+  if (!requiresSsl(connectionString)) return undefined
+  // Many hosted Postgres providers require TLS. Some libraries ignore `sslmode=require`
+  // in the URL, so pass an explicit ssl option too.
+  //
+  // We use `rejectUnauthorized: false` for compatibility across providers and managed cert chains.
+  // If your provider has a standard CA chain, you can tighten this to `true`.
+  return { rejectUnauthorized: false }
+}
+
 type DbResult = { rows: any[] }
 type DbPool = {
   sql: (strings: TemplateStringsArray, ...values: any[]) => Promise<DbResult>
@@ -89,7 +99,7 @@ export async function getDb(): Promise<DbPool | null> {
         const csRaw = getConnectionString()
         const cs = csRaw ? withRequiredSsl(csRaw) : null
         if (!cs) return null
-        const ssl = requiresSsl(cs) ? 'require' : undefined
+        const ssl = sslOptionsForConnection(cs)
 
         // Prefer pooled connections when possible (recommended for serverless),
         // but fall back to a direct client if the provided connection string is direct-only.
