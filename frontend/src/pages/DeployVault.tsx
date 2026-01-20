@@ -785,7 +785,7 @@ function DeployVaultBatcher({
   shareName: string
   vaultSymbol: string
   vaultName: string
-  deploymentVersion: 'v1' | 'v2' | 'v3'
+  deploymentVersion: string
   currentPayoutRecipient: Address | null
   floorPriceQ96Aligned: bigint | null
   marketFloorTwapDurationSec: number | null
@@ -1148,6 +1148,29 @@ function DeployVaultBatcher({
   const expectedBurnStream = expected?.burnStream ?? null
   const expectedPayoutRouter = expected?.payoutRouter ?? null
 
+  const phase1ExistsQuery = useQuery({
+    queryKey: [
+      'creatorVaultBatcher',
+      'phase1Exists',
+      deploymentVersion,
+      expected?.vault,
+      expected?.wrapper,
+      expected?.shareOFT,
+      expected?.gaugeController,
+      expected?.ccaStrategy,
+      expected?.oracle,
+    ],
+    enabled: !!publicClient && !!expected,
+    staleTime: 15_000,
+    retry: 0,
+    queryFn: async () => {
+      const addrs = [expected!.vault, expected!.wrapper, expected!.shareOFT, expected!.gaugeController, expected!.ccaStrategy] as const
+      const codes = await Promise.all(addrs.map((a) => publicClient!.getBytecode({ address: a })))
+      const deployed = codes.map((c) => !!c && c !== '0x')
+      return { anyDeployed: deployed.some(Boolean) } as const
+    },
+  })
+
   const payoutMismatch =
     !!expectedPayoutRouter &&
     !!currentPayoutRecipient &&
@@ -1260,6 +1283,14 @@ function DeployVaultBatcher({
       })()
 
       if (isTwoStepBatcher) {
+        // “All-or-none” guard: if Phase 1 artifacts already exist for this creator+version,
+        // don't try to run a new 1-click deploy (the batcher will often revert on duplicate Phase 1).
+        if (phase1ExistsQuery.data?.anyDeployed) {
+          throw new Error(
+            `Phase 1 already exists for this creator + deployment version (${deploymentVersion}). Use the existing deployment, or bump VITE_DEPLOYMENT_VERSION to start a fresh slate.`,
+          )
+        }
+
         const phase1Call = {
           target: batcherAddress,
           value: 0n,
@@ -1844,7 +1875,11 @@ export function DeployVault() {
   const { config: onchainKitConfig } = useOnchainKit()
   const [creatorToken, setCreatorToken] = useState('')
   const [showAdvanced, setShowAdvanced] = useState(false)
-  const [deploymentVersion, setDeploymentVersion] = useState<'v1' | 'v2' | 'v3'>('v3')
+  const deploymentVersion = useMemo(() => {
+    const raw = (import.meta.env.VITE_DEPLOYMENT_VERSION as string | undefined) ?? 'v3'
+    const v = String(raw).trim()
+    return v.length > 0 ? v : 'v3'
+  }, [])
 
   const [searchParams] = useSearchParams()
   const prefillToken = useMemo(() => searchParams.get('token') ?? '', [searchParams])
@@ -1970,11 +2005,6 @@ export function DeployVault() {
       // ignore
     }
   }, [isAdmin, minCoinAgeDays])
-
-  useEffect(() => {
-    // v1 is legacy/admin-only; never allow non-admins to select it.
-    if (!isAdmin && deploymentVersion === 'v1') setDeploymentVersion('v3')
-  }, [isAdmin, deploymentVersion])
 
   const detectedCreatorCoin = useMemo(() => {
     const v = myProfile?.creatorCoin?.address ? String(myProfile.creatorCoin.address) : ''
@@ -3041,54 +3071,11 @@ export function DeployVault() {
                   <div className="space-y-2">
                     <div className="label">Deployment</div>
                     <div className="text-[10px] text-zinc-700">
-                      {deploymentVersion === 'v3' ? 'Default (v3)' : deploymentVersion === 'v2' ? 'Alt (v2)' : 'Legacy (v1)'}
+                      Deterministic version: <span className="font-mono text-zinc-400">{deploymentVersion}</span>
                     </div>
-
-                    {isAdmin ? (
-                      <div className="inline-flex rounded-lg border border-zinc-900/60 bg-black/30 p-1 gap-1">
-                        <button
-                          type="button"
-                          onClick={() => setDeploymentVersion('v3')}
-                          className={`px-3 py-1.5 text-[11px] rounded-md transition-colors ${
-                            deploymentVersion === 'v3'
-                              ? 'bg-white/[0.06] text-zinc-100'
-                              : 'text-zinc-500 hover:text-zinc-200 hover:bg-white/[0.03]'
-                          }`}
-                          title="Default deterministic addresses (v3). Fresh namespace to avoid collisions with earlier deploy attempts."
-                        >
-                          v3
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setDeploymentVersion('v2')}
-                          className={`px-3 py-1.5 text-[11px] rounded-md transition-colors ${
-                            deploymentVersion === 'v2'
-                              ? 'bg-white/[0.06] text-zinc-100'
-                              : 'text-zinc-500 hover:text-zinc-200 hover:bg-white/[0.03]'
-                          }`}
-                          title="Alternative deterministic addresses (v2)."
-                        >
-                          v2
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setDeploymentVersion('v1')}
-                          className={`px-3 py-1.5 text-[11px] rounded-md transition-colors ${
-                            deploymentVersion === 'v1'
-                              ? 'bg-white/[0.06] text-zinc-100'
-                              : 'text-zinc-500 hover:text-zinc-200 hover:bg-white/[0.03]'
-                          }`}
-                          title="Legacy deterministic addresses (v1). Admin-only."
-                        >
-                          v1 (admin)
-                        </button>
-                      </div>
-                    ) : (
-                      <div className="text-xs text-zinc-600">Using v3 (default). Legacy v1 is admin-only.</div>
-                    )}
-
                     <div className="text-xs text-zinc-600">
-                      v3 uses a fresh deterministic address namespace to avoid collisions with earlier deployments. v2 is kept as an alternative.
+                      This is a global “slate” knob. Change <span className="font-mono">VITE_DEPLOYMENT_VERSION</span> to start a fresh deterministic
+                      namespace for everyone.
                     </div>
 
                     {!isSignedIn ? (
