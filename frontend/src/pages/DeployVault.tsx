@@ -756,7 +756,6 @@ function AddressRow({ label, address }: { label: string; address: Address | null
 function DeployVaultBatcher({
   creatorToken,
   owner,
-  connectorId,
   executeBatchEligible = false,
   isSignedIn,
   minFirstDeposit,
@@ -775,7 +774,6 @@ function DeployVaultBatcher({
 }: {
   creatorToken: Address
   owner: Address
-  connectorId?: string | null
   executeBatchEligible?: boolean
   isSignedIn: boolean
   minFirstDeposit: bigint
@@ -1494,11 +1492,10 @@ function DeployVaultBatcher({
 
         const cdpBundlerUrl = paymasterUrl
 
-        // Prefer `eth_sign` only when using Coinbase Wallet connectors (they support it).
-        // For injected wallets (e.g. Rabby), avoid `eth_sign` and sign via `personal_sign` (EIP-191).
-        const resolvedConnectorId = String(connectorId ?? '')
-        const userOpSignMode =
-          resolvedConnectorId === 'coinbaseWallet' || resolvedConnectorId === 'coinbaseSmartWallet' ? 'eth_sign' : 'signMessage'
+        // Coinbase Smart Wallet UserOps must be signed over the raw 32-byte hash.
+        // Many wallets' `personal_sign` (EIP-191) will produce a signature that fails validation.
+        // Prefer `eth_sign` and fail fast with a clear error if the wallet blocks it.
+        const userOpSignMode = 'eth_sign' as const
 
         const phase1Calls: Array<{ target: Address; value: bigint; data: Hex }> = [phase1Call]
 
@@ -3399,7 +3396,6 @@ export function DeployVault() {
                   <DeployVaultBatcher
                     creatorToken={creatorToken as Address}
                     owner={(coinSmartWallet ?? identity.canonicalIdentity.address) as Address}
-                    connectorId={String((connector as any)?.id ?? '')}
                     executeBatchEligible={executeBatchEligible}
                     isSignedIn={isSignedIn}
                     minFirstDeposit={minFirstDeposit}
