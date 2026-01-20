@@ -205,24 +205,48 @@ export async function getActiveDeploySessionForSender(params: {
   await ensureDeploySessionsSchema()
   const includeExpired = params.includeExpired === true
   const includeFailed = params.includeFailed === true
+  // NOTE: Avoid nested `db.sql` fragments here.
+  // - `@vercel/postgres` supports flexible interpolation, but our `pg` fallback implements a minimal
+  //   template-to-parameter conversion and treats interpolated fragments as values (→ `step $3` syntax errors).
+  const sessionAddress = String(params.sessionAddress).toLowerCase()
+  const smartWallet = String(params.smartWallet).toLowerCase()
   const res = includeExpired
-    ? await db.sql`
-        SELECT * FROM deploy_sessions
-        WHERE session_address = ${String(params.sessionAddress).toLowerCase()}
-          AND smart_wallet = ${String(params.smartWallet).toLowerCase()}
-          AND step ${includeFailed ? db.sql`!= 'completed'` : db.sql`NOT IN ('completed', 'failed')`}
-        ORDER BY created_at DESC
-        LIMIT 1;
-      `
-    : await db.sql`
-        SELECT * FROM deploy_sessions
-        WHERE session_address = ${String(params.sessionAddress).toLowerCase()}
-          AND smart_wallet = ${String(params.smartWallet).toLowerCase()}
-          AND step ${includeFailed ? db.sql`!= 'completed'` : db.sql`NOT IN ('completed', 'failed')`}
-          AND expires_at > NOW()
-        ORDER BY created_at DESC
-        LIMIT 1;
-      `
+    ? includeFailed
+      ? await db.sql`
+          SELECT * FROM deploy_sessions
+          WHERE session_address = ${sessionAddress}
+            AND smart_wallet = ${smartWallet}
+            AND step != 'completed'
+          ORDER BY created_at DESC
+          LIMIT 1;
+        `
+      : await db.sql`
+          SELECT * FROM deploy_sessions
+          WHERE session_address = ${sessionAddress}
+            AND smart_wallet = ${smartWallet}
+            AND step NOT IN ('completed', 'failed')
+          ORDER BY created_at DESC
+          LIMIT 1;
+        `
+    : includeFailed
+      ? await db.sql`
+          SELECT * FROM deploy_sessions
+          WHERE session_address = ${sessionAddress}
+            AND smart_wallet = ${smartWallet}
+            AND step != 'completed'
+            AND expires_at > NOW()
+          ORDER BY created_at DESC
+          LIMIT 1;
+        `
+      : await db.sql`
+          SELECT * FROM deploy_sessions
+          WHERE session_address = ${sessionAddress}
+            AND smart_wallet = ${smartWallet}
+            AND step NOT IN ('completed', 'failed')
+            AND expires_at > NOW()
+          ORDER BY created_at DESC
+          LIMIT 1;
+        `
   const row = (res.rows?.[0] ?? null) as any
   return row ? mapRow(row) : null
 }
