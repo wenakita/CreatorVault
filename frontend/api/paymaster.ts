@@ -1039,13 +1039,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     for (const r of requests) {
       const method = r.method as string
       if (!METHODS_REQUIRING_USEROP.has(method)) continue
-      if (!session) {
-        return res.status(401).json(jsonRpcError((r as any)?.id ?? null, -32002, 'request denied - not authenticated'))
-      }
-
-      // Basic rate limit: per session address.
-      enforceRateLimit(session.address)
-
       const extracted = extractUserOpAndEntryPoint(method, r.params)
       if (!extracted) {
         return res.status(400).json(jsonRpcError((r as any)?.id ?? null, -32602, 'Invalid params'))
@@ -1088,7 +1081,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         deploySessionOwner = getAddress(ds.sessionOwner)
       }
 
-      if (!sessionAddress) throw new Error('no_session')
+      if (!sessionAddress) {
+        return res.status(401).json(jsonRpcError((r as any)?.id ?? null, -32002, 'request denied - not authenticated'))
+      }
+
+      // Basic rate limit: per session address.
+      enforceRateLimit(sessionAddress)
       const initCode = isHexString(initCodeRaw) ? (initCodeRaw as Hex) : null
 
       // Only sponsor approved creators (Supabase/Postgres allowlist).
@@ -1147,4 +1145,3 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(502).json(jsonRpcError(null, -32000, msg))
   }
 }
-
