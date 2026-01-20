@@ -252,9 +252,17 @@ async function deployViaAA(
         gasless?: boolean;
     } = {}
 ) {
+    const redactAddress = (addr: string | undefined | null): string => {
+        if (!addr) return '[not set]';
+        const str = String(addr);
+        // Show only a small, non-sensitive portion for debugging
+        if (str.length <= 10) return '[redacted]';
+        return `${str.slice(0, 6)}...${str.slice(-4)}`;
+    };
+
     console.log('🚀 Starting ERC-4337 deployment...');
     console.log('   Creator Coin:', creatorCoin);
-    console.log('   Smart Account:', CONFIG.smartAccount);
+    console.log('   Smart Account:', redactAddress(CONFIG.smartAccount));
     
     // Setup clients
     const publicClient = createPublicClient({
