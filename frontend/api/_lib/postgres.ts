@@ -6,7 +6,9 @@ function isProbablyPostgresUrl(value: string | null | undefined): boolean {
   return /^postgres(ql)?:\/\//i.test(v)
 }
 
-function getConnectionString(): string | null {
+type DbSource = 'vercel_postgres' | 'database_url'
+
+function getDbConfig(): { source: DbSource; connectionString: string } | null {
   const fromDatabaseUrl = process.env.DATABASE_URL
   // In production on Vercel, do NOT read DATABASE_URL here.
   // - Many projects set DATABASE_URL for external providers (e.g. Supabase) that are incompatible with @vercel/postgres.
@@ -14,15 +16,15 @@ function getConnectionString(): string | null {
   // We still allow DATABASE_URL for local dev.
   const isVercel = Boolean(process.env.VERCEL) || Boolean(process.env.VERCEL_ENV)
   const fromVercelPool = process.env.POSTGRES_URL
-  if (isProbablyPostgresUrl(fromVercelPool)) return (fromVercelPool ?? '').trim()
+  if (isProbablyPostgresUrl(fromVercelPool)) return { source: 'vercel_postgres', connectionString: (fromVercelPool ?? '').trim() }
 
   const fromVercelDirect = process.env.POSTGRES_URL_NON_POOLING
-  if (isProbablyPostgresUrl(fromVercelDirect)) return (fromVercelDirect ?? '').trim()
+  if (isProbablyPostgresUrl(fromVercelDirect)) return { source: 'vercel_postgres', connectionString: (fromVercelDirect ?? '').trim() }
 
   // Fallback: if Vercel Postgres is not configured, accept DATABASE_URL even on Vercel.
   // This enables running against external Postgres providers (e.g. Supabase) without requiring POSTGRES_URL.
   // Only accept actual Postgres connection strings; it's common for other providers to set DATABASE_URL.
-  if (isProbablyPostgresUrl(fromDatabaseUrl)) return (fromDatabaseUrl ?? '').trim()
+  if (isProbablyPostgresUrl(fromDatabaseUrl)) return { source: 'database_url', connectionString: (fromDatabaseUrl ?? '').trim() }
 
   return null
 }
@@ -71,7 +73,7 @@ let initPromise: Promise<DbPool | null> | null = null
  * Note: this doesn't guarantee connectivity.
  */
 export function isDbConfigured(): boolean {
-  return Boolean(getConnectionString())
+  return Boolean(getDbConfig())
 }
 
 export function getDbInitError(): string | null {
@@ -81,64 +83,97 @@ export function getDbInitError(): string | null {
 export async function getDb(): Promise<DbPool | null> {
   if (cachedDb) return cachedDb
   if (initError) return null
-  const connectionString = getConnectionString()
-  if (!connectionString) return null
+  const cfg = getDbConfig()
+  if (!cfg?.connectionString) return null
 
   if (!initPromise) {
     initPromise = (async () => {
       try {
-        const mod: any = await import('@vercel/postgres')
-        const createPool: any = mod?.createPool
-        const createClient: any = mod?.createClient
-        if (typeof createPool !== 'function' && typeof createClient !== 'function') {
-          initError = 'Missing createPool/createClient exports from @vercel/postgres'
-          return null
-        }
-
         // Re-read env at init time (still deterministic in serverless).
-        const csRaw = getConnectionString()
-        const cs = csRaw ? withRequiredSsl(csRaw) : null
-        if (!cs) return null
+        const cfg2 = getDbConfig()
+        const cs = cfg2?.connectionString ? withRequiredSsl(cfg2.connectionString) : null
+        if (!cfg2 || !cs) return null
         const ssl = sslOptionsForConnection(cs)
 
-        // Prefer pooled connections when possible (recommended for serverless),
-        // but fall back to a direct client if the provided connection string is direct-only.
-        try {
-          if (typeof createPool === 'function') {
-            const pool = createPool({ connectionString: cs, ssl })
-            // Some drivers only surface "invalid_connection_string" on first query.
-            // If this happens, fall back to createClient() below.
-            try {
-              await pool.sql`SELECT 1;`
-              cachedDb = pool
-              return cachedDb
-            } catch (e: any) {
-              const msg = e?.message ? String(e.message) : ''
-              const isDirectOnly =
-                msg.toLowerCase().includes('invalid_connection_string') && msg.toLowerCase().includes('direct connection')
-              if (!isDirectOnly) throw e
-              console.warn('Pool connection string appears to be direct-only; falling back to createClient')
-            }
+        // Vercel Postgres (Neon): use @vercel/postgres.
+        if (cfg2.source === 'vercel_postgres') {
+          const mod: any = await import('@vercel/postgres')
+          const createPool: any = mod?.createPool
+          const createClient: any = mod?.createClient
+          if (typeof createPool !== 'function' && typeof createClient !== 'function') {
+            initError = 'Missing createPool/createClient exports from @vercel/postgres'
+            return null
           }
-        } catch (e: any) {
-          const msg = e?.message ? String(e.message) : ''
-          // fall through to createClient
-          console.warn('createPool failed, trying createClient', msg)
+
+          // Prefer pooled connections when possible (recommended for serverless),
+          // but fall back to a direct client if the provided connection string is direct-only.
+          try {
+            if (typeof createPool === 'function') {
+              const pool = createPool({ connectionString: cs, ssl })
+              // Some drivers only surface "invalid_connection_string" on first query.
+              // If this happens, fall back to createClient() below.
+              try {
+                await pool.sql`SELECT 1;`
+                cachedDb = pool
+                return cachedDb
+              } catch (e: any) {
+                const msg = e?.message ? String(e.message) : ''
+                const isDirectOnly =
+                  msg.toLowerCase().includes('invalid_connection_string') && msg.toLowerCase().includes('direct connection')
+                if (!isDirectOnly) throw e
+                console.warn('Pool connection string appears to be direct-only; falling back to createClient')
+              }
+            }
+          } catch (e: any) {
+            const msg = e?.message ? String(e.message) : ''
+            // fall through to createClient
+            console.warn('createPool failed, trying createClient', msg)
+          }
+
+          if (typeof createClient !== 'function') {
+            initError = 'createPool failed and createClient is unavailable'
+            return null
+          }
+
+          const client = createClient({ connectionString: cs, ssl })
+          try {
+            if (typeof client?.connect === 'function') await client.connect()
+          } catch {
+            // ignore connect errors here; first query will surface it.
+          }
+
+          cachedDb = client
+          return cachedDb
         }
 
-        if (typeof createClient !== 'function') {
-          initError = 'createPool failed and createClient is unavailable'
+        // External Postgres (e.g. Supabase): use node-postgres (pg), not @vercel/postgres.
+        const pg: any = await import('pg')
+        const Pool: any = pg?.Pool
+        if (typeof Pool !== 'function') {
+          initError = 'Missing Pool export from pg'
           return null
         }
-
-        const client = createClient({ connectionString: cs, ssl })
-        try {
-          if (typeof client?.connect === 'function') await client.connect()
-        } catch (e) {
-          // ignore connect errors here; first query will surface it.
+        const pool = new Pool({ connectionString: cs, ssl })
+        // Provide a minimal `sql` tagged template wrapper compatible with callsites.
+        const db: DbPool = {
+          sql: async (strings: TemplateStringsArray, ...values: any[]) => {
+            // Convert a tagged template into a parameterized query: $1, $2, ...
+            let text = ''
+            for (let i = 0; i < strings.length; i++) {
+              text += strings[i]
+              if (i < values.length) text += `$${i + 1}`
+            }
+            const res = await pool.query(text, values)
+            return { rows: res.rows ?? [] }
+          },
+          query: async (text: string, params?: any[]) => {
+            const res = await pool.query(text, params)
+            return { rows: res.rows ?? [] }
+          },
         }
-
-        cachedDb = client
+        // Sanity check connectivity.
+        await db.sql`SELECT 1;`
+        cachedDb = db
         return cachedDb
       } catch (err) {
         initError = err instanceof Error ? err.message : 'Failed to initialize Postgres pool'
