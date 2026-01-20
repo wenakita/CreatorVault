@@ -9,10 +9,29 @@ declare const process: { env: Record<string, string | undefined> }
 type HealthResponse = {
   ok: boolean
   time: string
+  env: {
+    isVercel: boolean
+  }
   db: {
     configured: boolean
     ok: boolean
     latencyMs: number | null
+    error: string | null
+  }
+  deploySessions: {
+    secretConfigured: boolean
+    tokenHmacConfigured: boolean
+    ok: boolean
+    error: string | null
+  }
+  siwe: {
+    authSessionSecretConfigured: boolean
+    ok: boolean
+    error: string | null
+  }
+  paymaster: {
+    endpointConfigured: boolean
+    ok: boolean
     error: string | null
   }
   supabase: {
@@ -54,6 +73,21 @@ async function checkSupabase(): Promise<{ ok: boolean; latencyMs: number | null;
   }
 }
 
+function hasMinSecret(v: string | undefined, min = 16): boolean {
+  return typeof v === 'string' && v.trim().length >= min
+}
+
+function getCdpEndpointConfigured(): boolean {
+  const v =
+    (process.env.CDP_PAYMASTER_URL ?? '').trim() ||
+    (process.env.CDP_PAYMASTER_AND_BUNDLER_URL ?? '').trim() ||
+    (process.env.CDP_PAYMASTER_AND_BUNDLER_ENDPOINT ?? '').trim() ||
+    // Back-compat with repo root .env.example naming
+    (process.env.PAYMASTER_URL ?? '').trim() ||
+    (process.env.BUNDLER_URL ?? '').trim()
+  return v.length > 0
+}
+
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   setCors(req, res)
   setNoStore(res)
@@ -69,6 +103,33 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     ? await checkDb(db)
     : { ok: false, latencyMs: null, error: getDbInitError() || 'Database not configured' }
 
+  const deploySessionSecretOk = hasMinSecret(process.env.DEPLOY_SESSION_SECRET, 1)
+  const deploySessionTokenHmacOk = hasMinSecret(process.env.DEPLOY_SESSION_TOKEN_HMAC_SECRET, 1)
+  const deploySessionsOk = Boolean(db) && dbStatus.ok && deploySessionSecretOk && deploySessionTokenHmacOk
+  const deploySessionsError = deploySessionsOk
+    ? null
+    : !dbConfigured
+      ? 'Database connection string not configured'
+      : !db
+        ? (getDbInitError() || 'Database unavailable')
+        : !dbStatus.ok
+          ? (dbStatus.error || 'Database check failed')
+          : !deploySessionSecretOk
+            ? 'DEPLOY_SESSION_SECRET is not configured'
+            : !deploySessionTokenHmacOk
+              ? 'DEPLOY_SESSION_TOKEN_HMAC_SECRET is not configured'
+              : 'Deploy sessions unavailable'
+
+  // SIWE session signing secret: required for stable auth in production serverless.
+  const isVercel = Boolean(process.env.VERCEL) || Boolean(process.env.VERCEL_ENV)
+  const authSessionSecretConfigured = hasMinSecret(process.env.AUTH_SESSION_SECRET, 16)
+  const siweOk = !isVercel || authSessionSecretConfigured
+  const siweError = siweOk ? null : 'AUTH_SESSION_SECRET is not configured (required on Vercel)'
+
+  const paymasterConfigured = getCdpEndpointConfigured()
+  const paymasterOk = paymasterConfigured
+  const paymasterError = paymasterOk ? null : 'CDP paymaster/bundler endpoint is not configured'
+
   // Server-only config. Do NOT use client-exposed env vars in API routes.
   const supabaseUrl = process.env.SUPABASE_URL || ''
   const supabaseAnon = process.env.SUPABASE_ANON_KEY || ''
@@ -77,13 +138,32 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const supabaseStatus = supabaseConfigured ? await checkSupabase() : { ok: false, latencyMs: null, error: null }
 
   const data: HealthResponse = {
+    // Overall service health: allowlist is satisfied by either DB or Supabase.
+    // Deploy sessions require DB + secrets and are reported separately.
     ok: (Boolean(db) ? dbStatus.ok : false) || supabaseStatus.ok,
     time: new Date().toISOString(),
+    env: { isVercel },
     db: {
       configured: dbConfigured,
       ok: dbStatus.ok,
       latencyMs: dbStatus.latencyMs,
       error: dbStatus.error,
+    },
+    deploySessions: {
+      secretConfigured: deploySessionSecretOk,
+      tokenHmacConfigured: deploySessionTokenHmacOk,
+      ok: deploySessionsOk,
+      error: deploySessionsError,
+    },
+    siwe: {
+      authSessionSecretConfigured,
+      ok: siweOk,
+      error: siweError,
+    },
+    paymaster: {
+      endpointConfigured: paymasterConfigured,
+      ok: paymasterOk,
+      error: paymasterError,
     },
     supabase: {
       urlConfigured: supabaseUrl.length > 0,

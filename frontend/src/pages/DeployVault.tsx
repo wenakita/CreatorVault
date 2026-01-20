@@ -98,6 +98,24 @@ type DeploySessionStatusResponse = {
   sessionOwner: Address
 }
 
+type HealthResponse = {
+  ok: boolean
+  time: string
+  env: { isVercel: boolean }
+  db: { configured: boolean; ok: boolean; latencyMs: number | null; error: string | null }
+  deploySessions: { secretConfigured: boolean; tokenHmacConfigured: boolean; ok: boolean; error: string | null }
+  siwe: { authSessionSecretConfigured: boolean; ok: boolean; error: string | null }
+  paymaster: { endpointConfigured: boolean; ok: boolean; error: string | null }
+  supabase: {
+    urlConfigured: boolean
+    anonConfigured: boolean
+    serviceRoleConfigured: boolean
+    ok: boolean
+    latencyMs: number | null
+    error: string | null
+  }
+}
+
 const SIWE_SESSION_TOKEN_KEY = 'cv_siwe_session_token'
 
 function getSiweSessionToken(): string | null {
@@ -113,6 +131,17 @@ function getSiweSessionToken(): string | null {
 function getSiweAuthHeaders(): Record<string, string> {
   const token = getSiweSessionToken()
   return token ? { Authorization: `Bearer ${token}` } : {}
+}
+
+async function fetchHealth(): Promise<HealthResponse> {
+  const res = await fetch('/api/health', {
+    method: 'GET',
+    credentials: 'include',
+    headers: { Accept: 'application/json', ...getSiweAuthHeaders() },
+  })
+  const json = (await res.json().catch(() => null)) as ApiEnvelope<HealthResponse> | null
+  if (!res.ok || !json?.success || !json.data) throw new Error(json?.error || 'health_check_failed')
+  return json.data
 }
 
 async function createDeploySession(params: {
@@ -1897,6 +1926,19 @@ export function DeployVault() {
   }, [farcasterIdentityQuery.data?.verifiedEthAddresses])
 
   const { isSignedIn, busy: authBusy, error: authError, signIn } = useSiweAuth()
+
+  const healthQuery = useQuery({
+    queryKey: ['health'],
+    queryFn: fetchHealth,
+    staleTime: 15_000,
+    retry: 0,
+    refetchOnWindowFocus: false,
+  })
+
+  const healthGateOk = Boolean(
+    healthQuery.data?.deploySessions?.ok && healthQuery.data?.siwe?.ok && healthQuery.data?.paymaster?.ok,
+  )
+
   const adminAuthQuery = useQuery({
     queryKey: ['adminAuth'],
     enabled: isConnected && showAdvanced && isSignedIn,
@@ -2545,6 +2587,7 @@ export function DeployVault() {
     !!derivedVaultSymbol &&
     !!connectedWalletAddress &&
     fundingGateOk &&
+    healthGateOk &&
     creatorVaultBatcherConfigured &&
     bytecodeInfraOk &&
     (!identity.blockingReason || executeBatchEligible)
@@ -2672,6 +2715,15 @@ export function DeployVault() {
                       ? `Needs 5,000,000 ${underlyingSymbolUpper || 'TOKENS'} to deploy.`
                       : identity.blockingReason && !executeBatchEligible
                         ? identity.blockingReason
+                    : healthQuery.isFetching
+                      ? 'Checking server configuration…'
+                      : healthQuery.isError
+                        ? 'Server health check failed.'
+                        : !healthGateOk
+                          ? (healthQuery.data?.deploySessions?.error ||
+                              healthQuery.data?.siwe?.error ||
+                              healthQuery.data?.paymaster?.error ||
+                              'Server configuration required to deploy.')
                     : bytecodeInfraQuery.isFetching
                       ? 'Checking deployment bytecode store…'
                       : bytecodeInfraQuery.isError
@@ -3189,6 +3241,59 @@ export function DeployVault() {
                   >
                     {authBusy ? 'Signing in…' : 'Sign in'}
                   </button>
+                </div>
+              ) : null}
+
+              {isConnected ? (
+                <div className="rounded-lg border border-white/5 bg-black/20 p-4 space-y-3">
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="text-[11px] uppercase tracking-wide text-zinc-500">System status</div>
+                    <button
+                      type="button"
+                      className="text-[11px] text-zinc-400 hover:text-white underline decoration-white/10 hover:decoration-white/30"
+                      onClick={() => void healthQuery.refetch()}
+                    >
+                      Refresh
+                    </button>
+                  </div>
+
+                  {healthQuery.isFetching ? (
+                    <div className="text-[11px] text-zinc-600">Checking server configuration…</div>
+                  ) : healthQuery.isError ? (
+                    <div className="text-[11px] text-amber-300/80">Health check failed. Check `/api/health`.</div>
+                  ) : healthQuery.data ? (
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between gap-3 text-[11px]">
+                        <div className="text-zinc-500">Deploy sessions (DB + secrets)</div>
+                        <div className={healthQuery.data.deploySessions.ok ? 'text-emerald-300' : 'text-amber-300/90'}>
+                          {healthQuery.data.deploySessions.ok ? 'OK' : 'Needs config'}
+                        </div>
+                      </div>
+                      <div className="flex items-center justify-between gap-3 text-[11px]">
+                        <div className="text-zinc-500">SIWE session signing</div>
+                        <div className={healthQuery.data.siwe.ok ? 'text-emerald-300' : 'text-amber-300/90'}>
+                          {healthQuery.data.siwe.ok ? 'OK' : 'Needs AUTH_SESSION_SECRET'}
+                        </div>
+                      </div>
+                      <div className="flex items-center justify-between gap-3 text-[11px]">
+                        <div className="text-zinc-500">Paymaster / bundler (server)</div>
+                        <div className={healthQuery.data.paymaster.ok ? 'text-emerald-300' : 'text-amber-300/90'}>
+                          {healthQuery.data.paymaster.ok ? 'OK' : 'Needs endpoint'}
+                        </div>
+                      </div>
+
+                      {!healthGateOk ? (
+                        <div className="text-[11px] text-amber-300/80 pt-1">
+                          {healthQuery.data.deploySessions.error ||
+                            healthQuery.data.siwe.error ||
+                            healthQuery.data.paymaster.error ||
+                            'Server configuration required to deploy.'}
+                        </div>
+                      ) : null}
+                    </div>
+                  ) : (
+                    <div className="text-[11px] text-zinc-600">Health status unavailable.</div>
+                  )}
                 </div>
               ) : null}
 
