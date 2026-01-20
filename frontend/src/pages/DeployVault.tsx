@@ -98,6 +98,23 @@ type DeploySessionStatusResponse = {
   sessionOwner: Address
 }
 
+const SIWE_SESSION_TOKEN_KEY = 'cv_siwe_session_token'
+
+function getSiweSessionToken(): string | null {
+  try {
+    const v = localStorage.getItem(SIWE_SESSION_TOKEN_KEY)
+    const t = typeof v === 'string' ? v.trim() : ''
+    return t.length > 0 ? t : null
+  } catch {
+    return null
+  }
+}
+
+function getSiweAuthHeaders(): Record<string, string> {
+  const token = getSiweSessionToken()
+  return token ? { Authorization: `Bearer ${token}` } : {}
+}
+
 async function createDeploySession(params: {
   smartWallet: Address
   creatorToken: Address
@@ -108,7 +125,8 @@ async function createDeploySession(params: {
 }): Promise<DeploySessionCreateResponse> {
   const res = await fetch('/api/deploy/session/create', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+    credentials: 'include',
+    headers: { 'Content-Type': 'application/json', Accept: 'application/json', ...getSiweAuthHeaders() },
     body: JSON.stringify({
       smartWallet: params.smartWallet,
       creatorToken: params.creatorToken,
@@ -127,7 +145,8 @@ async function createDeploySession(params: {
 async function fetchDeploySessionStatus(sessionId: string): Promise<DeploySessionStatusResponse> {
   const res = await fetch('/api/deploy/session/status', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+    credentials: 'include',
+    headers: { 'Content-Type': 'application/json', Accept: 'application/json', ...getSiweAuthHeaders() },
     body: JSON.stringify({ sessionId }),
   })
   const json = (await res.json().catch(() => null)) as ApiEnvelope<DeploySessionStatusResponse> | null
@@ -138,7 +157,8 @@ async function fetchDeploySessionStatus(sessionId: string): Promise<DeploySessio
 async function continueDeploySession(sessionId: string): Promise<{ step: string; lastTxHash?: Hex | null }> {
   const res = await fetch('/api/deploy/session/continue', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+    credentials: 'include',
+    headers: { 'Content-Type': 'application/json', Accept: 'application/json', ...getSiweAuthHeaders() },
     body: JSON.stringify({ sessionId }),
   })
   const json = (await res.json().catch(() => null)) as ApiEnvelope<any> | null
@@ -149,7 +169,8 @@ async function continueDeploySession(sessionId: string): Promise<{ step: string;
 async function cancelDeploySession(sessionId: string): Promise<{ step: string; lastTxHash?: Hex | null }> {
   const res = await fetch('/api/deploy/session/cancel', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+    credentials: 'include',
+    headers: { 'Content-Type': 'application/json', Accept: 'application/json', ...getSiweAuthHeaders() },
     body: JSON.stringify({ sessionId }),
   })
   const json = (await res.json().catch(() => null)) as ApiEnvelope<any> | null
