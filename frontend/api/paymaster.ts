@@ -808,14 +808,21 @@ async function validateInnerCalls(params: { sender: Address; sessionAddress: Add
 
     // Self-calls (Coinbase Smart Wallet owner mgmt) for deploy-session automation.
     if (c.target === params.sender && ALLOWED_SELF_SELECTORS.has(selector)) {
-      // Find the active deploy session so we can bind the session owner address.
+      const decodedSelf = decodeFunctionData({ abi: COINBASE_SMART_WALLET_OWNER_MGMT_ABI, data: c.data })
+      const allowInactiveForCleanup = decodedSelf.functionName === 'removeOwnerAtIndex'
+
+      // Find the deploy session so we can bind the session owner address.
       const ds =
         params.deploySessionOwner && isAddress(params.deploySessionOwner)
           ? ({ sessionOwner: params.deploySessionOwner } as any)
-          : await getActiveDeploySessionForSender({ sessionAddress: params.sessionAddress, smartWallet: params.sender })
+          : await getActiveDeploySessionForSender({
+              sessionAddress: params.sessionAddress,
+              smartWallet: params.sender,
+              includeExpired: allowInactiveForCleanup,
+              includeFailed: allowInactiveForCleanup,
+            })
       if (!ds?.sessionOwner || !isAddress(ds.sessionOwner)) throw new Error('deploy_session_missing')
 
-      const decodedSelf = decodeFunctionData({ abi: COINBASE_SMART_WALLET_OWNER_MGMT_ABI, data: c.data })
       if (decodedSelf.functionName === 'addOwnerAddress') {
         const ownerArg = getAddress(decodedSelf.args[0] as Address)
         if (ownerArg !== getAddress(ds.sessionOwner as Address)) throw new Error('deploy_session_owner_mismatch')
@@ -1065,6 +1072,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
       let sessionAddress: Address | null = null
       let deploySessionOwner: Address | null = null
+      let allowCleanupOnlyForInactiveDeploySession = false
 
       if (session?.address) {
         sessionAddress = getAddress(session.address)
@@ -1075,8 +1083,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         if (signDeployToken(hdr.token) !== hdr.signature) throw new Error('invalid_deploy_session_signature')
         const ds = await getDeploySessionByTokenHash(hashDeployToken(hdr.token))
         if (!ds) throw new Error('no_session')
-        if (Date.parse(ds.expiresAt) <= Date.now()) throw new Error('deploy_session_expired')
-        if (ds.step === 'completed' || ds.step === 'failed') throw new Error('deploy_session_inactive')
+        const expired = Date.parse(ds.expiresAt) <= Date.now()
+        const failed = ds.step === 'failed'
+        const completed = ds.step === 'completed'
+        if (completed) throw new Error('deploy_session_inactive')
+        // Allow cleanup-only requests even if the deploy session is expired/failed.
+        allowCleanupOnlyForInactiveDeploySession = expired || failed
         sessionAddress = getAddress(ds.sessionAddress)
         deploySessionOwner = getAddress(ds.sessionOwner)
       }
@@ -1108,7 +1120,39 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }
 
       // Validate inner calls match CreatorVault patterns.
-      await validateInnerCalls({ sender, sessionAddress, callData: callDataRaw, deploySessionOwner })
+      if (allowCleanupOnlyForInactiveDeploySession && deploySessionOwner) {
+        // Special-case: allow only `removeOwnerAtIndex` self-call for the recorded deploy session owner.
+        const decoded = decodeFunctionData({ abi: COINBASE_SMART_WALLET_ABI, data: callDataRaw })
+        const innerCalls: InnerCall[] =
+          decoded.functionName === 'execute'
+            ? [
+                {
+                  target: getAddress(decoded.args[0] as Address),
+                  value: decoded.args[1] as bigint,
+                  data: decoded.args[2] as Hex,
+                },
+              ]
+            : decoded.functionName === 'executeBatch'
+              ? (decoded.args[0] as any[]).map((c: any) => ({
+                  target: getAddress(c.target as Address),
+                  value: BigInt(c.value),
+                  data: c.data as Hex,
+                }))
+              : []
+        if (innerCalls.length === 0) throw new Error('no_inner_calls')
+        for (const c of innerCalls) {
+          if (c.value !== 0n) throw new Error('value_transfer_not_allowed')
+          if (c.target !== sender) throw new Error('cleanup_only_violation')
+          if (getSelector(c.data) !== SELECTOR_CSW_REMOVE_OWNER_AT_INDEX) throw new Error('cleanup_only_violation')
+          const decodedSelf = decodeFunctionData({ abi: COINBASE_SMART_WALLET_OWNER_MGMT_ABI, data: c.data })
+          if (decodedSelf.functionName !== 'removeOwnerAtIndex') throw new Error('cleanup_only_violation')
+          const ownerBytes = decodedSelf.args[1] as Hex
+          const expected = asOwnerBytes(getAddress(deploySessionOwner))
+          if (String(ownerBytes).toLowerCase() !== String(expected).toLowerCase()) throw new Error('deploy_session_owner_mismatch')
+        }
+      } else {
+        await validateInnerCalls({ sender, sessionAddress, callData: callDataRaw, deploySessionOwner })
+      }
     }
   } catch (err: unknown) {
     if (err instanceof Error && err.message === 'rate_limited') {

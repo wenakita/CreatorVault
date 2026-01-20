@@ -13,6 +13,7 @@ export type DeploySessionStep =
   | 'phase3_sent'
   | 'phase3_confirmed'
   | 'cleanup_sent'
+  | 'cancelled'
   | 'completed'
   | 'failed'
 
@@ -188,19 +189,40 @@ export async function getDeploySessionByTokenHash(tokenHash: string): Promise<De
 export async function getActiveDeploySessionForSender(params: {
   sessionAddress: string
   smartWallet: string
+  /**
+   * Allow selecting a session even if it is expired.
+   * Intended for cleanup-only flows (removing the temporary owner).
+   */
+  includeExpired?: boolean
+  /**
+   * Allow selecting a session even if it is in the `failed` step.
+   * Intended for cleanup-only flows (removing the temporary owner).
+   */
+  includeFailed?: boolean
 }): Promise<DeploySessionRecord | null> {
   const db = await getDb()
   if (!db) return null
   await ensureDeploySessionsSchema()
-  const res = await db.sql`
-    SELECT * FROM deploy_sessions
-    WHERE session_address = ${String(params.sessionAddress).toLowerCase()}
-      AND smart_wallet = ${String(params.smartWallet).toLowerCase()}
-      AND step NOT IN ('completed', 'failed')
-      AND expires_at > NOW()
-    ORDER BY created_at DESC
-    LIMIT 1;
-  `
+  const includeExpired = params.includeExpired === true
+  const includeFailed = params.includeFailed === true
+  const res = includeExpired
+    ? await db.sql`
+        SELECT * FROM deploy_sessions
+        WHERE session_address = ${String(params.sessionAddress).toLowerCase()}
+          AND smart_wallet = ${String(params.smartWallet).toLowerCase()}
+          AND step ${includeFailed ? db.sql`!= 'completed'` : db.sql`NOT IN ('completed', 'failed')`}
+        ORDER BY created_at DESC
+        LIMIT 1;
+      `
+    : await db.sql`
+        SELECT * FROM deploy_sessions
+        WHERE session_address = ${String(params.sessionAddress).toLowerCase()}
+          AND smart_wallet = ${String(params.smartWallet).toLowerCase()}
+          AND step ${includeFailed ? db.sql`!= 'completed'` : db.sql`NOT IN ('completed', 'failed')`}
+          AND expires_at > NOW()
+        ORDER BY created_at DESC
+        LIMIT 1;
+      `
   const row = (res.rows?.[0] ?? null) as any
   return row ? mapRow(row) : null
 }
