@@ -577,7 +577,7 @@ async function main() {
     console.log('╚══════════════════════════════════════════════════╝');
     console.log('');
     console.log(`  Creator Coin:     ${creatorCoin}`);
-    console.log(`  Smart Account:    ${CONFIG.smartAccount ? `${CONFIG.smartAccount.slice(0, 6)}...${CONFIG.smartAccount.slice(-4)}` : '[not set]'}`);
+    console.log(`  Smart Account:    ${CONFIG.smartAccount ? '[set]' : '[not set]'}`);
     console.log(`  Gasless:          ${gaslessFlag ? '✅ Yes (Coinbase Paymaster)' : '❌ No (you pay gas)'}`);
     console.log(`  PayoutRouter:     ${noPayoutRouter ? '❌ Skip' : '✅ Deploy'}`);
     console.log(`  Redirect Fees:    ${redirectFees ? '✅ Yes' : '❌ No'}`);
