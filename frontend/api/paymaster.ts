@@ -1179,9 +1179,18 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     })
     const text = await upstream.text()
 
-    // CDP returns JSON-RPC responses; pass through status + body.
-    res.status(upstream.status)
+    // CDP returns JSON-RPC responses. Some clients (viem) treat non-2xx HTTP as transport failures
+    // and mask the JSON-RPC error. Prefer returning HTTP 200 with the JSON-RPC payload when possible.
     res.setHeader('Content-Type', 'application/json')
+    try {
+      const parsed = JSON.parse(text)
+      if (parsed && typeof parsed === 'object') {
+        return res.status(200).send(JSON.stringify(parsed))
+      }
+    } catch {
+      // Non-JSON response; fall back to upstream status.
+    }
+    res.status(upstream.status)
     return res.send(text)
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : 'Upstream request failed'

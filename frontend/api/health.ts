@@ -77,7 +77,7 @@ function hasMinSecret(v: string | undefined, min = 16): boolean {
   return typeof v === 'string' && v.trim().length >= min
 }
 
-function getCdpEndpointConfigured(): boolean {
+function getCdpEndpoint(): string | null {
   const v =
     (process.env.CDP_PAYMASTER_URL ?? '').trim() ||
     (process.env.CDP_PAYMASTER_AND_BUNDLER_URL ?? '').trim() ||
@@ -85,7 +85,41 @@ function getCdpEndpointConfigured(): boolean {
     // Back-compat with repo root .env.example naming
     (process.env.PAYMASTER_URL ?? '').trim() ||
     (process.env.BUNDLER_URL ?? '').trim()
-  return v.length > 0
+  return v.length > 0 ? v : null
+}
+
+async function checkCdpRpc(endpoint: string): Promise<{ ok: boolean; latencyMs: number | null; error: string | null }> {
+  const start = Date.now()
+  try {
+    const ctrl = new AbortController()
+    const t = setTimeout(() => ctrl.abort(), 8_000)
+    const upstream = await fetch(endpoint, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'eth_supportedEntryPoints', params: [] }),
+      signal: ctrl.signal,
+    })
+    clearTimeout(t)
+    const text = await upstream.text()
+    let errMsg: string | null = null
+    try {
+      const j = JSON.parse(text)
+      const rpcErr = j?.error?.message ? String(j.error.message) : null
+      if (rpcErr) errMsg = rpcErr
+    } catch {
+      // ignore parse errors
+    }
+    // If HTTP is not ok but the body contains a JSON-RPC error, surface it.
+    if (!upstream.ok) {
+      const msg = errMsg || `HTTP ${upstream.status}`
+      return { ok: false, latencyMs: Date.now() - start, error: msg }
+    }
+    if (errMsg) return { ok: false, latencyMs: Date.now() - start, error: errMsg }
+    return { ok: true, latencyMs: Date.now() - start, error: null }
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : 'CDP check failed'
+    return { ok: false, latencyMs: Date.now() - start, error: message }
+  }
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
@@ -126,9 +160,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const siweOk = !isVercel || authSessionSecretConfigured
   const siweError = siweOk ? null : 'AUTH_SESSION_SECRET is not configured (required on Vercel)'
 
-  const paymasterConfigured = getCdpEndpointConfigured()
-  const paymasterOk = paymasterConfigured
-  const paymasterError = paymasterOk ? null : 'CDP paymaster/bundler endpoint is not configured'
+  const cdpEndpoint = getCdpEndpoint()
+  const paymasterConfigured = Boolean(cdpEndpoint)
+  const cdpStatus = cdpEndpoint ? await checkCdpRpc(cdpEndpoint) : { ok: false, latencyMs: null, error: null }
+  const paymasterOk = paymasterConfigured && cdpStatus.ok
+  const paymasterError = paymasterOk
+    ? null
+    : !paymasterConfigured
+      ? 'CDP paymaster/bundler endpoint is not configured'
+      : cdpStatus.error || 'CDP paymaster/bundler unavailable'
 
   // Server-only config. Do NOT use client-exposed env vars in API routes.
   const supabaseUrl = process.env.SUPABASE_URL || ''
