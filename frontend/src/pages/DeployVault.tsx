@@ -793,11 +793,40 @@ function DeployVaultBatcher({
   const publicClient = usePublicClient({ chainId: base.id })
   const { data: walletClient } = useWalletClient({ chainId: base.id })
   const { config: onchainKitConfig } = useOnchainKit()
+  const { connector } = useAccount()
+  const { connectAsync, connectors } = useConnect()
+  const { disconnect } = useDisconnect()
 
   // Gas sponsorship (EIP-4337 paymaster) for ERC-4337 UserOperations.
   // See docs/aa/notes.md for the AA mental model (EntryPoint + bundler + paymaster).
   const cdpApiKey = import.meta.env.VITE_CDP_API_KEY as string | undefined
   const paymasterUrl = resolveCdpPaymasterUrl(onchainKitConfig?.paymaster ?? null, cdpApiKey)
+
+  const connectorId = String((connector as any)?.id ?? '')
+  const connectorName = String((connector as any)?.name ?? '')
+  const isRabby =
+    connectorId.toLowerCase() === 'rabby' ||
+    connectorId.toLowerCase().includes('rabby') ||
+    connectorName.toLowerCase().includes('rabby')
+
+  // This deploy path signs the raw 32-byte UserOp hash via `eth_sign`.
+  // Rabby intentionally blocks `eth_sign` for safety, so we hard-block here with a clean fallback UX.
+  const rabbyBlocksThisDeployMethod = executeBatchEligible && isRabby
+
+  const walletConnectConnector = useMemo(() => {
+    return connectors.find(
+      (c) => String(c.id) === 'walletConnect' || String(c.name ?? '').toLowerCase().includes('walletconnect'),
+    )
+  }, [connectors])
+
+  const baseAppConnector = useMemo(() => {
+    // Coinbase Smart Wallet / Base Account connector (OnchainKit / Coinbase SDK).
+    return connectors.find((c) => {
+      const id = String(c.id ?? '').toLowerCase()
+      const name = String(c.name ?? '').toLowerCase()
+      return id === 'coinbasesmartwallet' || name.includes('coinbase') || name.includes('base')
+    })
+  }, [connectors])
 
   const resolvedTokenDecimals = typeof tokenDecimals === 'number' ? tokenDecimals : 18
   const formatDeposit = (raw?: bigint): string => {
@@ -1640,7 +1669,8 @@ function DeployVaultBatcher({
     expectedQuery.isLoading ||
     !expected ||
     !canAutoUpdatePayoutRecipient ||
-    !executeBatchEligible
+    !executeBatchEligible ||
+    rabbyBlocksThisDeployMethod
 
   return (
     <div className="space-y-3">
@@ -1727,6 +1757,62 @@ function DeployVaultBatcher({
           <div className="text-[11px] text-zinc-600">Checking smart wallet balance…</div>
         )}
       </div>
+
+      {rabbyBlocksThisDeployMethod ? (
+        <div className="p-4 bg-amber-500/10 border border-amber-500/20 rounded-lg space-y-2">
+          <div className="text-amber-300/90 text-sm font-medium">Rabby can’t be used for 1‑Click Deploy</div>
+          <div className="text-amber-300/70 text-xs leading-relaxed">
+            This deploy method requires a raw hash signature (<span className="font-mono">eth_sign</span>) for ERC‑4337. Rabby blocks that method
+            for safety. Switch to WalletConnect or Base App to continue.
+          </div>
+          <div className="flex flex-col gap-2">
+            {walletConnectConnector ? (
+              <button
+                type="button"
+                className="btn-accent w-full"
+                disabled={busy}
+                onClick={() => {
+                  setError(null)
+                  void connectAsync({ connector: walletConnectConnector as any }).catch((e: any) => {
+                    setError(e?.message ? String(e.message) : 'Failed to switch to WalletConnect')
+                  })
+                }}
+              >
+                Switch to WalletConnect
+              </button>
+            ) : null}
+            {baseAppConnector ? (
+              <button
+                type="button"
+                className="btn-primary w-full"
+                disabled={busy}
+                onClick={() => {
+                  setError(null)
+                  void connectAsync({ connector: baseAppConnector as any }).catch((e: any) => {
+                    setError(e?.message ? String(e.message) : 'Failed to switch to Base App')
+                  })
+                }}
+              >
+                Switch to Base App
+              </button>
+            ) : null}
+            <button
+              type="button"
+              className="w-full text-[11px] text-zinc-500 hover:text-zinc-300 transition-colors"
+              disabled={busy}
+              onClick={() => {
+                try {
+                  disconnect()
+                } catch {
+                  // ignore
+                }
+              }}
+            >
+              Disconnect Rabby
+            </button>
+          </div>
+        </div>
+      ) : null}
 
       <button type="button" onClick={() => void submit()} disabled={disabled} className="btn-accent w-full rounded-lg">
         {busy ? 'Deploying…' : '1‑Click Deploy (ERC‑4337)'}

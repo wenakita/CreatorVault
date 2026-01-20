@@ -19,12 +19,14 @@ type PrivyProviderComponent = ComponentType<{
 type PrivyMiniAppAutoLoginComponent = ComponentType<Record<string, never>>
 type PrivyBaseAppDevBadgeComponent = ComponentType<Record<string, never>>
 type PrivyBaseSubAccountsDevPanelComponent = ComponentType<Record<string, never>>
+type PrivySmartWalletsProviderComponent = ComponentType<{ children: ReactNode }>
 
 export function PrivyClientProvider({ children }: { children: ReactNode }) {
   const enabled = isPrivyClientEnabled()
   const appId = enabled ? getPrivyAppId() : null
 
   const [PrivyProvider, setPrivyProvider] = useState<PrivyProviderComponent | null>(null)
+  const [SmartWalletsProvider, setSmartWalletsProvider] = useState<PrivySmartWalletsProviderComponent | null>(null)
   const [MiniAppAutoLogin, setMiniAppAutoLogin] = useState<PrivyMiniAppAutoLoginComponent | null>(null)
   const [BaseAppDevBadge, setBaseAppDevBadge] = useState<PrivyBaseAppDevBadgeComponent | null>(null)
   const [BaseSubAccountsDevPanel, setBaseSubAccountsDevPanel] = useState<PrivyBaseSubAccountsDevPanelComponent | null>(null)
@@ -45,6 +47,27 @@ export function PrivyClientProvider({ children }: { children: ReactNode }) {
       cancelled = true
     }
   }, [enabled, appId])
+
+  useEffect(() => {
+    // Native smart wallets provider (required for Privy smart wallet UX + paymaster routing).
+    // Loaded lazily to avoid impacting non-Privy builds.
+    if (!enabled || !appId) return
+    if (!PrivyProvider) return
+    if (SmartWalletsProvider) return
+
+    let cancelled = false
+    import('@privy-io/react-auth/smart-wallets')
+      .then((m) => {
+        if (cancelled) return
+        setSmartWalletsProvider(() => (m as any).SmartWalletsProvider as PrivySmartWalletsProviderComponent)
+      })
+      .catch(() => {
+        // Optional: if smart wallets module is unavailable, we still run with embedded EOAs.
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [SmartWalletsProvider, PrivyProvider, appId, enabled])
 
   useEffect(() => {
     // Only load Mini App login glue when Privy is actually present.
@@ -127,6 +150,13 @@ export function PrivyClientProvider({ children }: { children: ReactNode }) {
             // This is safe to include even if the user never opens Privy wallet connect.
             walletList: ['base_account'],
           },
+          externalWallets: {
+            // Prefer Coinbase Smart Wallet (Base Account) instead of EOA-only Coinbase Wallet.
+            // Final wallet implementation is controlled by the Privy dashboard smart wallet setting.
+            coinbaseWallet: {
+              connectionOptions: 'smartWalletOnly',
+            },
+          },
           // Required for Sub Accounts controlled by an embedded wallet.
           // Note: Mini Apps may not support automatic embedded wallet creation; this is still safe for web.
           embedded: {
@@ -141,10 +171,21 @@ export function PrivyClientProvider({ children }: { children: ReactNode }) {
           },
         }}
       >
-        {MiniAppAutoLogin ? <MiniAppAutoLogin /> : null}
-        {BaseAppDevBadge ? <BaseAppDevBadge /> : null}
-        {BaseSubAccountsDevPanel ? <BaseSubAccountsDevPanel /> : null}
-        {children}
+        {SmartWalletsProvider ? (
+          <SmartWalletsProvider>
+            {MiniAppAutoLogin ? <MiniAppAutoLogin /> : null}
+            {BaseAppDevBadge ? <BaseAppDevBadge /> : null}
+            {BaseSubAccountsDevPanel ? <BaseSubAccountsDevPanel /> : null}
+            {children}
+          </SmartWalletsProvider>
+        ) : (
+          <>
+            {MiniAppAutoLogin ? <MiniAppAutoLogin /> : null}
+            {BaseAppDevBadge ? <BaseAppDevBadge /> : null}
+            {BaseSubAccountsDevPanel ? <BaseSubAccountsDevPanel /> : null}
+            {children}
+          </>
+        )}
       </PrivyProvider>
     </PrivyClientContext.Provider>
   )
