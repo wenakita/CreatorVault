@@ -1239,7 +1239,7 @@ function DeployVaultBatcher({
           auctionSteps,
         } as const
 
-        // Phase 3 (strategies): Charm CREATOR/USDC + Ajna lending (both mandatory)
+        // Phase 3 (strategies): Charm CREATOR/USDC + Ajna lending
         const charmWeightBps = 6900n
         const ajnaWeightBps = 2139n
         if (charmWeightBps <= 0n) throw new Error('Charm strategy is required')
