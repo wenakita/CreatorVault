@@ -766,12 +766,10 @@ function DeployVaultBatcher({
 
   const USEROP_SIGNING_ACK_KEY = 'cv_ack_userop_hash_signing_v1'
 
-  const simulateExecuteBatch = async (params: {
-    calls: Array<{ target: Address; value: bigint; data: Hex }>
-    label: string
-    account: Address
-  }): Promise<void> => {
-    const { calls, label, account } = params
+  const simulateExecuteBatch = async (
+    calls: Array<{ target: Address; value: bigint; data: Hex }>,
+    label: string,
+  ): Promise<void> => {
     if (!publicClient) throw new Error('Network client not ready')
     const prefix = label ? `${label}: ` : ''
     try {
@@ -780,7 +778,7 @@ function DeployVaultBatcher({
         abi: COINBASE_SMART_WALLET_EXECUTE_BATCH_ABI,
         functionName: 'executeBatch',
         args: [calls],
-        account,
+        account: connected,
       })
     } catch (err: any) {
       const reason = err?.shortMessage || err?.message || 'simulation_failed'
@@ -1687,7 +1685,7 @@ function DeployVaultBatcher({
           }
 
           // Direct tx fallback: still multiple txs (Base code-deposit limits), but avoids UserOp signing.
-          await simulateExecuteBatch({ calls: phase1Calls, label: 'Phase 1 preflight failed', account: connected })
+          await simulateExecuteBatch(phase1Calls, 'Phase 1 preflight failed')
           const executeBatchPhase1 = encodeFunctionData({
             abi: COINBASE_SMART_WALLET_EXECUTE_BATCH_ABI,
             functionName: 'executeBatch',
@@ -1704,7 +1702,7 @@ function DeployVaultBatcher({
           await publicClient.waitForTransactionReceipt({ hash: hash1 })
           setTxId(hash1)
 
-          await simulateExecuteBatch({ calls: phase2Calls, label: 'Phase 2 preflight failed', account: connected })
+          await simulateExecuteBatch(phase2Calls, 'Phase 2 preflight failed')
           const executeBatchPhase2 = encodeFunctionData({
             abi: COINBASE_SMART_WALLET_EXECUTE_BATCH_ABI,
             functionName: 'executeBatch',
@@ -1721,7 +1719,7 @@ function DeployVaultBatcher({
           await publicClient.waitForTransactionReceipt({ hash: hash2 })
           setTxId(hash2)
 
-          await simulateExecuteBatch({ calls: phase3Calls, label: 'Phase 3 preflight failed', account: connected })
+          await simulateExecuteBatch(phase3Calls, 'Phase 3 preflight failed')
           const executeBatchPhase3 = encodeFunctionData({
             abi: COINBASE_SMART_WALLET_EXECUTE_BATCH_ABI,
             functionName: 'executeBatch',
