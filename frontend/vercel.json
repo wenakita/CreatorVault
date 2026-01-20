@@ -34,7 +34,6 @@
     { "src": "/coin(?:/.*)?", "status": 307, "headers": { "Location": "/" } },
     { "src": "/creator(?:/.*)?", "status": 307, "headers": { "Location": "/" } },
     { "src": "/faq(?:/.*)?", "status": 307, "headers": { "Location": "/" } },
-    { "src": "/admin(?:/.*)?", "status": 307, "headers": { "Location": "/" } },
     { "src": "/vote", "status": 307, "headers": { "Location": "/" } },
     { "src": "/auction(?:/.*)?", "status": 307, "headers": { "Location": "/" } },
     { "src": "/complete-auction(?:/.*)?", "status": 307, "headers": { "Location": "/" } },
@@ -61,6 +60,11 @@
     },
     {
       "src": "/dashboard",
+      "headers": { "x-robots-tag": "noindex, nofollow" },
+      "continue": true
+    },
+    {
+      "src": "/admin(?:/.*)?",
       "headers": { "x-robots-tag": "noindex, nofollow" },
       "continue": true
     },

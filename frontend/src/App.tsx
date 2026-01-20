@@ -181,7 +181,17 @@ function App() {
             {/* Optional: keep existing Home page available at /home if you still want it */}
             <Route path="/home" element={<Home />} />
             {publicMode ? (
-              <Route path="*" element={<Navigate to="/" replace />} />
+              <>
+                {/* Admin routes must remain reachable even in public mode (auth is enforced server-side). */}
+                <Route path="/admin/creator-access" element={<AdminCreatorAccess />} />
+                <Route path="/admin/miniapp" element={<AdminMiniApp />} />
+                <Route path="/admin/deploy-strategies" element={<AdminDeployStrategies />} />
+
+                {/* Optional ops page; useful while public mode is enabled. */}
+                <Route path="/status" element={<Status />} />
+
+                <Route path="*" element={<Navigate to="/" replace />} />
+              </>
             ) : (
               <>
                 <Route path="/explore" element={<Navigate to="/explore/creators" replace />} />

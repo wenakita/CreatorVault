@@ -7,6 +7,7 @@ import { ConnectButtonWeb3 } from '@/components/ConnectButtonWeb3'
 import { isPrivyClientEnabled } from '@/lib/flags'
 import { usePrivyClientStatus } from '@/lib/privy/client'
 import { Check, CheckCircle2 } from 'lucide-react'
+import { useMiniAppContext } from '@/hooks'
 
 type Persona = 'creator' | 'user'
 
@@ -24,11 +25,14 @@ export function WaitlistLanding() {
   const [siwfBusy, setSiwfBusy] = useState(false)
   const [siwfError, setSiwfError] = useState<string | null>(null)
   const [useWalletSig, setUseWalletSig] = useState(false)
+  const [shareBusy, setShareBusy] = useState(false)
+  const [shareToast, setShareToast] = useState<string | null>(null)
 
   const appUrl = useMemo(() => getAppBaseUrl(), [])
   const emailInputRef = useRef<HTMLInputElement | null>(null)
 
   const siwe = useSiweAuth()
+  const miniApp = useMiniAppContext()
   const { message: siwfMessage, signature: siwfSignature } = useSignInMessage()
   const { isAuthenticated: isFarcasterAuthed, profile } = useProfile()
 
@@ -238,16 +242,110 @@ export function WaitlistLanding() {
     }
   }
 
+  const shareUrl = useMemo(() => {
+    // Prefer canonical marketing URL (works in Mini Apps and on web).
+    return 'https://4626.fun'
+  }, [])
+
+  const [miniAppAddSupported, setMiniAppAddSupported] = useState<boolean | null>(null)
+  useEffect(() => {
+    if (!miniApp.isMiniApp) {
+      setMiniAppAddSupported(null)
+      return
+    }
+    let cancelled = false
+    ;(async () => {
+      try {
+        const { sdk } = await import('@farcaster/miniapp-sdk')
+        const ok = typeof sdk?.actions?.addMiniApp === 'function'
+        if (!cancelled) setMiniAppAddSupported(ok)
+      } catch {
+        if (!cancelled) setMiniAppAddSupported(false)
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [miniApp.isMiniApp])
+
+  async function shareOrCompose() {
+    if (shareBusy) return
+    setShareBusy(true)
+    setShareToast(null)
+    try {
+      // If we're in a Farcaster Mini App host, prefer composeCast (best share UX).
+      if (miniApp.isMiniApp) {
+        try {
+          const { sdk } = await import('@farcaster/miniapp-sdk')
+          if (sdk?.actions?.composeCast) {
+            await sdk.actions.composeCast({
+              text: 'Creator vaults on Base — join the waitlist',
+              embeds: [shareUrl],
+            } as any)
+            setShareToast('Opened Farcaster composer.')
+            return
+          }
+        } catch {
+          // Fall through to Web Share API.
+        }
+      }
+
+      // Generic: Web Share API
+      if (typeof navigator !== 'undefined' && typeof (navigator as any).share === 'function') {
+        await (navigator as any).share({
+          title: 'Creator Vaults',
+          text: 'Creator vaults on Base — join the waitlist',
+          url: shareUrl,
+        })
+        setShareToast('Shared.')
+        return
+      }
+
+      // Fallback: copy link
+      if (typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(shareUrl)
+        setShareToast('Link copied.')
+        return
+      }
+
+      setShareToast('Open: 4626.fun')
+    } finally {
+      // Keep the toast visible briefly.
+      setTimeout(() => setShareToast(null), 2500)
+      setShareBusy(false)
+    }
+  }
+
+  async function addMiniApp() {
+    if (shareBusy) return
+    setShareBusy(true)
+    setShareToast(null)
+    try {
+      const { sdk } = await import('@farcaster/miniapp-sdk')
+      if (!sdk?.actions?.addMiniApp) {
+        setShareToast('Add is not supported in this host.')
+        return
+      }
+      await sdk.actions.addMiniApp()
+      setShareToast('Added to your Mini Apps.')
+    } catch {
+      setShareToast('Add failed.')
+    } finally {
+      setTimeout(() => setShareToast(null), 2500)
+      setShareBusy(false)
+    }
+  }
+
   return (
-    <div className="min-h-[100svh] flex items-center justify-center px-6 py-14">
+    <div className="min-h-[100svh] flex items-center justify-center px-4 sm:px-6 py-10 sm:py-14">
       <div className="w-full max-w-lg">
-        <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center justify-between mb-4 sm:mb-6">
           <div className="text-[10px] uppercase tracking-[0.24em] text-zinc-600">4626.fun · Creator Vaults</div>
           <div className="text-[10px] uppercase tracking-[0.24em] text-zinc-700">{stepIndex}/{totalSteps}</div>
         </div>
 
-        <div className="rounded-2xl bg-black/30 backdrop-blur-sm p-6 shadow-void">
-          <div className="mb-6">
+        <div className="rounded-2xl bg-black/30 backdrop-blur-sm p-4 sm:p-6 shadow-void">
+          <div className="mb-5 sm:mb-6">
             <div className="h-1 rounded-full bg-white/5 overflow-hidden">
               <motion.div
                 className="h-full bg-gradient-to-r from-brand-primary/20 via-brand-primary/50 to-brand-primary/20"
@@ -268,7 +366,7 @@ export function WaitlistLanding() {
                 transition={{ duration: 0.18 }}
                 className="space-y-5"
               >
-                <div className="headline text-3xl leading-tight">Step 1: Select</div>
+                <div className="headline text-2xl sm:text-3xl leading-tight">Step 1: Select</div>
                 <div className="space-y-3">
                   <button
                     type="button"
@@ -327,7 +425,7 @@ export function WaitlistLanding() {
                 transition={{ duration: 0.18 }}
                 className="space-y-5"
               >
-                <div className="headline text-3xl leading-tight">Verify identity</div>
+                <div className="headline text-2xl sm:text-3xl leading-tight">Verify identity</div>
 
                 {/* Primary: SIWF via Farcaster Auth Kit */}
                 {!useWalletSig ? (
@@ -352,6 +450,7 @@ export function WaitlistLanding() {
                     {siwfError ? <div className="text-xs text-red-400 text-center">{siwfError}</div> : null}
 
                     <button
+                      type="button"
                       className="w-full text-[11px] text-zinc-600 hover:text-zinc-400 transition-colors"
                       onClick={() => setUseWalletSig(true)}
                     >
@@ -362,6 +461,7 @@ export function WaitlistLanding() {
                   <div className="space-y-3">
                     <ConnectButtonWeb3 />
                     <button
+                      type="button"
                       className="btn-accent w-full disabled:opacity-50 disabled:cursor-not-allowed"
                       disabled={siwe.busy}
                       onClick={() => void siwe.signIn()}
@@ -370,6 +470,7 @@ export function WaitlistLanding() {
                     </button>
                     {siwe.error ? <div className="text-xs text-red-400">{siwe.error}</div> : null}
                     <button
+                      type="button"
                       className="w-full text-[11px] text-zinc-600 hover:text-zinc-400 transition-colors"
                       onClick={() => setUseWalletSig(false)}
                     >
@@ -379,7 +480,17 @@ export function WaitlistLanding() {
                 )}
 
                 <div className="flex items-center justify-between pt-2">
-                  <button className="text-[11px] text-zinc-600 hover:text-zinc-400 transition-colors" onClick={() => setStep('persona')}>
+                  <button
+                    type="button"
+                    className="text-[11px] text-zinc-600 hover:text-zinc-400 transition-colors"
+                    disabled={busy || siwfBusy || siwe.busy}
+                    onClick={() => {
+                      if (busy || siwfBusy || siwe.busy) return
+                      setError(null)
+                      setSiwfError(null)
+                      setStep('persona')
+                    }}
+                  >
                     Back
                   </button>
                 </div>
@@ -395,7 +506,7 @@ export function WaitlistLanding() {
                 transition={{ duration: 0.18 }}
                 className="space-y-5"
               >
-                <div className="headline text-3xl leading-tight">Step 3: Connect</div>
+                <div className="headline text-2xl sm:text-3xl leading-tight">Step 3: Connect</div>
 
                 {showPrivy ? (
                   <div className="space-y-3">
@@ -462,12 +573,26 @@ export function WaitlistLanding() {
 
                 <div className="flex items-center justify-between pt-2">
                   <button
+                    type="button"
                     className="text-[11px] text-zinc-600 hover:text-zinc-400 transition-colors"
-                    onClick={() => setStep(persona === 'creator' ? 'verify' : 'persona')}
+                    disabled={busy}
+                    onClick={() => {
+                      if (busy) return
+                      // Defensive: if persona got reset, always return to first step.
+                      const target = persona === 'creator' ? 'verify' : 'persona'
+                      setError(null)
+                      setSiwfError(null)
+                      setStep(target)
+                    }}
                   >
                     Back
                   </button>
-                  <button className="btn-accent" disabled={busy || !isValidEmail(emailTrimmed)} onClick={() => void submitWaitlist({ email: emailTrimmed })}>
+                  <button
+                    type="button"
+                    className="btn-accent"
+                    disabled={busy || !isValidEmail(emailTrimmed)}
+                    onClick={() => void submitWaitlist({ email: emailTrimmed })}
+                  >
                     {busy ? 'Submitting…' : 'Submit'}
                   </button>
                 </div>
@@ -493,7 +618,7 @@ export function WaitlistLanding() {
                     <div className="absolute inset-0 rounded-full border border-brand-primary/20 animate-pulse-ring" />
                     <CheckCircle2 className="w-5 h-5 text-brand-accent" />
                   </div>
-                  <div className="headline text-3xl leading-tight">You’re in.</div>
+                  <div className="headline text-2xl sm:text-3xl leading-tight">You’re in.</div>
                 </motion.div>
                 <div className="text-sm text-zinc-600 font-light">
                   {doneEmail ? (
@@ -504,13 +629,47 @@ export function WaitlistLanding() {
                     <>We’ll email you when onboarding opens.</>
                   )}
                 </div>
-                <div className="flex items-center justify-between pt-2">
-                  <button className="text-[11px] text-zinc-600 hover:text-zinc-400 transition-colors" onClick={resetFlow}>
+                <div className="space-y-3 pt-2">
+                  <div className="flex items-center justify-between gap-3">
+                    <button
+                      type="button"
+                      className="text-[11px] text-zinc-600 hover:text-zinc-400 transition-colors"
+                      onClick={resetFlow}
+                    >
                     Start over
-                  </button>
-                  <a className="btn-accent" href={`${appUrl}/explore`}>
-                    Go to app
-                  </a>
+                    </button>
+                    {shareToast ? <div className="text-[11px] text-zinc-600">{shareToast}</div> : null}
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    <a
+                      className="btn-primary w-full text-center"
+                      href="https://x.com/4626fun"
+                      target="_blank"
+                      rel="noreferrer"
+                    >
+                      Follow @4626fun
+                    </a>
+                    <button type="button" className="btn-accent w-full" disabled={shareBusy} onClick={() => void shareOrCompose()}>
+                      {shareBusy ? 'Working…' : 'Share'}
+                    </button>
+                  </div>
+
+                  {miniApp.isMiniApp && miniAppAddSupported !== false ? (
+                    <button
+                      type="button"
+                      className="w-full text-[11px] text-zinc-600 hover:text-zinc-400 transition-colors disabled:opacity-60"
+                      disabled={shareBusy || miniAppAddSupported === null}
+                      onClick={() => void addMiniApp()}
+                      title={miniAppAddSupported === null ? 'Checking host capabilities…' : 'Add this Mini App to your list'}
+                    >
+                      {miniAppAddSupported === null ? 'Checking Mini App support…' : 'Add to Mini Apps'}
+                    </button>
+                  ) : (
+                    <div className="text-[11px] text-zinc-700">
+                      Tip: bookmark <span className="font-mono text-zinc-500">4626.fun</span> so you can come back fast.
+                    </div>
+                  )}
                 </div>
               </motion.div>
             ) : null}
