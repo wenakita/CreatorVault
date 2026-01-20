@@ -38,6 +38,18 @@ function withRequiredSsl(connectionString: string): string {
   return `${cs}${cs.includes('?') ? '&' : '?'}sslmode=require`
 }
 
+function withNoVerifySsl(connectionString: string): string {
+  const cs = (connectionString ?? '').trim()
+  if (!cs) return cs
+  const lower = cs.toLowerCase()
+  // Respect explicit sslmode if present.
+  if (lower.includes('sslmode=')) return cs
+  if (lower.includes('localhost') || lower.includes('127.0.0.1')) return cs
+  // Some managed Postgres providers present cert chains that fail Node verification in serverless.
+  // `sslmode=no-verify` matches our `rejectUnauthorized: false` behavior and avoids hard failures.
+  return `${cs}${cs.includes('?') ? '&' : '?'}sslmode=no-verify`
+}
+
 function requiresSsl(connectionString: string): boolean {
   const cs = (connectionString ?? '').trim().toLowerCase()
   if (!cs) return false
@@ -91,7 +103,11 @@ export async function getDb(): Promise<DbPool | null> {
       try {
         // Re-read env at init time (still deterministic in serverless).
         const cfg2 = getDbConfig()
-        const cs = cfg2?.connectionString ? withRequiredSsl(cfg2.connectionString) : null
+        const cs = cfg2?.connectionString
+          ? cfg2.source === 'database_url'
+            ? withNoVerifySsl(cfg2.connectionString)
+            : withRequiredSsl(cfg2.connectionString)
+          : null
         if (!cfg2 || !cs) return null
         const ssl = sslOptionsForConnection(cs)
 
