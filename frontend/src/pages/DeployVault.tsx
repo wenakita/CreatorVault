@@ -1239,9 +1239,11 @@ function DeployVaultBatcher({
           auctionSteps,
         } as const
 
-        // Phase 3 (strategies): Charm CREATOR/USDC + Ajna lending
+        // Phase 3 (strategies): Charm CREATOR/USDC + Ajna lending (both mandatory)
         const charmWeightBps = 6900n
         const ajnaWeightBps = 2139n
+        if (charmWeightBps <= 0n) throw new Error('Charm strategy is required')
+        if (ajnaWeightBps <= 0n) throw new Error('Ajna strategy is required')
         const charmLabel = (depositSymbol || '').toLowerCase()
 
         // If the CREATOR/USDC v3 pool doesn't exist yet, `deployPhase3Strategies` needs a non-zero
@@ -1626,7 +1628,7 @@ function DeployVaultBatcher({
             <div className="py-3">
               <div className="text-[10px] uppercase tracking-[0.24em] text-zinc-500 mb-2">Phase 3</div>
               <div className="text-[11px] text-zinc-600">
-                Strategy deployments + registrations (Charm CREATOR/USDC + optional Ajna).
+                Strategy deployments + registrations (Charm CREATOR/USDC + Ajna).
               </div>
             </div>
           </div>
