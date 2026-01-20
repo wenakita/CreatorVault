@@ -5,6 +5,46 @@ import { getDb } from './_lib/postgres.js'
 
 declare const process: { env: Record<string, string | undefined> }
 
+let waitlistSchemaEnsured = false
+
+async function ensureWaitlistSchema(db: { sql: (strings: TemplateStringsArray, ...values: any[]) => Promise<{ rows: any[] }> }): Promise<void> {
+  if (waitlistSchemaEnsured) return
+  waitlistSchemaEnsured = true
+
+  // Create a minimal, durable waitlist schema. Safe to run repeatedly.
+  await db.sql`
+    CREATE TABLE IF NOT EXISTS waitlist_signups (
+      id BIGSERIAL PRIMARY KEY,
+      email TEXT NOT NULL UNIQUE,
+      primary_wallet TEXT NULL,
+      privy_user_id TEXT NULL,
+      embedded_wallet TEXT NULL,
+      persona TEXT NULL,
+      has_creator_coin BOOLEAN NULL,
+      farcaster_fid BIGINT NULL,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+  `
+
+  // Backfill/migrate older tables that were created without newer columns.
+  // `IF NOT EXISTS` is supported on modern Postgres versions; if it throws, we ignore.
+  try {
+    await db.sql`ALTER TABLE waitlist_signups ADD COLUMN IF NOT EXISTS persona TEXT NULL;`
+    await db.sql`ALTER TABLE waitlist_signups ADD COLUMN IF NOT EXISTS has_creator_coin BOOLEAN NULL;`
+    await db.sql`ALTER TABLE waitlist_signups ADD COLUMN IF NOT EXISTS farcaster_fid BIGINT NULL;`
+    await db.sql`ALTER TABLE waitlist_signups ADD COLUMN IF NOT EXISTS privy_user_id TEXT NULL;`
+    await db.sql`ALTER TABLE waitlist_signups ADD COLUMN IF NOT EXISTS embedded_wallet TEXT NULL;`
+    await db.sql`ALTER TABLE waitlist_signups ADD COLUMN IF NOT EXISTS primary_wallet TEXT NULL;`
+    await db.sql`ALTER TABLE waitlist_signups ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ NOT NULL DEFAULT NOW();`
+    await db.sql`ALTER TABLE waitlist_signups ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW();`
+  } catch {
+    // ignore (older Postgres or restricted perms)
+  }
+
+  await db.sql`CREATE INDEX IF NOT EXISTS waitlist_signups_created_at_idx ON waitlist_signups (created_at DESC);`
+}
+
 type WaitlistRequestBody = {
   email?: string
   primaryWallet?: string | null
@@ -195,6 +235,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     } satisfies ApiEnvelope<never>)
   }
 
+  try {
+    await ensureWaitlistSchema(db)
+  } catch (e: any) {
+    // If the DB is reachable but schema creation is blocked, fail with a clear operator error.
+    const msg = e?.message ? String(e.message) : 'Failed to initialize waitlist schema'
+    return res.status(500).json({ success: false, error: msg } satisfies ApiEnvelope<never>)
+  }
+
   let privyUserId: string | null = null
   let embeddedWallet: string | null = null
   try {
@@ -254,6 +302,55 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : 'Waitlist insert failed'
     const lower = String(msg).toLowerCase()
+
+    // If the table didn't exist (or was dropped), try to recreate and retry once.
+    if (lower.includes('relation') && lower.includes('waitlist_signups')) {
+      try {
+        // Reset guard in case we raced a cold start.
+        waitlistSchemaEnsured = false
+        await ensureWaitlistSchema(db)
+        const rRetry = await db.sql<{ created: boolean; email: string }>`
+          INSERT INTO waitlist_signups (
+            email,
+            primary_wallet,
+            privy_user_id,
+            embedded_wallet,
+            persona,
+            has_creator_coin,
+            farcaster_fid,
+            created_at,
+            updated_at
+          )
+          VALUES (
+            ${email},
+            ${primaryWallet.length > 0 ? primaryWallet : null},
+            ${privyUserId},
+            ${embeddedWallet},
+            ${persona},
+            ${hasCreatorCoinRaw},
+            ${farcasterFid},
+            NOW(),
+            NOW()
+          )
+          ON CONFLICT (email) DO UPDATE
+            SET primary_wallet = COALESCE(EXCLUDED.primary_wallet, waitlist_signups.primary_wallet),
+                privy_user_id = COALESCE(EXCLUDED.privy_user_id, waitlist_signups.privy_user_id),
+                embedded_wallet = COALESCE(EXCLUDED.embedded_wallet, waitlist_signups.embedded_wallet),
+                persona = COALESCE(EXCLUDED.persona, waitlist_signups.persona),
+                has_creator_coin = COALESCE(EXCLUDED.has_creator_coin, waitlist_signups.has_creator_coin),
+                farcaster_fid = COALESCE(EXCLUDED.farcaster_fid, waitlist_signups.farcaster_fid),
+                updated_at = NOW()
+          RETURNING (xmax = 0) AS created, email;
+        `
+        const rowRetry = rRetry?.rows?.[0]
+        if (!rowRetry) throw new Error('Insert failed')
+        const dataRetry: WaitlistResponse = { created: Boolean(rowRetry.created), email: rowRetry.email }
+        return res.status(200).json({ success: true, data: dataRetry } satisfies ApiEnvelope<WaitlistResponse>)
+      } catch (eRetry: any) {
+        const msgRetry = eRetry instanceof Error ? eRetry.message : msg
+        return res.status(500).json({ success: false, error: String(msgRetry) } satisfies ApiEnvelope<never>)
+      }
+    }
 
     // Back-compat: if the DB table exists but hasn't been migrated with new columns yet,
     // retry without persona columns so signups still work.
