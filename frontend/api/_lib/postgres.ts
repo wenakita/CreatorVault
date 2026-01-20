@@ -13,16 +13,16 @@ function getConnectionString(): string | null {
   // - Vercel Postgres sets POSTGRES_URL / POSTGRES_URL_NON_POOLING automatically.
   // We still allow DATABASE_URL for local dev.
   const isVercel = Boolean(process.env.VERCEL) || Boolean(process.env.VERCEL_ENV)
-  if (!isVercel) {
-    // Only accept actual Postgres connection strings; it's common for other providers to set DATABASE_URL.
-    if (isProbablyPostgresUrl(fromDatabaseUrl)) return (fromDatabaseUrl ?? '').trim()
-  }
-
   const fromVercelPool = process.env.POSTGRES_URL
   if (isProbablyPostgresUrl(fromVercelPool)) return (fromVercelPool ?? '').trim()
 
   const fromVercelDirect = process.env.POSTGRES_URL_NON_POOLING
   if (isProbablyPostgresUrl(fromVercelDirect)) return (fromVercelDirect ?? '').trim()
+
+  // Fallback: if Vercel Postgres is not configured, accept DATABASE_URL even on Vercel.
+  // This enables running against external Postgres providers (e.g. Supabase) without requiring POSTGRES_URL.
+  // Only accept actual Postgres connection strings; it's common for other providers to set DATABASE_URL.
+  if (isProbablyPostgresUrl(fromDatabaseUrl)) return (fromDatabaseUrl ?? '').trim()
 
   return null
 }
