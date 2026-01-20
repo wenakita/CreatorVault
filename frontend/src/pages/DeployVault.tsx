@@ -316,26 +316,6 @@ const COINBASE_SMART_WALLET_PREFLIGHT_ABI = [
 
 const COINBASE_ENTRYPOINT_V06 = addr('5FF137D4b0FDCD49DcA30c7CF57E578a026d2789')
 
-const COINBASE_SMART_WALLET_EXECUTE_BATCH_ABI = [
-  {
-    type: 'function',
-    name: 'executeBatch',
-    stateMutability: 'payable',
-    inputs: [
-      {
-        name: 'calls',
-        type: 'tuple[]',
-        components: [
-          { name: 'target', type: 'address' },
-          { name: 'value', type: 'uint256' },
-          { name: 'data', type: 'bytes' },
-        ],
-      },
-    ],
-    outputs: [],
-  },
-] as const
-
 const COIN_PAYOUT_RECIPIENT_ABI = [
   {
     type: 'function',
@@ -725,7 +705,6 @@ function AddressRow({ label, address }: { label: string; address: Address | null
 function DeployVaultBatcher({
   creatorToken,
   owner,
-  connectedWalletAddress,
   connectorId,
   executeBatchEligible = false,
   isSignedIn,
@@ -745,7 +724,6 @@ function DeployVaultBatcher({
 }: {
   creatorToken: Address
   owner: Address
-  connectedWalletAddress: Address | null
   connectorId?: string | null
   executeBatchEligible?: boolean
   isSignedIn: boolean
@@ -771,10 +749,6 @@ function DeployVaultBatcher({
   // See docs/aa/notes.md for the AA mental model (EntryPoint + bundler + paymaster).
   const cdpApiKey = import.meta.env.VITE_CDP_API_KEY as string | undefined
   const paymasterUrl = resolveCdpPaymasterUrl(onchainKitConfig?.paymaster ?? null, cdpApiKey)
-  const capabilities =
-    paymasterUrl && typeof paymasterUrl === 'string'
-      ? ({ paymasterService: { url: paymasterUrl } } as const)
-      : undefined
 
   const resolvedTokenDecimals = typeof tokenDecimals === 'number' ? tokenDecimals : 18
   const formatDeposit = (raw?: bigint): string => {
@@ -956,16 +930,13 @@ function DeployVaultBatcher({
     return meta ? `${ethShort} ETH / ${shareSymbol} (${meta})` : `${ethShort} ETH / ${shareSymbol}`
   }, [marketFloorWeiPerTokenAligned, marketFloorTwapDurationSec, marketFloorDiscountBps, shareSymbol])
 
-  const connectedLc = connectedWalletAddress ? connectedWalletAddress.toLowerCase() : ''
-  const ownerLc = owner.toLowerCase()
-
   // ERC-4337 deploy requires the initial deposit to be owned by the smart wallet sender.
   const { data: smartWalletTokenBalance } = useReadContract({
     address: creatorToken as `0x${string}`,
     abi: erc20Abi,
     functionName: 'balanceOf',
     args: [owner as `0x${string}`],
-    query: { enabled: Boolean(tokenIsValid && creatorToken && owner) },
+    query: { enabled: Boolean(creatorToken && owner) },
   })
 
   const codeIds = useMemo(() => {
@@ -1159,8 +1130,6 @@ function DeployVaultBatcher({
       // Zora Creator Coins restrict `setPayoutRecipient` to the coin owner, so that internal call reverts (msg.sender=batcher).
       // We always pass `address(0)` to the batcher and, when needed, set payoutRecipient from the identity wallet separately.
       const payoutForDeploy = ZERO_ADDRESS as Address
-
-      const isOperatorSubmit = connected.toLowerCase() !== owner.toLowerCase()
 
       const weth = getAddress((CONTRACTS.weth ?? BASE_WETH) as Address)
       const burnStreamSalt = deriveVaultShareBurnStreamSalt({ creatorToken, owner })
@@ -2030,14 +1999,6 @@ export function DeployVault() {
     return isAddress(a) ? (a as Address) : null
   }, [address])
 
-  const { data: connectedTokenBalance } = useReadContract({
-    address: tokenIsValid ? (creatorToken as `0x${string}`) : undefined,
-    abi: erc20Abi,
-    functionName: 'balanceOf',
-    args: [(connectedWalletAddress ?? ZERO_ADDRESS) as `0x${string}`],
-    query: { enabled: tokenIsValid && !!connectedWalletAddress },
-  })
-
   // NOTE: selectedOwnerWallet (smart wallet vs connected wallet) is computed further down once we know
   // payoutRecipient/creatorAddress.
 
@@ -2199,23 +2160,6 @@ export function DeployVault() {
     return { connectorName }
   }, [coinSmartWallet, connector, isConnected])
 
-  // If the coin was created from a smart wallet (Privy/Coinbase Smart Wallet), prefer using that
-  // as the execution account for deployment + the 5M initial deposit.
-  //
-  // - `coinSmartWallet`: smart wallet address that matches the coin's creator or payoutRecipient.
-  // - Fallback to the connected wallet when we cannot confidently identify a smart wallet.
-  const selectedOwnerWallet = useMemo(() => {
-    return (coinSmartWallet ?? connectedWalletAddress) as Address | null
-  }, [coinSmartWallet, connectedWalletAddress])
-
-  const { data: selectedOwnerTokenBalance } = useReadContract({
-    address: tokenIsValid ? (creatorToken as `0x${string}`) : undefined,
-    abi: erc20Abi,
-    functionName: 'balanceOf',
-    args: [((selectedOwnerWallet ?? ZERO_ADDRESS) as Address) as `0x${string}`],
-    query: { enabled: tokenIsValid && !!selectedOwnerWallet },
-  })
-
   const smartWalletOwnerQuery = useReadContract({
     address: coinSmartWallet ? (coinSmartWallet as `0x${string}`) : undefined,
     abi: COINBASE_SMART_WALLET_OWNER_ABI,
@@ -2243,7 +2187,16 @@ export function DeployVault() {
     })
   }, [connectedWalletAddress, farcasterCustodyAddress, farcasterProfileQuery.data, zoraCoin])
 
-  const canonicalIdentityAddress = owner
+  const canonicalIdentityAddress = identity.canonicalIdentity.address
+  const deploySender = (coinSmartWallet ?? canonicalIdentityAddress) as Address | null
+
+  const { data: deploySenderTokenBalance } = useReadContract({
+    address: tokenIsValid ? (creatorToken as `0x${string}`) : undefined,
+    abi: erc20Abi,
+    functionName: 'balanceOf',
+    args: [((deploySender ?? ZERO_ADDRESS) as Address) as `0x${string}`],
+    query: { enabled: tokenIsValid && !!deploySender },
+  })
 
   // ============================================================
   // Smart-wallet executeBatch eligibility (EOA owner → deploy via SW)
@@ -2316,11 +2269,6 @@ export function DeployVault() {
   const allowlistEnforced = allowlistMode === 'enforced'
   const isAllowlistedCreator = creatorAllowlistQuery.data?.allowed === true
   const passesCreatorAllowlist = allowlistMode === 'disabled' ? true : isAllowlistedCreator
-
-  const selectedOwnerAddress = selectedOwnerWallet
-
-  void selectedOwnerAddress // reserved for future “deploy as smart wallet” UX
-  void selectedOwnerTokenBalance // reserved for future funding UX
 
 
   // NOTE: We previously supported an optional “fund owner wallet” helper flow, but it’s not wired into
@@ -2549,12 +2497,10 @@ export function DeployVault() {
   }, [resolvedTokenDecimals])
 
   const walletHasMinDeposit =
-    typeof smartWalletTokenBalance === 'bigint' && smartWalletTokenBalance >= minFirstDeposit
+    typeof deploySenderTokenBalance === 'bigint' && deploySenderTokenBalance >= minFirstDeposit
 
   // Single deploy path: ERC-4337 only (no operator mode / no wallet_sendCalls / no direct tx fallbacks).
-  const operatorModeEligible = false
   const operatorMode = false
-  const operatorDeployStatus = { operatorMode: false, eligible: false, loading: false, message: null as string | null }
 
   const isAuthorizedDeployerOrOperator = isAuthorizedDeployer && executeBatchEligible
 
@@ -3161,7 +3107,7 @@ export function DeployVault() {
                         <div className="flex items-center justify-between text-sm p-3 bg-black/40 border border-zinc-800 rounded-lg">
                           <span className="text-zinc-500">Creator smart wallet balance:</span>
                           <span className={walletHasMinDeposit ? 'text-emerald-400 font-medium' : 'text-amber-300/90 font-medium'}>
-                            {formatToken18(typeof smartWalletTokenBalance === 'bigint' ? smartWalletTokenBalance : undefined)}{' '}
+                            {formatToken18(typeof deploySenderTokenBalance === 'bigint' ? deploySenderTokenBalance : undefined)}{' '}
                             {underlyingSymbolUpper || 'TOKENS'}
                           </span>
                         </div>
@@ -3333,7 +3279,6 @@ export function DeployVault() {
                   <DeployVaultBatcher
                     creatorToken={creatorToken as Address}
                     owner={(coinSmartWallet ?? identity.canonicalIdentity.address) as Address}
-                    connectedWalletAddress={connectedWalletAddress}
                     connectorId={String((connector as any)?.id ?? '')}
                     executeBatchEligible={executeBatchEligible}
                     isSignedIn={isSignedIn}
