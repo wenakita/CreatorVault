@@ -102,7 +102,8 @@ export function PrivyClientProvider({ children }: { children: ReactNode }) {
             // This is safe to include even if the user never opens Privy wallet connect.
             // Include common EOA options so users can sign in with their browser wallet.
             // (Strings are Privy-defined identifiers; extra entries are safe if unsupported.)
-            walletList: ['base_account', 'metamask', 'coinbase_wallet', 'wallet_connect'],
+            walletList: ['detected_wallets', 'base_account', 'metamask', 'coinbase_wallet', 'wallet_connect'],
+            walletChainType: 'ethereum-only',
           },
           externalWallets: {
             // Prefer Coinbase Smart Wallet (Base Account) instead of EOA-only Coinbase Wallet.

@@ -2821,7 +2821,18 @@ function DeployVaultPrivyEnabled() {
                 </button>
               ) : !privyAuthenticated ? (
                 <div className="space-y-2">
-                  <button type="button" className="btn-accent w-full" onClick={() => void login()}>
+                  <button
+                    type="button"
+                    className="btn-accent w-full"
+                    onClick={() =>
+                      void Promise.resolve(
+                        login({
+                          // Prefer external wallet sign-in when available (EOA), while still provisioning the embedded smart wallet.
+                          loginMethods: ['wallet'],
+                        } as any),
+                      )
+                    }
+                  >
                     Continue
                   </button>
                   <div className="text-[11px] text-zinc-600">

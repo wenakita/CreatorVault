@@ -137,7 +137,18 @@ function AppAllowlistGatePrivyEnabled() {
             <div className="text-sm text-zinc-400 leading-relaxed">
               Sign in to check whether your wallet is allowlisted for early access.
             </div>
-            <button type="button" className="btn-accent w-fit" onClick={() => void login()}>
+            <button
+              type="button"
+              className="btn-accent w-fit"
+              onClick={() =>
+                void Promise.resolve(
+                  login({
+                    // Force external wallet sign-in (EOA) so users see MetaMask / WalletConnect options immediately.
+                    loginMethods: ['wallet'],
+                  } as any),
+                )
+              }
+            >
               Continue
             </button>
             <a className="text-xs text-zinc-500 hover:text-zinc-300 w-fit" href={getMarketingBaseUrl()}>
@@ -388,7 +399,8 @@ function App() {
               <Route element={<AppAllowlistGate />}>
                 <Route element={<Layout />}>
                   {/* App host */}
-                  <Route path="/" element={<Navigate to="/explore/creators" replace />} />
+                  {/* Keep users on "/" so the allowlist gate is visible on the root URL. */}
+                  <Route path="/" element={<ExploreCreators />} />
                   {/* Keep /waitlist route as a back-compat target (marketing is on 4626.fun). */}
                   <Route path="/waitlist" element={<Waitlist />} />
                   {/* Optional: keep existing Home page available at /home if you still want it */}
