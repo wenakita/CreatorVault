@@ -1,10 +1,198 @@
-import { lazy } from 'react'
-import { Routes, Route, Navigate } from 'react-router-dom'
+import { lazy, useMemo } from 'react'
+import { Routes, Route, Navigate, Outlet } from 'react-router-dom'
+import { useQuery } from '@tanstack/react-query'
+import { useLogin, usePrivy } from '@privy-io/react-auth'
+import { useSmartWallets } from '@privy-io/react-auth/smart-wallets'
+import { usePrivyClientStatus } from '@/lib/privy/client'
+import { useCreatorAllowlist } from '@/hooks'
 import { Layout } from './components/Layout'
 import { MarketingLayout } from './components/MarketingLayout'
 import { Home } from './pages/Home'
 import { isPublicSiteMode } from './lib/flags'
 import { getHostMode, getAppBaseUrl } from './lib/host'
+
+type ApiEnvelope<T> = { success: boolean; data?: T; error?: string }
+type CreatorAllowlistMode = 'disabled' | 'enforced'
+
+type CreatorAllowlistStatus = {
+  address: string | null
+  coin: string | null
+  creator: string | null
+  payoutRecipient: string | null
+  mode: CreatorAllowlistMode
+  allowed: boolean
+}
+
+function getMarketingBaseUrl(): string {
+  if (typeof window === 'undefined') return 'https://4626.fun'
+  const host = window.location.hostname.toLowerCase()
+  if (host === 'localhost' || host.endsWith('.localhost') || host === '127.0.0.1' || host === '0.0.0.0') return 'https://4626.fun'
+  if (host.startsWith('app.')) return `https://${host.slice(4)}`
+  return `https://${host}`
+}
+
+function AppAllowlistGate() {
+  const privyClientStatus = usePrivyClientStatus()
+
+  if (privyClientStatus !== 'ready') {
+    return (
+      <div className="min-h-screen bg-black text-white">
+        <div className="max-w-3xl mx-auto px-6 py-16">
+          <div className="text-[10px] uppercase tracking-[0.24em] text-zinc-500 mb-4">CreatorVaults</div>
+          <div className="card rounded-xl p-8 space-y-3">
+            <div className="text-lg font-medium">App is not configured</div>
+            <div className="text-sm text-zinc-400 leading-relaxed">
+              This app uses Privy smart wallets. Privy is currently disabled for this environment.
+            </div>
+            <a className="btn-accent inline-flex w-fit" href={getMarketingBaseUrl()}>
+              Join the waitlist
+            </a>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  return <AppAllowlistGatePrivyEnabled />
+}
+
+function AppAllowlistGatePrivyEnabled() {
+  const { ready: privyReady, authenticated } = usePrivy()
+  const { login } = useLogin()
+  const { client: smartWalletClient } = useSmartWallets()
+
+  // Detect whether allowlist gating is even enabled server-side.
+  const allowlistModeQuery = useQuery({
+    queryKey: ['creatorAllowlist', 'mode'],
+    queryFn: async (): Promise<CreatorAllowlistStatus> => {
+      const res = await fetch('/api/creator-allowlist', { method: 'GET' })
+      const json = (await res.json().catch(() => null)) as ApiEnvelope<CreatorAllowlistStatus> | null
+      if (!res.ok || !json) throw new Error('Allowlist check failed')
+      if (!json.success || !json.data) throw new Error(json.error || 'Allowlist check failed')
+      return json.data
+    },
+    staleTime: 30_000,
+    retry: 0,
+  })
+
+  const smartWalletAddress = useMemo(() => {
+    const a = (smartWalletClient as any)?.account?.address
+    return typeof a === 'string' && a.startsWith('0x') ? a : null
+  }, [smartWalletClient])
+
+  const allowQuery = useCreatorAllowlist(smartWalletAddress)
+  const allowed = allowQuery.data?.allowed === true
+
+  const allowlistMode = allowlistModeQuery.data?.mode
+  const allowlistEnforced = allowlistMode === 'enforced'
+
+  if (allowlistModeQuery.isError) {
+    return (
+      <div className="min-h-screen bg-black text-white">
+        <div className="max-w-3xl mx-auto px-6 py-16">
+          <div className="text-[10px] uppercase tracking-[0.24em] text-zinc-500 mb-4">CreatorVaults</div>
+          <div className="card rounded-xl p-8 space-y-3">
+            <div className="text-lg font-medium">Access check unavailable</div>
+            <div className="text-sm text-zinc-400 leading-relaxed">
+              We couldn’t verify allowlist status right now. Please try again in a moment.
+            </div>
+            <a className="btn-accent inline-flex w-fit" href={getMarketingBaseUrl()}>
+              Join the waitlist
+            </a>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  // If allowlist is not enforced (e.g. local dev / no DB / no env allowlist), don't gate.
+  if (!allowlistEnforced) return <Outlet />
+
+  if (!privyReady) {
+    return (
+      <div className="min-h-screen bg-black text-white">
+        <div className="max-w-3xl mx-auto px-6 py-16">
+          <div className="text-[10px] uppercase tracking-[0.24em] text-zinc-500 mb-4">CreatorVaults</div>
+          <div className="card rounded-xl p-8 space-y-3">
+            <div className="text-sm text-zinc-400">Loading…</div>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  if (!authenticated) {
+    return (
+      <div className="min-h-screen bg-black text-white">
+        <div className="max-w-3xl mx-auto px-6 py-16">
+          <div className="text-[10px] uppercase tracking-[0.24em] text-zinc-500 mb-4">CreatorVaults</div>
+          <div className="card rounded-xl p-8 space-y-3">
+            <div className="text-lg font-medium">Invite-only access</div>
+            <div className="text-sm text-zinc-400 leading-relaxed">
+              Sign in to check whether your wallet is allowlisted for early access.
+            </div>
+            <button type="button" className="btn-accent w-fit" onClick={() => void login()}>
+              Continue
+            </button>
+            <a className="text-xs text-zinc-500 hover:text-zinc-300 w-fit" href={getMarketingBaseUrl()}>
+              Join the waitlist
+            </a>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  if (!smartWalletAddress) {
+    return (
+      <div className="min-h-screen bg-black text-white">
+        <div className="max-w-3xl mx-auto px-6 py-16">
+          <div className="text-[10px] uppercase tracking-[0.24em] text-zinc-500 mb-4">CreatorVaults</div>
+          <div className="card rounded-xl p-8 space-y-3">
+            <div className="text-sm text-zinc-400">Setting up your smart wallet…</div>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  if (allowQuery.isLoading) {
+    return (
+      <div className="min-h-screen bg-black text-white">
+        <div className="max-w-3xl mx-auto px-6 py-16">
+          <div className="text-[10px] uppercase tracking-[0.24em] text-zinc-500 mb-4">CreatorVaults</div>
+          <div className="card rounded-xl p-8 space-y-3">
+            <div className="text-sm text-zinc-400">Checking access…</div>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  if (!allowed) {
+    return (
+      <div className="min-h-screen bg-black text-white">
+        <div className="max-w-3xl mx-auto px-6 py-16">
+          <div className="text-[10px] uppercase tracking-[0.24em] text-zinc-500 mb-4">CreatorVaults</div>
+          <div className="card rounded-xl p-8 space-y-3">
+            <div className="text-lg font-medium">Not allowlisted yet</div>
+            <div className="text-sm text-zinc-400 leading-relaxed">
+              This app is invite-only while we onboard creators. Join the waitlist and we’ll notify you when access opens.
+            </div>
+            <a className="btn-accent inline-flex w-fit" href={getMarketingBaseUrl()}>
+              Join the waitlist
+            </a>
+            <div className="text-xs text-zinc-600">
+              Signed in as <span className="font-mono text-zinc-300">{smartWalletAddress}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  return <Outlet />
+}
 
 const Vault = lazy(async () => {
   const m = await import('./pages/Vault')
@@ -155,7 +343,7 @@ function App() {
     <>
       {/* Noise texture overlay */}
       <div className="noise-overlay" />
-      
+
       <Routes>
         {hostMode === 'marketing' ? (
           <Route element={<MarketingLayout />}>
@@ -173,15 +361,13 @@ function App() {
             <Route path="*" element={<Navigate to="/" replace />} />
           </Route>
         ) : (
-          <Route element={<Layout />}>
-            {/* App host */}
-            <Route path="/" element={<Navigate to={publicMode ? '/status' : '/explore'} replace />} />
-            {/* Keep /waitlist route as a redirect for old links */}
-            <Route path="/waitlist" element={<Waitlist />} />
-            {/* Optional: keep existing Home page available at /home if you still want it */}
-            <Route path="/home" element={<Home />} />
+          <>
             {publicMode ? (
-              <>
+              <Route element={<Layout />}>
+                {/* App host */}
+                <Route path="/" element={<Navigate to="/status" replace />} />
+                <Route path="/home" element={<Home />} />
+
                 {/* Admin routes must remain reachable even in public mode (auth is enforced server-side). */}
                 <Route path="/admin/creator-access" element={<AdminCreatorAccess />} />
                 <Route path="/admin/miniapp" element={<AdminMiniApp />} />
@@ -191,46 +377,55 @@ function App() {
                 <Route path="/status" element={<Status />} />
 
                 <Route path="*" element={<Navigate to="/" replace />} />
-              </>
+              </Route>
             ) : (
-              <>
-                <Route path="/explore" element={<Navigate to="/explore/creators" replace />} />
-                <Route path="/explore/creators" element={<ExploreCreators />} />
-                <Route path="/explore/content" element={<ExploreContent />} />
-                <Route path="/explore/transactions" element={<ExploreTransactions />} />
-                <Route path="/explore/creators/:chain/:tokenAddress" element={<ExploreCreatorDetail />} />
-                <Route path="/explore/creators/:chain/:tokenAddress/transactions" element={<ExploreCreatorTransactions />} />
-                <Route path="/explore/content/:chain/:contentCoinAddress" element={<ExploreContentDetail />} />
-                <Route path="/explore/content/:chain/:contentCoinAddress/transactions" element={<ExploreContentTransactions />} />
-                <Route path="/explore/content/:chain/pool/:poolIdOrPoolKeyHash" element={<ExploreContentPoolAlias />} />
-                <Route path="/explore/tokens" element={<Navigate to="/explore/creators" replace />} />
-                <Route path="/explore/pools" element={<Navigate to="/explore/content" replace />} />
-                <Route path="/swap" element={<Swap />} />
-                <Route path="/positions" element={<Positions />} />
-                <Route path="/portfolio" element={<Portfolio />} />
-                <Route path="/launch" element={<Navigate to="/deploy" replace />} />
-                <Route path="/deploy" element={<DeployVault />} />
-                <Route path="/coin/:address/manage" element={<CoinManage />} />
-                <Route path="/creator/earnings" element={<CreatorEarnings />} />
-                <Route path="/creator/:identifier/earnings" element={<CreatorEarnings />} />
-                <Route path="/faq" element={<Faq />} />
-                <Route path="/faq/how-it-works" element={<FaqHowItWorks />} />
-                <Route path="/status" element={<Status />} />
-                <Route path="/admin/creator-access" element={<AdminCreatorAccess />} />
-                <Route path="/admin/miniapp" element={<AdminMiniApp />} />
-                <Route path="/admin/deploy-strategies" element={<AdminDeployStrategies />} />
-                <Route path="/vote" element={<GaugeVoting />} />
-                <Route path="/activate-akita" element={<Navigate to="/deploy" replace />} />
-                <Route path="/auction/bid/:address" element={<AuctionBid />} />
-                <Route path="/complete-auction" element={<CompleteAuction />} />
-                <Route path="/complete-auction/:strategy" element={<CompleteAuction />} />
-                <Route path="/dashboard" element={<Navigate to="/explore/creators" replace />} />
-                <Route path="/vault/:address" element={<Vault />} />
-                <Route path="/auction-demo" element={<AuctionDemo />} />
-                <Route path="*" element={<Navigate to="/" replace />} />
-              </>
+              <Route element={<AppAllowlistGate />}>
+                <Route element={<Layout />}>
+                  {/* App host */}
+                  <Route path="/" element={<Navigate to="/explore/creators" replace />} />
+                  {/* Keep /waitlist route as a back-compat target (marketing is on 4626.fun). */}
+                  <Route path="/waitlist" element={<Waitlist />} />
+                  {/* Optional: keep existing Home page available at /home if you still want it */}
+                  <Route path="/home" element={<Home />} />
+
+                  <Route path="/explore" element={<Navigate to="/explore/creators" replace />} />
+                  <Route path="/explore/creators" element={<ExploreCreators />} />
+                  <Route path="/explore/content" element={<ExploreContent />} />
+                  <Route path="/explore/transactions" element={<ExploreTransactions />} />
+                  <Route path="/explore/creators/:chain/:tokenAddress" element={<ExploreCreatorDetail />} />
+                  <Route path="/explore/creators/:chain/:tokenAddress/transactions" element={<ExploreCreatorTransactions />} />
+                  <Route path="/explore/content/:chain/:contentCoinAddress" element={<ExploreContentDetail />} />
+                  <Route path="/explore/content/:chain/:contentCoinAddress/transactions" element={<ExploreContentTransactions />} />
+                  <Route path="/explore/content/:chain/pool/:poolIdOrPoolKeyHash" element={<ExploreContentPoolAlias />} />
+                  <Route path="/explore/tokens" element={<Navigate to="/explore/creators" replace />} />
+                  <Route path="/explore/pools" element={<Navigate to="/explore/content" replace />} />
+                  <Route path="/swap" element={<Swap />} />
+                  <Route path="/positions" element={<Positions />} />
+                  <Route path="/portfolio" element={<Portfolio />} />
+                  <Route path="/launch" element={<Navigate to="/deploy" replace />} />
+                  <Route path="/deploy" element={<DeployVault />} />
+                  <Route path="/coin/:address/manage" element={<CoinManage />} />
+                  <Route path="/creator/earnings" element={<CreatorEarnings />} />
+                  <Route path="/creator/:identifier/earnings" element={<CreatorEarnings />} />
+                  <Route path="/faq" element={<Faq />} />
+                  <Route path="/faq/how-it-works" element={<FaqHowItWorks />} />
+                  <Route path="/status" element={<Status />} />
+                  <Route path="/admin/creator-access" element={<AdminCreatorAccess />} />
+                  <Route path="/admin/miniapp" element={<AdminMiniApp />} />
+                  <Route path="/admin/deploy-strategies" element={<AdminDeployStrategies />} />
+                  <Route path="/vote" element={<GaugeVoting />} />
+                  <Route path="/activate-akita" element={<Navigate to="/deploy" replace />} />
+                  <Route path="/auction/bid/:address" element={<AuctionBid />} />
+                  <Route path="/complete-auction" element={<CompleteAuction />} />
+                  <Route path="/complete-auction/:strategy" element={<CompleteAuction />} />
+                  <Route path="/dashboard" element={<Navigate to="/explore/creators" replace />} />
+                  <Route path="/vault/:address" element={<Vault />} />
+                  <Route path="/auction-demo" element={<AuctionDemo />} />
+                  <Route path="*" element={<Navigate to="/" replace />} />
+                </Route>
+              </Route>
             )}
-          </Route>
+          </>
         )}
       </Routes>
     </>

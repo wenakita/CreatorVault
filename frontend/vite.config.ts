@@ -81,6 +81,7 @@ function localApiRoutesPlugin(): Plugin {
       // Keep this loosely typed: API handlers often return `VercelResponse`, and we don't want
       // Vite's config TS project to type-check every function signature.
       const routes: Record<string, () => Promise<{ default: (req: any, res: any) => any }>> = {
+        '/api/creator-allowlist': () => import('./api/creator-allowlist'),
         '/api/onchain/coinMarketRewardsByCoin': () => import('./api/onchain/coinMarketRewardsByCoin'),
         '/api/onchain/coinMarketRewardsCurrency': () => import('./api/onchain/coinMarketRewardsCurrency'),
         '/api/onchain/coinTradeRewardsBatch': () => import('./api/onchain/coinTradeRewardsBatch'),
