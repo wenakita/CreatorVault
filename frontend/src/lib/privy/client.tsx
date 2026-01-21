@@ -125,7 +125,8 @@ export function PrivyClientProvider({ children }: { children: ReactNode }) {
           },
           loginMethodsAndOrder: {
             // Include Farcaster for Mini App + Base App auth-address support.
-            primary: ['farcaster', 'google', 'twitter', 'telegram'],
+            // Note: Telegram OAuth often fails in strict web contexts unless fully configured; keep it off by default.
+            primary: ['farcaster', 'google', 'twitter'],
             overflow: [],
           },
         } as any}
