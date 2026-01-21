@@ -3,6 +3,15 @@ export type HostMode = 'app' | 'marketing'
 export function getHostMode(): HostMode {
   if (typeof window === 'undefined') return 'marketing'
   const host = window.location.hostname.toLowerCase()
+  // Local dev: treat localhost as the app host so app routes render without redirect loops.
+  if (
+    host === 'localhost' ||
+    host.endsWith('.localhost') ||
+    host === '127.0.0.1' ||
+    host === '0.0.0.0'
+  ) {
+    return 'app'
+  }
   return host.startsWith('app.') ? 'app' : 'marketing'
 }
 

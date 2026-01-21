@@ -30,6 +30,8 @@ import { DerivedTokenIcon } from '@/components/DerivedTokenIcon'
 import { RequestCreatorAccess } from '@/components/RequestCreatorAccess'
 import { CONTRACTS } from '@/config/contracts'
 import { useCreatorAllowlist, useFarcasterAuth, useMiniAppContext } from '@/hooks'
+import { usePrivyClientStatus } from '@/lib/privy/client'
+import { logger } from '@/lib/logger'
 import { useZoraCoin, useZoraProfile } from '@/lib/zora/hooks'
 import { getFarcasterUserByFid } from '@/lib/neynar-api'
 import { resolveCreatorIdentity } from '@/lib/identity/creatorIdentity'
@@ -161,6 +163,36 @@ function deriveBaseSalt(params: { creatorToken: Address; owner: Address; chainId
       `CreatorVault:deploy:${version}`,
     ]),
   )
+}
+
+export function DeployVault() {
+  const privyClientStatus = usePrivyClientStatus()
+
+  // Deploy requires Privy (auth + smart wallet). If Privy is disabled (missing env / not allowlisted),
+  // render a clear configuration hint instead of crashing by calling Privy hooks without a provider.
+  if (privyClientStatus !== 'ready') {
+    return (
+      <div className="min-h-screen bg-black text-white">
+        <section className="max-w-3xl mx-auto px-6 py-16">
+          <div className="text-[10px] uppercase tracking-[0.24em] text-zinc-500 mb-4">Deploy</div>
+          <div className="card rounded-xl p-8 space-y-3">
+            <div className="text-lg font-medium">Deploy is not configured</div>
+            <div className="text-sm text-zinc-400 leading-relaxed">
+              This page uses Privy smart wallets for 1-click deploy. In this environment, Privy is currently disabled.
+            </div>
+            <div className="text-xs text-zinc-500 leading-relaxed">
+              Set <span className="font-mono text-zinc-300">VITE_PRIVY_ENABLED=true</span> and{' '}
+              <span className="font-mono text-zinc-300">VITE_PRIVY_APP_ID</span> in <span className="font-mono">frontend/.env</span>. In
+              production, also set <span className="font-mono text-zinc-300">VITE_PRIVY_ALLOWED_ORIGINS</span> to include the deployed
+              origin.
+            </div>
+          </div>
+        </section>
+      </div>
+    )
+  }
+
+  return <DeployVaultPrivyEnabled />
 }
 
 function saltFor(baseSalt: Hex, label: string): Hex {
@@ -663,6 +695,53 @@ function DeployVaultBatcher({
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [txId, setTxId] = useState<string | null>(null)
+  const [phase, setPhase] = useState<'idle' | 'phase1' | 'phase2' | 'phase3' | 'done'>('idle')
+  const [phaseTxs, setPhaseTxs] = useState<{
+    userOp1?: Hex
+    userOp2?: Hex
+    userOp3?: Hex
+    tx1?: Hex
+    tx2?: Hex
+    tx3?: Hex
+  }>({})
+
+  const lastAuthAtMs = useMemo(() => {
+    if (typeof window === 'undefined') return null
+    try {
+      const raw = localStorage.getItem('cv:privy:lastAuthAt')
+      const n = Number(raw)
+      return Number.isFinite(n) && n > 0 ? n : null
+    } catch {
+      return null
+    }
+  }, [])
+
+  const authIsStale = useMemo(() => {
+    if (!lastAuthAtMs) return false
+    // “Soft” guardrail (no extra prompts): remind the user if they’re resuming an old session.
+    return Date.now() - lastAuthAtMs > 2 * 60 * 60 * 1000
+  }, [lastAuthAtMs])
+
+  const formatDeployError = (e: unknown): string => {
+    const raw = e instanceof Error ? e.message : String(e ?? '')
+    const msg = String(raw || 'Deployment failed')
+
+    if (msg.toLowerCase().includes('bundler') || msg.toLowerCase().includes('paymaster')) {
+      return 'Bundler / paymaster is not configured. Set `VITE_CDP_API_KEY` (recommended) or a valid `VITE_CDP_PAYMASTER_URL` and retry.'
+    }
+    if (msg.toLowerCase().includes('market floor price not available')) {
+      return 'Market floor price is still loading. Wait a moment and try again.'
+    }
+    if (msg.toLowerCase().includes('creatorvaultbatcher is not configured')) {
+      return 'Deployment is not configured: missing `VITE_CREATOR_VAULT_BATCHER` / `CONTRACTS.creatorVaultBatcher`.'
+    }
+    return msg
+  }
+
+  const hrefForTx = (h?: string | null) => (h ? `https://basescan.org/tx/${h}` : null)
+  const href1 = hrefForTx(phaseTxs.tx1 ?? null)
+  const href2 = hrefForTx(phaseTxs.tx2 ?? null)
+  const href3 = hrefForTx(phaseTxs.tx3 ?? null)
 
   const batcherAddress = (CONTRACTS.creatorVaultBatcher ?? null) as Address | null
 
@@ -889,9 +968,28 @@ function DeployVaultBatcher({
     expectedPayoutRouter.toLowerCase() !== currentPayoutRecipient.toLowerCase()
 
   const submit = async () => {
+    if (busy) return
+
+    // Simple rate limit: avoid accidental double-submits after a quick reload/click.
+    if (typeof window !== 'undefined') {
+      try {
+        const now = Date.now()
+        const last = Number(localStorage.getItem('cv:deploy:lastAttemptAt') ?? '0')
+        if (Number.isFinite(last) && last > 0 && now - last < 8000) {
+          setError('Please wait a moment before retrying deploy.')
+          return
+        }
+        localStorage.setItem('cv:deploy:lastAttemptAt', String(now))
+      } catch {
+        // ignore
+      }
+    }
+
     setBusy(true)
     setError(null)
     setTxId(null)
+    setPhase('idle')
+    setPhaseTxs({})
 
     try {
       if (!batcherAddress) throw new Error('CreatorVaultBatcher is not configured. Set VITE_CREATOR_VAULT_BATCHER.')
@@ -1278,27 +1376,84 @@ function DeployVaultBatcher({
         const toCalls = (calls: Array<{ target: Address; value: bigint; data: Hex }>) =>
           calls.map((c) => ({ to: c.target, value: c.value, data: c.data }))
 
-        const h1 = (await smartWalletClient.sendTransaction({ calls: toCalls(phase1Calls) } as any)) as Hex
-        const r1 = await waitForUserOperationReceipt(bundlerClient as any, { hash: h1 as any, timeout: 180_000 })
-        setTxId(r1.receipt.transactionHash as Hex)
-
-        const h2 = (await smartWalletClient.sendTransaction({ calls: toCalls(phase2Calls) } as any)) as Hex
-        const r2 = await waitForUserOperationReceipt(bundlerClient as any, { hash: h2 as any, timeout: 180_000 })
-        setTxId(r2.receipt.transactionHash as Hex)
-
-        if (phase3Calls.length > 0) {
-          const h3 = (await smartWalletClient.sendTransaction({ calls: toCalls(phase3Calls) } as any)) as Hex
-          const r3 = await waitForUserOperationReceipt(bundlerClient as any, { hash: h3 as any, timeout: 180_000 })
-          setTxId(r3.receipt.transactionHash as Hex)
+        // Safety: constrain target addresses to known deploy surfaces (no arbitrary calldata UI).
+        const assertSafe = (calls: Array<{ target: Address; value: bigint; data: Hex }>) => {
+          const allow = new Set<string>([
+            getAddress(creatorToken).toLowerCase(),
+            getAddress(batcherAddress).toLowerCase(),
+            getAddress(expectedCreate2Deployer).toLowerCase(),
+            getAddress(expected.vault).toLowerCase(),
+          ])
+          for (const c of calls) {
+            const to = getAddress(c.target).toLowerCase()
+            if (!allow.has(to)) throw new Error(`Unsafe call target blocked: ${to}`)
+            if (c.value !== 0n) throw new Error('Unsafe call value blocked (non-zero ETH value)')
+            const d = String(c.data ?? '')
+            if (!d.startsWith('0x')) throw new Error('Unsafe call data blocked (missing 0x prefix)')
+          }
         }
 
+        assertSafe(phase1Calls)
+        assertSafe(phase2Calls)
+        assertSafe(phase3Calls)
+
+        logger.warn('[DeployVault] deploy_start', {
+          creatorToken,
+          owner,
+          deploymentVersion,
+          batcher: batcherAddress,
+          phases: { phase3: phase3Calls.length > 0 },
+        })
+
+        setPhase('phase1')
+        const h1 = (await smartWalletClient.sendTransaction({
+          calls: toCalls(phase1Calls),
+          uiOptions: { showWalletUIs: false },
+        } as any)) as Hex
+        setPhaseTxs((s) => ({ ...s, userOp1: h1 }))
+        const r1 = await waitForUserOperationReceipt(bundlerClient as any, { hash: h1 as any, timeout: 180_000 })
+        const tx1 = r1.receipt.transactionHash as Hex
+        setTxId(tx1)
+        setPhaseTxs((s) => ({ ...s, tx1 }))
+        logger.warn('[DeployVault] phase1_confirmed', { userOpHash: h1, txHash: tx1 })
+
+        setPhase('phase2')
+        const h2 = (await smartWalletClient.sendTransaction({
+          calls: toCalls(phase2Calls),
+          uiOptions: { showWalletUIs: false },
+        } as any)) as Hex
+        setPhaseTxs((s) => ({ ...s, userOp2: h2 }))
+        const r2 = await waitForUserOperationReceipt(bundlerClient as any, { hash: h2 as any, timeout: 180_000 })
+        const tx2 = r2.receipt.transactionHash as Hex
+        setTxId(tx2)
+        setPhaseTxs((s) => ({ ...s, tx2 }))
+        logger.warn('[DeployVault] phase2_confirmed', { userOpHash: h2, txHash: tx2 })
+
+        if (phase3Calls.length > 0) {
+          setPhase('phase3')
+          const h3 = (await smartWalletClient.sendTransaction({
+            calls: toCalls(phase3Calls),
+            uiOptions: { showWalletUIs: false },
+          } as any)) as Hex
+          setPhaseTxs((s) => ({ ...s, userOp3: h3 }))
+          const r3 = await waitForUserOperationReceipt(bundlerClient as any, { hash: h3 as any, timeout: 180_000 })
+          const tx3 = r3.receipt.transactionHash as Hex
+          setTxId(tx3)
+          setPhaseTxs((s) => ({ ...s, tx3 }))
+          logger.warn('[DeployVault] phase3_confirmed', { userOpHash: h3, txHash: tx3 })
+        }
+
+        setPhase('done')
+        logger.warn('[DeployVault] deploy_success', { creatorToken, owner, deploymentVersion })
         onSuccess(expected)
         return
       }
 
       throw new Error('No supported deploy path matched. Ensure ERC-4337 prerequisites are met and retry.')
     } catch (e: any) {
-      setError(e?.message || 'Deployment failed')
+      const pretty = formatDeployError(e)
+      logger.warn('[DeployVault] deploy_failed', { error: pretty })
+      setError(pretty)
     } finally {
       setBusy(false)
     }
@@ -1315,6 +1470,68 @@ function DeployVaultBatcher({
 
   return (
     <div className="space-y-3">
+      <div className="text-[11px] text-zinc-500 leading-relaxed">
+        One click will submit <span className="text-zinc-200">up to 3</span> onchain operations (Phases 1–3) via your Privy embedded smart
+        wallet. You won’t see extra wallet popups—track progress below.
+      </div>
+      {authIsStale ? (
+        <div className="text-[11px] text-amber-300/70">
+          You’re signed in from an earlier session. Clicking deploy will submit transactions immediately.
+        </div>
+      ) : null}
+
+      <div className="rounded-lg border border-white/5 bg-black/20 p-4 space-y-2">
+        <div className="text-[10px] uppercase tracking-[0.24em] text-zinc-500">Progress</div>
+        <div className="grid grid-cols-1 gap-2 text-[11px]">
+          <div className="flex items-center justify-between gap-4">
+            <div className={phase === 'phase1' ? 'text-zinc-100' : phase === 'idle' ? 'text-zinc-500' : 'text-zinc-300'}>
+              Phase 1: deploy core contracts
+            </div>
+            {href1 ? (
+              <a className="font-mono text-zinc-300 hover:text-white" href={href1} target="_blank" rel="noreferrer">
+                tx
+              </a>
+            ) : (
+              <div className="text-zinc-700">{phase === 'phase1' ? 'pending…' : phase === 'idle' ? '—' : 'done'}</div>
+            )}
+          </div>
+          <div className="flex items-center justify-between gap-4">
+            <div className={phase === 'phase2' ? 'text-zinc-100' : phase === 'idle' ? 'text-zinc-500' : 'text-zinc-300'}>
+              Phase 2: launch + configure
+            </div>
+            {href2 ? (
+              <a className="font-mono text-zinc-300 hover:text-white" href={href2} target="_blank" rel="noreferrer">
+                tx
+              </a>
+            ) : (
+              <div className="text-zinc-700">
+                {phase === 'phase2' ? 'pending…' : phase === 'idle' || phase === 'phase1' ? '—' : phase === 'done' ? 'done' : '…'}
+              </div>
+            )}
+          </div>
+          <div className="flex items-center justify-between gap-4">
+            <div className={phase === 'phase3' ? 'text-zinc-100' : phase === 'idle' ? 'text-zinc-500' : 'text-zinc-300'}>
+              Phase 3: strategies
+            </div>
+            {href3 ? (
+              <a className="font-mono text-zinc-300 hover:text-white" href={href3} target="_blank" rel="noreferrer">
+                tx
+              </a>
+            ) : (
+              <div className="text-zinc-700">
+                {phase === 'phase3'
+                  ? 'pending…'
+                  : phase === 'idle' || phase === 'phase1' || phase === 'phase2'
+                    ? '—'
+                    : phase === 'done'
+                      ? 'done'
+                      : '—'}
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+
       {payoutMismatch ? (
         <div className="text-[11px] text-amber-300/80">
           {canAutoUpdatePayoutRecipient ? (
@@ -1415,7 +1632,7 @@ function DeployVaultBatcher({
   )
 }
 
-export function DeployVault() {
+function DeployVaultPrivyEnabled() {
   const { address, isConnected } = useAccount()
   const { config: onchainKitConfig } = useOnchainKit()
   const { ready: privyReady, authenticated: privyAuthenticated } = usePrivy()
@@ -1449,6 +1666,16 @@ export function DeployVault() {
     if (creatorToken.length > 0) return
     setCreatorToken(prefillToken)
   }, [prefillToken, creatorToken.length])
+
+  // Soft “recent auth” marker used for deploy guardrails (no prompts).
+  useEffect(() => {
+    if (!privyAuthenticated) return
+    try {
+      localStorage.setItem('cv:privy:lastAuthAt', String(Date.now()))
+    } catch {
+      // ignore
+    }
+  }, [privyAuthenticated])
 
   // Detect "your" creator coin + smart wallet from your Zora profile and prefill inputs once.
   const myProfileQuery = useZoraProfile(address)
@@ -1712,6 +1939,7 @@ export function DeployVault() {
   const creatorAddress = zoraCoin?.creatorAddress ? String(zoraCoin.creatorAddress) : null
   const isOriginalCreator =
     !!address && !!creatorAddress && address.toLowerCase() === creatorAddress.toLowerCase()
+  void isOriginalCreator // reserved for future UX
 
   // Onchain read of payoutRecipient (immediate after tx, no indexer delay).
   const { data: onchainPayoutRecipient } = useReadContract({
@@ -1761,6 +1989,7 @@ export function DeployVault() {
 
   const isPayoutRecipient =
     !!address && !!payoutRecipient && address.toLowerCase() === payoutRecipient.toLowerCase()
+  void isPayoutRecipient // reserved for future UX
 
   // Zora creators often deploy coins from a smart wallet (Privy-managed), then add EOAs later.
   // Treat the Smart Wallet address as canonical and allow the connected EOA to act if it is an onchain owner.
@@ -1776,6 +2005,7 @@ export function DeployVault() {
     if (creatorAddress && creatorAddress.toLowerCase() === smartLc) return detectedSmartWalletContract
     return null
   }, [payoutRecipientContract, detectedSmartWalletContract, payoutRecipient, creatorAddress])
+  void coinSmartWallet // reserved for future UX
 
   // Canonical identity enforcement (prevents irreversible fragmentation).
   // For existing creator coins, we enforce `zoraCoin.creatorAddress` as the identity wallet.

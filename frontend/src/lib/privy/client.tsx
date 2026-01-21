@@ -12,12 +12,6 @@ export function usePrivyClientStatus(): PrivyClientStatus {
   return useContext(PrivyClientContext)
 }
 
-type PrivyProviderComponent = ComponentType<{
-  appId: string
-  config?: any
-  children: ReactNode
-}>
-
 type PrivyMiniAppAutoLoginComponent = ComponentType<Record<string, never>>
 type PrivyBaseAppDevBadgeComponent = ComponentType<Record<string, never>>
 type PrivyBaseSubAccountsDevPanelComponent = ComponentType<Record<string, never>>
@@ -111,9 +105,10 @@ export function PrivyClientProvider({ children }: { children: ReactNode }) {
           externalWallets: {
             // Prefer Coinbase Smart Wallet (Base Account) instead of EOA-only Coinbase Wallet.
             // Final wallet implementation is controlled by the Privy dashboard smart wallet setting.
-            coinbaseWallet: {
+            coinbaseWallet: ({
+              // Privy types can lag behind dashboard capabilities; this is safe at runtime.
               connectionOptions: 'smartWalletOnly',
-            },
+            } as any),
           },
           // Required for Sub Accounts controlled by an embedded wallet.
           // Note: Mini Apps may not support automatic embedded wallet creation; this is still safe for web.
@@ -122,12 +117,18 @@ export function PrivyClientProvider({ children }: { children: ReactNode }) {
               createOnLogin: 'all-users',
             },
           },
+          // Make embedded-wallet actions truly 1-click in-app:
+          // hide Privy confirmation modals so our UI is the only "confirm" surface.
+          // (You can also toggle this in the Privy dashboard: Embedded Wallets → “Add confirmation modals”.)
+          embeddedWallets: {
+            showWalletUIs: false,
+          },
           loginMethodsAndOrder: {
             // Include Farcaster for Mini App + Base App auth-address support.
             primary: ['farcaster', 'google', 'twitter', 'telegram'],
             overflow: [],
           },
-        }}
+        } as any}
       >
         <SmartWalletsProvider>
           {MiniAppAutoLogin ? <MiniAppAutoLogin /> : null}

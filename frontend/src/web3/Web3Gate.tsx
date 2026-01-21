@@ -93,11 +93,7 @@ export function Web3Gate({ children }: { children: ReactNode }) {
       {status === 'ready' && Providers ? (
         <Providers>{children}</Providers>
       ) : status === 'loading' ? (
-        location.pathname === '/' ? (
-          children
-        ) : (
-          <FullPageLoading />
-        )
+        <FullPageLoading />
       ) : (
         children
       )}

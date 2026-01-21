@@ -70,12 +70,12 @@ export function PrivyEmailLoginButton(props: {
     <button
       className="btn-primary w-full"
       onClick={() => {
-        login({
-          loginMethods: ['email'],
-          ...(props.prefillEmail
-            ? { prefill: { type: 'email', value: props.prefillEmail } }
-            : {}),
-        } as any).catch((e: any) => {
+        Promise.resolve(
+          login({
+            loginMethods: ['email'],
+            ...(props.prefillEmail ? { prefill: { type: 'email', value: props.prefillEmail } } : {}),
+          } as any),
+        ).catch((e: any) => {
           props.onError(e?.message ? String(e.message) : 'Email login failed')
         })
       }}

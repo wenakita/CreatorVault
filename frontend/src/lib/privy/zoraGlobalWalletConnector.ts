@@ -1,12 +1,11 @@
 import { createConnector } from 'wagmi'
-import type { Chain } from 'wagmi/chains'
 import type { EIP1193Provider } from 'viem'
 import { toPrivyWalletProvider } from '@privy-io/cross-app-connect'
 
 export const ZORA_PRIVY_PROVIDER_APP_ID = 'clpgf04wn04hnkw0fv1m11mnb' as const
 
 export function zoraGlobalWalletConnector() {
-  return createConnector((config) => {
+  return createConnector(((config: any) => {
     let providerPromise: Promise<EIP1193Provider> | null = null
 
     async function getProvider(): Promise<EIP1193Provider> {
@@ -14,7 +13,8 @@ export function zoraGlobalWalletConnector() {
         providerPromise = Promise.resolve(
           toPrivyWalletProvider({
             providerAppId: ZORA_PRIVY_PROVIDER_APP_ID,
-            chains: config.chains as unknown as Chain[],
+            // `toPrivyWalletProvider` expects a list/tuple of chains; keep wagmi's canonical config shape.
+            chains: config.chains as any,
             // Read-only provider: no signatures/txs, but still allow address access.
             smartWalletMode: false,
           }) as unknown as EIP1193Provider,
@@ -66,7 +66,19 @@ export function zoraGlobalWalletConnector() {
           return false
         }
       },
-    }
-  })
+
+      // wagmi connector event hooks (best-effort; read-only connector)
+      onAccountsChanged(accounts: any) {
+        ;(config.emitter as any).emit('change', { accounts })
+      },
+      onChainChanged(chainId: any) {
+        const n = typeof chainId === 'string' ? Number(chainId) : chainId
+        ;(config.emitter as any).emit('change', { chainId: n })
+      },
+      onDisconnect() {
+        ;(config.emitter as any).emit('disconnect')
+      },
+    } as any
+  }) as any)
 }
 

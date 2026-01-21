@@ -175,7 +175,7 @@ function App() {
         ) : (
           <Route element={<Layout />}>
             {/* App host */}
-            <Route path="/" element={<Navigate to="/explore" replace />} />
+            <Route path="/" element={<Navigate to={publicMode ? '/status' : '/explore'} replace />} />
             {/* Keep /waitlist route as a redirect for old links */}
             <Route path="/waitlist" element={<Waitlist />} />
             {/* Optional: keep existing Home page available at /home if you still want it */}

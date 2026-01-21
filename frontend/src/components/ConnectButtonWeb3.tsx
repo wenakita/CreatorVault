@@ -45,7 +45,7 @@ function ConnectButtonWeb3Wagmi({
   autoConnect?: boolean
   variant?: ConnectButtonVariant
 }) {
-  const { address, isConnected, chain, connector } = useAccount()
+  const { address, isConnected, chain } = useAccount()
   const { connectAsync, connectors, isPending, reset } = useConnect()
   const { disconnect } = useDisconnect()
   const { switchChain } = useSwitchChain()

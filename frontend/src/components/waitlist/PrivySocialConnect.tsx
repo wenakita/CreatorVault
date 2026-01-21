@@ -23,9 +23,11 @@ export function PrivySocialConnect(props: {
 
   function start(method: Method) {
     if (!ready) return
-    login({
-      loginMethods: [method],
-    } as any).catch((e: any) => {
+    Promise.resolve(
+      login({
+        loginMethods: [method],
+      } as any),
+    ).catch((e: any) => {
       props.onError(e?.message ? String(e.message) : 'Login failed')
     })
   }
