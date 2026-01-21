@@ -144,6 +144,9 @@ export default defineConfig(({ command }) => ({
       // Wallet SDKs expect `buffer` to exist; map Node built-in to the browser shim.
       buffer: 'buffer/',
     },
+    // pnpm can result in multiple copies of a package being bundled, which breaks React context
+    // based libraries like Privy (provider + hooks must resolve to the same module instance).
+    dedupe: ['@privy-io/react-auth', '@privy-io/wagmi'],
   },
   define: {
     global: 'globalThis',

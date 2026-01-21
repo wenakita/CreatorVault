@@ -2,7 +2,8 @@ import type { ReactNode } from 'react'
 // Use the browser-safe Buffer shim (Vite can externalize Node built-ins like `buffer`).
 import { Buffer } from 'buffer/'
 import { OnchainKitProvider } from '@coinbase/onchainkit'
-import { WagmiProvider } from '@privy-io/wagmi'
+import { WagmiProvider as PrivyWagmiProvider } from '@privy-io/wagmi'
+import { WagmiProvider as BaseWagmiProvider } from 'wagmi'
 import { base } from 'wagmi/chains'
 import { useEffect, useRef } from 'react'
 import { useAccount, useConnect } from 'wagmi'
@@ -11,6 +12,7 @@ import { wagmiConfig } from '@/config/wagmi'
 import { logger } from '@/lib/logger'
 import { WalletDebugPanel } from '@/components/WalletDebugPanel'
 import { PrivyWagmiSmartAccountBridge } from '@/web3/PrivyWagmiSmartAccountBridge'
+import { usePrivyClientStatus } from '@/lib/privy/client'
 
 // Polyfill Buffer for Coinbase Wallet SDK (and some wallet adapters).
 if (typeof window !== 'undefined') {
@@ -52,6 +54,8 @@ function MiniAppAutoConnect() {
 }
 
 export function Web3Providers({ children }: { children: ReactNode }) {
+  const privyStatus = usePrivyClientStatus()
+
   // Coinbase Developer Platform (OnchainKit) config.
   // - `VITE_CDP_API_KEY` is the CDP key id (safe to expose; origin-restrict in CDP).
   // - If you want to force a specific paymaster/bundler endpoint, set `VITE_CDP_PAYMASTER_URL`.
@@ -66,6 +70,12 @@ export function Web3Providers({ children }: { children: ReactNode }) {
     )
   }
 
+  // IMPORTANT:
+  // - `@privy-io/wagmi`'s provider MUST be mounted under `PrivyProvider`.
+  // - In local/dev setups Privy may be disabled (missing VITE_PRIVY_APP_ID, etc).
+  //   In that case, fall back to plain wagmi to avoid runtime crashes.
+  const WagmiProvider = privyStatus === 'ready' ? PrivyWagmiProvider : BaseWagmiProvider
+
   const content = (
     <WagmiProvider config={wagmiConfig}>
       <OnchainKitProvider
@@ -76,7 +86,7 @@ export function Web3Providers({ children }: { children: ReactNode }) {
           paymaster: cdpPaymasterUrl || undefined,
         }}
       >
-        <PrivyWagmiSmartAccountBridge />
+        {privyStatus === 'ready' ? <PrivyWagmiSmartAccountBridge /> : null}
         <MiniAppAutoConnect />
         {import.meta.env.DEV ? <WalletDebugPanel /> : null}
         {children}

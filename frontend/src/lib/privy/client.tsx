@@ -1,6 +1,8 @@
 import type { ComponentType, ReactNode } from 'react'
 import { createContext, useContext, useEffect, useMemo, useState } from 'react'
 import { getPrivyAppId, isPrivyClientEnabled } from '@/lib/flags'
+import { PrivyProvider } from '@privy-io/react-auth'
+import { SmartWalletsProvider } from '@privy-io/react-auth/smart-wallets'
 
 type PrivyClientStatus = 'disabled' | 'loading' | 'ready'
 
@@ -19,60 +21,18 @@ type PrivyProviderComponent = ComponentType<{
 type PrivyMiniAppAutoLoginComponent = ComponentType<Record<string, never>>
 type PrivyBaseAppDevBadgeComponent = ComponentType<Record<string, never>>
 type PrivyBaseSubAccountsDevPanelComponent = ComponentType<Record<string, never>>
-type PrivySmartWalletsProviderComponent = ComponentType<{ children: ReactNode }>
 
 export function PrivyClientProvider({ children }: { children: ReactNode }) {
   const enabled = isPrivyClientEnabled()
   const appId = enabled ? getPrivyAppId() : null
 
-  const [PrivyProvider, setPrivyProvider] = useState<PrivyProviderComponent | null>(null)
-  const [SmartWalletsProvider, setSmartWalletsProvider] = useState<PrivySmartWalletsProviderComponent | null>(null)
   const [MiniAppAutoLogin, setMiniAppAutoLogin] = useState<PrivyMiniAppAutoLoginComponent | null>(null)
   const [BaseAppDevBadge, setBaseAppDevBadge] = useState<PrivyBaseAppDevBadgeComponent | null>(null)
   const [BaseSubAccountsDevPanel, setBaseSubAccountsDevPanel] = useState<PrivyBaseSubAccountsDevPanelComponent | null>(null)
 
   useEffect(() => {
-    if (!enabled || !appId) return
-
-    let cancelled = false
-    import('@privy-io/react-auth')
-      .then((m) => {
-        if (cancelled) return
-        setPrivyProvider(() => (m as any).PrivyProvider as PrivyProviderComponent)
-      })
-      .catch(() => {
-        // If Privy fails to load, we silently fall back to manual email entry.
-      })
-    return () => {
-      cancelled = true
-    }
-  }, [enabled, appId])
-
-  useEffect(() => {
-    // Native smart wallets provider (required for Privy smart wallet UX + paymaster routing).
-    // Loaded lazily to avoid impacting non-Privy builds.
-    if (!enabled || !appId) return
-    if (!PrivyProvider) return
-    if (SmartWalletsProvider) return
-
-    let cancelled = false
-    import('@privy-io/react-auth/smart-wallets')
-      .then((m) => {
-        if (cancelled) return
-        setSmartWalletsProvider(() => (m as any).SmartWalletsProvider as PrivySmartWalletsProviderComponent)
-      })
-      .catch(() => {
-        // Optional: if smart wallets module is unavailable, we still run with embedded EOAs.
-      })
-    return () => {
-      cancelled = true
-    }
-  }, [SmartWalletsProvider, PrivyProvider, appId, enabled])
-
-  useEffect(() => {
     // Only load Mini App login glue when Privy is actually present.
     if (!enabled || !appId) return
-    if (!PrivyProvider) return
     if (MiniAppAutoLogin) return
 
     let cancelled = false
@@ -93,7 +53,6 @@ export function PrivyClientProvider({ children }: { children: ReactNode }) {
     // Dev-only helper: confirm Base App integration wiring without digging through logs.
     if (!import.meta.env.DEV) return
     if (!enabled || !appId) return
-    if (!PrivyProvider) return
     if (BaseAppDevBadge) return
 
     let cancelled = false
@@ -114,7 +73,6 @@ export function PrivyClientProvider({ children }: { children: ReactNode }) {
     // Dev-only helper: test Base Sub Accounts flow interactively.
     if (!import.meta.env.DEV) return
     if (!enabled || !appId) return
-    if (!PrivyProvider) return
     if (BaseSubAccountsDevPanel) return
 
     let cancelled = false
@@ -131,10 +89,10 @@ export function PrivyClientProvider({ children }: { children: ReactNode }) {
     }
   }, [BaseSubAccountsDevPanel, PrivyProvider, appId, enabled])
 
-  const status: PrivyClientStatus = !enabled || !appId ? 'disabled' : PrivyProvider ? 'ready' : 'loading'
+  const status: PrivyClientStatus = !enabled || !appId ? 'disabled' : 'ready'
   const ctx = useMemo(() => status, [status])
 
-  if (status !== 'ready' || !PrivyProvider || !appId) {
+  if (status !== 'ready' || !appId) {
     return <PrivyClientContext.Provider value={ctx}>{children}</PrivyClientContext.Provider>
   }
 
@@ -171,21 +129,12 @@ export function PrivyClientProvider({ children }: { children: ReactNode }) {
           },
         }}
       >
-        {SmartWalletsProvider ? (
-          <SmartWalletsProvider>
-            {MiniAppAutoLogin ? <MiniAppAutoLogin /> : null}
-            {BaseAppDevBadge ? <BaseAppDevBadge /> : null}
-            {BaseSubAccountsDevPanel ? <BaseSubAccountsDevPanel /> : null}
-            {children}
-          </SmartWalletsProvider>
-        ) : (
-          <>
-            {MiniAppAutoLogin ? <MiniAppAutoLogin /> : null}
-            {BaseAppDevBadge ? <BaseAppDevBadge /> : null}
-            {BaseSubAccountsDevPanel ? <BaseSubAccountsDevPanel /> : null}
-            {children}
-          </>
-        )}
+        <SmartWalletsProvider>
+          {MiniAppAutoLogin ? <MiniAppAutoLogin /> : null}
+          {BaseAppDevBadge ? <BaseAppDevBadge /> : null}
+          {BaseSubAccountsDevPanel ? <BaseSubAccountsDevPanel /> : null}
+          {children}
+        </SmartWalletsProvider>
       </PrivyProvider>
     </PrivyClientContext.Provider>
   )
