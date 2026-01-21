@@ -2,7 +2,7 @@ import type { ReactNode } from 'react'
 // Use the browser-safe Buffer shim (Vite can externalize Node built-ins like `buffer`).
 import { Buffer } from 'buffer/'
 import { OnchainKitProvider } from '@coinbase/onchainkit'
-import { WagmiProvider } from 'wagmi'
+import { WagmiProvider } from '@privy-io/wagmi'
 import { base } from 'wagmi/chains'
 import { useEffect, useRef } from 'react'
 import { useAccount, useConnect } from 'wagmi'
@@ -10,6 +10,7 @@ import { useAccount, useConnect } from 'wagmi'
 import { wagmiConfig } from '@/config/wagmi'
 import { logger } from '@/lib/logger'
 import { WalletDebugPanel } from '@/components/WalletDebugPanel'
+import { PrivyWagmiSmartAccountBridge } from '@/web3/PrivyWagmiSmartAccountBridge'
 
 // Polyfill Buffer for Coinbase Wallet SDK (and some wallet adapters).
 if (typeof window !== 'undefined') {
@@ -75,6 +76,7 @@ export function Web3Providers({ children }: { children: ReactNode }) {
           paymaster: cdpPaymasterUrl || undefined,
         }}
       >
+        <PrivyWagmiSmartAccountBridge />
         <MiniAppAutoConnect />
         {import.meta.env.DEV ? <WalletDebugPanel /> : null}
         {children}

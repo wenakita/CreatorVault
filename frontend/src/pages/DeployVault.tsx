@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { motion } from 'framer-motion'
-import { useAccount, useConnect, useDisconnect, usePublicClient, useReadContract, useWalletClient } from 'wagmi'
+import { useAccount, usePublicClient, useReadContract } from 'wagmi'
 import { base } from 'wagmi/chains'
 import type { Address, Hex } from 'viem'
 import {
@@ -12,27 +12,28 @@ import {
   formatUnits,
   getAddress,
   getCreate2Address,
+  http,
   isAddress,
   keccak256,
   parseAbiParameters,
   toBytes,
 } from 'viem'
+import { createBundlerClient, waitForUserOperationReceipt } from 'viem/account-abstraction'
 import { useSearchParams } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { coinABI } from '@zoralabs/protocol-deployments'
 import { BarChart3, ChevronDown, Layers, Lock, Rocket, ShieldCheck } from 'lucide-react'
 import { useOnchainKit } from '@coinbase/onchainkit'
-import { ConnectButton } from '@/components/ConnectButton'
+import { useLogin, usePrivy } from '@privy-io/react-auth'
+import { useSmartWallets } from '@privy-io/react-auth/smart-wallets'
 import { DerivedTokenIcon } from '@/components/DerivedTokenIcon'
 import { RequestCreatorAccess } from '@/components/RequestCreatorAccess'
 import { CONTRACTS } from '@/config/contracts'
-import { useSiweAuth } from '@/hooks/useSiweAuth'
 import { useCreatorAllowlist, useFarcasterAuth, useMiniAppContext } from '@/hooks'
 import { useZoraCoin, useZoraProfile } from '@/lib/zora/hooks'
 import { getFarcasterUserByFid } from '@/lib/neynar-api'
 import { resolveCreatorIdentity } from '@/lib/identity/creatorIdentity'
 import { DEPLOY_BYTECODE } from '@/deploy/bytecode.generated'
-import { sendCoinbaseSmartWalletUserOperation } from '@/lib/aa/coinbaseErc4337'
 import { resolveCdpPaymasterUrl } from '@/lib/aa/cdp'
 import {
   normalizeUnderlyingSymbol,
@@ -80,142 +81,6 @@ type ServerDeployResponse = {
 }
 
 const shortAddress = (addr: string) => `${addr.slice(0, 6)}…${addr.slice(-4)}`
-
-type DeploySessionCreateResponse = {
-  sessionId: string
-  sessionOwner: Address
-  expiresAt: string
-}
-
-type DeploySessionStatusResponse = {
-  id: string
-  step: string
-  expiresAt: string
-  lastError?: string | null
-  lastUserOpHash?: string | null
-  lastTxHash?: string | null
-  smartWallet: Address
-  sessionOwner: Address
-}
-
-type HealthResponse = {
-  ok: boolean
-  time: string
-  env: { isVercel: boolean }
-  db: { configured: boolean; ok: boolean; latencyMs: number | null; error: string | null }
-  deploySessions: { secretConfigured: boolean; tokenHmacConfigured: boolean; ok: boolean; error: string | null }
-  siwe: { authSessionSecretConfigured: boolean; ok: boolean; error: string | null }
-  paymaster: { endpointConfigured: boolean; ok: boolean; error: string | null }
-  supabase: {
-    urlConfigured: boolean
-    anonConfigured: boolean
-    serviceRoleConfigured: boolean
-    ok: boolean
-    latencyMs: number | null
-    error: string | null
-  }
-}
-
-const SIWE_SESSION_TOKEN_KEY = 'cv_siwe_session_token'
-
-function getSiweSessionToken(): string | null {
-  try {
-    const v = localStorage.getItem(SIWE_SESSION_TOKEN_KEY)
-    const t = typeof v === 'string' ? v.trim() : ''
-    return t.length > 0 ? t : null
-  } catch {
-    return null
-  }
-}
-
-function getSiweAuthHeaders(): Record<string, string> {
-  const token = getSiweSessionToken()
-  return token ? { Authorization: `Bearer ${token}` } : {}
-}
-
-async function fetchHealth(): Promise<HealthResponse> {
-  const res = await fetch('/api/health', {
-    method: 'GET',
-    credentials: 'include',
-    headers: { Accept: 'application/json', ...getSiweAuthHeaders() },
-  })
-  const json = (await res.json().catch(() => null)) as ApiEnvelope<HealthResponse> | null
-  if (!res.ok || !json?.success || !json.data) throw new Error(json?.error || 'health_check_failed')
-  return json.data
-}
-
-async function createDeploySession(params: {
-  smartWallet: Address
-  creatorToken: Address
-  ownerAddress: Address
-  phase2Calls: Array<{ target: Address; value: bigint; data: Hex }>
-  phase3Calls: Array<{ target: Address; value: bigint; data: Hex }>
-  version?: string
-}): Promise<DeploySessionCreateResponse> {
-  const res = await fetch('/api/deploy/session/create', {
-    method: 'POST',
-    credentials: 'include',
-    headers: { 'Content-Type': 'application/json', Accept: 'application/json', ...getSiweAuthHeaders() },
-    body: JSON.stringify({
-      smartWallet: params.smartWallet,
-      creatorToken: params.creatorToken,
-      ownerAddress: params.ownerAddress,
-      version: params.version ?? '',
-      // JSON can't serialize bigint; stringify values for server-side BigInt() parsing.
-      phase2Calls: params.phase2Calls.map((c) => ({ to: c.target, value: c.value.toString(), data: c.data })),
-      phase3Calls: params.phase3Calls.map((c) => ({ to: c.target, value: c.value.toString(), data: c.data })),
-    }),
-  })
-  const json = (await res.json().catch(() => null)) as ApiEnvelope<DeploySessionCreateResponse> | null
-  if (!res.ok || !json?.success || !json.data) throw new Error(json?.error || 'deploy_session_create_failed')
-  return json.data
-}
-
-async function fetchDeploySessionStatus(sessionId: string): Promise<DeploySessionStatusResponse> {
-  const res = await fetch('/api/deploy/session/status', {
-    method: 'POST',
-    credentials: 'include',
-    headers: { 'Content-Type': 'application/json', Accept: 'application/json', ...getSiweAuthHeaders() },
-    body: JSON.stringify({ sessionId }),
-  })
-  const json = (await res.json().catch(() => null)) as ApiEnvelope<DeploySessionStatusResponse> | null
-  if (!res.ok || !json?.success || !json.data) throw new Error(json?.error || 'deploy_session_status_failed')
-  return json.data
-}
-
-async function continueDeploySession(sessionId: string): Promise<{ step: string; lastTxHash?: Hex | null }> {
-  const res = await fetch('/api/deploy/session/continue', {
-    method: 'POST',
-    credentials: 'include',
-    headers: { 'Content-Type': 'application/json', Accept: 'application/json', ...getSiweAuthHeaders() },
-    body: JSON.stringify({ sessionId }),
-  })
-  const json = (await res.json().catch(() => null)) as ApiEnvelope<any> | null
-  if (!res.ok || !json?.success) throw new Error(json?.error || 'deploy_session_continue_failed')
-  return json.data as any
-}
-
-async function cancelDeploySession(sessionId: string): Promise<{ step: string; lastTxHash?: Hex | null }> {
-  const res = await fetch('/api/deploy/session/cancel', {
-    method: 'POST',
-    credentials: 'include',
-    headers: { 'Content-Type': 'application/json', Accept: 'application/json', ...getSiweAuthHeaders() },
-    body: JSON.stringify({ sessionId }),
-  })
-  const json = (await res.json().catch(() => null)) as ApiEnvelope<any> | null
-  if (!res.ok || !json?.success) throw new Error(json?.error || 'deploy_session_cancel_failed')
-  return json.data as any
-}
-
-const COINBASE_SMART_WALLET_OWNER_MGMT_ABI = [
-  {
-    type: 'function',
-    name: 'addOwnerAddress',
-    stateMutability: 'nonpayable',
-    inputs: [{ name: 'owner', type: 'address' }],
-    outputs: [],
-  },
-] as const
 
 function formatEthPerTokenForUi(weiPerToken: bigint): string {
   if (weiPerToken <= 0n) return '0'
@@ -335,35 +200,6 @@ async function fetchAdminAuth(): Promise<AdminAuthResponse> {
   if (!json.success) return null
   return (json.data ?? null) as AdminAuthResponse
 }
-
-const COINBASE_SMART_WALLET_OWNER_ABI = [
-  {
-    type: 'function',
-    name: 'isOwnerAddress',
-    stateMutability: 'view',
-    inputs: [{ name: 'account', type: 'address' }],
-    outputs: [{ type: 'bool' }],
-  },
-] as const
-
-// Coinbase Smart Wallet (v1) has an EntryPoint v0.6 constant + MultiOwnable owner tracking.
-// Use these reads as a positive/cheap preflight before attempting executeBatch.
-const COINBASE_SMART_WALLET_PREFLIGHT_ABI = [
-  {
-    type: 'function',
-    name: 'entryPoint',
-    stateMutability: 'view',
-    inputs: [],
-    outputs: [{ type: 'address' }],
-  },
-  {
-    type: 'function',
-    name: 'ownerCount',
-    stateMutability: 'view',
-    inputs: [],
-    outputs: [{ type: 'uint256' }],
-  },
-] as const
 
 const COINBASE_ENTRYPOINT_V06 = addr('5FF137D4b0FDCD49DcA30c7CF57E578a026d2789')
 
@@ -756,8 +592,6 @@ function AddressRow({ label, address }: { label: string; address: Address | null
 function DeployVaultBatcher({
   creatorToken,
   owner,
-  executeBatchEligible = false,
-  isSignedIn,
   minFirstDeposit,
   tokenDecimals,
   depositSymbol,
@@ -774,8 +608,6 @@ function DeployVaultBatcher({
 }: {
   creatorToken: Address
   owner: Address
-  executeBatchEligible?: boolean
-  isSignedIn: boolean
   minFirstDeposit: bigint
   tokenDecimals: number | null
   depositSymbol: string
@@ -791,42 +623,33 @@ function DeployVaultBatcher({
   onSuccess: (addresses: ServerDeployResponse['addresses']) => void
 }) {
   const publicClient = usePublicClient({ chainId: base.id })
-  const { data: walletClient } = useWalletClient({ chainId: base.id })
-  const { config: onchainKitConfig } = useOnchainKit()
-  const { connector } = useAccount()
-  const { connectAsync, connectors } = useConnect()
-  const { disconnect } = useDisconnect()
+  const { client: smartWalletClient } = useSmartWallets()
 
   // Gas sponsorship (EIP-4337 paymaster) for ERC-4337 UserOperations.
   // See docs/aa/notes.md for the AA mental model (EntryPoint + bundler + paymaster).
   const cdpApiKey = import.meta.env.VITE_CDP_API_KEY as string | undefined
-  const paymasterUrl = resolveCdpPaymasterUrl(onchainKitConfig?.paymaster ?? null, cdpApiKey)
+  const cdpRpcUrl = useMemo(() => {
+    const explicit = (import.meta.env.VITE_CDP_PAYMASTER_URL as string | undefined)?.trim()
+    // For Privy-native smart wallet ops we bypass our `/api/paymaster` proxy entirely.
+    // If a proxy URL is set (common for legacy flows), ignore it here and use the direct CDP endpoint.
+    if (explicit) {
+      if (explicit === '/api/paymaster') return null
+      try {
+        const u = new URL(explicit, typeof window !== 'undefined' ? window.location.origin : 'https://4626.fun')
+        if (u.pathname === '/api/paymaster') return null
+      } catch {
+        // If it's not a valid URL, treat it as a non-URL string and fall through.
+      }
+      return explicit
+    }
+    if (cdpApiKey) return `https://api.developer.coinbase.com/rpc/v1/base/${cdpApiKey}`
+    return null
+  }, [cdpApiKey])
 
-  const connectorId = String((connector as any)?.id ?? '')
-  const connectorName = String((connector as any)?.name ?? '')
-  const isRabby =
-    connectorId.toLowerCase() === 'rabby' ||
-    connectorId.toLowerCase().includes('rabby') ||
-    connectorName.toLowerCase().includes('rabby')
-
-  // This deploy path signs the raw 32-byte UserOp hash via `eth_sign`.
-  // Rabby intentionally blocks `eth_sign` for safety, so we hard-block here with a clean fallback UX.
-  const rabbyBlocksThisDeployMethod = executeBatchEligible && isRabby
-
-  const walletConnectConnector = useMemo(() => {
-    return connectors.find(
-      (c) => String(c.id) === 'walletConnect' || String(c.name ?? '').toLowerCase().includes('walletconnect'),
-    )
-  }, [connectors])
-
-  const baseAppConnector = useMemo(() => {
-    // Coinbase Smart Wallet / Base Account connector (OnchainKit / Coinbase SDK).
-    return connectors.find((c) => {
-      const id = String(c.id ?? '').toLowerCase()
-      const name = String(c.name ?? '').toLowerCase()
-      return id === 'coinbasesmartwallet' || name.includes('coinbase') || name.includes('base')
-    })
-  }, [connectors])
+  const bundlerClient = useMemo(() => {
+    if (!publicClient || !cdpRpcUrl) return null
+    return createBundlerClient({ client: publicClient as any, transport: http(cdpRpcUrl) })
+  }, [cdpRpcUrl, publicClient])
 
   const resolvedTokenDecimals = typeof tokenDecimals === 'number' ? tokenDecimals : 18
   const formatDeposit = (raw?: bigint): string => {
@@ -840,144 +663,6 @@ function DeployVaultBatcher({
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [txId, setTxId] = useState<string | null>(null)
-  const [deploySessionId, setDeploySessionId] = useState<string | null>(null)
-  const [deploySessionStatus, setDeploySessionStatus] = useState<DeploySessionStatusResponse | null>(null)
-  const [serverCompleting, setServerCompleting] = useState(false)
-  const [serverCompleteError, setServerCompleteError] = useState<string | null>(null)
-  const [showUserOpSignModal, setShowUserOpSignModal] = useState(false)
-  const [dontShowUserOpSignAgain, setDontShowUserOpSignAgain] = useState(true)
-  const [userOpSignModalResolve, setUserOpSignModalResolve] = useState<((ok: boolean) => void) | null>(null)
-
-  const USEROP_SIGNING_ACK_KEY = 'cv_ack_userop_hash_signing_v1'
-
-  const openUserOpSignModal = async (): Promise<boolean> => {
-    // Persisted “don’t show again”
-    try {
-      if (localStorage.getItem(USEROP_SIGNING_ACK_KEY) === '1') return true
-    } catch {
-      // ignore
-    }
-
-    return await new Promise<boolean>((resolve) => {
-      setUserOpSignModalResolve(() => resolve)
-      setShowUserOpSignModal(true)
-    })
-  }
-
-  const closeUserOpSignModal = (ok: boolean) => {
-    try {
-      if (ok && dontShowUserOpSignAgain) localStorage.setItem(USEROP_SIGNING_ACK_KEY, '1')
-    } catch {
-      // ignore
-    }
-    setShowUserOpSignModal(false)
-    const r = userOpSignModalResolve
-    setUserOpSignModalResolve(null)
-    r?.(ok)
-  }
-
-  useEffect(() => {
-    let cancelled = false
-    let interval: any = null
-
-    async function start() {
-      if (!deploySessionId) return
-
-      // Initial fetch (best effort)
-      try {
-        await refreshDeploySessionStatus(deploySessionId)
-      } catch {
-        // ignore
-      }
-
-      interval = setInterval(async () => {
-        if (cancelled) return
-        try {
-          const s = await refreshDeploySessionStatus(deploySessionId)
-          const step = String(s.step ?? '')
-          if (step === 'completed' || step === 'failed') {
-            clearInterval(interval)
-            interval = null
-            setServerCompleting(false)
-          }
-        } catch {
-          // keep polling; user can retry server completion manually
-        }
-      }, 2000)
-    }
-
-    void start()
-
-    return () => {
-      cancelled = true
-      if (interval) clearInterval(interval)
-    }
-  }, [deploySessionId])
-
-  const stepLabel = (step: string | null | undefined): string => {
-    switch (String(step ?? '')) {
-      case 'created':
-        return 'Session created'
-      case 'phase1_sent':
-        return 'Phase 1 submitted'
-      case 'phase1_confirmed':
-        return 'Phase 1 confirmed'
-      case 'phase2_sent':
-        return 'Phase 2 submitted (server)'
-      case 'phase2_confirmed':
-        return 'Phase 2 confirmed'
-      case 'phase3_sent':
-        return 'Phase 3 submitted (server)'
-      case 'phase3_confirmed':
-        return 'Phase 3 confirmed'
-      case 'cleanup_sent':
-        return 'Cleanup submitted (server)'
-      case 'cancelled':
-        return 'Cancelled (cleanup complete)'
-      case 'completed':
-        return 'Completed'
-      case 'failed':
-        return 'Failed'
-      default:
-        return step ? step : '—'
-    }
-  }
-
-  const refreshDeploySessionStatus = async (sessionId: string) => {
-    const s = await fetchDeploySessionStatus(sessionId)
-    setDeploySessionStatus(s)
-    if (s.lastTxHash) setTxId(String(s.lastTxHash))
-    return s
-  }
-
-  const runServerCompletion = async (sessionId: string) => {
-    setServerCompleting(true)
-    setServerCompleteError(null)
-    try {
-      // Kick server completion; status polling will show intermediate steps.
-      await continueDeploySession(sessionId)
-      await refreshDeploySessionStatus(sessionId)
-    } catch (e: any) {
-      setServerCompleteError(e?.message ? String(e.message) : 'Server completion failed')
-      throw e
-    } finally {
-      setServerCompleting(false)
-    }
-  }
-
-  const runServerCancel = async (sessionId: string) => {
-    setServerCompleting(true)
-    setServerCompleteError(null)
-    try {
-      await cancelDeploySession(sessionId)
-      await refreshDeploySessionStatus(sessionId)
-    } catch (e: any) {
-      setServerCompleteError(e?.message ? String(e.message) : 'Cancel failed')
-      throw e
-    } finally {
-      setServerCompleting(false)
-    }
-  }
 
   const batcherAddress = (CONTRACTS.creatorVaultBatcher ?? null) as Address | null
 
@@ -1207,23 +892,15 @@ function DeployVaultBatcher({
     setBusy(true)
     setError(null)
     setTxId(null)
-    setDeploySessionId(null)
-    setDeploySessionStatus(null)
-    setServerCompleting(false)
-    setServerCompleteError(null)
 
     try {
       if (!batcherAddress) throw new Error('CreatorVaultBatcher is not configured. Set VITE_CREATOR_VAULT_BATCHER.')
       if (!publicClient) throw new Error('Network client not ready')
-      if (!walletClient) throw new Error('Wallet not ready')
       if (!expected || !expectedGauge || !expectedBurnStream || !expectedPayoutRouter || !expectedCreate2Deployer)
         throw new Error('Failed to compute expected deployment addresses')
       if (!floorPriceQ96Aligned || floorPriceQ96Aligned <= 0n) {
         throw new Error('Market floor price not available. Wait for pricing to load.')
       }
-
-      const connected = (((walletClient as any).account?.address ?? (walletClient as any).account) as Address | null) ?? null
-      if (!connected) throw new Error('Wallet not ready')
 
       const depositAmount = minFirstDeposit
       const auctionSteps = encodeUniswapCcaLinearSteps(DEFAULT_CCA_DURATION_BLOCKS)
@@ -1500,11 +1177,15 @@ function DeployVaultBatcher({
         // ============================================================
         // Single deploy path: ERC-4337 UserOperations (paymaster + bundler)
         // ============================================================
-        if (!executeBatchEligible) {
-          throw new Error('Connect an owner EOA of the creator Coinbase Smart Wallet to deploy.')
+        if (!publicClient) throw new Error('Public client not ready.')
+        if (!smartWalletClient) throw new Error('Setting up smart wallet…')
+        if (!bundlerClient) throw new Error('Bundler / paymaster endpoint is not configured.')
+
+        // Safety: ensure wagmi (smart-account bridge) and Privy smart wallet agree on the sender.
+        const smartWalletAddr = getAddress(String((smartWalletClient as any)?.account?.address ?? ''))
+        if (smartWalletAddr.toLowerCase() !== owner.toLowerCase()) {
+          throw new Error(`Connected smart wallet ${shortAddress(smartWalletAddr)} does not match expected identity ${shortAddress(owner)}.`)
         }
-        if (!isSignedIn) throw new Error('Sign in to deploy (required for sponsored ERC-4337 UserOperations).')
-        if (!paymasterUrl) throw new Error('Paymaster is not configured.')
 
         // Enforce custody: the smart wallet sender must already hold the initial deposit.
         const smartWalletBalance = (await publicClient.readContract({
@@ -1518,13 +1199,6 @@ function DeployVaultBatcher({
             `Creator smart wallet needs ${formatDeposit(depositAmount)} ${depositSymbol} (has ${formatDeposit(smartWalletBalance)}). Transfer funds to ${shortAddress(owner)} and retry.`,
           )
         }
-
-        const cdpBundlerUrl = paymasterUrl
-
-        // Coinbase Smart Wallet UserOps must be signed over the raw 32-byte hash.
-        // Many wallets' `personal_sign` (EIP-191) will produce a signature that fails validation.
-        // Prefer `eth_sign` and fail fast with a clear error if the wallet blocks it.
-        const userOpSignMode = 'eth_sign' as const
 
         const phase1Calls: Array<{ target: Address; value: bigint; data: Hex }> = [phase1Call]
 
@@ -1597,61 +1271,29 @@ function DeployVaultBatcher({
           },
         ]
 
-        // Best UX: 1 signature, server completes Phase 2/3 and cleans up temporary owner.
-        try {
-          const deploySession = await createDeploySession({
-            smartWallet: owner,
-            creatorToken,
-            ownerAddress: owner,
-            phase2Calls,
-            phase3Calls,
-            version: deploymentVersion,
-          })
-          setDeploySessionId(deploySession.sessionId)
-          setDeploySessionStatus({
-            id: deploySession.sessionId,
-            step: 'created',
-            expiresAt: deploySession.expiresAt,
-            smartWallet: owner,
-            sessionOwner: deploySession.sessionOwner,
-          } as any)
+        // Privy smart wallet path:
+        // - Privy creates/links the smart wallet (embedded signer)
+        // - Privy smart wallet client sends UserOperations using your dashboard-configured bundler/paymaster
+        // - We wait for receipts via the direct CDP RPC (no /api/paymaster proxy)
+        const toCalls = (calls: Array<{ target: Address; value: bigint; data: Hex }>) =>
+          calls.map((c) => ({ to: c.target, value: c.value, data: c.data }))
 
-          const ok1 = await openUserOpSignModal()
-          if (!ok1) throw new Error('Cancelled')
+        const h1 = (await smartWalletClient.sendTransaction({ calls: toCalls(phase1Calls) } as any)) as Hex
+        const r1 = await waitForUserOperationReceipt(bundlerClient as any, { hash: h1 as any, timeout: 180_000 })
+        setTxId(r1.receipt.transactionHash as Hex)
 
-          const addOwnerCall = {
-            target: owner,
-            value: 0n,
-            data: encodeFunctionData({
-              abi: COINBASE_SMART_WALLET_OWNER_MGMT_ABI,
-              functionName: 'addOwnerAddress',
-              args: [deploySession.sessionOwner],
-            }),
-          } as const
+        const h2 = (await smartWalletClient.sendTransaction({ calls: toCalls(phase2Calls) } as any)) as Hex
+        const r2 = await waitForUserOperationReceipt(bundlerClient as any, { hash: h2 as any, timeout: 180_000 })
+        setTxId(r2.receipt.transactionHash as Hex)
 
-          const res1 = await sendCoinbaseSmartWalletUserOperation({
-            publicClient,
-            walletClient,
-            bundlerUrl: cdpBundlerUrl,
-            smartWallet: owner,
-            ownerAddress: connected,
-            calls: [addOwnerCall, ...phase1Calls].map((c) => ({ to: c.target, value: c.value, data: c.data })),
-            version: '1',
-            userOpSignMode,
-          })
-          setTxId(res1.transactionHash)
-
-          setServerCompleting(true)
-          void runServerCompletion(deploySession.sessionId)
-
-          onSuccess(expected)
-          return
-        } catch (e: any) {
-          // No fallback to multi-UserOp / multi-approval deploys.
-          // If deploy-session is unavailable (DB misconfig, server error, etc) we fail fast.
-          const msg = e?.message ? String(e.message) : 'deploy_session_unavailable'
-          throw new Error(`1‑click deploy unavailable: ${msg}`)
+        if (phase3Calls.length > 0) {
+          const h3 = (await smartWalletClient.sendTransaction({ calls: toCalls(phase3Calls) } as any)) as Hex
+          const r3 = await waitForUserOperationReceipt(bundlerClient as any, { hash: h3 as any, timeout: 180_000 })
+          setTxId(r3.receipt.transactionHash as Hex)
         }
+
+        onSuccess(expected)
+        return
       }
 
       throw new Error('No supported deploy path matched. Ensure ERC-4337 prerequisites are met and retry.')
@@ -1662,15 +1304,14 @@ function DeployVaultBatcher({
     }
   }
 
-  const canAutoUpdatePayoutRecipient = !payoutMismatch || executeBatchEligible
+  const canAutoUpdatePayoutRecipient = !payoutMismatch
 
   const disabled =
     busy ||
     expectedQuery.isLoading ||
     !expected ||
     !canAutoUpdatePayoutRecipient ||
-    !executeBatchEligible ||
-    rabbyBlocksThisDeployMethod
+    false
 
   return (
     <div className="space-y-3">
@@ -1758,193 +1399,16 @@ function DeployVaultBatcher({
         )}
       </div>
 
-      {rabbyBlocksThisDeployMethod ? (
-        <div className="p-4 bg-amber-500/10 border border-amber-500/20 rounded-lg space-y-2">
-          <div className="text-amber-300/90 text-sm font-medium">Rabby can’t be used for 1‑Click Deploy</div>
-          <div className="text-amber-300/70 text-xs leading-relaxed">
-            This deploy method requires a raw hash signature (<span className="font-mono">eth_sign</span>) for ERC‑4337. Rabby blocks that method
-            for safety. Switch to WalletConnect or Base App to continue.
-          </div>
-          <div className="flex flex-col gap-2">
-            {walletConnectConnector ? (
-              <button
-                type="button"
-                className="btn-accent w-full"
-                disabled={busy}
-                onClick={() => {
-                  setError(null)
-                  void connectAsync({ connector: walletConnectConnector as any }).catch((e: any) => {
-                    setError(e?.message ? String(e.message) : 'Failed to switch to WalletConnect')
-                  })
-                }}
-              >
-                Switch to WalletConnect
-              </button>
-            ) : null}
-            {baseAppConnector ? (
-              <button
-                type="button"
-                className="btn-primary w-full"
-                disabled={busy}
-                onClick={() => {
-                  setError(null)
-                  void connectAsync({ connector: baseAppConnector as any }).catch((e: any) => {
-                    setError(e?.message ? String(e.message) : 'Failed to switch to Base App')
-                  })
-                }}
-              >
-                Switch to Base App
-              </button>
-            ) : null}
-            <button
-              type="button"
-              className="w-full text-[11px] text-zinc-500 hover:text-zinc-300 transition-colors"
-              disabled={busy}
-              onClick={() => {
-                try {
-                  disconnect()
-                } catch {
-                  // ignore
-                }
-              }}
-            >
-              Disconnect Rabby
-            </button>
-          </div>
-        </div>
-      ) : null}
-
       <button type="button" onClick={() => void submit()} disabled={disabled} className="btn-accent w-full rounded-lg">
         {busy ? 'Deploying…' : '1‑Click Deploy (ERC‑4337)'}
       </button>
 
-      {isSignedIn ? (
-        <div className="text-[11px] text-zinc-500 leading-relaxed">
-          You may be asked to sign an <span className="text-zinc-200">“Unknown signature type”</span> hash in your wallet. That’s expected for
-          ERC‑4337 batched deploys.{' '}
-          <button type="button" className="underline text-zinc-300 hover:text-white" onClick={() => void openUserOpSignModal()}>
-            Learn why
-          </button>
-          .
-        </div>
-      ) : null}
-
       {marketFloorText ? <div className="text-[11px] text-zinc-500">Market floor: {marketFloorText}</div> : null}
 
       {error ? <div className="text-[11px] text-red-400/90">{error}</div> : null}
-      {deploySessionId ? (
-        <div className="rounded-lg border border-white/10 bg-black/20 p-3 space-y-2">
-          <div className="flex items-center justify-between gap-3">
-            <div className="text-[11px] text-zinc-500">Server completion</div>
-            <div className="text-[11px] text-zinc-400">{stepLabel(deploySessionStatus?.step)}</div>
-          </div>
-          <div className="text-[11px] text-zinc-600 break-all">
-            Session: <span className="font-mono text-zinc-300">{deploySessionId}</span>
-          </div>
-          {deploySessionStatus?.lastError ? (
-            <div className="text-[11px] text-red-400/90">{String(deploySessionStatus.lastError)}</div>
-          ) : null}
-          {serverCompleteError ? <div className="text-[11px] text-red-400/90">{serverCompleteError}</div> : null}
-          <div className="flex items-center gap-2 pt-1">
-            <button
-              type="button"
-              className="px-3 py-2 rounded-md border border-white/10 bg-white/5 text-[11px] text-zinc-200 hover:bg-white/10 disabled:opacity-50"
-              disabled={!deploySessionId || serverCompleting}
-              onClick={() => {
-                if (!deploySessionId) return
-                void runServerCompletion(deploySessionId)
-              }}
-            >
-              {serverCompleting ? 'Completing…' : 'Retry server completion'}
-            </button>
-            <button
-              type="button"
-              className="px-3 py-2 rounded-md border border-white/10 bg-white/5 text-[11px] text-zinc-200 hover:bg-white/10 disabled:opacity-50"
-              disabled={!deploySessionId}
-              onClick={() => {
-                if (!deploySessionId) return
-                void refreshDeploySessionStatus(deploySessionId)
-              }}
-            >
-              Refresh
-            </button>
-            <button
-              type="button"
-              className="px-3 py-2 rounded-md border border-white/10 bg-white/5 text-[11px] text-zinc-200 hover:bg-white/10 disabled:opacity-50"
-              disabled={!deploySessionId || serverCompleting}
-              onClick={() => {
-                if (!deploySessionId) return
-                void runServerCancel(deploySessionId)
-              }}
-            >
-              Cancel session (cleanup)
-            </button>
-          </div>
-        </div>
-      ) : null}
       {txId ? (
         <div className="text-[11px] text-zinc-500">
           Submitted: <span className="font-mono text-zinc-300 break-all">{txId}</span>
-        </div>
-      ) : null}
-
-      {showUserOpSignModal ? (
-        <div className="fixed inset-0 z-[100]">
-          <div className="absolute inset-0 bg-black/70" onClick={() => closeUserOpSignModal(false)} />
-          <div className="absolute inset-0 flex items-center justify-center p-4">
-            <div className="w-full max-w-lg rounded-xl border border-white/10 bg-zinc-950 shadow-2xl">
-              <div className="p-5 border-b border-white/10">
-                <div className="text-[14px] text-zinc-100 font-medium">Before you sign</div>
-                <div className="text-[11px] text-zinc-500 mt-1">
-                  Some wallets (like Rabby) show this as <span className="text-zinc-200">“Unknown signature type”</span>.
-                </div>
-              </div>
-
-              <div className="p-5 space-y-3 text-[12px] text-zinc-300 leading-relaxed">
-                <div>
-                  <span className="font-medium text-zinc-100">What you’re signing:</span> a short 32‑byte hash. It’s the ERC‑4337 “UserOp hash”
-                  that authorizes a single batched deploy.
-                </div>
-                <div>
-                  <span className="font-medium text-zinc-100">This is not a transaction:</span> signing alone does not move funds. After you sign,
-                  the bundler submits the actual onchain transaction.
-                </div>
-                <div>
-                  <span className="font-medium text-zinc-100">Why you saw another transaction:</span> after the signature, you’ll typically see an
-                  onchain transaction executed by the bundler/EntryPoint that triggers your{' '}
-                  <span className="font-mono text-zinc-200">{shortAddress(owner)}</span> smart wallet to run the batched deploy.
-                </div>
-
-                <div className="rounded-lg border border-white/10 bg-black/30 p-3 space-y-1 text-[11px] text-zinc-400">
-                  <div>
-                    <span className="text-zinc-500">Site:</span>{' '}
-                    <span className="font-mono text-zinc-200">{typeof window !== 'undefined' ? window.location.origin : '—'}</span>
-                  </div>
-                  <div>
-                    <span className="text-zinc-500">Smart wallet:</span> <span className="font-mono text-zinc-200">{owner}</span>
-                  </div>
-                </div>
-
-                <label className="flex items-center gap-2 pt-1 text-[11px] text-zinc-500 select-none">
-                  <input
-                    type="checkbox"
-                    checked={dontShowUserOpSignAgain}
-                    onChange={(e) => setDontShowUserOpSignAgain(e.target.checked)}
-                  />
-                  Don’t show this again on this device
-                </label>
-              </div>
-
-              <div className="p-5 border-t border-white/10 flex items-center justify-end gap-2">
-                <button type="button" className="btn-ghost" onClick={() => closeUserOpSignModal(false)}>
-                  Cancel
-                </button>
-                <button type="button" className="btn-accent" onClick={() => closeUserOpSignModal(true)}>
-                  Continue
-                </button>
-              </div>
-            </div>
-          </div>
         </div>
       ) : null}
     </div>
@@ -1952,10 +1416,10 @@ function DeployVaultBatcher({
 }
 
 export function DeployVault() {
-  const { address, isConnected, connector } = useAccount()
-  const { connect, connectors } = useConnect()
-  const { disconnect } = useDisconnect()
+  const { address, isConnected } = useAccount()
   const { config: onchainKitConfig } = useOnchainKit()
+  const { ready: privyReady, authenticated: privyAuthenticated } = usePrivy()
+  const { login } = useLogin()
   const [creatorToken, setCreatorToken] = useState('')
   const [showAdvanced, setShowAdvanced] = useState(false)
   const deploymentVersion = useMemo(() => {
@@ -2043,23 +1507,9 @@ export function DeployVault() {
     return out
   }, [farcasterIdentityQuery.data?.verifiedEthAddresses])
 
-  const { isSignedIn, busy: authBusy, error: authError, signIn } = useSiweAuth()
-
-  const healthQuery = useQuery({
-    queryKey: ['health'],
-    queryFn: fetchHealth,
-    staleTime: 15_000,
-    retry: 0,
-    refetchOnWindowFocus: false,
-  })
-
-  const healthGateOk = Boolean(
-    healthQuery.data?.deploySessions?.ok && healthQuery.data?.siwe?.ok && healthQuery.data?.paymaster?.ok,
-  )
-
   const adminAuthQuery = useQuery({
     queryKey: ['adminAuth'],
-    enabled: isConnected && showAdvanced && isSignedIn,
+    enabled: isConnected && showAdvanced,
     queryFn: fetchAdminAuth,
     staleTime: 30_000,
     retry: 0,
@@ -2327,34 +1777,6 @@ export function DeployVault() {
     return null
   }, [payoutRecipientContract, detectedSmartWalletContract, payoutRecipient, creatorAddress])
 
-  const coinbaseSmartWalletConnector = useMemo(() => {
-    return connectors.find((c) => String(c.id) === 'coinbaseSmartWallet')
-  }, [connectors])
-
-  const smartWalletConnectionHint = useMemo(() => {
-    // Only show the hint when the coin is owned by a smart wallet.
-    if (!coinSmartWallet) return null
-    if (!isConnected) return null
-    const connectorName = String((connector as any)?.name ?? (connector as any)?.id ?? 'Unknown connector')
-    return { connectorName }
-  }, [coinSmartWallet, connector, isConnected])
-
-  const smartWalletOwnerQuery = useReadContract({
-    address: coinSmartWallet ? (coinSmartWallet as `0x${string}`) : undefined,
-    abi: COINBASE_SMART_WALLET_OWNER_ABI,
-    functionName: 'isOwnerAddress',
-    args: [(connectedWalletAddress ?? ZERO_ADDRESS) as `0x${string}`],
-    query: {
-      enabled: !!coinSmartWallet && !!connectedWalletAddress && !isOriginalCreator && !isPayoutRecipient,
-      retry: false,
-    },
-  })
-
-  const isAuthorizedViaSmartWallet =
-    !!coinSmartWallet && smartWalletOwnerQuery.data === true
-
-  const isAuthorizedDeployer = isOriginalCreator || isPayoutRecipient || isAuthorizedViaSmartWallet
-
   // Canonical identity enforcement (prevents irreversible fragmentation).
   // For existing creator coins, we enforce `zoraCoin.creatorAddress` as the identity wallet.
   const identity = useMemo(() => {
@@ -2367,7 +1789,12 @@ export function DeployVault() {
   }, [connectedWalletAddress, farcasterCustodyAddress, farcasterProfileQuery.data, zoraCoin])
 
   const canonicalIdentityAddress = identity.canonicalIdentity.address
-  const deploySender = (coinSmartWallet ?? canonicalIdentityAddress) as Address | null
+  const deploySender = (canonicalIdentityAddress as Address | null) ?? null
+
+  // Privy-first deploy: we only allow deploying when the connected wallet *is* the canonical identity.
+  // If the canonical identity is a smart wallet contract, wagmi should reflect that smart wallet address
+  // via the Privy smart-wallet bridge.
+  const isAuthorizedDeployer = !identity.blockingReason
 
   const { data: deploySenderTokenBalance } = useReadContract({
     address: tokenIsValid ? (creatorToken as `0x${string}`) : undefined,
@@ -2376,62 +1803,6 @@ export function DeployVault() {
     args: [((deploySender ?? ZERO_ADDRESS) as Address) as `0x${string}`],
     query: { enabled: tokenIsValid && !!deploySender },
   })
-
-  // ============================================================
-  // Smart-wallet executeBatch eligibility (EOA owner → deploy via SW)
-  // ============================================================
-  const operatorModeForIdentity =
-    !!connectedWalletAddress &&
-    !!canonicalIdentityAddress &&
-    connectedWalletAddress.toLowerCase() !== canonicalIdentityAddress.toLowerCase()
-
-  const canonicalIdentityBytecodeQuery = useQuery({
-    queryKey: ['bytecode', 'canonicalIdentity', creatorToken, canonicalIdentityAddress],
-    enabled: !!publicClient && !!canonicalIdentityAddress,
-    queryFn: async () => {
-      return await publicClient!.getBytecode({ address: canonicalIdentityAddress as Address })
-    },
-    staleTime: 60_000,
-    retry: 0,
-  })
-
-  const canonicalIdentityIsContract = useMemo(() => {
-    if (!canonicalIdentityAddress) return false
-    const code = canonicalIdentityBytecodeQuery.data
-    return !!code && code !== '0x'
-  }, [canonicalIdentityAddress, canonicalIdentityBytecodeQuery.data])
-
-  const smartWalletEntryPointQuery = useReadContract({
-    address: canonicalIdentityIsContract ? (canonicalIdentityAddress as `0x${string}`) : undefined,
-    abi: COINBASE_SMART_WALLET_PREFLIGHT_ABI,
-    functionName: 'entryPoint',
-    query: {
-      enabled: canonicalIdentityIsContract && operatorModeForIdentity,
-      retry: false,
-    },
-  })
-
-  const smartWalletOwnerForCanonicalQuery = useReadContract({
-    address: canonicalIdentityIsContract ? (canonicalIdentityAddress as `0x${string}`) : undefined,
-    abi: COINBASE_SMART_WALLET_OWNER_ABI,
-    functionName: 'isOwnerAddress',
-    args: [(connectedWalletAddress ?? ZERO_ADDRESS) as `0x${string}`],
-    query: {
-      enabled: canonicalIdentityIsContract && operatorModeForIdentity && !!connectedWalletAddress,
-      retry: false,
-    },
-  })
-
-  const smartWalletPreflightOk = useMemo(() => {
-    const ep = smartWalletEntryPointQuery.data ? String(smartWalletEntryPointQuery.data) : ''
-    return isAddress(ep) && ep.toLowerCase() === COINBASE_ENTRYPOINT_V06.toLowerCase()
-  }, [smartWalletEntryPointQuery.data])
-
-  const executeBatchEligible =
-    operatorModeForIdentity &&
-    canonicalIdentityIsContract &&
-    smartWalletPreflightOk &&
-    smartWalletOwnerForCanonicalQuery.data === true
 
   // Creator access gate:
   // - include the connected wallet (for smart-wallet-owned coins, this may be the only EOA we can approve)
@@ -2678,10 +2049,7 @@ export function DeployVault() {
   const walletHasMinDeposit =
     typeof deploySenderTokenBalance === 'bigint' && deploySenderTokenBalance >= minFirstDeposit
 
-  // Single deploy path: ERC-4337 only (no operator mode / no wallet_sendCalls / no direct tx fallbacks).
-  const operatorMode = false
-
-  const isAuthorizedDeployerOrOperator = isAuthorizedDeployer && executeBatchEligible
+  const isAuthorizedDeployerOrOperator = isAuthorizedDeployer
 
   const fundingGateOk = walletHasMinDeposit
 
@@ -2700,10 +2068,9 @@ export function DeployVault() {
     !!derivedVaultSymbol &&
     !!connectedWalletAddress &&
     fundingGateOk &&
-    healthGateOk &&
     creatorVaultBatcherConfigured &&
     bytecodeInfraOk &&
-    (!identity.blockingReason || executeBatchEligible)
+    !identity.blockingReason
 
   const vrfConsumerAddress = (CONTRACTS.vrfConsumer ?? null) as Address | null
   const vrfConsumerConfigured = isAddress(String(vrfConsumerAddress ?? ''))
@@ -2735,9 +2102,9 @@ export function DeployVault() {
                 : 'needs v2 store',
     },
     {
-      label: 'Smart wallet (ERC-4337) ready',
-      ok: smartWalletPreflightOk,
-      hint: smartWalletPreflightOk ? 'EntryPoint v0.6' : 'no EntryPoint',
+      label: 'Identity wallet connected',
+      ok: Boolean(connectedWalletAddress && canonicalIdentityAddress && !identity.blockingReason),
+      hint: identity.blockingReason ? 'mismatch' : canonicalIdentityAddress ? 'ok' : 'missing',
     },
     {
       label: 'EntryPoint v0.6 deployed',
@@ -2826,17 +2193,8 @@ export function DeployVault() {
                     ? 'Connect the creator or payout recipient wallet.'
                     : !fundingGateOk
                       ? `Needs 5,000,000 ${underlyingSymbolUpper || 'TOKENS'} to deploy.`
-                      : identity.blockingReason && !executeBatchEligible
+                      : identity.blockingReason
                         ? identity.blockingReason
-                    : healthQuery.isFetching
-                      ? 'Checking server configuration…'
-                      : healthQuery.isError
-                        ? 'Server health check failed.'
-                        : !healthGateOk
-                          ? (healthQuery.data?.deploySessions?.error ||
-                              healthQuery.data?.siwe?.error ||
-                              healthQuery.data?.paymaster?.error ||
-                              'Server configuration required to deploy.')
                     : bytecodeInfraQuery.isFetching
                       ? 'Checking deployment bytecode store…'
                       : bytecodeInfraQuery.isError
@@ -3153,21 +2511,6 @@ export function DeployVault() {
                       This is a global “slate” knob. Change <span className="font-mono">VITE_DEPLOYMENT_VERSION</span> to start a fresh deterministic
                       namespace for everyone.
                     </div>
-
-                    {!isSignedIn ? (
-                      <div className="pt-1">
-                        <button
-                          type="button"
-                          onClick={() => void signIn()}
-                          disabled={authBusy}
-                          className="text-[11px] text-zinc-500 hover:text-zinc-200 transition-colors disabled:opacity-60"
-                          title="Admin sign-in unlocks legacy v1 controls if your wallet is allowlisted."
-                        >
-                          {authBusy ? 'Signing in…' : 'Admin sign-in (optional)'}
-                        </button>
-                        {authError ? <div className="text-[11px] text-red-400/90 mt-1">{authError}</div> : null}
-                      </div>
-                    ) : null}
                   </div>
 
                   <div className="text-xs text-zinc-600">
@@ -3185,61 +2528,10 @@ export function DeployVault() {
                   <div>
                     <div className="label mb-2">Your Smart Wallet</div>
 
-                    {smartWalletConnectionHint && coinSmartWallet ? (
-                      <div className="p-4 bg-amber-500/10 border border-amber-500/20 rounded-lg space-y-2">
-                        <div className="text-amber-300/90 text-sm font-medium">Coin is owned by a Smart Wallet</div>
-                        <div className="text-amber-300/70 text-xs leading-relaxed space-y-2">
-                          <div>
-                            Coin owner (smart wallet): <span className="text-white font-mono">{shortAddress(coinSmartWallet as string)}</span>
-                          </div>
-                          <div>
-                            You’re connected via <span className="text-white font-mono">{smartWalletConnectionHint.connectorName}</span> as{' '}
-                            <span className="text-white font-mono">{shortAddress(String(address ?? ''))}</span>.
-                          </div>
-                          {smartWalletOwnerQuery.data === true ? (
-                            <div className="text-emerald-300/90 text-xs">
-                              Owner verified — you can deploy while staying connected to this wallet. Deployment will execute through the smart wallet.
-                            </div>
-                          ) : smartWalletOwnerQuery.isLoading ? (
-                            <div className="text-amber-300/70 text-xs">Verifying onchain ownership…</div>
-                          ) : null}
-                          <div>
-                            To deploy, you must connect with an <span className="text-white">onchain owner</span> of the coin owner wallet.
-                            Connecting “Coinbase Smart Wallet” may show a different smart wallet address if you’re in a different Coinbase account.
-                          </div>
-                        </div>
-                        {coinbaseSmartWalletConnector ? (
-                          <button
-                            type="button"
-                            onClick={() => {
-                              try {
-                                disconnect()
-                              } catch {
-                                // ignore
-                              }
-                              connect({ connector: coinbaseSmartWalletConnector })
-                            }}
-                            className="btn-accent w-full"
-                          >
-                            Connect Coinbase Smart Wallet (recommended)
-                          </button>
-                        ) : null}
-                      </div>
-                    ) : null}
-
                     <div className="text-xs text-zinc-600 space-y-3">
                       <div>
-                        {executeBatchEligible ? (
-                          <>
-                            You’re an onchain owner of the creator smart wallet. Deploy will execute <span className="text-white">through</span> it.
-                            If the smart wallet is underfunded, we’ll pull the shortfall from your connected wallet via Permit2 (one-time approval).
-                          </>
-                        ) : (
-                          <>
-                            Deployment executes onchain from your <span className="text-white">connected wallet</span>. It must hold the first{' '}
-                            <span className="text-white font-medium">5,000,000 {underlyingSymbolUpper || 'TOKENS'}</span> deposit.
-                          </>
-                        )}
+                        Deploy runs from your <span className="text-white">Privy smart wallet</span> on Base. It must hold the first{' '}
+                        <span className="text-white font-medium">5,000,000 {underlyingSymbolUpper || 'TOKENS'}</span> deposit.
                       </div>
 
                       {tokenIsValid ? (
@@ -3281,7 +2573,7 @@ export function DeployVault() {
                   <div className="flex items-center justify-between gap-4">
                     <div className="text-[11px] text-zinc-500">Deploy path</div>
                     <div className="text-[11px] text-zinc-300">
-                      {executeBatchEligible ? 'ERC-4337 Smart Wallet' : '—'}
+                      Privy smart wallet
                     </div>
                   </div>
                   <div className="text-[11px] text-zinc-700">
@@ -3290,85 +2582,29 @@ export function DeployVault() {
                 </div>
               ) : null}
 
-              {isConnected && showAdvanced && !isSignedIn ? (
-                <div className="p-4 bg-amber-500/10 border border-amber-500/20 rounded-lg space-y-2">
-                  <div className="text-amber-300/90 text-sm font-medium">Sign-in required (paymaster)</div>
-                  <div className="text-amber-300/70 text-xs leading-relaxed">
-                    Deploy uses sponsored ERC‑4337 UserOperations. Sign-in is required so our paymaster can validate and sponsor the calls.
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => void signIn()}
-                    disabled={authBusy}
-                    className="btn-accent w-full"
-                  >
-                    {authBusy ? 'Signing in…' : 'Sign in'}
-                  </button>
-                </div>
-              ) : null}
-
-              {isConnected ? (
-                <div className="rounded-lg border border-white/5 bg-black/20 p-4 space-y-3">
-                  <div className="flex items-center justify-between gap-3">
-                    <div className="text-[11px] uppercase tracking-wide text-zinc-500">System status</div>
-                    <button
-                      type="button"
-                      className="text-[11px] text-zinc-400 hover:text-white underline decoration-white/10 hover:decoration-white/30"
-                      onClick={() => void healthQuery.refetch()}
-                    >
-                      Refresh
-                    </button>
-                  </div>
-
-                  {healthQuery.isFetching ? (
-                    <div className="text-[11px] text-zinc-600">Checking server configuration…</div>
-                  ) : healthQuery.isError ? (
-                    <div className="text-[11px] text-amber-300/80">Health check failed. Check `/api/health`.</div>
-                  ) : healthQuery.data ? (
-                    <div className="space-y-2">
-                      <div className="flex items-center justify-between gap-3 text-[11px]">
-                        <div className="text-zinc-500">Deploy sessions (DB + secrets)</div>
-                        <div className={healthQuery.data.deploySessions.ok ? 'text-emerald-300' : 'text-amber-300/90'}>
-                          {healthQuery.data.deploySessions.ok ? 'OK' : 'Needs config'}
-                        </div>
-                      </div>
-                      <div className="flex items-center justify-between gap-3 text-[11px]">
-                        <div className="text-zinc-500">SIWE session signing</div>
-                        <div className={healthQuery.data.siwe.ok ? 'text-emerald-300' : 'text-amber-300/90'}>
-                          {healthQuery.data.siwe.ok ? 'OK' : 'Needs AUTH_SESSION_SECRET'}
-                        </div>
-                      </div>
-                      <div className="flex items-center justify-between gap-3 text-[11px]">
-                        <div className="text-zinc-500">Paymaster / bundler (server)</div>
-                        <div className={healthQuery.data.paymaster.ok ? 'text-emerald-300' : 'text-amber-300/90'}>
-                          {healthQuery.data.paymaster.ok
-                            ? 'OK'
-                            : healthQuery.data.paymaster.endpointConfigured
-                              ? 'Blocked'
-                              : 'Needs endpoint'}
-                        </div>
-                      </div>
-
-                      {!healthGateOk ? (
-                        <div className="text-[11px] text-amber-300/80 pt-1">
-                          {healthQuery.data.deploySessions.error ||
-                            healthQuery.data.siwe.error ||
-                            healthQuery.data.paymaster.error ||
-                            'Server configuration required to deploy.'}
-                        </div>
-                      ) : null}
-                    </div>
-                  ) : (
-                    <div className="text-[11px] text-zinc-600">Health status unavailable.</div>
-                  )}
-                </div>
-              ) : null}
-
-              {!isConnected ? (
+              {!privyReady ? (
+                <button
+                  disabled
+                  className="w-full py-4 bg-black/30 border border-zinc-900/60 rounded-lg text-zinc-600 text-sm cursor-not-allowed"
+                >
+                  Loading…
+                </button>
+              ) : !privyAuthenticated ? (
                 <div className="space-y-2">
-                  <ConnectButton variant="deploy" />
-                  <div className="text-[11px] text-zinc-600">Connect a wallet to deploy your vault.</div>
+                  <button type="button" className="btn-accent w-full" onClick={() => void login()}>
+                    Continue
+                  </button>
+                  <div className="text-[11px] text-zinc-600">
+                    Sign in to set up your smart wallet. Deploy will run from your Privy smart wallet on Base.
+                  </div>
                 </div>
+              ) : !isConnected ? (
+                <button
+                  disabled
+                  className="w-full py-4 bg-black/30 border border-zinc-900/60 rounded-lg text-zinc-600 text-sm cursor-not-allowed"
+                >
+                  Setting up wallet…
+                </button>
               ) : !tokenIsValid && creatorAllowlistQuery.isLoading ? (
                 <button
                   disabled
@@ -3394,43 +2630,26 @@ export function DeployVault() {
                 >
                   Loading…
                 </button>
+              ) : tokenIsValid && zoraCoin && identity.blockingReason ? (
+                <div className="p-4 bg-amber-500/10 border border-amber-500/20 rounded-lg space-y-2">
+                  <div className="text-amber-300/90 text-sm font-medium">Identity mismatch</div>
+                  <div className="text-amber-300/70 text-xs leading-relaxed">{identity.blockingReason}</div>
+                  {farcasterVerifiedEthAddresses.length > 0 ? (
+                    <div className="text-[11px] text-amber-300/70">
+                      Verified wallets (Farcaster, suggestion-only):{' '}
+                      <span className="font-mono text-amber-200">
+                        {farcasterVerifiedEthAddresses.map((a) => shortAddress(a)).join(', ')}
+                      </span>
+                    </div>
+                  ) : null}
+                </div>
               ) : tokenIsValid && zoraCoin && !isAuthorizedDeployerOrOperator ? (
                 <button
                   disabled
                   className="w-full py-4 bg-black/30 border border-zinc-900/60 rounded-lg text-zinc-600 text-sm cursor-not-allowed"
                 >
-                  {coinSmartWallet ? (
-                    smartWalletOwnerQuery.isLoading ? (
-                      'Verifying owner authorization…'
-                    ) : (
-                      operatorMode
-                        ? 'Authorized only: connect the canonical identity wallet (or an onchain owner of the identity smart wallet).'
-                        : 'Authorized only: connect the coin’s creator/payout wallet (or an owner wallet for the coin owner address).'
-                    )
-                  ) : (
-                    operatorMode
-                      ? 'Authorized only: connect the canonical identity wallet (or an onchain owner of the identity smart wallet).'
-                      : 'Authorized only: connect the coin’s creator or payout recipient wallet to deploy'
-                  )}
+                  Authorized only: connect the coin’s canonical identity wallet to deploy.
                 </button>
-              ) : tokenIsValid && zoraCoin && identity.blockingReason && !executeBatchEligible ? (
-                <div className="p-4 bg-amber-500/10 border border-amber-500/20 rounded-lg space-y-2">
-                  <div className="text-amber-300/90 text-sm font-medium">Identity mismatch</div>
-                  <div className="text-amber-300/70 text-xs leading-relaxed">{identity.blockingReason}</div>
-                  <div className="pt-2 space-y-2">
-                    <div className="text-[11px] text-amber-300/70">
-                      Connect an owner EOA of the creator smart wallet (ERC‑4337 sender) to continue.
-                    </div>
-                    {farcasterVerifiedEthAddresses.length > 0 ? (
-                      <div className="text-[11px] text-amber-300/70">
-                        Verified wallets (Farcaster, suggestion-only):{' '}
-                        <span className="font-mono text-amber-200">
-                          {farcasterVerifiedEthAddresses.map((a) => shortAddress(a)).join(', ')}
-                        </span>
-                      </div>
-                    ) : null}
-                  </div>
-                </div>
               ) : tokenIsValid && zoraCoin && creatorAllowlistQuery.isLoading ? (
                 <button
                   disabled
@@ -3472,9 +2691,7 @@ export function DeployVault() {
 
                   <DeployVaultBatcher
                     creatorToken={creatorToken as Address}
-                    owner={(coinSmartWallet ?? identity.canonicalIdentity.address) as Address}
-                    executeBatchEligible={executeBatchEligible}
-                    isSignedIn={isSignedIn}
+                    owner={identity.canonicalIdentity.address as Address}
                     minFirstDeposit={minFirstDeposit}
                     tokenDecimals={typeof tokenDecimals === 'number' ? tokenDecimals : null}
                     depositSymbol={underlyingSymbolUpper || 'TOKENS'}

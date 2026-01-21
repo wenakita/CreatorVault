@@ -67,7 +67,11 @@ function ConnectButtonWeb3Wagmi({
   })
   const walletConnectConnector = connectors.find((c) => String(c.id) === 'walletConnect' || String(c.name ?? '').toLowerCase().includes('walletconnect'))
   const rabbyConnector = connectors.find((c) => String(c.id ?? '').toLowerCase() === 'rabby' || String(c.name ?? '').toLowerCase().includes('rabby'))
-  const zoraReadOnlyConnector = connectors.find((c) => String(c.id ?? '').toLowerCase() === 'privy-zora' || String(c.name ?? '').toLowerCase().includes('zora'))
+  const baseAppConnector = connectors.find((c) => {
+    const id = String(c.id ?? '').toLowerCase()
+    const name = String(c.name ?? '').toLowerCase()
+    return id === 'coinbasesmartwallet' || name.includes('coinbase') || name.includes('base')
+  })
 
   const injectedProvider = typeof window !== 'undefined' ? (window as any)?.ethereum : null
   const isRabbyPresent =
@@ -80,11 +84,14 @@ function ConnectButtonWeb3Wagmi({
   // On the open web, default to the most universal path:
   // - Rabby (if installed)
   // - WalletConnect (QR) fallback
-  const preferredConnector =
-    (miniApp.isMiniApp ? miniAppConnector : null) ??
-    walletConnectConnector ??
-    rabbyConnector ??
-    connectors[0]
+  const isDeployVariant = variant === 'deploy'
+  const preferredConnector = isDeployVariant
+    ? // Deploy should use a single universal path to avoid eth_sign dead-ends:
+      // - Mini App connector inside Mini Apps
+      // - WalletConnect on the open web
+      // - Base App connector as fallback when available
+      (miniApp.isMiniApp ? miniAppConnector : null) ?? walletConnectConnector ?? baseAppConnector ?? connectors[0]
+    : (miniApp.isMiniApp ? miniAppConnector : null) ?? walletConnectConnector ?? rabbyConnector ?? connectors[0]
 
   const connectDirect = useCallback(
     async (c: Connector | null | undefined, opts?: { timeoutMs?: number; label?: string }) => {
@@ -113,17 +120,29 @@ function ConnectButtonWeb3Wagmi({
     if (!preferredConnector) return
     setConnectError(null)
 
-    const ordered = uniqueConnectors([
-      // Prefer Mini App connector inside Mini Apps.
-      miniApp.isMiniApp ? miniAppConnector : null,
-      // Always try Rabby first on web (fast timeout). If it isn't installed, this usually fails fast.
-      // This avoids false negatives when wallet injection detection is flaky.
-      !miniApp.isMiniApp ? rabbyConnector : null,
-      // Universal fallback (QR).
-      !miniApp.isMiniApp ? walletConnectConnector : null,
-      preferredConnector,
-      ...connectors,
-    ])
+    const ordered = uniqueConnectors(
+      isDeployVariant
+        ? [
+            // In Mini Apps, always use the native connector.
+            miniApp.isMiniApp ? miniAppConnector : null,
+            // On web, force WalletConnect first (avoid Rabby eth_sign block).
+            !miniApp.isMiniApp ? walletConnectConnector : null,
+            // Fallback option (Base App / Coinbase Smart Wallet connector).
+            !miniApp.isMiniApp ? baseAppConnector : null,
+            preferredConnector,
+          ]
+        : [
+            // Prefer Mini App connector inside Mini Apps.
+            miniApp.isMiniApp ? miniAppConnector : null,
+            // Always try Rabby first on web (fast timeout). If it isn't installed, this usually fails fast.
+            // This avoids false negatives when wallet injection detection is flaky.
+            !miniApp.isMiniApp ? rabbyConnector : null,
+            // Universal fallback (QR).
+            !miniApp.isMiniApp ? walletConnectConnector : null,
+            preferredConnector,
+            ...connectors,
+          ],
+    )
 
     for (const c of ordered) {
       try {
@@ -133,7 +152,7 @@ function ConnectButtonWeb3Wagmi({
         // - Extension wallets may "hang" if the provider is in a bad state.
         //   In that case we want to auto-fallback to WalletConnect instead of staying "Connecting…" forever.
         const timeoutMs =
-          !miniApp.isMiniApp && (id === 'rabby' || id.toLowerCase().includes('metamask'))
+          !miniApp.isMiniApp && !isDeployVariant && (id === 'rabby' || id.toLowerCase().includes('metamask'))
             ? 3_000
             : // WalletConnect often requires user action (scan QR / confirm) so give it more time.
               !miniApp.isMiniApp && id.toLowerCase().includes('walletconnect')
@@ -171,6 +190,8 @@ function ConnectButtonWeb3Wagmi({
   }, [
     connectAsync,
     connectors,
+    baseAppConnector,
+    isDeployVariant,
     miniApp.isMiniApp,
     miniAppConnector,
     preferredConnector,
@@ -178,11 +199,6 @@ function ConnectButtonWeb3Wagmi({
     reset,
     walletConnectConnector,
   ])
-
-  const connectZoraReadOnly = useCallback(async () => {
-    // Cross-app consent can require a user popup/confirm.
-    await connectDirect(zoraReadOnlyConnector, { timeoutMs: 60_000, label: 'Zora' })
-  }, [connectDirect, zoraReadOnlyConnector])
 
   // Best-effort: preserve a single "Connect Wallet" click when Web3 is lazily enabled.
   useEffect(() => {
@@ -227,7 +243,7 @@ function ConnectButtonWeb3Wagmi({
   const isSignedIn =
     !!address && !!authAddress && authAddress.toLowerCase() === address.toLowerCase()
 
-  const isReadOnlyConnector = String(connector?.id ?? '').toLowerCase() === 'privy-zora'
+  const isReadOnlyConnector = false
 
   async function signIn() {
     if (!address) return
@@ -406,7 +422,6 @@ function ConnectButtonWeb3Wagmi({
     )
   }
 
-  const isDeployVariant = variant === 'deploy'
   const primaryLabel = isDeployVariant ? 'Continue' : 'Connect Wallet'
 
   return (
@@ -455,18 +470,6 @@ function ConnectButtonWeb3Wagmi({
                   exit={{ opacity: 0, y: -10 }}
                   className="absolute left-0 top-full mt-3 w-[min(360px,calc(100vw-2rem))] card p-3 z-50 space-y-2"
                 >
-                  {rabbyConnector ? (
-                    <button
-                      type="button"
-                      disabled={isPending}
-                      className="w-full text-left py-3 px-4 hover:bg-zinc-950 transition-colors disabled:opacity-50"
-                      onClick={() => void connectDirect(rabbyConnector, { timeoutMs: 6_000, label: 'Rabby' })}
-                    >
-                      <span className="label block mb-1">Rabby (extension)</span>
-                      <span className="text-xs text-zinc-600">Fastest on desktop if installed.</span>
-                    </button>
-                  ) : null}
-
                   {walletConnectConnector ? (
                     <button
                       type="button"
@@ -475,20 +478,19 @@ function ConnectButtonWeb3Wagmi({
                       onClick={() => void connectDirect(walletConnectConnector, { timeoutMs: 90_000, label: 'WalletConnect' })}
                     >
                       <span className="label block mb-1">WalletConnect (QR)</span>
-                      <span className="text-xs text-zinc-600">Use any wallet on mobile.</span>
+                      <span className="text-xs text-zinc-600">Recommended for deploy (works across wallets).</span>
                     </button>
                   ) : null}
 
-                  {zoraReadOnlyConnector ? (
+                  {baseAppConnector ? (
                     <button
                       type="button"
                       disabled={isPending}
                       className="w-full text-left py-3 px-4 hover:bg-zinc-950 transition-colors disabled:opacity-50"
-                      onClick={() => void connectZoraReadOnly()}
-                      title="Import your Zora embedded wallet address (read-only)"
+                      onClick={() => void connectDirect(baseAppConnector, { timeoutMs: 60_000, label: 'Base App' })}
                     >
-                      <span className="label block mb-1">Import Zora wallet (read-only)</span>
-                      <span className="text-xs text-zinc-600">Imports address only — can’t sign.</span>
+                      <span className="label block mb-1">Base App</span>
+                      <span className="text-xs text-zinc-600">If you’re using a Coinbase smart wallet.</span>
                     </button>
                   ) : null}
                 </motion.div>
@@ -496,16 +498,6 @@ function ConnectButtonWeb3Wagmi({
             ) : null}
           </AnimatePresence>
         </div>
-      ) : !miniApp.isMiniApp && zoraReadOnlyConnector ? (
-        <button
-          type="button"
-          disabled={isPending}
-          onClick={() => void connectZoraReadOnly()}
-          className="btn-primary px-6 py-2 disabled:opacity-50"
-          title="Import your Zora embedded wallet address (read-only)"
-        >
-          <span className="label">Connect Zora wallet</span>
-        </button>
       ) : null}
       {connectError ? <div className="text-[10px] text-zinc-500">{connectError}</div> : null}
     </div>

@@ -35,9 +35,13 @@ const baseRpcUrls = (() => {
  * - If you rotate the project id, set `VITE_WALLETCONNECT_PROJECT_ID` in Vercel.
  */
 const DEFAULT_WALLETCONNECT_PROJECT_ID = 'bc3dfd319b4a0ecaa25cdee7e36bd0c4'
-const walletConnectProjectId = (
-  (import.meta.env.VITE_WALLETCONNECT_PROJECT_ID as string | undefined)?.trim() || DEFAULT_WALLETCONNECT_PROJECT_ID
-).trim()
+const walletConnectProjectId = (() => {
+  const env = (import.meta.env.VITE_WALLETCONNECT_PROJECT_ID as string | undefined)?.trim()
+  // In production we require an explicit WalletConnect project ID to avoid flaky defaults and
+  // "allowed origins" mismatches across 4626.fun / app.4626.fun / preview domains.
+  if (!env) return import.meta.env.DEV ? DEFAULT_WALLETCONNECT_PROJECT_ID : ''
+  return env
+})().trim()
 
 const walletConnectMetadata = {
   name: 'Creator Vaults',
@@ -53,11 +57,15 @@ export const wagmiConfig = createWagmiConfig({
     farcasterMiniApp(),
     // Prefer Rabby explicitly (avoids multi-wallet `window.ethereum` conflicts and gives users a clear "Rabby" option).
     injected({ target: 'rabby' }),
-    walletConnect({
-      projectId: walletConnectProjectId,
-      metadata: walletConnectMetadata,
-      showQrModal: true,
-    }),
+    ...(walletConnectProjectId
+      ? [
+          walletConnect({
+            projectId: walletConnectProjectId,
+            metadata: walletConnectMetadata,
+            showQrModal: true,
+          }),
+        ]
+      : []),
     // Privy Global Wallet (Requester): Zora embedded wallet (read-only provider).
     zoraGlobalWalletConnector(),
   ],
