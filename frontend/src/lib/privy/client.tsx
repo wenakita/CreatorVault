@@ -100,7 +100,9 @@ export function PrivyClientProvider({ children }: { children: ReactNode }) {
           appearance: {
             // Show Base App (Base Account) as an external wallet option in Privy UI.
             // This is safe to include even if the user never opens Privy wallet connect.
-            walletList: ['base_account'],
+            // Include common EOA options so users can sign in with their browser wallet.
+            // (Strings are Privy-defined identifiers; extra entries are safe if unsupported.)
+            walletList: ['base_account', 'metamask', 'coinbase_wallet', 'wallet_connect'],
           },
           externalWallets: {
             // Prefer Coinbase Smart Wallet (Base Account) instead of EOA-only Coinbase Wallet.
@@ -126,7 +128,8 @@ export function PrivyClientProvider({ children }: { children: ReactNode }) {
           loginMethodsAndOrder: {
             // Include Farcaster for Mini App + Base App auth-address support.
             // Note: Telegram OAuth often fails in strict web contexts unless fully configured; keep it off by default.
-            primary: ['farcaster', 'google', 'twitter'],
+            // Allow external/browser wallets as a first-class login method.
+            primary: ['wallet', 'farcaster', 'google', 'twitter'],
             overflow: [],
           },
         } as any}

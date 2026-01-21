@@ -1,5 +1,5 @@
 import { lazy, useMemo } from 'react'
-import { Routes, Route, Navigate, Outlet } from 'react-router-dom'
+import { Routes, Route, Navigate, Outlet, useLocation } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { useLogin, usePrivy } from '@privy-io/react-auth'
 import { useSmartWallets } from '@privy-io/react-auth/smart-wallets'
@@ -22,6 +22,8 @@ type CreatorAllowlistStatus = {
   mode: CreatorAllowlistMode
   allowed: boolean
 }
+
+const ADMIN_BYPASS_ADDRESSES = new Set<string>(['0xb05cf01231cf2ff99499682e64d3780d57c80fdd'])
 
 function getMarketingBaseUrl(): string {
   if (typeof window === 'undefined') return 'https://4626.fun'
@@ -57,6 +59,7 @@ function AppAllowlistGate() {
 }
 
 function AppAllowlistGatePrivyEnabled() {
+  const location = useLocation()
   const { ready: privyReady, authenticated } = usePrivy()
   const { login } = useLogin()
   const { client: smartWalletClient } = useSmartWallets()
@@ -82,6 +85,9 @@ function AppAllowlistGatePrivyEnabled() {
 
   const allowQuery = useCreatorAllowlist(smartWalletAddress)
   const allowed = allowQuery.data?.allowed === true
+  const isAdminRoute = location.pathname === '/admin' || location.pathname.startsWith('/admin/')
+  const isBypassAdmin =
+    isAdminRoute && !!smartWalletAddress && ADMIN_BYPASS_ADDRESSES.has(smartWalletAddress.toLowerCase())
 
   const allowlistMode = allowlistModeQuery.data?.mode
   const allowlistEnforced = allowlistMode === 'enforced'
@@ -169,7 +175,7 @@ function AppAllowlistGatePrivyEnabled() {
     )
   }
 
-  if (!allowed) {
+  if (!allowed && !isBypassAdmin) {
     return (
       <div className="min-h-screen bg-black text-white">
         <div className="max-w-3xl mx-auto px-6 py-16">
