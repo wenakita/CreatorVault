@@ -69,6 +69,7 @@
       "headers": { "cache-control": "no-store" },
       "continue": true
     },
+    { "src": "/api/(.*)", "dest": "/api/[...path]" },
     { "src": "/__api/(.*)", "dest": "/api/$1" },
     { "handle": "filesystem" },
     { "src": "/(.*)", "dest": "/index.html" }
