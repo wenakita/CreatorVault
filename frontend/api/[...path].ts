@@ -37,16 +37,33 @@ function isSafeSubpath(p: string): boolean {
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
-  const subpath = getApiSubpath(req)
-  if (!isSafeSubpath(subpath)) {
-    return res.status(404).json({ success: false, error: 'Not found' })
-  }
+  try {
+    const subpath = getApiSubpath(req)
+    if (!isSafeSubpath(subpath)) {
+      return res.status(404).json({ success: false, error: 'Not found' })
+    }
 
-  const h = (apiRoutes as Record<string, ApiHandler>)[subpath] ?? null
-  if (!h) {
-    return res.status(404).json({ success: false, error: 'Not found' })
-  }
+    const h = (apiRoutes as Record<string, ApiHandler>)[subpath] ?? null
+    if (!h) {
+      return res.status(404).json({ success: false, error: 'Not found' })
+    }
 
-  return await h(req, res)
+    return await h(req, res)
+  } catch (e: unknown) {
+    // Prevent Vercel from treating thrown exceptions as a hard crash.
+    // Surface a minimal, actionable message for debugging.
+    const message = e instanceof Error ? e.message : String(e)
+    const stack = e instanceof Error ? e.stack : null
+    try {
+      if (!res.headersSent) res.setHeader('Cache-Control', 'no-store')
+    } catch {
+      // ignore
+    }
+    return res.status(500).json({
+      success: false,
+      error: message || 'Unhandled API error',
+      ...(stack ? { stack } : null),
+    })
+  }
 }
 
