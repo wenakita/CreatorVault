@@ -103,20 +103,34 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       FROM waitlist_signups
       WHERE persona = 'creator' AND has_creator_coin = TRUE AND referral_code IS NOT NULL
     ),
+    conversions AS (
+      SELECT referrer_signup_id, COUNT(*)::int AS conversions
+      FROM referral_conversions
+      WHERE is_valid = TRUE
+        AND created_at >= ${start.toISOString()}
+        AND created_at < ${end.toISOString()}
+      GROUP BY referrer_signup_id
+    ),
+    clicks AS (
+      SELECT referrer_signup_id,
+        COUNT(DISTINCT COALESCE(session_id, ip_hash, ua_hash))::int AS unique_clicks
+      FROM referral_clicks
+      WHERE is_bot_suspected = FALSE
+        AND created_at >= ${start.toISOString()}
+        AND created_at < ${end.toISOString()}
+      GROUP BY referrer_signup_id
+    ),
     scored AS (
       SELECT r.id,
-        COALESCE(COUNT(c.id), 0)::int AS conversions
+        COALESCE(conv.conversions, 0)::int AS conversions,
+        COALESCE(clk.unique_clicks, 0)::int AS unique_clicks
       FROM referrers r
-      LEFT JOIN referral_conversions c
-        ON c.referrer_signup_id = r.id
-       AND c.is_valid = TRUE
-       AND c.created_at >= ${start.toISOString()}
-       AND c.created_at < ${end.toISOString()}
-      GROUP BY r.id
+      LEFT JOIN conversions conv ON conv.referrer_signup_id = r.id
+      LEFT JOIN clicks clk ON clk.referrer_signup_id = r.id
     ),
     ranked AS (
       SELECT id, conversions,
-        DENSE_RANK() OVER (ORDER BY conversions DESC, id ASC)::int AS rank
+        DENSE_RANK() OVER (ORDER BY conversions DESC, unique_clicks DESC, id ASC)::int AS rank
       FROM scored
     )
     SELECT rank FROM ranked WHERE id = ${signupId} LIMIT 1;
@@ -129,18 +143,30 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       FROM waitlist_signups
       WHERE persona = 'creator' AND has_creator_coin = TRUE AND referral_code IS NOT NULL
     ),
+    conversions AS (
+      SELECT referrer_signup_id, COUNT(*)::int AS conversions
+      FROM referral_conversions
+      WHERE is_valid = TRUE
+      GROUP BY referrer_signup_id
+    ),
+    clicks AS (
+      SELECT referrer_signup_id,
+        COUNT(DISTINCT COALESCE(session_id, ip_hash, ua_hash))::int AS unique_clicks
+      FROM referral_clicks
+      WHERE is_bot_suspected = FALSE
+      GROUP BY referrer_signup_id
+    ),
     scored AS (
       SELECT r.id,
-        COALESCE(COUNT(c.id), 0)::int AS conversions
+        COALESCE(conv.conversions, 0)::int AS conversions,
+        COALESCE(clk.unique_clicks, 0)::int AS unique_clicks
       FROM referrers r
-      LEFT JOIN referral_conversions c
-        ON c.referrer_signup_id = r.id
-       AND c.is_valid = TRUE
-      GROUP BY r.id
+      LEFT JOIN conversions conv ON conv.referrer_signup_id = r.id
+      LEFT JOIN clicks clk ON clk.referrer_signup_id = r.id
     ),
     ranked AS (
       SELECT id, conversions,
-        DENSE_RANK() OVER (ORDER BY conversions DESC, id ASC)::int AS rank
+        DENSE_RANK() OVER (ORDER BY conversions DESC, unique_clicks DESC, id ASC)::int AS rank
       FROM scored
     )
     SELECT rank FROM ranked WHERE id = ${signupId} LIMIT 1;

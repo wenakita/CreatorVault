@@ -55,8 +55,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const sessionId = typeof body?.sessionId === 'string' ? body.sessionId.trim() : ''
   const landingUrl = typeof body?.landingUrl === 'string' ? body.landingUrl.trim() : ''
 
+  const uaRaw = getUserAgent(req)
   const ipHash = hashForAttribution(getClientIp(req))
-  const uaHash = hashForAttribution(getUserAgent(req))
+  const uaHash = hashForAttribution(uaRaw)
+  const uaLower = String(uaRaw || '').toLowerCase()
+  const isBotSuspected =
+    !uaLower ||
+    /(bot|crawler|spider|headless|pingdom|uptime|monitor|curl|wget|httpclient)/i.test(uaLower)
 
   // Rate limit: ignore repeated clicks from same session within 10 seconds.
   if (sessionId) {
@@ -91,7 +96,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       ${uaHash},
       ${sessionId || null},
       ${landingUrl || null},
-      FALSE,
+      ${isBotSuspected},
       NOW()
     );
   `
