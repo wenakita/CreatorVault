@@ -1,5 +1,5 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { logger } from './_lib/logger.js';
+import { logger } from '../server/_lib/logger.js';
 
 // Declare process for Node.js environment
 declare const process: { env: Record<string, string | undefined> };

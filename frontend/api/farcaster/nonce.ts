@@ -9,7 +9,7 @@ import {
   setCookie,
   setCors,
   setNoStore,
-} from './_shared.js'
+} from '../../server/farcaster/_shared.js'
 
 type NonceResponse = { nonce: string }
 

@@ -1,7 +1,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 
-import { type ApiEnvelope, handleOptions, setCors, setNoStore } from './auth/_shared.js'
-import { getDb } from './_lib/postgres.js'
+import { type ApiEnvelope, handleOptions, setCors, setNoStore } from '../server/auth/_shared.js'
+import { getDb } from '../server/_lib/postgres.js'
 
 declare const process: { env: Record<string, string | undefined> }
 
@@ -257,10 +257,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   try {
     // Preferred schema (includes persona + has_creator_coin).
-    const r = await db.sql<{
-      created: boolean
-      email: string
-    }>`
+    const r = await db.sql`
       INSERT INTO waitlist_signups (
         email,
         primary_wallet,
@@ -294,10 +291,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       RETURNING (xmax = 0) AS created, email;
     `
 
-    const row = r?.rows?.[0]
+    const row = (r?.rows?.[0] ?? null) as { created?: unknown; email?: unknown } | null
     if (!row) throw new Error('Insert failed')
 
-    const data: WaitlistResponse = { created: Boolean(row.created), email: row.email }
+    const data: WaitlistResponse = { created: Boolean(row.created), email: String(row.email ?? '') }
     return res.status(200).json({ success: true, data } satisfies ApiEnvelope<WaitlistResponse>)
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : 'Waitlist insert failed'
@@ -309,7 +306,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         // Reset guard in case we raced a cold start.
         waitlistSchemaEnsured = false
         await ensureWaitlistSchema(db)
-        const rRetry = await db.sql<{ created: boolean; email: string }>`
+        const rRetry = await db.sql`
           INSERT INTO waitlist_signups (
             email,
             primary_wallet,
@@ -342,9 +339,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                 updated_at = NOW()
           RETURNING (xmax = 0) AS created, email;
         `
-        const rowRetry = rRetry?.rows?.[0]
+        const rowRetry = (rRetry?.rows?.[0] ?? null) as { created?: unknown; email?: unknown } | null
         if (!rowRetry) throw new Error('Insert failed')
-        const dataRetry: WaitlistResponse = { created: Boolean(rowRetry.created), email: rowRetry.email }
+        const dataRetry: WaitlistResponse = { created: Boolean(rowRetry.created), email: String(rowRetry.email ?? '') }
         return res.status(200).json({ success: true, data: dataRetry } satisfies ApiEnvelope<WaitlistResponse>)
       } catch (eRetry: any) {
         const msgRetry = eRetry instanceof Error ? eRetry.message : msg
@@ -359,7 +356,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       (lower.includes('persona') || lower.includes('has_creator_coin') || lower.includes('farcaster_fid'))
     ) {
       try {
-        const r2 = await db.sql<{ created: boolean; email: string }>`
+        const r2 = await db.sql`
           INSERT INTO waitlist_signups (email, primary_wallet, privy_user_id, embedded_wallet, created_at, updated_at)
           VALUES (${email}, ${primaryWallet.length > 0 ? primaryWallet : null}, ${privyUserId}, ${embeddedWallet}, NOW(), NOW())
           ON CONFLICT (email) DO UPDATE
@@ -369,9 +366,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                 updated_at = NOW()
           RETURNING (xmax = 0) AS created, email;
         `
-        const row2 = r2?.rows?.[0]
+        const row2 = (r2?.rows?.[0] ?? null) as { created?: unknown; email?: unknown } | null
         if (!row2) throw new Error('Insert failed')
-        const data2: WaitlistResponse = { created: Boolean(row2.created), email: row2.email }
+        const data2: WaitlistResponse = { created: Boolean(row2.created), email: String(row2.email ?? '') }
         return res.status(200).json({ success: true, data: data2 } satisfies ApiEnvelope<WaitlistResponse>)
       } catch (e2: any) {
         const msg2 = e2 instanceof Error ? e2.message : msg

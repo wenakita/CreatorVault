@@ -1,6 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { logger } from './_lib/logger.js';
-import { handleOptions, setCors } from './auth/_shared.js'
+import { logger } from '../server/_lib/logger.js';
+import { handleOptions, setCors } from '../server/auth/_shared.js'
 
 export default async function handler(
   req: VercelRequest,

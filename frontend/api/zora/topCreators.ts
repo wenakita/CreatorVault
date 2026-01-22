@@ -1,6 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 
-import { getNumberQuery, getStringQuery, handleOptions, isAddressLike, setCache, setCors } from './_shared.js'
+import { getNumberQuery, getStringQuery, handleOptions, isAddressLike, setCache, setCors } from '../../server/zora/_shared.js'
 
 type ApiEnvelope<T> = { success: boolean; data?: T; error?: string }
 

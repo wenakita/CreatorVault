@@ -1,6 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 
-import { type ApiEnvelope, clearCookie, COOKIE_NONCE, COOKIE_SESSION, handleOptions, setCors, setNoStore } from './_shared.js'
+import { type ApiEnvelope, clearCookie, COOKIE_NONCE, COOKIE_SESSION, handleOptions, setCors, setNoStore } from '../../server/auth/_shared.js'
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   setCors(req, res)

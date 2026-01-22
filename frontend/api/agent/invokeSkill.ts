@@ -9,14 +9,14 @@ import {
   setCors,
   setNoStore,
   type ApiEnvelope,
-} from '../auth/_shared.js'
+} from '../../server/auth/_shared.js'
 import {
   getRepoRootPath,
   resolveSkill,
   resolveSkillScriptPath,
   type ResolvedSkill,
-} from '../_lib/skills.js'
-import { logger } from '../_lib/logger.js'
+} from '../../server/_lib/skills.js'
+import { logger } from '../../server/_lib/logger.js'
 
 declare const process: { env: Record<string, string | undefined> }
 

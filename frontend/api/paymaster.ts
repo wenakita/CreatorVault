@@ -13,12 +13,12 @@ import {
   type Hex,
 } from 'viem'
 
-import { getApiContracts } from './_lib/contracts.js'
-import { logger } from './_lib/logger.js'
-import { ensureCreatorAccessSchema, getDb, isDbConfigured } from './_lib/postgres.js'
-import { getActiveDeploySessionForSender, getDeploySessionByTokenHash, hashDeployToken, signDeployToken } from './_lib/deploySessions.js'
-import { getSupabaseAdmin, isSupabaseAdminConfigured } from './_lib/supabaseAdmin.js'
-import { handleOptions, readJsonBody, readSessionFromRequest, setCors, setNoStore } from './auth/_shared.js'
+import { getApiContracts } from '../server/_lib/contracts.js'
+import { logger } from '../server/_lib/logger.js'
+import { ensureCreatorAccessSchema, getDb, isDbConfigured } from '../server/_lib/postgres.js'
+import { getActiveDeploySessionForSender, getDeploySessionByTokenHash, hashDeployToken, signDeployToken } from '../server/_lib/deploySessions.js'
+import { getSupabaseAdmin, isSupabaseAdminConfigured } from '../server/_lib/supabaseAdmin.js'
+import { handleOptions, readJsonBody, readSessionFromRequest, setCors, setNoStore } from '../server/auth/_shared.js'
 
 declare const process: { env: Record<string, string | undefined> }
 

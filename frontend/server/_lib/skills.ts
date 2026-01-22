@@ -173,3 +173,4 @@ export function resolveSkillScriptPath(skillPath: string, scriptRef: string): st
 export function getRepoRootPath(): string {
   return getRepoRoot()
 }
+

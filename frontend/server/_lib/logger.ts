@@ -35,3 +35,4 @@ function safeStringify(data: unknown): string {
     return String(data)
   }
 }
+

@@ -10,7 +10,7 @@ import {
   requireServerKey,
   setCache,
   setCors,
-} from './_shared.js'
+} from '../../server/zora/_shared.js'
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   setCors(req, res)

@@ -1,5 +1,5 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
-import { handleOptions, setCors } from '../auth/_shared.js'
+import { handleOptions, setCors } from '../../server/auth/_shared.js'
 
 declare const process: { env: Record<string, string | undefined> }
 

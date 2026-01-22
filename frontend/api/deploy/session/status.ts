@@ -2,8 +2,8 @@ import type { VercelRequest, VercelResponse } from '@vercel/node'
 
 import { getAddress } from 'viem'
 
-import { handleOptions, readJsonBody, readSessionFromRequest, setCors, setNoStore } from '../../auth/_shared.js'
-import { getDeploySessionById } from '../../_lib/deploySessions.js'
+import { handleOptions, readJsonBody, readSessionFromRequest, setCors, setNoStore } from '../../../server/auth/_shared.js'
+import { getDeploySessionById } from '../../../server/_lib/deploySessions.js'
 
 type ApiEnvelope<T> = { success: boolean; data?: T; error?: string }
 

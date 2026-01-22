@@ -1,6 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 
-import { type ApiEnvelope, COOKIE_NONCE, handleOptions, makeNonce, makeNonceToken, setCookie, setCors, setNoStore } from './_shared.js'
+import { type ApiEnvelope, COOKIE_NONCE, handleOptions, makeNonce, makeNonceToken, setCookie, setCors, setNoStore } from '../../server/auth/_shared.js'
 
 type NonceResponse = {
   nonce: string

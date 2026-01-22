@@ -23,3 +23,4 @@ export function getSupabaseAdmin(): SupabaseClient {
 export function isSupabaseAdminConfigured(): boolean {
   return Boolean(supabaseAdmin)
 }
+

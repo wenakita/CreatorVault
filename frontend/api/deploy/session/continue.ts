@@ -6,9 +6,9 @@ import { privateKeyToAccount } from 'viem/accounts'
 import { base } from 'viem/chains'
 import { createBundlerClient, createPaymasterClient, sendUserOperation, toCoinbaseSmartAccount, waitForUserOperationReceipt } from 'viem/account-abstraction'
 
-import { handleOptions, readJsonBody, readSessionFromRequest, setCors, setNoStore } from '../../auth/_shared.js'
-import { logger } from '../../_lib/logger.js'
-import { decryptWithSecret, getDeploySessionById, signDeployToken, updateDeploySession } from '../../_lib/deploySessions.js'
+import { handleOptions, readJsonBody, readSessionFromRequest, setCors, setNoStore } from '../../../server/auth/_shared.js'
+import { logger } from '../../../server/_lib/logger.js'
+import { decryptWithSecret, getDeploySessionById, signDeployToken, updateDeploySession } from '../../../server/_lib/deploySessions.js'
 
 declare const process: { env: Record<string, string | undefined> }
 

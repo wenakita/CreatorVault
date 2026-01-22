@@ -1,7 +1,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 import { Errors, createClient } from '@farcaster/quick-auth'
 
-import { type ApiEnvelope, getFarcasterDomain, setCors, setNoStore, handleOptions } from './_shared.js'
+import { type ApiEnvelope, getFarcasterDomain, setCors, setNoStore, handleOptions } from '../../server/farcaster/_shared.js'
 
 type FarcasterMe = {
   fid: number

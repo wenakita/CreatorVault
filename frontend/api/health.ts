@@ -1,8 +1,8 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 
-import { type ApiEnvelope, handleOptions, setCors, setNoStore } from './auth/_shared.js'
-import { getDb, getDbInitError, isDbConfigured } from './_lib/postgres.js'
-import { getSupabaseAdmin, isSupabaseAdminConfigured } from './_lib/supabaseAdmin.js'
+import { type ApiEnvelope, handleOptions, setCors, setNoStore } from '../server/auth/_shared.js'
+import { getDb, getDbInitError, isDbConfigured } from '../server/_lib/postgres.js'
+import { getSupabaseAdmin, isSupabaseAdminConfigured } from '../server/_lib/supabaseAdmin.js'
 
 declare const process: { env: Record<string, string | undefined> }
 

@@ -109,3 +109,4 @@ export function getApiContracts(): ApiContracts {
     strategyDeploymentBatcher: pickAddress('STRATEGY_DEPLOYMENT_BATCHER'),
   }
 }
+

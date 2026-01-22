@@ -1,7 +1,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 
-import { type ApiEnvelope, handleOptions, setCors, setNoStore } from '../auth/_shared.js'
-import { ensureCreatorAccessSchema, getDb, getDbInitError, isDbConfigured } from '../_lib/postgres.js'
+import { type ApiEnvelope, handleOptions, setCors, setNoStore } from '../../server/auth/_shared.js'
+import { ensureCreatorAccessSchema, getDb, getDbInitError, isDbConfigured } from '../../server/_lib/postgres.js'
 
 type DebugResponse = {
   ok: boolean

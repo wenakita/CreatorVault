@@ -4,9 +4,9 @@ import { randomBytes } from 'node:crypto'
 import { getAddress, isAddress, type Address, type Hex } from 'viem'
 import { privateKeyToAccount } from 'viem/accounts'
 
-import { handleOptions, readJsonBody, readSessionFromRequest, setCors, setNoStore } from '../../auth/_shared.js'
-import { ensureDeploySessionsSchema, hashDeployToken, insertDeploySession, randomDeployToken, randomId } from '../../_lib/deploySessions.js'
-import { isDbConfigured } from '../../_lib/postgres.js'
+import { handleOptions, readJsonBody, readSessionFromRequest, setCors, setNoStore } from '../../../server/auth/_shared.js'
+import { ensureDeploySessionsSchema, hashDeployToken, insertDeploySession, randomDeployToken, randomId } from '../../../server/_lib/deploySessions.js'
+import { isDbConfigured } from '../../../server/_lib/postgres.js'
 
 type ApiEnvelope<T> = { success: boolean; data?: T; error?: string }
 

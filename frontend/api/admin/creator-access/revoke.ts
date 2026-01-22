@@ -1,9 +1,9 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 
-import { type ApiEnvelope, handleOptions, readJsonBody, setCors, setNoStore } from '../../auth/_shared.js'
-import { getDb, isDbConfigured } from '../../_lib/postgres.js'
-import { getSupabaseAdmin, isSupabaseAdminConfigured } from '../../_lib/supabaseAdmin.js'
-import { getSessionAddress, isAdminAddress } from '../../_lib/session.js'
+import { type ApiEnvelope, handleOptions, readJsonBody, setCors, setNoStore } from '../../../server/auth/_shared.js'
+import { getDb, isDbConfigured } from '../../../server/_lib/postgres.js'
+import { getSupabaseAdmin, isSupabaseAdminConfigured } from '../../../server/_lib/supabaseAdmin.js'
+import { getSessionAddress, isAdminAddress } from '../../../server/_lib/session.js'
 
 type RevokeBody = {
   address: string
