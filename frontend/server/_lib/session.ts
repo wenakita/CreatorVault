@@ -1,6 +1,6 @@
 import type { VercelRequest } from '@vercel/node'
 
-import { readSessionFromRequest } from '../auth/_shared.js'
+import { readSessionFromRequest } from '../auth/_shared'
 
 declare const process: { env: Record<string, string | undefined> }
 

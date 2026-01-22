@@ -1,7 +1,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 import { randomBytes } from 'node:crypto'
-import { setCors as setCorsAllowlist } from '../auth/_shared.js'
-import { readNonceToken } from '../auth/_shared.js'
+import { setCors as setCorsAllowlist } from '../auth/_shared'
+import { readNonceToken } from '../auth/_shared'
 
 declare const process: { env: Record<string, string | undefined> }
 
