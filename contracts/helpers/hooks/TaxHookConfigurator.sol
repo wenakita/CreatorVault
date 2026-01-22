@@ -17,38 +17,27 @@ pragma solidity ^0.8.20;
  *      - GaugeController then distributes: 50% burn, 31% lottery, 19% creator
  */
 
-/// @notice Interface for the existing Tax Hook
+import {IHooks} from "@uniswap/v4-core/src/interfaces/IHooks.sol";
+import {Currency} from "@uniswap/v4-core/src/types/Currency.sol";
+import {PoolKey} from "@uniswap/v4-core/src/types/PoolKey.sol";
+import {PoolId, PoolIdLibrary} from "@uniswap/v4-core/src/types/PoolId.sol";
+
+/// @notice Interface for the existing Tax Hook (poolId-keyed configuration)
 interface ITaxHook {
-    /// @notice Configuration for a specific pool
     struct TaxConfig {
-        uint256 buyTaxBps;      // Tax on buys in basis points
-        uint256 sellTaxBps;     // Tax on sells in basis points  
-        address taxRecipient;    // Where taxes go
-        bool enabled;            // Whether taxes are active
+        uint256 buyTaxBps; // Tax on buys in basis points
+        uint256 sellTaxBps; // Tax on sells in basis points
+        address taxRecipient; // Where taxes go
+        bool enabled; // Whether taxes are active
     }
-    
-    /// @notice Set tax configuration for a pool
-    /// @param poolId The pool identifier (keccak256 of pool key)
-    /// @param config The tax configuration
+
     function setTaxConfig(bytes32 poolId, TaxConfig calldata config) external;
-    
-    /// @notice Get tax configuration for a pool
     function getTaxConfig(bytes32 poolId) external view returns (TaxConfig memory);
-    
-    /// @notice Check if caller can configure a pool
     function canConfigure(bytes32 poolId, address caller) external view returns (bool);
 }
 
-/// @notice Uniswap V4 Pool Key structure
-struct PoolKey {
-    address currency0;
-    address currency1;
-    uint24 fee;
-    int24 tickSpacing;
-    address hooks;
-}
-
 contract TaxHookConfigurator {
+    using PoolIdLibrary for PoolKey;
     
     // =================================
     // CONSTANTS
@@ -86,6 +75,7 @@ contract TaxHookConfigurator {
      * @param _shareOFT The CreatorShareOFT token address
      * @param _gaugeController The CreatorGaugeController address (fee recipient)
      * @param _feeBps Fee in basis points (690 = 6.9%)
+     * @param _poolLPFee Pool swap fee for the v4 pool (hundredths of a bip; often 0 when using a tax hook)
      * @param _tickSpacing Tick spacing for the pool
      * @return poolId The pool identifier
      */
@@ -93,6 +83,7 @@ contract TaxHookConfigurator {
         address _shareOFT,
         address _gaugeController,
         uint256 _feeBps,
+        uint24 _poolLPFee,
         int24 _tickSpacing
     ) external returns (bytes32 poolId) {
         require(_shareOFT != address(0), "Invalid ShareOFT");
@@ -104,8 +95,15 @@ contract TaxHookConfigurator {
             ? (_shareOFT, WETH) 
             : (WETH, _shareOFT);
         
-        // Compute pool ID
-        poolId = _computePoolId(token0, token1, _tickSpacing);
+        // Compute pool ID exactly as v4 does: keccak256(abi.encode(PoolKey))
+        PoolKey memory key = PoolKey({
+            currency0: Currency.wrap(token0),
+            currency1: Currency.wrap(token1),
+            fee: _poolLPFee,
+            tickSpacing: _tickSpacing,
+            hooks: IHooks(TAX_HOOK)
+        });
+        poolId = PoolId.unwrap(key.toId());
         
         // Configure the hook
         ITaxHook.TaxConfig memory config = ITaxHook.TaxConfig({
@@ -126,9 +124,10 @@ contract TaxHookConfigurator {
     function configureCreatorPoolDefault(
         address _shareOFT,
         address _gaugeController,
+        uint24 _poolLPFee,
         int24 _tickSpacing
     ) external returns (bytes32 poolId) {
-        return this.configureCreatorPool(_shareOFT, _gaugeController, DEFAULT_FEE_BPS, _tickSpacing);
+        return this.configureCreatorPool(_shareOFT, _gaugeController, DEFAULT_FEE_BPS, _poolLPFee, _tickSpacing);
     }
     
     /**
@@ -177,60 +176,19 @@ contract TaxHookConfigurator {
      */
     function getPoolId(
         address _shareOFT,
+        uint24 _poolLPFee,
         int24 _tickSpacing
     ) external pure returns (bytes32) {
         (address token0, address token1) = _shareOFT < WETH 
             ? (_shareOFT, WETH) 
             : (WETH, _shareOFT);
-        return _computePoolId(token0, token1, _tickSpacing);
-    }
-    
-    /**
-     * @notice Get current config for a pool
-     */
-    function getConfig(bytes32 poolId) external view returns (ITaxHook.TaxConfig memory) {
-        return ITaxHook(TAX_HOOK).getTaxConfig(poolId);
-    }
-    
-    /**
-     * @notice Check if pool is configured
-     */
-    function isConfigured(bytes32 poolId) external view returns (bool) {
-        ITaxHook.TaxConfig memory config = ITaxHook(TAX_HOOK).getTaxConfig(poolId);
-        return config.enabled && config.taxRecipient != address(0);
-    }
-    
-    /**
-     * @notice Preview fee amount for a swap
-     */
-    function previewFee(bytes32 poolId, uint256 swapAmount, bool isBuy) external view returns (uint256 fee) {
-        ITaxHook.TaxConfig memory config = ITaxHook(TAX_HOOK).getTaxConfig(poolId);
-        if (!config.enabled) return 0;
-        
-        uint256 feeBps = isBuy ? config.buyTaxBps : config.sellTaxBps;
-        return (swapAmount * feeBps) / 10000;
-    }
-    
-    // =================================
-    // INTERNAL
-    // =================================
-    
-    /**
-     * @dev Compute pool ID from pool key components
-     */
-    function _computePoolId(
-        address token0,
-        address token1,
-        int24 tickSpacing
-    ) internal pure returns (bytes32) {
-        // Pool ID is hash of the pool key
-        // Note: This should match how V4 computes pool IDs
-        return keccak256(abi.encode(
-            token0,
-            token1,
-            uint24(0), // Dynamic fee flag
-            tickSpacing,
-            TAX_HOOK
-        ));
+        PoolKey memory key = PoolKey({
+            currency0: Currency.wrap(token0),
+            currency1: Currency.wrap(token1),
+            fee: _poolLPFee,
+            tickSpacing: _tickSpacing,
+            hooks: IHooks(TAX_HOOK)
+        });
+        return PoolId.unwrap(key.toId());
     }
 }

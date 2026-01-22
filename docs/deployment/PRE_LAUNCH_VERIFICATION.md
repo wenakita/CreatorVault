@@ -64,3 +64,12 @@ After the auction is graduated:
 2. Configure the tax hook via `TaxHook.setTaxConfig(...)` (**token owner required**)
 
 The frontend `CompleteAuction.tsx` implements this flow.
+
+---
+
+## 6b) If using `LBPStrategyWithTaxHook` (Liquidity Launcher-style)
+
+If you switch to the `LBPStrategyWithTaxHook` path (auction + `migrate()` into v4), the completion flow changes:
+- Raised currency must be swept from the **auction** to the strategy (call `auction.sweepCurrency()`).
+- Liquidity is migrated into v4 by calling `LBPStrategyWithTaxHook.migrate()` after `migrationBlock`.
+- Tax hook configuration should use a pool id derived from the exact v4 `PoolKey` (fee/tickSpacing/hooks), via `TaxHookConfigurator`.

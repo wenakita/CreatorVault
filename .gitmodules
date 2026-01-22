@@ -10,3 +10,9 @@
 [submodule "lib/solidity-lib"]
 	path = lib/solidity-lib
 	url = https://github.com/Uniswap/solidity-lib
+[submodule "lib/liquidity-launcher"]
+	path = lib/liquidity-launcher
+	url = https://github.com/Uniswap/liquidity-launcher
+[submodule "lib/continuous-clearing-auction"]
+	path = lib/continuous-clearing-auction
+	url = https://github.com/Uniswap/continuous-clearing-auction

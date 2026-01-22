@@ -44,3 +44,18 @@ Completion is a **2-step** process reflected in `CompleteAuction.tsx`:
 
 Optional (operations):
 - Call `vault.deployToStrategies()` after launch to deploy idle AKITA into strategies.
+
+---
+
+## Alternative: Liquidity Launcher-style migration (v4 pool + position at final CCA price)
+
+If using `LBPStrategyWithTaxHook` (`contracts/vault/strategies/launchpad/LBPStrategyWithTaxHook.sol`) instead of `CCALaunchStrategy`:
+
+- **Auction creation** still uses Uniswap CCA, but the **strategy** is the `fundsRecipient` (via `ActionConstants.MSG_SENDER`), so raised currency must be swept to the strategy address.
+- **Pool creation + LP minting** happens when calling `LBPStrategyWithTaxHook.migrate()` after `migrationBlock`.
+- The pool is initialized with the **existing Base tax hook address** (PoolKey.hooks), so ensure you configure taxes using a poolId computed from the real v4 `PoolKey`.
+
+Operationally:
+1. After auction end, call `auction.sweepCurrency()` (permissionless) to move funds to the LBP strategy.
+2. After `migrationBlock`, call `LBPStrategyWithTaxHook.migrate()` to initialize the v4 pool at the final clearing price and mint the position.
+3. Configure taxes via `TaxHookConfigurator.configureCreatorPool(...)` using the correct `(poolLPFee, tickSpacing)` so the pool id matches.
