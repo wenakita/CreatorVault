@@ -382,8 +382,11 @@ function App() {
             {publicMode ? (
               <Route element={<Layout />}>
                 {/* App host */}
-                <Route path="/" element={<Navigate to="/status" replace />} />
-                <Route path="/home" element={<Home />} />
+                {/* Keep Home on "/" so "/#waitlist" works reliably. */}
+                <Route path="/" element={<Home />} />
+                <Route path="/home" element={<Navigate to="/" replace />} />
+                {/* Back-compat: preserve /waitlist URLs */}
+                <Route path="/waitlist" element={<Waitlist />} />
 
                 {/* Admin routes must remain reachable even in public mode (auth is enforced server-side). */}
                 <Route path="/admin/creator-access" element={<AdminCreatorAccess />} />

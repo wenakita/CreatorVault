@@ -3,7 +3,7 @@ import { motion } from 'framer-motion'
 import { ArrowRight } from 'lucide-react'
 import { SHARE_SYMBOL_PREFIX } from '@/lib/tokenSymbols'
 import { isPublicSiteMode } from '@/lib/flags'
-import { WaitlistSection } from '@/components/waitlist/WaitlistSection'
+import { WaitlistFlow } from '@/components/waitlist/WaitlistFlow'
 import { useEffect } from 'react'
 
 const SHARE_TOKEN = `${SHARE_SYMBOL_PREFIX}TOKEN`
@@ -135,7 +135,7 @@ export function Home() {
                 <span className="text-uniswap">Uniswap CCA</span> auction before the vault deploys the deposit across strategies.
               </p>
               {publicMode ? (
-                <Link to="/#waitlist" className="btn-accent inline-block">
+                <Link to="/?persona=creator#waitlist" className="btn-accent inline-block">
                   Join waitlist <ArrowRight className="w-4 h-4 inline ml-2" />
                 </Link>
               ) : (
@@ -269,7 +269,7 @@ export function Home() {
         </div>
       </section>
 
-      <WaitlistSection />
+      <WaitlistFlow variant="embedded" sectionId="waitlist" />
     </div>
   )
 }
