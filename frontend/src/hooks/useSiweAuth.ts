@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useAccount, useSignMessage } from 'wagmi'
 import { base } from 'wagmi/chains'
+import { apiFetch } from '@/lib/apiBase'
 
 type ApiEnvelope<T> = { success: boolean; data?: T; error?: string }
 
@@ -57,7 +58,7 @@ export function useSiweAuth() {
     }
     try {
       const token = getStoredSessionToken()
-      const res = await fetch('/api/auth/me', {
+      const res = await apiFetch('/api/auth/me', {
         headers: {
           Accept: 'application/json',
           ...(token ? { Authorization: `Bearer ${token}` } : null),
@@ -80,7 +81,11 @@ export function useSiweAuth() {
     setBusy(true)
     setError(null)
     try {
-      const nonceRes = await fetch('/api/auth/nonce', { headers: { Accept: 'application/json' } })
+      const nonceRes = await apiFetch('/api/auth/nonce', { headers: { Accept: 'application/json' } })
+      if (!nonceRes.ok) {
+        const errJson = (await nonceRes.json().catch(() => null)) as ApiEnvelope<unknown> | null
+        throw new Error(errJson?.error || `Failed to start sign-in (HTTP ${nonceRes.status})`)
+      }
       const nonceJson = (await nonceRes.json().catch(() => null)) as
         | ApiEnvelope<{ nonce: string; nonceToken: string; issuedAt: string; domain: string; uri: string; chainId: number }>
         | null
@@ -92,13 +97,13 @@ export function useSiweAuth() {
       const uri = typeof nonceJson?.data?.uri === 'string' ? nonceJson.data.uri : window.location.origin
       const chainId = typeof nonceJson?.data?.chainId === 'number' ? nonceJson.data.chainId : base.id
 
-      if (!nonce) throw new Error('Failed to start sign-in')
-      if (!nonceToken) throw new Error('Failed to start sign-in')
+      if (!nonce) throw new Error('Failed to start sign-in (missing nonce)')
+      if (!nonceToken) throw new Error('Failed to start sign-in (missing nonce token)')
 
       const message = `${domain} wants you to sign in with your Ethereum account:\n${address}\n\nSign in to Creator Vaults.\n\nURI: ${uri}\nVersion: 1\nChain ID: ${chainId}\nNonce: ${nonce}\nIssued At: ${issuedAt}`
       const signature = await signMessageAsync({ message })
 
-      const verifyRes = await fetch('/api/auth/verify', {
+      const verifyRes = await apiFetch('/api/auth/verify', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
         body: JSON.stringify({ message, signature, nonceToken }),
@@ -124,7 +129,7 @@ export function useSiweAuth() {
     setBusy(true)
     setError(null)
     try {
-      await fetch('/api/auth/logout', { method: 'POST', headers: { Accept: 'application/json' } })
+      await apiFetch('/api/auth/logout', { method: 'POST', headers: { Accept: 'application/json' } })
       setStoredSessionToken(null)
       setAuthAddress(null)
     } finally {

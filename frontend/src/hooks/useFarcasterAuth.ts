@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useMiniAppContext } from './useMiniAppContext'
+import { apiAliasPath, apiFetch } from '@/lib/apiBase'
 
 type ApiEnvelope<T> = { success: boolean; data?: T; error?: string }
 
@@ -51,7 +52,7 @@ export function useFarcasterAuth() {
 
       // Prefer Quick Auth (no user prompt).
       if (sdk.quickAuth?.fetch) {
-        const res = await sdk.quickAuth.fetch('/api/farcaster/me')
+        const res = await sdk.quickAuth.fetch(apiAliasPath('/api/farcaster/me'))
         const json = (await res.json().catch(() => null)) as ApiEnvelope<FarcasterVerifiedSession> | null
         if (res.ok && json?.success && typeof json?.data?.fid === 'number' && json.data.fid > 0) {
           setSession(json.data)
@@ -93,7 +94,7 @@ export function useFarcasterAuth() {
       }
 
       // One-time nonce is stored server-side (HttpOnly cookie) and cleared after verify.
-      const nonceRes = await fetch('/api/farcaster/nonce', { headers: { Accept: 'application/json' } })
+      const nonceRes = await apiFetch('/api/farcaster/nonce', { headers: { Accept: 'application/json' }, withCredentials: true })
       const nonceJson = (await nonceRes.json().catch(() => null)) as ApiEnvelope<{ nonce: string }> | null
       const nonce = typeof nonceJson?.data?.nonce === 'string' ? nonceJson.data.nonce : ''
       if (!nonceRes.ok || !nonceJson?.success || !nonce) {
@@ -102,10 +103,11 @@ export function useFarcasterAuth() {
 
       const { message, signature } = await sdk.actions.signIn({ nonce, acceptAuthAddress: true })
 
-      const verifyRes = await fetch('/api/farcaster/verify', {
+      const verifyRes = await apiFetch('/api/farcaster/verify', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
         body: JSON.stringify({ message, signature }),
+        withCredentials: true,
       })
       const verifyJson = (await verifyRes.json().catch(() => null)) as ApiEnvelope<{ fid: number }> | null
       const outFid = verifyJson?.data?.fid
@@ -116,7 +118,7 @@ export function useFarcasterAuth() {
       // Re-run Quick Auth fetch (some hosts will now allow it) to fill tokenExp/primaryAddress.
       try {
         if (sdk.quickAuth?.fetch) {
-          const res = await sdk.quickAuth.fetch('/api/farcaster/me')
+          const res = await sdk.quickAuth.fetch(apiAliasPath('/api/farcaster/me'))
           const json = (await res.json().catch(() => null)) as ApiEnvelope<FarcasterVerifiedSession> | null
           if (res.ok && json?.success && typeof json?.data?.fid === 'number') {
             setSession(json.data)

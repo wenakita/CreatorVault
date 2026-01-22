@@ -2,6 +2,7 @@ import { Suspense, lazy, useMemo, useState } from 'react'
 import { CheckCircle2 } from 'lucide-react'
 import { isPrivyClientEnabled } from '@/lib/flags'
 import { usePrivyClientStatus } from '@/lib/privy/client'
+import { apiFetch } from '@/lib/apiBase'
 
 type WaitlistResponse =
   | { success: true; data: { created: boolean; email: string } }
@@ -64,7 +65,7 @@ export function WaitlistSection(props: { intent?: WaitlistIntent }) {
 
     setBusy(true)
     try {
-      const res = await fetch('/api/waitlist', {
+      const res = await apiFetch('/api/waitlist', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

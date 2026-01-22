@@ -9,6 +9,7 @@ import { isPrivyClientEnabled } from '@/lib/flags'
 import { usePrivyClientStatus } from '@/lib/privy/client'
 import { Check, CheckCircle2, ChevronDown } from 'lucide-react'
 import { useMiniAppContext } from '@/hooks'
+import { apiAliasPath } from '@/lib/apiBase'
 
 type Persona = 'creator' | 'user'
 type Variant = 'page' | 'embedded'
@@ -136,14 +137,22 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
 
     let lastErr: unknown = null
     for (const base of bases) {
-      const url = `${base.replace(/\/+$/, '')}${path}`
-      try {
-        const res = await fetch(url, baseInit)
-        if (res.status === 404) continue
-        return res
-      } catch (e: unknown) {
-        lastErr = e
-        continue
+      const b = base.replace(/\/+$/, '')
+      // Prefer alias to avoid extension blocks on `/api/*`, then fall back to the canonical path.
+      const paths = path.startsWith('/api/') ? [apiAliasPath(path), path] : [path]
+      for (const p of paths) {
+        const url = `${b}${p}`
+        try {
+          const res = await fetch(url, baseInit)
+          const ct = (res.headers.get('content-type') ?? '').toLowerCase()
+          // In dev, a missing alias may return index.html; treat that as a miss and continue.
+          if (ct.includes('text/html')) continue
+          if (res.status === 404) continue
+          return res
+        } catch (e: unknown) {
+          lastErr = e
+          continue
+        }
       }
     }
     throw lastErr ?? new Error('Request failed')
@@ -274,7 +283,12 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
       })
       const json = (await res.json().catch(() => null)) as any
       const nonce = typeof json?.data?.nonce === 'string' ? json.data.nonce : ''
-      if (!res.ok || !json?.success || !nonce) throw new Error(json?.error || 'Failed to start Farcaster sign-in')
+      if (!res.ok || !json?.success || !nonce) {
+        const msg =
+          json?.error ||
+          (res.ok ? 'Failed to start Farcaster sign-in (missing nonce)' : `Failed to start Farcaster sign-in (HTTP ${res.status})`)
+        throw new Error(msg)
+      }
       setSiwfNonce(nonce)
     } catch (e: any) {
       setSiwfError(e?.message ? String(e.message) : 'Failed to start Farcaster sign-in')
@@ -299,7 +313,11 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
       })
       const json = (await res.json().catch(() => null)) as any
       const fid = typeof json?.data?.fid === 'number' ? json.data.fid : null
-      if (!res.ok || !json?.success || !fid) throw new Error(json?.error || 'Farcaster verification failed')
+      if (!res.ok || !json?.success || !fid) {
+        const msg =
+          json?.error || (res.ok ? 'Farcaster verification failed (missing fid)' : `Farcaster verification failed (HTTP ${res.status})`)
+        throw new Error(msg)
+      }
       setVerifiedFid(fid)
       setStep('email')
     } catch (e: any) {

@@ -226,7 +226,8 @@ function predictCreate2Address(params: { create2Deployer: Address; salt: Hex; in
 }
 
 async function fetchAdminAuth(): Promise<AdminAuthResponse> {
-  const res = await fetch('/api/auth/admin', { method: 'GET', headers: { Accept: 'application/json' } })
+  const { apiFetch } = await import('@/lib/apiBase')
+  const res = await apiFetch('/api/auth/admin', { method: 'GET', headers: { Accept: 'application/json' } })
   const json = (await res.json().catch(() => null)) as ApiEnvelope<AdminAuthResponse> | null
   if (!res.ok || !json) return null
   if (!json.success) return null

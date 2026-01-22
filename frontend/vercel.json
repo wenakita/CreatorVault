@@ -5,6 +5,7 @@
   "framework": "vite",
   "outputDirectory": "dist",
   "routes": [
+    { "src": "/__api/(.*)", "dest": "/api/$1" },
     { "src": "/api/(.*)", "dest": "/api/$1" },
     {
       "src": "/(.*)",

@@ -6,6 +6,7 @@ import { useAccount } from 'wagmi'
 
 import { ConnectButton } from '@/components/ConnectButton'
 import { useSiweAuth } from '@/hooks/useSiweAuth'
+import { apiFetch } from '@/lib/apiBase'
 
 type ApiEnvelope<T> = { success: boolean; data?: T; error?: string }
 
@@ -40,7 +41,7 @@ function shortAddr(a: string): string {
 }
 
 async function fetchAdminList(): Promise<AdminListResponse> {
-  const res = await fetch('/api/admin/creator-access/list', { method: 'GET', headers: { Accept: 'application/json' } })
+  const res = await apiFetch('/api/admin/creator-access/list', { method: 'GET', headers: { Accept: 'application/json' } })
   const json = (await res.json().catch(() => null)) as ApiEnvelope<AdminListResponse> | null
   if (!res.ok || !json) throw new Error(`Failed to load (${res.status})`)
   if (!json.success) throw new Error(json.error || 'Failed to load')
@@ -51,7 +52,7 @@ async function fetchAdminList(): Promise<AdminListResponse> {
 async function fetchAdminAllowlist(params: { q?: string | null }): Promise<AdminAllowlistResponse> {
   const qs = new URLSearchParams()
   if (params.q) qs.set('q', params.q)
-  const res = await fetch(`/api/admin/creator-access/allowlist?${qs.toString()}`, { method: 'GET', headers: { Accept: 'application/json' } })
+  const res = await apiFetch(`/api/admin/creator-access/allowlist?${qs.toString()}`, { method: 'GET', headers: { Accept: 'application/json' } })
   const json = (await res.json().catch(() => null)) as ApiEnvelope<AdminAllowlistResponse> | null
   if (!res.ok || !json) throw new Error(`Failed to load allowlist (${res.status})`)
   if (!json.success) throw new Error(json.error || 'Failed to load allowlist')
@@ -60,7 +61,7 @@ async function fetchAdminAllowlist(params: { q?: string | null }): Promise<Admin
 }
 
 async function approveRequest(params: { requestId: number; note?: string }): Promise<void> {
-  const res = await fetch('/api/admin/creator-access/approve', {
+  const res = await apiFetch('/api/admin/creator-access/approve', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
     body: JSON.stringify(params),
@@ -71,7 +72,7 @@ async function approveRequest(params: { requestId: number; note?: string }): Pro
 }
 
 async function denyRequest(params: { requestId: number; note?: string }): Promise<void> {
-  const res = await fetch('/api/admin/creator-access/deny', {
+  const res = await apiFetch('/api/admin/creator-access/deny', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
     body: JSON.stringify(params),
@@ -82,7 +83,7 @@ async function denyRequest(params: { requestId: number; note?: string }): Promis
 }
 
 async function revokeAddress(params: { address: string; note?: string }): Promise<void> {
-  const res = await fetch('/api/admin/creator-access/revoke', {
+  const res = await apiFetch('/api/admin/creator-access/revoke', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
     body: JSON.stringify(params),

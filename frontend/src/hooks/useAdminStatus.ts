@@ -1,12 +1,13 @@
 import { useQuery } from '@tanstack/react-query'
 import { useAccount } from 'wagmi'
 import { useSiweAuth } from './useSiweAuth'
+import { apiFetch } from '@/lib/apiBase'
 
 type ApiEnvelope<T> = { success: boolean; data?: T; error?: string }
 type AdminResponse = { address: string; isAdmin: boolean } | null
 
 async function fetchAdminStatus(): Promise<AdminResponse> {
-  const res = await fetch('/api/auth/admin', {
+  const res = await apiFetch('/api/auth/admin', {
     method: 'GET',
     headers: { Accept: 'application/json' },
     credentials: 'include',

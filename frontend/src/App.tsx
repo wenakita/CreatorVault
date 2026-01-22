@@ -5,6 +5,7 @@ import { usePrivy } from '@privy-io/react-auth'
 import { useSmartWallets } from '@privy-io/react-auth/smart-wallets'
 import { usePrivyClientStatus } from '@/lib/privy/client'
 import { useCreatorAllowlist } from '@/hooks'
+import { apiFetch } from '@/lib/apiBase'
 import { Layout } from './components/Layout'
 import { MarketingLayout } from './components/MarketingLayout'
 import { Home } from './pages/Home'
@@ -67,7 +68,7 @@ function AppAllowlistGatePrivyEnabled() {
   const allowlistModeQuery = useQuery({
     queryKey: ['creatorAllowlist', 'mode'],
     queryFn: async (): Promise<CreatorAllowlistStatus> => {
-      const res = await fetch('/api/creator-allowlist', { method: 'GET' })
+      const res = await apiFetch('/api/creator-allowlist', { method: 'GET' })
       const json = (await res.json().catch(() => null)) as ApiEnvelope<CreatorAllowlistStatus> | null
       if (!res.ok || !json) throw new Error('Allowlist check failed')
       if (!json.success || !json.data) throw new Error(json.error || 'Allowlist check failed')

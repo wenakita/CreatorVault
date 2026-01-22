@@ -5,6 +5,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { base } from 'wagmi/chains'
 import { useMiniAppContext } from '@/hooks'
 import { logger } from '@/lib/logger'
+import { apiFetch } from '@/lib/apiBase'
 
 function uniqueConnectors(list: Array<Connector | null | undefined>): Connector[] {
   const out: Connector[] = []
@@ -233,7 +234,7 @@ function ConnectButtonWeb3Wagmi({
         return
       }
       try {
-        const res = await fetch('/api/auth/me', { headers: { Accept: 'application/json' } })
+        const res = await apiFetch('/api/auth/me', { headers: { Accept: 'application/json' } })
         const json = (await res.json().catch(() => null)) as { success?: boolean; data?: { address?: string } | null } | null
         const a = json?.data?.address
         if (!cancelled) setAuthAddress(typeof a === 'string' ? a : null)
@@ -261,7 +262,11 @@ function ConnectButtonWeb3Wagmi({
     setAuthBusy(true)
     setAuthError(null)
     try {
-      const nonceRes = await fetch('/api/auth/nonce', { headers: { Accept: 'application/json' } })
+      const nonceRes = await apiFetch('/api/auth/nonce', { headers: { Accept: 'application/json' } })
+      if (!nonceRes.ok) {
+        const errJson = (await nonceRes.json().catch(() => null)) as { error?: string } | null
+        throw new Error(errJson?.error || `Failed to start sign-in (HTTP ${nonceRes.status})`)
+      }
       const nonceJson = (await nonceRes.json().catch(() => null)) as
         | { success?: boolean; data?: { nonce?: string; issuedAt?: string; domain?: string; uri?: string; chainId?: number } }
         | null
@@ -272,13 +277,13 @@ function ConnectButtonWeb3Wagmi({
       const uri = typeof data?.uri === 'string' ? data.uri : window.location.origin
       const chainId = typeof data?.chainId === 'number' ? data.chainId : base.id
 
-      if (!nonce) throw new Error('Failed to start sign-in')
+      if (!nonce) throw new Error('Failed to start sign-in (missing nonce)')
 
       const message = `${domain} wants you to sign in with your Ethereum account:\n${address}\n\nSign in to Creator Vaults.\n\nURI: ${uri}\nVersion: 1\nChain ID: ${chainId}\nNonce: ${nonce}\nIssued At: ${issuedAt}`
 
       const signature = await signMessageAsync({ message })
 
-      const verifyRes = await fetch('/api/auth/verify', {
+      const verifyRes = await apiFetch('/api/auth/verify', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
         body: JSON.stringify({ message, signature }),
@@ -299,7 +304,7 @@ function ConnectButtonWeb3Wagmi({
     setAuthBusy(true)
     setAuthError(null)
     try {
-      await fetch('/api/auth/logout', { method: 'POST', headers: { Accept: 'application/json' } })
+      await apiFetch('/api/auth/logout', { method: 'POST', headers: { Accept: 'application/json' } })
       setAuthAddress(null)
     } finally {
       setAuthBusy(false)
