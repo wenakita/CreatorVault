@@ -1,5 +1,5 @@
 import { AnimatePresence, motion } from 'framer-motion'
-import { Suspense, lazy, useEffect, useMemo, useRef, useState } from 'react'
+import { Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useLocation } from 'react-router-dom'
 import { getAppBaseUrl } from '@/lib/host'
 import { SignInButton, useProfile, useSignInMessage } from '@farcaster/auth-kit'
@@ -15,6 +15,23 @@ import { REFERRAL_BADGES, REFERRAL_TWEET_TEMPLATES, fillTweetTemplate, INVITE_CO
 
 type Persona = 'creator' | 'user'
 type Variant = 'page' | 'embedded'
+type ActionKey = 'shareX' | 'copyLink' | 'share' | 'follow' | 'saveApp'
+
+const ACTION_POINTS: Record<ActionKey, number> = {
+  shareX: 10,
+  copyLink: 5,
+  share: 7,
+  follow: 4,
+  saveApp: 6,
+}
+
+const EMPTY_ACTION_STATE: Record<ActionKey, boolean> = {
+  shareX: false,
+  copyLink: false,
+  share: false,
+  follow: false,
+  saveApp: false,
+}
 
 export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
   const variant: Variant = props.variant ?? 'page'
@@ -535,7 +552,57 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
     }
   }
 
-  const shareUrl = useMemo(() => 'https://4626.fun', [])
+  const shareBaseUrl = useMemo(() => appUrl.replace(/\/+$/, ''), [appUrl])
+  const referralLink = useMemo(() => {
+    if (referralCode) {
+      return `${shareBaseUrl}/?ref=${encodeURIComponent(referralCode)}#waitlist`
+    }
+    return `${shareBaseUrl}/#waitlist`
+  }, [referralCode, shareBaseUrl])
+  const shareMessage = 'Creator vaults on Base — join the waitlist.'
+  const miniAppHostLabel = useMemo(() => {
+    if (!miniApp.isMiniApp) return null
+    return miniApp.isBaseApp ? 'Base app' : 'Farcaster'
+  }, [miniApp.isBaseApp, miniApp.isMiniApp])
+  const actionStorageKey = useMemo(
+    () => (referralCode ? `cv_waitlist_actions_${referralCode}` : 'cv_waitlist_actions'),
+    [referralCode],
+  )
+  const [actionsDone, setActionsDone] = useState<Record<ActionKey, boolean>>(() => ({ ...EMPTY_ACTION_STATE }))
+  const markAction = useCallback(
+    (action: ActionKey) => {
+      setActionsDone((prev) => {
+        if (prev[action]) return prev
+        const next = { ...prev, [action]: true }
+        try {
+          localStorage.setItem(actionStorageKey, JSON.stringify(next))
+        } catch {
+          // ignore
+        }
+        return next
+      })
+    },
+    [actionStorageKey],
+  )
+
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(actionStorageKey)
+      if (!raw) {
+        setActionsDone({ ...EMPTY_ACTION_STATE })
+        return
+      }
+      const parsed = JSON.parse(raw) as Partial<Record<ActionKey, boolean>> | null
+      setActionsDone({ ...EMPTY_ACTION_STATE, ...(parsed || {}) })
+    } catch {
+      setActionsDone({ ...EMPTY_ACTION_STATE })
+    }
+  }, [actionStorageKey])
+
+  useEffect(() => {
+    if (miniApp.added !== true) return
+    markAction('saveApp')
+  }, [markAction, miniApp.added])
 
   const [miniAppAddSupported, setMiniAppAddSupported] = useState<boolean | null>(null)
   useEffect(() => {
@@ -562,15 +629,17 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
     if (shareBusy) return
     setShareBusy(true)
     setShareToast(null)
+    const shareLink = referralLink
     try {
       if (miniApp.isMiniApp) {
         try {
           const { sdk } = await import('@farcaster/miniapp-sdk')
           if (sdk?.actions?.composeCast) {
             await sdk.actions.composeCast({
-              text: 'Creator vaults on Base — join the waitlist',
-              embeds: [shareUrl],
+              text: shareMessage,
+              embeds: [shareLink],
             } as any)
+            markAction('share')
             setShareToast('Opened Farcaster composer.')
             return
           }
@@ -582,20 +651,49 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
       if (typeof navigator !== 'undefined' && typeof (navigator as any).share === 'function') {
         await (navigator as any).share({
           title: 'Creator Vaults',
-          text: 'Creator vaults on Base — join the waitlist',
-          url: shareUrl,
+          text: shareMessage,
+          url: shareLink,
         })
+        markAction('share')
         setShareToast('Shared.')
         return
       }
 
+      try {
+        const warpcastUrl = `https://warpcast.com/~/compose?text=${encodeURIComponent(shareMessage)}&embeds[]=${encodeURIComponent(
+          shareLink,
+        )}`
+        if (miniApp.isMiniApp) {
+          try {
+            const { sdk } = await import('@farcaster/miniapp-sdk')
+            if (sdk?.actions?.openUrl) {
+              await sdk.actions.openUrl(warpcastUrl)
+              markAction('share')
+              setShareToast('Opened Warpcast.')
+              return
+            }
+          } catch {
+            // fall through
+          }
+        }
+        const opened = window.open(warpcastUrl, '_blank', 'noopener,noreferrer')
+        if (opened) {
+          markAction('share')
+          setShareToast('Opened Warpcast.')
+          return
+        }
+      } catch {
+        // fall through
+      }
+
       if (typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
-        await navigator.clipboard.writeText(shareUrl)
+        await navigator.clipboard.writeText(shareLink)
+        markAction('share')
         setShareToast('Link copied.')
         return
       }
 
-      setShareToast('Open: 4626.fun')
+      setShareToast(`Open: ${shareBaseUrl.replace(/^https?:\/\//, '')}`)
     } finally {
       setTimeout(() => setShareToast(null), 2500)
       setShareBusy(false)
@@ -613,6 +711,7 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
         return
       }
       await sdk.actions.addMiniApp()
+      markAction('saveApp')
       setShareToast('Added to your Mini Apps.')
     } catch {
       setShareToast('Add failed.')
@@ -636,6 +735,20 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
 
   const showPersonaStep = !forcedPersona
 
+  function renderActionBadge(action: ActionKey) {
+    const done = actionsDone[action]
+    const points = ACTION_POINTS[action]
+    return (
+      <span
+        className={`ml-auto rounded-full border px-2 py-0.5 text-[10px] ${
+          done ? 'border-emerald-500/20 bg-emerald-500/5 text-emerald-200' : 'border-white/5 bg-black/20 text-zinc-600'
+        }`}
+      >
+        {done ? `✓${points}` : `•${points}`}
+      </span>
+    )
+  }
+
   return (
     <section id={variant === 'embedded' ? sectionId : undefined} className={containerClass}>
       <div className={innerWrapClass}>
@@ -649,10 +762,8 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
         ) : (
           <div className="space-y-4 mb-6">
             <span className="label">Waitlist</span>
-            <div className="headline text-4xl sm:text-5xl leading-tight">Get early access</div>
-            <div className="text-sm text-zinc-600 font-light">
-              Users: email only. Creators: verify first, then email — so we can prioritize onboarding.
-            </div>
+            <div className="headline text-4xl sm:text-5xl leading-tight">Early access</div>
+            <div className="text-sm text-zinc-600 font-light">Creators verify · users email.</div>
           </div>
         )}
 
@@ -678,7 +789,7 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
                 transition={{ duration: 0.18 }}
                 className="space-y-5"
               >
-                <div className="headline text-2xl sm:text-3xl leading-tight">Step 1: Select</div>
+                <div className="headline text-2xl sm:text-3xl leading-tight">Select</div>
                 <div className="space-y-3">
                   <button
                     type="button"
@@ -699,8 +810,7 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
                         </div>
                       </div>
                     </div>
-                    <div className="mt-1 text-sm text-zinc-600 font-light">Launching a vault for my CreatorCoin.</div>
-                    <div className="mt-2 text-[11px] text-zinc-700">Requires verification before email.</div>
+                    <div className="mt-1 text-sm text-zinc-600 font-light">Launch a vault · verify</div>
                   </button>
                   <button
                     type="button"
@@ -719,8 +829,7 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
                         </div>
                       </div>
                     </div>
-                    <div className="mt-1 text-sm text-zinc-600 font-light">Participating in creator vaults.</div>
-                    <div className="mt-2 text-[11px] text-zinc-700">Email only.</div>
+                    <div className="mt-1 text-sm text-zinc-600 font-light">Join early · email</div>
                   </button>
                 </div>
               </motion.div>
@@ -735,10 +844,8 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
                 transition={{ duration: 0.18 }}
                 className="space-y-5"
               >
-                <div className="headline text-2xl sm:text-3xl leading-tight">Verify identity</div>
-                <div className="text-sm text-zinc-600 font-light">
-                  Creators verify before joining so we can prioritize onboarding and reduce spam.
-                </div>
+                <div className="headline text-2xl sm:text-3xl leading-tight">Verify</div>
+                <div className="text-sm text-zinc-600 font-light">Verify to continue.</div>
 
                 {/* Primary: SIWF via Farcaster Auth Kit */}
                 {!useWalletSig ? (
@@ -769,7 +876,7 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
                         setVerifiedWallet(null)
                       }}
                     >
-                      Use wallet signature instead
+                      Use wallet instead
                     </button>
                   </div>
                 ) : (
@@ -816,7 +923,7 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
                         setWalletSigStarted(false)
                       }}
                     >
-                      Back to Farcaster
+                      Back
                     </button>
                   </div>
                 )}
@@ -853,10 +960,8 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
                 transition={{ duration: 0.18 }}
                 className="space-y-5"
               >
-                <div className="headline text-2xl sm:text-3xl leading-tight">Add your email</div>
-                <div className="text-sm text-zinc-600 font-light">
-                  {persona === 'creator' ? 'We’ll email you when creator onboarding opens.' : 'We’ll email you when onboarding opens.'}
-                </div>
+                <div className="headline text-2xl sm:text-3xl leading-tight">Email</div>
+                <div className="text-sm text-zinc-600 font-light">We’ll email you.</div>
 
                 {persona === 'creator' && verifiedWallet && creatorCoin ? (
                   <div className="rounded-xl border border-white/10 bg-black/30 px-4 py-3">
@@ -870,12 +975,8 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
 
                 {persona === 'creator' && referralCodeTaken ? (
                   <div className="rounded-xl border border-amber-400/20 bg-amber-400/5 px-4 py-3">
-                    <div className="text-[10px] uppercase tracking-[0.24em] text-amber-300/80 mb-2">
-                      Claim your referral code
-                    </div>
-                    <div className="text-xs text-zinc-600 mb-3">
-                      Your Creator Coin symbol is already taken. Pick a short alternative (A–Z, 0–9).
-                    </div>
+                    <div className="text-[10px] uppercase tracking-[0.24em] text-amber-300/80 mb-2">Code</div>
+                    <div className="text-xs text-zinc-600 mb-3">Code taken. Choose another.</div>
                     <div className="flex items-center gap-2">
                       <input
                         value={claimReferralCode}
@@ -894,9 +995,7 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
                         Claim
                       </button>
                     </div>
-                    <div className="mt-2 text-[11px] text-zinc-700">
-                      Format: <span className="font-mono">A–Z 0–9</span>, max 16 chars.
-                    </div>
+                    <div className="mt-2 text-[11px] text-zinc-700">A–Z 0–9 · 16 max</div>
                   </div>
                 ) : null}
 
@@ -974,7 +1073,7 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
                     </button>
                     {showUserWallet ? (
                       <div className="px-4 pb-4">
-                        <div className="text-[10px] uppercase tracking-[0.24em] text-zinc-600 mb-2">Primary wallet</div>
+                        <div className="text-[10px] uppercase tracking-[0.24em] text-zinc-600 mb-2">Wallet</div>
                         <input
                           value={userWallet}
                           onChange={(e) => setUserWallet(e.target.value)}
@@ -986,7 +1085,7 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
                         {!userWalletOk ? (
                           <div className="mt-2 text-xs text-amber-300/80">Must be a valid 0x… address (or leave blank).</div>
                         ) : (
-                          <div className="mt-2 text-xs text-zinc-700">We’ll ask you to prove ownership later before using it.</div>
+                          <div className="mt-2 text-xs text-zinc-700">We’ll verify later.</div>
                         )}
                       </div>
                     ) : null}
@@ -1045,16 +1144,16 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
                     <div className="absolute inset-0 rounded-full border border-brand-primary/20 animate-pulse-ring" />
                     <CheckCircle2 className="w-5 h-5 text-brand-accent" />
                   </div>
-                  <div className="headline text-2xl sm:text-3xl leading-tight">{INVITE_COPY.title}</div>
+                  <div className="headline text-2xl sm:text-3xl leading-tight">Invite</div>
                 </motion.div>
 
                 <div className="text-sm text-zinc-600 font-light">
                   {doneEmail ? (
                     <>
-                      You’re on the list as <span className="font-mono text-zinc-300">{doneEmail}</span>. {INVITE_COPY.body}
+                      You’re in as <span className="font-mono text-zinc-300">{doneEmail}</span>. Share to move up.
                     </>
                   ) : (
-                    <>{INVITE_COPY.body}</>
+                    <>You’re in. Share to move up.</>
                   )}
                 </div>
 
@@ -1066,7 +1165,7 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
                         {typeof allTimeConversions === 'number' ? allTimeConversions : '—'}
                       </div>
                       <div className="text-[11px] text-zinc-700">
-                        {typeof weeklyConversions === 'number' ? `${weeklyConversions} this week` : 'Fetching stats…'}
+                        {typeof weeklyConversions === 'number' ? `${weeklyConversions} this week` : 'Loading'}
                         {weeklyRank ? ` · #${weeklyRank} weekly` : ''}
                         {allTimeRank ? ` · #${allTimeRank} all‑time` : ''}
                       </div>
@@ -1075,43 +1174,29 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
                       className="text-[11px] text-zinc-600 hover:text-zinc-400 transition-colors pt-1"
                       href="/leaderboard"
                     >
-                      View leaderboard →
+                      Leaderboard
                     </a>
                   </div>
 
                   <div className="pt-2">
                     {(() => {
                       const count = typeof allTimeConversions === 'number' ? allTimeConversions : 0
-                      const next = REFERRAL_BADGES.find((b) => count < b.threshold) ?? null
-                      const nextThresh = next?.threshold ?? count
-                      const progress = next ? Math.max(0, Math.min(1, count / nextThresh)) : 1
                       return (
-                        <div className="space-y-2">
-                          <div className="flex items-center justify-between text-[11px] text-zinc-700">
-                            <div>Next badge</div>
-                            <div className="font-mono">
-                              {count}/{nextThresh}
-                            </div>
-                          </div>
-                          <div className="h-2 rounded-full bg-white/5 overflow-hidden">
-                            <div className="h-full bg-brand-primary/40" style={{ width: `${Math.round(progress * 100)}%` }} />
-                          </div>
-                          <div className="flex items-center gap-2 flex-wrap pt-1">
-                            {REFERRAL_BADGES.map((b) => {
-                              const unlocked = count >= b.threshold
-                              return (
-                                <div
-                                  key={b.threshold}
-                                  className={`text-[11px] rounded-full px-2 py-1 border ${
-                                    unlocked ? 'border-brand-primary/30 bg-brand-primary/10 text-zinc-300' : 'border-white/10 bg-black/30 text-zinc-700'
-                                  }`}
-                                  title={unlocked ? 'Unlocked' : `Need ${b.threshold} converted invites`}
-                                >
-                                  {b.label} · {b.threshold}
-                                </div>
-                              )
-                            })}
-                          </div>
+                        <div className="flex items-center gap-2 flex-wrap pt-1">
+                          {REFERRAL_BADGES.map((b) => {
+                            const unlocked = count >= b.threshold
+                            return (
+                              <div
+                                key={b.threshold}
+                                className={`text-[11px] rounded-full px-2 py-1 border ${
+                                  unlocked ? 'border-brand-primary/30 bg-brand-primary/10 text-zinc-300' : 'border-white/10 bg-black/30 text-zinc-700'
+                                }`}
+                                title={unlocked ? 'Unlocked' : `Need ${b.threshold} converted invites`}
+                              >
+                                {b.label} · {b.threshold}
+                              </div>
+                            )
+                          })}
                         </div>
                       )
                     })()}
@@ -1122,34 +1207,34 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
                   <div className="rounded-xl border border-white/10 bg-black/30 px-4 py-3 space-y-3">
                     <div>
                       <div className="text-[10px] uppercase tracking-[0.24em] text-zinc-600 mb-1">{INVITE_COPY.linkLabel}</div>
-                      <div className="text-[11px] text-zinc-700 mb-2">{INVITE_COPY.linkHelper}</div>
                       <div className="rounded-lg border border-white/10 bg-black/40 px-3 py-2 font-mono text-[12px] text-zinc-300 break-all">
-                        {`${appUrl.replace(/\/+$/, '')}/?ref=${encodeURIComponent(referralCode)}#waitlist`}
+                        {referralLink}
                       </div>
                     </div>
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                       <button
                         type="button"
-                        className="btn-primary w-full"
+                        className="btn-primary w-full flex items-center justify-between gap-2"
                         onClick={() => {
-                          const refLink = `${appUrl.replace(/\/+$/, '')}/?ref=${encodeURIComponent(referralCode)}#waitlist`
                           const template = REFERRAL_TWEET_TEMPLATES[inviteTemplateIdx % REFERRAL_TWEET_TEMPLATES.length] || REFERRAL_TWEET_TEMPLATES[0]
-                          const text = fillTweetTemplate(template, refLink)
+                          const text = fillTweetTemplate(template, referralLink)
                           const url = `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}`
                           window.open(url, '_blank', 'noopener,noreferrer')
+                          markAction('shareX')
                         }}
                       >
-                        {INVITE_COPY.shareButton}
+                        <span>{INVITE_COPY.shareButton}</span>
+                        {renderActionBadge('shareX')}
                       </button>
                       <button
                         type="button"
-                        className="btn-accent w-full"
+                        className="btn-accent w-full flex items-center justify-between gap-2"
                         onClick={() => {
-                          const refLink = `${appUrl.replace(/\/+$/, '')}/?ref=${encodeURIComponent(referralCode)}#waitlist`
                           void (async () => {
                             try {
-                              await navigator.clipboard.writeText(refLink)
+                              await navigator.clipboard.writeText(referralLink)
+                              markAction('copyLink')
                               setInviteToast(INVITE_COPY.copiedToast)
                               window.setTimeout(() => setInviteToast(null), 1800)
                             } catch {
@@ -1159,7 +1244,8 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
                           })()
                         }}
                       >
-                        {INVITE_COPY.copyButton}
+                        <span>{INVITE_COPY.copyButton}</span>
+                        {renderActionBadge('copyLink')}
                       </button>
                     </div>
 
@@ -1169,16 +1255,13 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
                         className="text-[11px] text-zinc-600 hover:text-zinc-400 transition-colors"
                         onClick={() => setInviteTemplateIdx((v) => (v + 1) % REFERRAL_TWEET_TEMPLATES.length)}
                       >
-                        Rotate template ({(inviteTemplateIdx % REFERRAL_TWEET_TEMPLATES.length) + 1}/{REFERRAL_TWEET_TEMPLATES.length})
+                        New copy ({(inviteTemplateIdx % REFERRAL_TWEET_TEMPLATES.length) + 1}/{REFERRAL_TWEET_TEMPLATES.length})
                       </button>
                       {inviteToast ? <div className="text-[11px] text-zinc-600">{inviteToast}</div> : null}
                     </div>
-                    <div className="text-[11px] text-zinc-700">{INVITE_COPY.shareMicrocopy}</div>
                   </div>
                 ) : (
-                  <div className="text-[11px] text-zinc-700">
-                    Your invite link will appear here once your referral code is assigned.
-                  </div>
+                  <div className="text-[11px] text-zinc-700">Link appears when ready.</div>
                 )}
 
                 <div className="space-y-3 pt-1">
@@ -1188,33 +1271,59 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
                       className="text-[11px] text-zinc-600 hover:text-zinc-400 transition-colors"
                       onClick={resetFlow}
                     >
-                      Start over
+                      Reset
                     </button>
                     {shareToast ? <div className="text-[11px] text-zinc-600">{shareToast}</div> : null}
                   </div>
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                    <a className="btn-primary w-full text-center" href="https://x.com/4626fun" target="_blank" rel="noreferrer">
-                      Follow @4626fun
+                    <a
+                      className="btn-primary w-full flex items-center justify-between gap-2"
+                      href="https://x.com/4626fun"
+                      target="_blank"
+                      rel="noreferrer"
+                      onClick={() => markAction('follow')}
+                    >
+                      <span>Follow @4626fun</span>
+                      {renderActionBadge('follow')}
                     </a>
-                    <button type="button" className="btn-accent w-full" disabled={shareBusy} onClick={() => void shareOrCompose()}>
-                      {shareBusy ? 'Working…' : 'Share'}
+                    <button
+                      type="button"
+                      className="btn-accent w-full flex items-center justify-between gap-2"
+                      disabled={shareBusy}
+                      onClick={() => void shareOrCompose()}
+                    >
+                      <span>{shareBusy ? 'Working…' : 'Share'}</span>
+                      {renderActionBadge('share')}
                     </button>
                   </div>
 
                   {miniApp.isMiniApp && miniAppAddSupported !== false ? (
                     <button
                       type="button"
-                      className="w-full text-[11px] text-zinc-600 hover:text-zinc-400 transition-colors disabled:opacity-60"
-                      disabled={shareBusy || miniAppAddSupported === null}
+                      className="w-full flex items-center justify-between gap-2 text-[11px] text-zinc-600 hover:text-zinc-400 transition-colors disabled:opacity-60"
+                      disabled={shareBusy || miniAppAddSupported === null || miniApp.added === true}
                       onClick={() => void addMiniApp()}
-                      title={miniAppAddSupported === null ? 'Checking host capabilities…' : 'Add this Mini App to your list'}
+                      title={
+                        miniAppAddSupported === null
+                          ? 'Checking host capabilities…'
+                          : miniApp.added === true
+                            ? `Already saved in ${miniAppHostLabel ?? 'Mini Apps'}`
+                            : `Save this Mini App in ${miniAppHostLabel ?? 'Mini Apps'}`
+                      }
                     >
-                      {miniAppAddSupported === null ? 'Checking Mini App support…' : 'Add to Mini Apps'}
+                      <span>
+                        {miniAppAddSupported === null
+                          ? 'Checking Mini App support…'
+                          : miniApp.added === true
+                            ? `Saved in ${miniAppHostLabel ?? 'Mini Apps'}`
+                            : `Save in ${miniAppHostLabel ?? 'Mini Apps'}`}
+                      </span>
+                      {renderActionBadge('saveApp')}
                     </button>
                   ) : (
                     <div className="text-[11px] text-zinc-700">
-                      Tip: bookmark <span className="font-mono text-zinc-500">4626.fun</span> so you can come back fast.
+                      Bookmark <span className="font-mono text-zinc-500">4626.fun</span>.
                     </div>
                   )}
                 </div>

@@ -45,7 +45,21 @@ export function useMiniAppContext() {
 
   const fid = useMemo(() => (typeof context?.user?.fid === 'number' ? context.user.fid : null), [context])
   const username = useMemo(() => (typeof context?.user?.username === 'string' ? context.user.username : null), [context])
+  const clientFid = useMemo(
+    () => (typeof context?.client?.clientFid === 'number' ? context.client.clientFid : null),
+    [context],
+  )
+  const platformType = useMemo(() => {
+    const v = context?.client?.platformType
+    return v === 'web' || v === 'mobile' ? v : null
+  }, [context])
+  const added = useMemo(
+    () => (typeof context?.client?.added === 'boolean' ? context.client.added : null),
+    [context],
+  )
+  // Base App currently uses clientFid 309857 (non-authoritative, UI-only).
+  const isBaseApp = useMemo(() => clientFid === 309857, [clientFid])
 
-  return { isMiniApp, context, fid, username }
+  return { isMiniApp, context, fid, username, clientFid, platformType, added, isBaseApp }
 }
 
