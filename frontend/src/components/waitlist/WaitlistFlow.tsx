@@ -28,6 +28,7 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
   const [verifiedFid, setVerifiedFid] = useState<number | null>(null)
   const [verifiedWallet, setVerifiedWallet] = useState<string | null>(null)
   const [siwfNonce, setSiwfNonce] = useState<string | null>(null)
+  const [siwfNonceToken, setSiwfNonceToken] = useState<string | null>(null)
   const [siwfBusy, setSiwfBusy] = useState(false)
   const [siwfError, setSiwfError] = useState<string | null>(null)
   const [useWalletSig, setUseWalletSig] = useState(false)
@@ -230,6 +231,7 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
     setVerifiedFid(null)
     setVerifiedWallet(null)
     setSiwfNonce(null)
+    setSiwfNonceToken(null)
     setSiwfBusy(false)
     setSiwfError(null)
     setUseWalletSig(false)
@@ -279,10 +281,10 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
     try {
       const res = await apiFetch('/api/farcaster/nonce', {
         headers: { Accept: 'application/json' },
-        withCredentials: true,
       })
       const json = (await res.json().catch(() => null)) as any
       const nonce = typeof json?.data?.nonce === 'string' ? json.data.nonce : ''
+      const nonceToken = typeof json?.data?.nonceToken === 'string' ? json.data.nonceToken : ''
       if (!res.ok || !json?.success || !nonce) {
         const msg =
           json?.error ||
@@ -290,6 +292,7 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
         throw new Error(msg)
       }
       setSiwfNonce(nonce)
+      setSiwfNonceToken(nonceToken || null)
     } catch (e: any) {
       setSiwfError(e?.message ? String(e.message) : 'Failed to start Farcaster sign-in')
     } finally {
@@ -308,8 +311,7 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
       const res = await apiFetch('/api/farcaster/verify', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-        body: JSON.stringify({ message: siwfMessage, signature: siwfSignature }),
-        withCredentials: true,
+        body: JSON.stringify({ message: siwfMessage, signature: siwfSignature, nonceToken: siwfNonceToken }),
       })
       const json = (await res.json().catch(() => null)) as any
       const fid = typeof json?.data?.fid === 'number' ? json.data.fid : null

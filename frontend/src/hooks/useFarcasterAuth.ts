@@ -94,9 +94,10 @@ export function useFarcasterAuth() {
       }
 
       // One-time nonce is stored server-side (HttpOnly cookie) and cleared after verify.
-      const nonceRes = await apiFetch('/api/farcaster/nonce', { headers: { Accept: 'application/json' }, withCredentials: true })
-      const nonceJson = (await nonceRes.json().catch(() => null)) as ApiEnvelope<{ nonce: string }> | null
+      const nonceRes = await apiFetch('/api/farcaster/nonce', { headers: { Accept: 'application/json' } })
+      const nonceJson = (await nonceRes.json().catch(() => null)) as ApiEnvelope<{ nonce: string; nonceToken?: string }> | null
       const nonce = typeof nonceJson?.data?.nonce === 'string' ? nonceJson.data.nonce : ''
+      const nonceToken = typeof (nonceJson as any)?.data?.nonceToken === 'string' ? String((nonceJson as any).data.nonceToken) : ''
       if (!nonceRes.ok || !nonceJson?.success || !nonce) {
         throw new Error(nonceJson?.error || 'Failed to start sign-in')
       }
@@ -106,8 +107,7 @@ export function useFarcasterAuth() {
       const verifyRes = await apiFetch('/api/farcaster/verify', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-        body: JSON.stringify({ message, signature }),
-        withCredentials: true,
+        body: JSON.stringify({ message, signature, nonceToken }),
       })
       const verifyJson = (await verifyRes.json().catch(() => null)) as ApiEnvelope<{ fid: number }> | null
       const outFid = verifyJson?.data?.fid

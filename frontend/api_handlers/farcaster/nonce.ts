@@ -10,8 +10,9 @@ import {
   setCors,
   setNoStore,
 } from '../../server/farcaster/_shared.js'
+import { makeNonceToken } from '../../server/auth/_shared.js'
 
-type NonceResponse = { nonce: string }
+type NonceResponse = { nonce: string; nonceToken: string }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   setCors(req, res)
@@ -23,11 +24,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   const nonce = makeNonce()
+  const nonceToken = makeNonceToken({ nonce })
   setCookie(req, res, COOKIE_SIWF_NONCE, nonce, { httpOnly: true, maxAgeSeconds: SIWF_NONCE_TTL_SECONDS })
 
   return res.status(200).json({
     success: true,
-    data: { nonce } satisfies NonceResponse,
+    data: { nonce, nonceToken } satisfies NonceResponse,
   } satisfies ApiEnvelope<NonceResponse>)
 }
 

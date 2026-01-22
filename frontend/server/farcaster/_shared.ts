@@ -1,6 +1,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 import { randomBytes } from 'node:crypto'
 import { setCors as setCorsAllowlist } from '../auth/_shared.js'
+import { readNonceToken } from '../auth/_shared.js'
 
 declare const process: { env: Record<string, string | undefined> }
 
@@ -138,4 +139,7 @@ export function parseSiwfBasics(message: string): ParsedSiwf | null {
   if (!domain || !nonce || !issuedAt) return null
   return { domain, nonce, issuedAt }
 }
+
+// Re-export nonce token validation for SIWF cookie fallback.
+export { readNonceToken }
 

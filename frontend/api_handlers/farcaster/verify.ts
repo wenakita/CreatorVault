@@ -11,6 +11,7 @@ import {
   handleOptions,
   parseCookies,
   parseSiwfBasics,
+  readNonceToken,
   readJsonBody,
   setCors,
   setNoStore,
@@ -47,6 +48,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const body = await readJsonBody<VerifyBody>(req)
   const message = typeof body?.message === 'string' ? body.message : ''
   const signatureRaw = typeof body?.signature === 'string' ? body.signature : ''
+  const nonceTokenRaw = typeof (body as any)?.nonceToken === 'string' ? String((body as any).nonceToken) : ''
   const signature = signatureRaw.startsWith('0x') ? (signatureRaw as `0x${string}`) : null
   if (!message || !signature) {
     return res.status(400).json({ success: false, error: 'Missing message or signature' } satisfies ApiEnvelope<never>)
@@ -63,8 +65,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   const cookies = parseCookies(req)
   const cookieNonce = cookies[COOKIE_SIWF_NONCE] ?? ''
-  if (!cookieNonce || cookieNonce !== parsed.nonce) {
-    return res.status(400).json({ success: false, error: 'Nonce mismatch' } satisfies ApiEnvelope<never>)
+  const cookieMatches = cookieNonce && cookieNonce === parsed.nonce
+  if (!cookieMatches) {
+    // Fallback for cross-origin / embedded contexts where cookies are blocked:
+    // validate a signed nonce token returned by `/api/farcaster/nonce`.
+    const nonceToken = nonceTokenRaw ? readNonceToken(nonceTokenRaw) : null
+    if (!nonceToken || nonceToken.nonce !== parsed.nonce) {
+      return res.status(400).json({ success: false, error: 'Nonce mismatch' } satisfies ApiEnvelope<never>)
+    }
   }
 
   // Best-effort replay window: message must be recent.
