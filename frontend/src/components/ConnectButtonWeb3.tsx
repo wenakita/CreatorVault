@@ -74,6 +74,12 @@ function ConnectButtonWeb3Wagmi({
   })
 
   const injectedProvider = typeof window !== 'undefined' ? (window as any)?.ethereum : null
+  const ethereumDescriptor =
+    typeof window !== 'undefined' ? Object.getOwnPropertyDescriptor(window, 'ethereum') : null
+  // Some wallet extensions (or extension conflicts) define `window.ethereum` as a getter-only, non-configurable prop.
+  // In that state, injected-wallet connectors are flaky (and can even throw during provider injection).
+  // Prefer WalletConnect in those cases.
+  const isEthereumLocked = !!ethereumDescriptor && typeof ethereumDescriptor.get === 'function' && !ethereumDescriptor.set
   const isRabbyPresent =
     Boolean(injectedProvider) &&
     (Boolean((injectedProvider as any)?.isRabby) ||
@@ -134,11 +140,11 @@ function ConnectButtonWeb3Wagmi({
         : [
             // Prefer Mini App connector inside Mini Apps.
             miniApp.isMiniApp ? miniAppConnector : null,
-            // Always try Rabby first on web (fast timeout). If it isn't installed, this usually fails fast.
-            // This avoids false negatives when wallet injection detection is flaky.
-            !miniApp.isMiniApp ? rabbyConnector : null,
-            // Universal fallback (QR).
+            // Universal fallback (QR) — also the safest option when injected wallet extensions conflict.
             !miniApp.isMiniApp ? walletConnectConnector : null,
+            // Try injected wallets after WalletConnect (or skip if the injected provider is in a bad/locked state).
+            !miniApp.isMiniApp && !isEthereumLocked ? rabbyConnector : null,
+            !miniApp.isMiniApp && !isEthereumLocked ? baseAppConnector : null,
             preferredConnector,
             ...connectors,
           ],
@@ -191,6 +197,7 @@ function ConnectButtonWeb3Wagmi({
     connectAsync,
     connectors,
     baseAppConnector,
+    isEthereumLocked,
     isDeployVariant,
     miniApp.isMiniApp,
     miniAppConnector,
