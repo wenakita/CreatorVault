@@ -1,5 +1,4 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
-import { apiRoutes } from '../frontend/api_handlers/_routes'
 
 type ApiHandler = (req: VercelRequest, res: VercelResponse) => unknown | Promise<unknown>
 
@@ -43,7 +42,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.status(404).json({ success: false, error: 'Not found' })
     }
 
-    const h = (apiRoutes as Record<string, ApiHandler>)[subpath] ?? null
+    const { getApiHandler } = await import('../frontend/api_handlers/_routes')
+    const h = (await getApiHandler(subpath)) as ApiHandler | null
     if (!h) {
       return res.status(404).json({ success: false, error: 'Not found' })
     }

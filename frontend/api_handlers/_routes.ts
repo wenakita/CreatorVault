@@ -7,105 +7,78 @@ export type ApiHandler = (req: VercelRequest, res: VercelResponse) => unknown | 
 // Dynamic `import(\`../api_handlers/${subpath}.js\`)` will often *not* bundle the target modules,
 // causing runtime 404s for routes like `/api/auth/nonce`.
 
-import analytics from './analytics'
-import agentInvokeSkill from './agent/invokeSkill'
-import authAdmin from './auth/admin'
-import authLogout from './auth/logout'
-import authMe from './auth/me'
-import authNonce from './auth/nonce'
-import authVerify from './auth/verify'
-import creatorAllowlist from './creator-allowlist'
-import creatorAccessDebug from './creator-access/debug'
-import creatorAccessRequest from './creator-access/request'
-import creatorAccessStatus from './creator-access/status'
-import debankTotalBalanceBatch from './debank/totalBalanceBatch'
-import dexscreenerTokenStatsBatch from './dexscreener/tokenStatsBatch'
-import deploySessionCancel from './deploy/session/cancel'
-import deploySessionContinue from './deploy/session/continue'
-import deploySessionCreate from './deploy/session/create'
-import deploySessionStatus from './deploy/session/status'
-import farcasterMe from './farcaster/me'
-import farcasterNonce from './farcaster/nonce'
-import farcasterVerify from './farcaster/verify'
-import health from './health'
-import onchainCoinMarketRewardsByCoin from './onchain/coinMarketRewardsByCoin'
-import onchainCoinMarketRewardsCurrency from './onchain/coinMarketRewardsCurrency'
-import onchainCoinTradeRewardsBatch from './onchain/coinTradeRewardsBatch'
-import onchainProtocolRewardsClaimable from './onchain/protocolRewardsClaimable'
-import onchainProtocolRewardsWithdrawn from './onchain/protocolRewardsWithdrawn'
-import paymaster from './paymaster'
-import revertFinance from './revert-finance'
-import socialFarcaster from './social/farcaster'
-import socialTalent from './social/talent'
-import socialTwitter from './social/twitter'
-import statusProtocolReport from './status/protocolReport'
-import statusVaultReport from './status/vaultReport'
-import syncVaultData from './sync-vault-data'
-import waitlist from './waitlist'
-import webhook from './webhook'
-import zoraCoin from './zora/coin'
-import zoraExplore from './zora/explore'
-import zoraProfile from './zora/profile'
-import zoraProfileCoins from './zora/profileCoins'
-import zoraTopCreators from './zora/topCreators'
+type ApiHandlerModule = { default?: ApiHandler }
 
-import adminCreatorAccessAllowlist from './admin/creator-access/allowlist'
-import adminCreatorAccessApprove from './admin/creator-access/approve'
-import adminCreatorAccessDeny from './admin/creator-access/deny'
-import adminCreatorAccessList from './admin/creator-access/list'
-import adminCreatorAccessNote from './admin/creator-access/note'
-import adminCreatorAccessRestore from './admin/creator-access/restore'
-import adminCreatorAccessRevoke from './admin/creator-access/revoke'
+// Use static import() calls so Vercel's bundler can see dependencies,
+// but avoid eager importing every handler at module-load time (which can crash the entire function).
+export const apiRouteLoaders: Record<string, () => Promise<ApiHandlerModule>> = {
+  'analytics': () => import('./analytics'),
+  'agent/invokeSkill': () => import('./agent/invokeSkill'),
 
-export const apiRoutes: Record<string, ApiHandler> = {
-  'analytics': analytics,
-  'agent/invokeSkill': agentInvokeSkill,
-  'auth/admin': authAdmin,
-  'auth/logout': authLogout,
-  'auth/me': authMe,
-  'auth/nonce': authNonce,
-  'auth/verify': authVerify,
-  'creator-allowlist': creatorAllowlist,
-  'creator-access/debug': creatorAccessDebug,
-  'creator-access/request': creatorAccessRequest,
-  'creator-access/status': creatorAccessStatus,
-  'debank/totalBalanceBatch': debankTotalBalanceBatch,
-  'dexscreener/tokenStatsBatch': dexscreenerTokenStatsBatch,
-  'deploy/session/cancel': deploySessionCancel,
-  'deploy/session/continue': deploySessionContinue,
-  'deploy/session/create': deploySessionCreate,
-  'deploy/session/status': deploySessionStatus,
-  'farcaster/me': farcasterMe,
-  'farcaster/nonce': farcasterNonce,
-  'farcaster/verify': farcasterVerify,
-  'health': health,
-  'onchain/coinMarketRewardsByCoin': onchainCoinMarketRewardsByCoin,
-  'onchain/coinMarketRewardsCurrency': onchainCoinMarketRewardsCurrency,
-  'onchain/coinTradeRewardsBatch': onchainCoinTradeRewardsBatch,
-  'onchain/protocolRewardsClaimable': onchainProtocolRewardsClaimable,
-  'onchain/protocolRewardsWithdrawn': onchainProtocolRewardsWithdrawn,
-  'paymaster': paymaster,
-  'revert-finance': revertFinance,
-  'social/farcaster': socialFarcaster,
-  'social/talent': socialTalent,
-  'social/twitter': socialTwitter,
-  'status/protocolReport': statusProtocolReport,
-  'status/vaultReport': statusVaultReport,
-  'sync-vault-data': syncVaultData,
-  'waitlist': waitlist,
-  'webhook': webhook,
-  'zora/coin': zoraCoin,
-  'zora/explore': zoraExplore,
-  'zora/profile': zoraProfile,
-  'zora/profileCoins': zoraProfileCoins,
-  'zora/topCreators': zoraTopCreators,
+  'auth/admin': () => import('./auth/admin'),
+  'auth/logout': () => import('./auth/logout'),
+  'auth/me': () => import('./auth/me'),
+  'auth/nonce': () => import('./auth/nonce'),
+  'auth/verify': () => import('./auth/verify'),
 
-  'admin/creator-access/allowlist': adminCreatorAccessAllowlist,
-  'admin/creator-access/approve': adminCreatorAccessApprove,
-  'admin/creator-access/deny': adminCreatorAccessDeny,
-  'admin/creator-access/list': adminCreatorAccessList,
-  'admin/creator-access/note': adminCreatorAccessNote,
-  'admin/creator-access/restore': adminCreatorAccessRestore,
-  'admin/creator-access/revoke': adminCreatorAccessRevoke,
+  'creator-allowlist': () => import('./creator-allowlist'),
+  'creator-access/debug': () => import('./creator-access/debug'),
+  'creator-access/request': () => import('./creator-access/request'),
+  'creator-access/status': () => import('./creator-access/status'),
+
+  'debank/totalBalanceBatch': () => import('./debank/totalBalanceBatch'),
+  'dexscreener/tokenStatsBatch': () => import('./dexscreener/tokenStatsBatch'),
+
+  'deploy/session/cancel': () => import('./deploy/session/cancel'),
+  'deploy/session/continue': () => import('./deploy/session/continue'),
+  'deploy/session/create': () => import('./deploy/session/create'),
+  'deploy/session/status': () => import('./deploy/session/status'),
+
+  'farcaster/me': () => import('./farcaster/me'),
+  'farcaster/nonce': () => import('./farcaster/nonce'),
+  'farcaster/verify': () => import('./farcaster/verify'),
+
+  'health': () => import('./health'),
+
+  'onchain/coinMarketRewardsByCoin': () => import('./onchain/coinMarketRewardsByCoin'),
+  'onchain/coinMarketRewardsCurrency': () => import('./onchain/coinMarketRewardsCurrency'),
+  'onchain/coinTradeRewardsBatch': () => import('./onchain/coinTradeRewardsBatch'),
+  'onchain/protocolRewardsClaimable': () => import('./onchain/protocolRewardsClaimable'),
+  'onchain/protocolRewardsWithdrawn': () => import('./onchain/protocolRewardsWithdrawn'),
+
+  'paymaster': () => import('./paymaster'),
+  'revert-finance': () => import('./revert-finance'),
+
+  'social/farcaster': () => import('./social/farcaster'),
+  'social/talent': () => import('./social/talent'),
+  'social/twitter': () => import('./social/twitter'),
+
+  'status/protocolReport': () => import('./status/protocolReport'),
+  'status/vaultReport': () => import('./status/vaultReport'),
+
+  'sync-vault-data': () => import('./sync-vault-data'),
+  'waitlist': () => import('./waitlist'),
+  'webhook': () => import('./webhook'),
+
+  'zora/coin': () => import('./zora/coin'),
+  'zora/explore': () => import('./zora/explore'),
+  'zora/profile': () => import('./zora/profile'),
+  'zora/profileCoins': () => import('./zora/profileCoins'),
+  'zora/topCreators': () => import('./zora/topCreators'),
+
+  'admin/creator-access/allowlist': () => import('./admin/creator-access/allowlist'),
+  'admin/creator-access/approve': () => import('./admin/creator-access/approve'),
+  'admin/creator-access/deny': () => import('./admin/creator-access/deny'),
+  'admin/creator-access/list': () => import('./admin/creator-access/list'),
+  'admin/creator-access/note': () => import('./admin/creator-access/note'),
+  'admin/creator-access/restore': () => import('./admin/creator-access/restore'),
+  'admin/creator-access/revoke': () => import('./admin/creator-access/revoke'),
+}
+
+export async function getApiHandler(subpath: string): Promise<ApiHandler | null> {
+  const loader = apiRouteLoaders[subpath]
+  if (!loader) return null
+  const mod = await loader()
+  return typeof mod?.default === 'function' ? (mod.default as ApiHandler) : null
 }
 
