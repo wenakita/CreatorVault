@@ -57,6 +57,9 @@ export const apiRouteLoaders: Record<string, () => Promise<ApiHandlerModule>> = 
   'status/vaultReport': () => import('./status/vaultReport.js'),
 
   'sync-vault-data': () => import('./sync-vault-data.js'),
+  'referrals/click': () => import('./referrals/click.js'),
+  'referrals/me': () => import('./referrals/me.js'),
+  'referrals/leaderboard': () => import('./referrals/leaderboard.js'),
   'waitlist': () => import('./waitlist.js'),
   'webhook': () => import('./webhook.js'),
 

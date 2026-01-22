@@ -2,6 +2,7 @@ import type { VercelRequest, VercelResponse } from '@vercel/node'
 
 import { type ApiEnvelope, handleOptions, setCors, setNoStore } from '../server/auth/_shared.js'
 import { getDb } from '../server/_lib/postgres.js'
+import { ensureReferralsSchema, normalizeReferralCode, getClientIp, getUserAgent, hashForAttribution } from '../server/_lib/referrals.js'
 
 declare const process: { env: Record<string, string | undefined> }
 
@@ -43,11 +44,16 @@ async function ensureWaitlistSchema(db: { sql: (strings: TemplateStringsArray, .
   }
 
   await db.sql`CREATE INDEX IF NOT EXISTS waitlist_signups_created_at_idx ON waitlist_signups (created_at DESC);`
+
+  // Referral schema depends on waitlist_signups existing.
+  await ensureReferralsSchema(db)
 }
 
 type WaitlistRequestBody = {
   email?: string
   primaryWallet?: string | null
+  referralCode?: string | null
+  claimReferralCode?: string | null
   intent?: {
     persona?: 'creator' | 'user' | null
     hasCreatorCoin?: boolean | null
@@ -58,6 +64,7 @@ type WaitlistRequestBody = {
 type WaitlistResponse = {
   created: boolean
   email: string
+  referralCode?: string | null
 }
 
 function normalizeEmail(v: string): string {
@@ -74,6 +81,29 @@ function normalizeAddress(v: string): string {
 
 function isValidEvmAddress(v: string): boolean {
   return /^0x[a-fA-F0-9]{40}$/.test(v)
+}
+
+function normalizeReferralCodeOrNull(v: string | null | undefined): string | null {
+  if (typeof v !== 'string') return null
+  const code = normalizeReferralCode(v)
+  return code.length > 0 ? code : null
+}
+
+async function resolveCreatorCoinSymbolFromWallet(wallet: string): Promise<string | null> {
+  const key = (process.env.ZORA_SERVER_API_KEY || '').trim()
+  if (!key) return null
+  try {
+    const sdk: any = await import('@zoralabs/coins-sdk')
+    sdk.setApiKey(key)
+    const profileResp = await sdk.getProfile({ identifier: wallet })
+    const creatorCoinAddr = String((profileResp as any)?.data?.profile?.creatorCoin?.address ?? '').trim()
+    if (!creatorCoinAddr) return null
+    const coinResp = await sdk.getCoin({ address: creatorCoinAddr, chain: 8453 })
+    const symbol = String((coinResp as any)?.data?.zora20Token?.symbol ?? '').trim()
+    return symbol || null
+  } catch {
+    return null
+  }
 }
 
 function getPrivyAuth(): { appId: string; appSecret: string } | null {
@@ -227,6 +257,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       : null
   const farcasterFid = farcasterFidRaw && Number.isFinite(farcasterFidRaw) && farcasterFidRaw > 0 ? farcasterFidRaw : null
 
+  const referralFromBody = normalizeReferralCodeOrNull(body.referralCode)
+  const claimReferralCode = normalizeReferralCodeOrNull(body.claimReferralCode)
+
   const db = await getDb()
   if (!db) {
     return res.status(500).json({
@@ -242,6 +275,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const msg = e?.message ? String(e.message) : 'Failed to initialize waitlist schema'
     return res.status(500).json({ success: false, error: msg } satisfies ApiEnvelope<never>)
   }
+
+  const ipHash = hashForAttribution(getClientIp(req))
+  const uaHash = hashForAttribution(getUserAgent(req))
 
   let privyUserId: string | null = null
   let embeddedWallet: string | null = null
@@ -288,13 +324,97 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             has_creator_coin = COALESCE(EXCLUDED.has_creator_coin, waitlist_signups.has_creator_coin),
             farcaster_fid = COALESCE(EXCLUDED.farcaster_fid, waitlist_signups.farcaster_fid),
             updated_at = NOW()
-      RETURNING (xmax = 0) AS created, email;
+      RETURNING id, (xmax = 0) AS created, email, referral_code;
     `
 
-    const row = (r?.rows?.[0] ?? null) as { created?: unknown; email?: unknown } | null
+    const row = (r?.rows?.[0] ?? null) as { id?: unknown; created?: unknown; email?: unknown; referral_code?: unknown } | null
     if (!row) throw new Error('Insert failed')
 
-    const data: WaitlistResponse = { created: Boolean(row.created), email: String(row.email ?? '') }
+    const signupId = typeof row.id === 'number' ? (row.id as number) : null
+
+    // If this is an eligible creator, attempt to claim a referral code.
+    let referralCodeOut: string | null = typeof row.referral_code === 'string' ? (row.referral_code as string) : null
+    if (signupId && persona === 'creator' && hasCreatorCoinRaw === true) {
+      const desired =
+        claimReferralCode ||
+        (primaryWallet.length > 0
+          ? normalizeReferralCodeOrNull(await resolveCreatorCoinSymbolFromWallet(primaryWallet))
+          : null)
+      if (desired && !referralCodeOut) {
+        try {
+          const up = await db.sql`
+            UPDATE waitlist_signups
+            SET referral_code = ${desired}, referral_claimed_at = NOW()
+            WHERE id = ${signupId} AND referral_code IS NULL
+            RETURNING referral_code;
+          `
+          const claimed = typeof up?.rows?.[0]?.referral_code === 'string' ? String(up.rows[0].referral_code) : null
+          referralCodeOut = claimed || referralCodeOut
+        } catch (e: any) {
+          const msg = e?.message ? String(e.message) : ''
+          if (msg.toLowerCase().includes('unique') || msg.toLowerCase().includes('duplicate')) {
+            return res.status(409).json({
+              success: false,
+              error: 'Referral code is taken. Choose a different code.',
+              code: 'REFERRAL_CODE_TAKEN',
+              suggested: desired,
+            } as any)
+          }
+          // otherwise ignore
+        }
+      }
+    }
+
+    // If the signup came with a referral code, attribute conversion (best-effort).
+    if (signupId && referralFromBody) {
+      const ref = await db.sql`
+        SELECT id
+        FROM waitlist_signups
+        WHERE referral_code = ${referralFromBody}
+          AND persona = 'creator'
+          AND has_creator_coin = TRUE
+        LIMIT 1;
+      `
+      const referrerId = typeof ref?.rows?.[0]?.id === 'number' ? (ref.rows[0].id as number) : null
+      if (referrerId && referrerId !== signupId) {
+        // Link invitee to referrer (do not overwrite if already set).
+        await db.sql`
+          UPDATE waitlist_signups
+          SET referred_by_code = ${referralFromBody}, referred_by_signup_id = ${referrerId}
+          WHERE id = ${signupId} AND referred_by_signup_id IS NULL;
+        `
+        // Insert conversion (one per invitee). If it already exists, ignore.
+        await db.sql`
+          INSERT INTO referral_conversions (
+            referral_code,
+            referrer_signup_id,
+            invitee_signup_id,
+            ip_hash,
+            ua_hash,
+            session_id,
+            attribution,
+            is_valid,
+            invalid_reason,
+            created_at
+          )
+          VALUES (
+            ${referralFromBody},
+            ${referrerId},
+            ${signupId},
+            ${ipHash},
+            ${uaHash},
+            NULL,
+            'last_click',
+            TRUE,
+            NULL,
+            NOW()
+          )
+          ON CONFLICT (invitee_signup_id) DO NOTHING;
+        `
+      }
+    }
+
+    const data: WaitlistResponse = { created: Boolean(row.created), email: String(row.email ?? ''), referralCode: referralCodeOut }
     return res.status(200).json({ success: true, data } satisfies ApiEnvelope<WaitlistResponse>)
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : 'Waitlist insert failed'

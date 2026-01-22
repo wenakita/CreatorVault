@@ -11,6 +11,7 @@ import { Check, CheckCircle2, ChevronDown } from 'lucide-react'
 import { useMiniAppContext } from '@/hooks'
 import { apiAliasPath } from '@/lib/apiBase'
 import { fetchZoraCoin, fetchZoraProfile } from '@/lib/zora/client'
+import { REFERRAL_BADGES, REFERRAL_TWEET_TEMPLATES, fillTweetTemplate, INVITE_COPY } from '@/components/waitlist/referralsCopy'
 
 type Persona = 'creator' | 'user'
 type Variant = 'page' | 'embedded'
@@ -42,8 +43,19 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
   const [creatorCoinBusy, setCreatorCoinBusy] = useState(false)
   const [creatorCoinError, setCreatorCoinError] = useState<string | null>(null)
   const creatorCoinForWalletRef = useRef<string | null>(null)
+  const [referralCodeTaken, setReferralCodeTaken] = useState(false)
+  const [claimReferralCode, setClaimReferralCode] = useState('')
+  const [inviteToast, setInviteToast] = useState<string | null>(null)
+  const [inviteTemplateIdx, setInviteTemplateIdx] = useState(0)
+  const [referralCode, setReferralCode] = useState<string | null>(null)
+  const [weeklyConversions, setWeeklyConversions] = useState<number | null>(null)
+  const [allTimeConversions, setAllTimeConversions] = useState<number | null>(null)
+  const [weeklyRank, setWeeklyRank] = useState<number | null>(null)
+  const [allTimeRank, setAllTimeRank] = useState<number | null>(null)
+  const [referralFetchBusy, setReferralFetchBusy] = useState(false)
 
   const emailInputRef = useRef<HTMLInputElement | null>(null)
+  const referralSessionIdRef = useRef<string | null>(null)
 
   const appUrl = useMemo(() => getAppBaseUrl(), [])
   const siwe = useSiweAuth()
@@ -87,6 +99,77 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
     const raw = (q.get('persona') ?? '').trim().toLowerCase()
     return raw === 'creator' ? ('creator' as const) : raw === 'user' ? ('user' as const) : null
   }, [location.search])
+
+  const refParam = useMemo(() => {
+    const q = new URLSearchParams(location.search)
+    const raw = (q.get('ref') ?? '').trim()
+    const cleaned = raw.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 16)
+    return cleaned.length > 0 ? cleaned : null
+  }, [location.search])
+
+  function getOrCreateReferralSessionId(): string {
+    if (referralSessionIdRef.current) return referralSessionIdRef.current
+    try {
+      const k = 'cv_ref_session'
+      const existing = localStorage.getItem(k)
+      if (existing && existing.trim()) {
+        referralSessionIdRef.current = existing.trim()
+        return referralSessionIdRef.current
+      }
+      const v = Math.random().toString(16).slice(2) + Math.random().toString(16).slice(2)
+      localStorage.setItem(k, v)
+      referralSessionIdRef.current = v
+      return v
+    } catch {
+      const v = Math.random().toString(16).slice(2) + Math.random().toString(16).slice(2)
+      referralSessionIdRef.current = v
+      return v
+    }
+  }
+
+  function getStoredReferralCode(): string | null {
+    try {
+      const v = localStorage.getItem('cv_ref_code')
+      const t = typeof v === 'string' ? v.trim().toUpperCase() : ''
+      return t ? t : null
+    } catch {
+      return null
+    }
+  }
+
+  function storeReferralCode(code: string | null) {
+    try {
+      if (!code) {
+        localStorage.removeItem('cv_ref_code')
+        return
+      }
+      localStorage.setItem('cv_ref_code', code)
+    } catch {
+      // ignore
+    }
+  }
+
+  // If user arrives with ?ref=CODE, store it and record a click.
+  useEffect(() => {
+    if (!refParam) return
+    storeReferralCode(refParam)
+    void (async () => {
+      try {
+        await apiFetch('/api/referrals/click', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+          body: JSON.stringify({
+            referralCode: refParam,
+            sessionId: getOrCreateReferralSessionId(),
+            landingUrl: typeof window !== 'undefined' ? window.location.href : null,
+          }),
+        })
+      } catch {
+        // ignore
+      }
+    })()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [refParam])
 
   // Keep persona preselection lightweight: on first load, if persona is set via query params,
   // jump straight into the right step.
@@ -177,6 +260,7 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
 
   async function submitWaitlist(params: { email: string }) {
     setError(null)
+    setReferralCodeTaken(false)
     setBusy(true)
     try {
       // Creators must verify before email submission.
@@ -190,12 +274,24 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
         throw new Error('Wallet address must be a valid 0x… address (or leave it blank).')
       }
 
+      const storedRef = getStoredReferralCode()
+      const claim =
+        persona === 'creator'
+          ? String(claimReferralCode || '')
+              .trim()
+              .toUpperCase()
+              .replace(/[^A-Z0-9]/g, '')
+              .slice(0, 16)
+          : ''
+
       const res = await apiFetch('/api/waitlist', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           email: params.email,
           primaryWallet: primaryWalletForSubmit(),
+          referralCode: storedRef,
+          claimReferralCode: claim.length > 0 ? claim : null,
           intent: {
             persona,
             fid: verifiedFid,
@@ -210,6 +306,11 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
       } catch {
         json = null
       }
+      if (res.status === 409 && json && json.code === 'REFERRAL_CODE_TAKEN') {
+        setReferralCodeTaken(true)
+        setClaimReferralCode(String(json?.suggested ?? claim ?? ''))
+        throw new Error('That referral code is taken. Pick another and resubmit.')
+      }
       if (!res.ok || !json || json.success !== true) {
         const msg =
           json && typeof json.error === 'string'
@@ -220,6 +321,7 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
         throw new Error(msg)
       }
       setDoneEmail(String(json?.data?.email || params.email))
+      setReferralCode(typeof json?.data?.referralCode === 'string' ? String(json.data.referralCode) : null)
       setStep('done')
     } catch (e: any) {
       setError(e?.message ? String(e.message) : 'Waitlist request failed')
@@ -248,7 +350,48 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
     setCreatorCoinBusy(false)
     setCreatorCoinError(null)
     creatorCoinForWalletRef.current = null
+    setReferralCodeTaken(false)
+    setClaimReferralCode('')
+    setInviteToast(null)
+    setInviteTemplateIdx(0)
+    setReferralCode(null)
+    setWeeklyConversions(null)
+    setAllTimeConversions(null)
+    setWeeklyRank(null)
+    setAllTimeRank(null)
+    setReferralFetchBusy(false)
   }
+
+  // Fetch referral counters/ranks once we have a code to show.
+  useEffect(() => {
+    if (step !== 'done') return
+    if (!referralCode) return
+    if (referralFetchBusy) return
+    setReferralFetchBusy(true)
+    void (async () => {
+      try {
+        const res = await apiFetch(`/api/referrals/me?referralCode=${encodeURIComponent(referralCode)}`, {
+          method: 'GET',
+          headers: { Accept: 'application/json' },
+        })
+        const text = await res.text().catch(() => '')
+        const json = text ? JSON.parse(text) : null
+        if (!res.ok || !json || json.success !== true) return
+        const data = json?.data ?? null
+        if (!data) return
+        setReferralCode(typeof data.referralCode === 'string' ? String(data.referralCode) : referralCode)
+        setWeeklyConversions(typeof data.weeklyConversions === 'number' ? data.weeklyConversions : null)
+        setAllTimeConversions(typeof data.allTimeConversions === 'number' ? data.allTimeConversions : null)
+        setWeeklyRank(typeof data.weeklyRank === 'number' ? data.weeklyRank : null)
+        setAllTimeRank(typeof data.allTimeRank === 'number' ? data.allTimeRank : null)
+      } catch {
+        // ignore
+      } finally {
+        setReferralFetchBusy(false)
+      }
+    })()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [referralCode, step])
 
   // When the creator chooses "Use wallet signature", once SIWE completes we can proceed.
   useEffect(() => {
@@ -725,6 +868,38 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
                   </div>
                 ) : null}
 
+                {persona === 'creator' && referralCodeTaken ? (
+                  <div className="rounded-xl border border-amber-400/20 bg-amber-400/5 px-4 py-3">
+                    <div className="text-[10px] uppercase tracking-[0.24em] text-amber-300/80 mb-2">
+                      Claim your referral code
+                    </div>
+                    <div className="text-xs text-zinc-600 mb-3">
+                      Your Creator Coin symbol is already taken. Pick a short alternative (A–Z, 0–9).
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <input
+                        value={claimReferralCode}
+                        onChange={(e) => setClaimReferralCode(e.target.value)}
+                        placeholder="CODE"
+                        inputMode="text"
+                        autoComplete="off"
+                        className="flex-1 rounded-lg border border-white/10 bg-black/40 px-3 py-2 text-sm text-zinc-200 placeholder:text-zinc-700 focus:outline-none focus:ring-2 focus:ring-brand-primary/30 font-mono"
+                      />
+                      <button
+                        type="button"
+                        className="btn-accent"
+                        disabled={busy || !isValidEmail(emailTrimmed)}
+                        onClick={() => void submitWaitlist({ email: emailTrimmed })}
+                      >
+                        Claim
+                      </button>
+                    </div>
+                    <div className="mt-2 text-[11px] text-zinc-700">
+                      Format: <span className="font-mono">A–Z 0–9</span>, max 16 chars.
+                    </div>
+                  </div>
+                ) : null}
+
                 {showPrivy ? (
                   <div className="space-y-3">
                     {privyStatus === 'ready' ? (
@@ -870,18 +1045,143 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
                     <div className="absolute inset-0 rounded-full border border-brand-primary/20 animate-pulse-ring" />
                     <CheckCircle2 className="w-5 h-5 text-brand-accent" />
                   </div>
-                  <div className="headline text-2xl sm:text-3xl leading-tight">You’re in.</div>
+                  <div className="headline text-2xl sm:text-3xl leading-tight">{INVITE_COPY.title}</div>
                 </motion.div>
+
                 <div className="text-sm text-zinc-600 font-light">
                   {doneEmail ? (
                     <>
-                      We’ll email <span className="font-mono text-zinc-300">{doneEmail}</span> when onboarding opens.
+                      You’re on the list as <span className="font-mono text-zinc-300">{doneEmail}</span>. {INVITE_COPY.body}
                     </>
                   ) : (
-                    <>We’ll email you when onboarding opens.</>
+                    <>{INVITE_COPY.body}</>
                   )}
                 </div>
-                <div className="space-y-3 pt-2">
+
+                <div className="rounded-xl border border-white/10 bg-black/30 px-4 py-3 space-y-2">
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <div className="text-[10px] uppercase tracking-[0.24em] text-zinc-600 mb-1">{INVITE_COPY.counterLabel}</div>
+                      <div className="text-2xl text-zinc-200">
+                        {typeof allTimeConversions === 'number' ? allTimeConversions : '—'}
+                      </div>
+                      <div className="text-[11px] text-zinc-700">
+                        {typeof weeklyConversions === 'number' ? `${weeklyConversions} this week` : 'Fetching stats…'}
+                        {weeklyRank ? ` · #${weeklyRank} weekly` : ''}
+                        {allTimeRank ? ` · #${allTimeRank} all‑time` : ''}
+                      </div>
+                    </div>
+                    <a
+                      className="text-[11px] text-zinc-600 hover:text-zinc-400 transition-colors pt-1"
+                      href="/leaderboard"
+                    >
+                      View leaderboard →
+                    </a>
+                  </div>
+
+                  <div className="pt-2">
+                    {(() => {
+                      const count = typeof allTimeConversions === 'number' ? allTimeConversions : 0
+                      const next = REFERRAL_BADGES.find((b) => count < b.threshold) ?? null
+                      const nextThresh = next?.threshold ?? count
+                      const progress = next ? Math.max(0, Math.min(1, count / nextThresh)) : 1
+                      return (
+                        <div className="space-y-2">
+                          <div className="flex items-center justify-between text-[11px] text-zinc-700">
+                            <div>Next badge</div>
+                            <div className="font-mono">
+                              {count}/{nextThresh}
+                            </div>
+                          </div>
+                          <div className="h-2 rounded-full bg-white/5 overflow-hidden">
+                            <div className="h-full bg-brand-primary/40" style={{ width: `${Math.round(progress * 100)}%` }} />
+                          </div>
+                          <div className="flex items-center gap-2 flex-wrap pt-1">
+                            {REFERRAL_BADGES.map((b) => {
+                              const unlocked = count >= b.threshold
+                              return (
+                                <div
+                                  key={b.threshold}
+                                  className={`text-[11px] rounded-full px-2 py-1 border ${
+                                    unlocked ? 'border-brand-primary/30 bg-brand-primary/10 text-zinc-300' : 'border-white/10 bg-black/30 text-zinc-700'
+                                  }`}
+                                  title={unlocked ? 'Unlocked' : `Need ${b.threshold} converted invites`}
+                                >
+                                  {b.label} · {b.threshold}
+                                </div>
+                              )
+                            })}
+                          </div>
+                        </div>
+                      )
+                    })()}
+                  </div>
+                </div>
+
+                {referralCode ? (
+                  <div className="rounded-xl border border-white/10 bg-black/30 px-4 py-3 space-y-3">
+                    <div>
+                      <div className="text-[10px] uppercase tracking-[0.24em] text-zinc-600 mb-1">{INVITE_COPY.linkLabel}</div>
+                      <div className="text-[11px] text-zinc-700 mb-2">{INVITE_COPY.linkHelper}</div>
+                      <div className="rounded-lg border border-white/10 bg-black/40 px-3 py-2 font-mono text-[12px] text-zinc-300 break-all">
+                        {`${appUrl.replace(/\/+$/, '')}/?ref=${encodeURIComponent(referralCode)}#waitlist`}
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                      <button
+                        type="button"
+                        className="btn-primary w-full"
+                        onClick={() => {
+                          const refLink = `${appUrl.replace(/\/+$/, '')}/?ref=${encodeURIComponent(referralCode)}#waitlist`
+                          const template = REFERRAL_TWEET_TEMPLATES[inviteTemplateIdx % REFERRAL_TWEET_TEMPLATES.length] || REFERRAL_TWEET_TEMPLATES[0]
+                          const text = fillTweetTemplate(template, refLink)
+                          const url = `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}`
+                          window.open(url, '_blank', 'noopener,noreferrer')
+                        }}
+                      >
+                        {INVITE_COPY.shareButton}
+                      </button>
+                      <button
+                        type="button"
+                        className="btn-accent w-full"
+                        onClick={() => {
+                          const refLink = `${appUrl.replace(/\/+$/, '')}/?ref=${encodeURIComponent(referralCode)}#waitlist`
+                          void (async () => {
+                            try {
+                              await navigator.clipboard.writeText(refLink)
+                              setInviteToast(INVITE_COPY.copiedToast)
+                              window.setTimeout(() => setInviteToast(null), 1800)
+                            } catch {
+                              setInviteToast('Copy failed.')
+                              window.setTimeout(() => setInviteToast(null), 1800)
+                            }
+                          })()
+                        }}
+                      >
+                        {INVITE_COPY.copyButton}
+                      </button>
+                    </div>
+
+                    <div className="flex items-center justify-between gap-3">
+                      <button
+                        type="button"
+                        className="text-[11px] text-zinc-600 hover:text-zinc-400 transition-colors"
+                        onClick={() => setInviteTemplateIdx((v) => (v + 1) % REFERRAL_TWEET_TEMPLATES.length)}
+                      >
+                        Rotate template ({(inviteTemplateIdx % REFERRAL_TWEET_TEMPLATES.length) + 1}/{REFERRAL_TWEET_TEMPLATES.length})
+                      </button>
+                      {inviteToast ? <div className="text-[11px] text-zinc-600">{inviteToast}</div> : null}
+                    </div>
+                    <div className="text-[11px] text-zinc-700">{INVITE_COPY.shareMicrocopy}</div>
+                  </div>
+                ) : (
+                  <div className="text-[11px] text-zinc-700">
+                    Your invite link will appear here once your referral code is assigned.
+                  </div>
+                )}
+
+                <div className="space-y-3 pt-1">
                   <div className="flex items-center justify-between gap-3">
                     <button
                       type="button"

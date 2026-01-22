@@ -241,6 +241,11 @@ const WaitlistLanding = lazy(async () => {
   return { default: m.WaitlistLanding }
 })
 
+const Leaderboard = lazy(async () => {
+  const m = await import('./pages/Leaderboard')
+  return { default: m.Leaderboard }
+})
+
 const CoinManage = lazy(async () => {
   const m = await import('./pages/CoinManage')
   return { default: m.CoinManage }
@@ -367,6 +372,7 @@ function App() {
             <Route path="/" element={<WaitlistLanding />} />
             {/* Back-compat */}
             <Route path="/waitlist" element={<Navigate to="/" replace />} />
+            <Route path="/leaderboard" element={<Leaderboard />} />
 
             {/* If someone hits an app route on the marketing domain, push them to app.* */}
             <Route path="/explore/*" element={<ExternalRedirect to={`${appBase}/explore`} />} />
