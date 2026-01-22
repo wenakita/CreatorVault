@@ -9,8 +9,8 @@ import {
   setCookie,
   setCors,
   setNoStore,
-} from '../../server/farcaster/_shared'
-import { makeNonceToken } from '../../server/auth/_shared'
+} from '../../server/farcaster/_shared.js'
+import { makeNonceToken } from '../../server/auth/_shared.js'
 
 type NonceResponse = { nonce: string; nonceToken: string }
 

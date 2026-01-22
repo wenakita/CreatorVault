@@ -1,5 +1,5 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
-import { setCors as setCorsAllowlist } from '../auth/_shared'
+import { setCors as setCorsAllowlist } from '../auth/_shared.js'
 
 export function setCors(req: VercelRequest, res: VercelResponse) {
   setCorsAllowlist(req, res)

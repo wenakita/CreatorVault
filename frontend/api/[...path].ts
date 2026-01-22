@@ -42,7 +42,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.status(404).json({ success: false, error: 'Not found' })
     }
 
-    const { getApiHandler } = await import('../api_handlers/_routes')
+    const { getApiHandler } = await import('../api_handlers/_routes.js')
     const h = (await getApiHandler(subpath)) as ApiHandler | null
     if (!h) {
       return res.status(404).json({ success: false, error: 'Not found' })

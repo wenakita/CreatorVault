@@ -15,7 +15,7 @@ import {
   readJsonBody,
   setCors,
   setNoStore,
-} from '../../server/farcaster/_shared'
+} from '../../server/farcaster/_shared.js'
 
 declare const process: { env: Record<string, string | undefined> }
 

@@ -17,7 +17,7 @@ import {
   setCors,
   setNoStore,
   verifySiweSignature,
-} from '../../server/auth/_shared'
+} from '../../server/auth/_shared.js'
 
 
 type VerifyBody = { message?: string; signature?: string; nonceToken?: string }
