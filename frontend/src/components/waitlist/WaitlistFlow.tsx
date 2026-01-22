@@ -733,8 +733,6 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
       ? 'rounded-2xl bg-black/30 backdrop-blur-sm p-4 sm:p-6 shadow-void'
       : 'rounded-2xl border border-zinc-900/70 bg-black/30 backdrop-blur-sm p-5 sm:p-6'
 
-  const showPersonaStep = !forcedPersona
-
   const goBack = useCallback(() => {
     setError(null)
     setSiwfError(null)
