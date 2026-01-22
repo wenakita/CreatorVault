@@ -10,6 +10,3 @@
 [submodule "lib/solidity-lib"]
 	path = lib/solidity-lib
 	url = https://github.com/Uniswap/solidity-lib
-[submodule ".brand-kit"]
-	path = .brand-kit
-	url = https://github.com/wenakita/Creator-Vaults-Brand-Kit

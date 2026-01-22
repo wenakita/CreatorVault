@@ -66,6 +66,13 @@
     "typescript": "^5.9.3"
   },
   "pnpm": {
+    "onlyBuiltDependencies": [
+      "@reown/appkit",
+      "bufferutil",
+      "esbuild",
+      "sharp",
+      "utf-8-validate"
+    ],
     "overrides": {
       "@coinbase/wallet-sdk": "4.3.7",
       "cbw-sdk": "npm:@coinbase/wallet-sdk@4.3.7",
