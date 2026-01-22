@@ -1,7 +1,7 @@
 import { lazy, useMemo } from 'react'
 import { Routes, Route, Navigate, Outlet, useLocation } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
-import { useLogin, usePrivy } from '@privy-io/react-auth'
+import { usePrivy } from '@privy-io/react-auth'
 import { useSmartWallets } from '@privy-io/react-auth/smart-wallets'
 import { usePrivyClientStatus } from '@/lib/privy/client'
 import { useCreatorAllowlist } from '@/hooks'
@@ -60,8 +60,7 @@ function AppAllowlistGate() {
 
 function AppAllowlistGatePrivyEnabled() {
   const location = useLocation()
-  const { ready: privyReady, authenticated } = usePrivy()
-  const { login } = useLogin()
+  const { ready: privyReady, authenticated, login } = usePrivy()
   const { client: smartWalletClient } = useSmartWallets()
 
   // Detect whether allowlist gating is even enabled server-side.
@@ -143,7 +142,7 @@ function AppAllowlistGatePrivyEnabled() {
               onClick={() =>
                 void Promise.resolve(
                   login({
-                    // Force external wallet sign-in (EOA) so users see MetaMask / WalletConnect options immediately.
+                    // Force wallet-only sign-in so the gate doesn't offer social providers.
                     loginMethods: ['wallet'],
                   } as any),
                 )

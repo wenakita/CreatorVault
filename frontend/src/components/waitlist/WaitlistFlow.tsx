@@ -19,7 +19,6 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
 
   const location = useLocation()
   const [persona, setPersona] = useState<Persona | null>(null)
-  const [hasCreatorCoin, setHasCreatorCoin] = useState<boolean | null>(null)
   const [step, setStep] = useState<'persona' | 'verify' | 'email' | 'done'>('persona')
   const [email, setEmail] = useState('')
   const [busy, setBusy] = useState(false)
@@ -31,6 +30,7 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
   const [siwfBusy, setSiwfBusy] = useState(false)
   const [siwfError, setSiwfError] = useState<string | null>(null)
   const [useWalletSig, setUseWalletSig] = useState(false)
+  const [walletSigStarted, setWalletSigStarted] = useState(false)
   const [shareBusy, setShareBusy] = useState(false)
   const [shareToast, setShareToast] = useState<string | null>(null)
   const [userWallet, setUserWallet] = useState('')
@@ -89,12 +89,10 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
     if (step !== 'persona') return
     setPersona(forcedPersona)
     if (forcedPersona === 'creator') {
-      setHasCreatorCoin(null)
       setUseWalletSig(false)
       setSiwfError(null)
       setStep('verify')
     } else {
-      setHasCreatorCoin(false)
       setStep('email')
     }
   }, [forcedPersona, step])
@@ -185,7 +183,6 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
           primaryWallet: primaryWalletForSubmit(),
           intent: {
             persona,
-            hasCreatorCoin,
             fid: verifiedFid,
           },
         }),
@@ -218,7 +215,6 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
   function resetFlow() {
     setStep('persona')
     setPersona(null)
-    setHasCreatorCoin(null)
     setEmail('')
     setError(null)
     setDoneEmail(null)
@@ -228,6 +224,7 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
     setSiwfBusy(false)
     setSiwfError(null)
     setUseWalletSig(false)
+    setWalletSigStarted(false)
     setUserWallet('')
     setShowUserWallet(false)
   }
@@ -237,10 +234,14 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
     if (step !== 'verify') return
     if (persona !== 'creator') return
     if (!useWalletSig) return
+    // Important: if the user is already signed-in from a previous session,
+    // we should NOT auto-advance just because `siwe.isSignedIn` is true.
+    // Only advance after the user explicitly clicks "Sign with wallet" in this flow.
+    if (!walletSigStarted) return
     if (!siwe.isSignedIn || !siwe.authAddress) return
     setVerifiedWallet(siwe.authAddress)
     setStep('email')
-  }, [persona, siwe.authAddress, siwe.isSignedIn, step, useWalletSig])
+  }, [persona, siwe.authAddress, siwe.isSignedIn, step, useWalletSig, walletSigStarted])
 
   // Auto-start SIWF nonce fetch so the button is the primary action.
   useEffect(() => {
@@ -458,7 +459,6 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
                     className="group w-full rounded-xl border border-white/10 bg-black/40 hover:bg-black/50 hover:border-brand-primary/30 p-4 text-left transition-colors focus:outline-none focus:ring-2 focus:ring-brand-primary/30"
                     onClick={() => {
                       setPersona('creator')
-                      setHasCreatorCoin(null)
                       setError(null)
                       setUseWalletSig(false)
                       setSiwfError(null)
@@ -481,7 +481,6 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
                     className="group w-full rounded-xl border border-white/10 bg-black/40 hover:bg-black/50 hover:border-brand-primary/30 p-4 text-left transition-colors focus:outline-none focus:ring-2 focus:ring-brand-primary/30"
                     onClick={() => {
                       setPersona('user')
-                      setHasCreatorCoin(false)
                       setError(null)
                       setStep('email')
                     }}
@@ -515,34 +514,6 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
                   Creators verify before joining so we can prioritize onboarding and reduce spam.
                 </div>
 
-                <div className="space-y-3">
-                  <div className="text-[10px] uppercase tracking-[0.24em] text-zinc-600">Do you already have a CreatorCoin?</div>
-                  <div className="grid grid-cols-2 gap-2">
-                    <button
-                      type="button"
-                      className={`rounded-lg border px-3 py-2 text-sm transition-colors ${
-                        hasCreatorCoin === true
-                          ? 'border-brand-primary/40 bg-brand-primary/10 text-zinc-100'
-                          : 'border-white/10 bg-black/40 text-zinc-400 hover:text-zinc-200 hover:border-brand-primary/30'
-                      }`}
-                      onClick={() => setHasCreatorCoin(true)}
-                    >
-                      Yes
-                    </button>
-                    <button
-                      type="button"
-                      className={`rounded-lg border px-3 py-2 text-sm transition-colors ${
-                        hasCreatorCoin === false
-                          ? 'border-brand-primary/40 bg-brand-primary/10 text-zinc-100'
-                          : 'border-white/10 bg-black/40 text-zinc-400 hover:text-zinc-200 hover:border-brand-primary/30'
-                      }`}
-                      onClick={() => setHasCreatorCoin(false)}
-                    >
-                      Not yet
-                    </button>
-                  </div>
-                </div>
-
                 {/* Primary: SIWF via Farcaster Auth Kit */}
                 {!useWalletSig ? (
                   <div className="space-y-3">
@@ -565,7 +536,12 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
                     <button
                       type="button"
                       className="w-full text-[11px] text-zinc-600 hover:text-zinc-400 transition-colors"
-                      onClick={() => setUseWalletSig(true)}
+                      onClick={() => {
+                        setUseWalletSig(true)
+                        setWalletSigStarted(false)
+                        // Prevent any prior session state from immediately skipping the step.
+                        setVerifiedWallet(null)
+                      }}
                     >
                       Use wallet signature instead
                     </button>
@@ -577,7 +553,10 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
                       type="button"
                       className="btn-accent w-full disabled:opacity-50 disabled:cursor-not-allowed"
                       disabled={siwe.busy}
-                      onClick={() => void siwe.signIn()}
+                      onClick={() => {
+                        setWalletSigStarted(true)
+                        void siwe.signIn()
+                      }}
                     >
                       {siwe.busy ? 'Signing…' : 'Sign with wallet'}
                     </button>
@@ -585,7 +564,10 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
                     <button
                       type="button"
                       className="w-full text-[11px] text-zinc-600 hover:text-zinc-400 transition-colors"
-                      onClick={() => setUseWalletSig(false)}
+                      onClick={() => {
+                        setUseWalletSig(false)
+                        setWalletSigStarted(false)
+                      }}
                     >
                       Back to Farcaster
                     </button>
