@@ -82,6 +82,7 @@ function localApiRoutesPlugin(): Plugin {
       // Vite's config TS project to type-check every function signature.
       const routes: Record<string, () => Promise<{ default: (req: any, res: any) => any }>> = {
         '/api/creator-allowlist': () => import('./api_handlers/creator-allowlist'),
+        '/api/waitlist': () => import('./api_handlers/waitlist'),
         '/api/onchain/coinMarketRewardsByCoin': () => import('./api_handlers/onchain/coinMarketRewardsByCoin'),
         '/api/onchain/coinMarketRewardsCurrency': () => import('./api_handlers/onchain/coinMarketRewardsCurrency'),
         '/api/onchain/coinTradeRewardsBatch': () => import('./api_handlers/onchain/coinTradeRewardsBatch'),
