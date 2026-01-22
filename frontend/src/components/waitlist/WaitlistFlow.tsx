@@ -51,12 +51,20 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
   const [siwfBusy, setSiwfBusy] = useState(false)
   const [siwfError, setSiwfError] = useState<string | null>(null)
   const [siwfStarted, setSiwfStarted] = useState(false)
-  const [useWalletSig, setUseWalletSig] = useState(false)
   const [shareBusy, setShareBusy] = useState(false)
   const [shareToast, setShareToast] = useState<string | null>(null)
   const [userWallet, setUserWallet] = useState('')
   const [showUserWallet, setShowUserWallet] = useState(false)
-  const [creatorCoin, setCreatorCoin] = useState<{ address: string; symbol: string | null; coinType: string | null } | null>(null)
+  const [creatorCoin, setCreatorCoin] = useState<{
+    address: string
+    symbol: string | null
+    coinType: string | null
+    imageUrl: string | null
+    marketCapUsd: number | null
+    volume24hUsd: number | null
+    holders: number | null
+    priceUsd: number | null
+  } | null>(null)
   const [creatorCoinBusy, setCreatorCoinBusy] = useState(false)
   const [creatorCoinError, setCreatorCoinError] = useState<string | null>(null)
   const creatorCoinForWalletRef = useRef<string | null>(null)
@@ -363,7 +371,6 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
     setSiwfBusy(false)
     setSiwfError(null)
     setSiwfStarted(false)
-    setUseWalletSig(false)
     setUserWallet('')
     setShowUserWallet(false)
     setCreatorCoin(null)
@@ -417,22 +424,20 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
   useEffect(() => {
     if (step !== 'verify') return
     if (persona !== 'creator') return
-    if (useWalletSig) return
     if (siwfNonce) return
     if (siwfBusy) return
     void startSiwf()
-  }, [persona, siwfBusy, siwfNonce, step, useWalletSig])
+  }, [persona, siwfBusy, siwfNonce, step])
 
   // Only verify after the user explicitly clicks the SIWF button in this flow.
   useEffect(() => {
     if (!siwfStarted) return
     if (step !== 'verify') return
     if (persona !== 'creator') return
-    if (useWalletSig) return
     if (siwfBusy) return
     if (!siwfMessage || !siwfSignature) return
     void verifySiwfOnServer()
-  }, [persona, siwfBusy, siwfMessage, siwfSignature, siwfStarted, step, useWalletSig])
+  }, [persona, siwfBusy, siwfMessage, siwfSignature, siwfStarted, step])
 
   // When Farcaster auth-kit has a profile, capture a best-effort wallet.
   useEffect(() => {
@@ -471,18 +476,37 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
           return
         }
 
-        // Resolve metadata (symbol/type) for display. If it fails, still show the address.
+        // Resolve metadata (symbol/type/stats) for display. If it fails, still show the address.
         let symbol: string | null = null
         let coinType: string | null = null
+        let imageUrl: string | null = null
+        let marketCapUsd: number | null = null
+        let volume24hUsd: number | null = null
+        let holders: number | null = null
+        let priceUsd: number | null = null
         try {
           const coin = await fetchZoraCoin(coinAddr as any)
           symbol = coin?.symbol ? String(coin.symbol) : null
           coinType = coin?.coinType ? String(coin.coinType) : null
+          imageUrl =
+            (coin?.mediaContent?.previewImage?.medium as string | undefined) ||
+            (coin?.mediaContent?.previewImage?.small as string | undefined) ||
+            null
+          const asNumber = (v: any): number | null => {
+            const n = Number(v)
+            return Number.isFinite(n) ? n : null
+          }
+          marketCapUsd = asNumber(coin?.marketCap)
+          volume24hUsd = asNumber(coin?.volume24h)
+          holders = typeof coin?.uniqueHolders === 'number' ? coin.uniqueHolders : null
+          priceUsd = asNumber(coin?.tokenPrice?.priceInUsdc)
         } catch {
           // ignore
         }
 
-        if (!cancelled) setCreatorCoin({ address: coinAddr, symbol, coinType })
+        if (!cancelled) {
+          setCreatorCoin({ address: coinAddr, symbol, coinType, imageUrl, marketCapUsd, volume24hUsd, holders, priceUsd })
+        }
       } catch (e: any) {
         if (!cancelled) {
           setCreatorCoin(null)
@@ -738,7 +762,6 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
     setSiwfError(null)
     setSiwfStarted(false)
     if (step === 'verify') {
-      setUseWalletSig(false)
       setStep('persona')
       return
     }
@@ -750,6 +773,27 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
       }
     }
   }, [persona, step])
+
+  const compactNumber = useMemo(
+    () => new Intl.NumberFormat('en-US', { notation: 'compact', maximumFractionDigits: 1 }),
+    [],
+  )
+
+  function formatUsd(value: number | null): string {
+    if (typeof value !== 'number' || !Number.isFinite(value)) return '—'
+    return `$${compactNumber.format(value)}`
+  }
+
+  function formatPrice(value: number | null): string {
+    if (typeof value !== 'number' || !Number.isFinite(value)) return '—'
+    const digits = value < 1 ? 6 : 2
+    return `$${new Intl.NumberFormat('en-US', { maximumFractionDigits: digits }).format(value)}`
+  }
+
+  function formatCount(value: number | null): string {
+    if (typeof value !== 'number' || !Number.isFinite(value)) return '—'
+    return compactNumber.format(value)
+  }
 
   function renderActionBadge(action: ActionKey) {
     const done = actionsDone[action]
@@ -784,6 +828,21 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
         )}
 
         <div className={cardWrapClass}>
+          {step !== 'persona' && step !== 'done' ? (
+            <div className="flex items-center justify-between mb-3">
+              <button
+                type="button"
+                className="text-[11px] text-zinc-600 hover:text-zinc-400 transition-colors"
+                disabled={busy || siwfBusy || siwe.busy}
+                onClick={() => {
+                  if (busy || siwfBusy || siwe.busy) return
+                  goBack()
+                }}
+              >
+                Back
+              </button>
+            </div>
+          ) : null}
           <div className="mb-5 sm:mb-6">
             <div className="h-1 rounded-full bg-white/5 overflow-hidden">
               <motion.div
@@ -863,9 +922,9 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
                 <div className="headline text-2xl sm:text-3xl leading-tight">Verify</div>
                 <div className="text-sm text-zinc-600 font-light">Verify to continue.</div>
 
-                {/* Primary: SIWF via Farcaster Auth Kit */}
-                {!useWalletSig ? (
-                  <div className="space-y-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="rounded-xl border border-white/10 bg-black/30 p-4 space-y-3">
+                    <div className="text-[10px] uppercase tracking-[0.24em] text-zinc-600">Farcaster</div>
                     <div className="w-full flex justify-center">
                       {siwfNonce ? (
                         <div
@@ -889,24 +948,11 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
                         </button>
                       )}
                     </div>
-
                     {siwfError ? <div className="text-xs text-red-400 text-center">{siwfError}</div> : null}
-
-                    <button
-                      type="button"
-                      className="w-full text-[11px] text-zinc-600 hover:text-zinc-400 transition-colors"
-                      onClick={() => {
-                        setUseWalletSig(true)
-                        setSiwfStarted(false)
-                        // Prevent any prior session state from immediately skipping the step.
-                        setVerifiedWallet(null)
-                      }}
-                    >
-                      Use wallet instead
-                    </button>
                   </div>
-                ) : (
-                  <div className="space-y-3">
+
+                  <div className="rounded-xl border border-white/10 bg-black/30 p-4 space-y-3">
+                    <div className="text-[10px] uppercase tracking-[0.24em] text-zinc-600">Wallet</div>
                     <ConnectButtonWeb3 />
                     <button
                       type="button"
@@ -939,38 +985,60 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
                           {creatorCoin.symbol ? `${creatorCoin.symbol} · ` : ''}
                           {creatorCoin.address.slice(0, 6)}…{creatorCoin.address.slice(-4)}
                         </a>
+                        {(() => {
+                          const hasStats =
+                            creatorCoin.imageUrl ||
+                            creatorCoin.marketCapUsd ||
+                            creatorCoin.volume24hUsd ||
+                            creatorCoin.holders ||
+                            creatorCoin.priceUsd
+                          if (!hasStats) return null
+                          return (
+                            <div className="mt-2 flex items-center gap-3">
+                              <div className="w-10 h-10 rounded-lg border border-white/10 bg-black/40 overflow-hidden flex items-center justify-center">
+                                {creatorCoin.imageUrl ? (
+                                  <img
+                                    src={creatorCoin.imageUrl}
+                                    alt={creatorCoin.symbol || 'Creator coin'}
+                                    className="w-full h-full object-cover"
+                                    loading="lazy"
+                                  />
+                                ) : (
+                                  <div className="text-[9px] text-zinc-500 font-mono">
+                                    {creatorCoin.symbol ? creatorCoin.symbol.slice(0, 6) : 'COIN'}
+                                  </div>
+                                )}
+                              </div>
+                              <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-[10px] text-zinc-500">
+                                <div className="flex items-center justify-between gap-2">
+                                  <span>MC</span>
+                                  <span className="text-zinc-300">{formatUsd(creatorCoin.marketCapUsd)}</span>
+                                </div>
+                                <div className="flex items-center justify-between gap-2">
+                                  <span>VOL</span>
+                                  <span className="text-zinc-300">{formatUsd(creatorCoin.volume24hUsd)}</span>
+                                </div>
+                                <div className="flex items-center justify-between gap-2">
+                                  <span>HOLD</span>
+                                  <span className="text-zinc-300">{formatCount(creatorCoin.holders)}</span>
+                                </div>
+                                <div className="flex items-center justify-between gap-2">
+                                  <span>PRICE</span>
+                                  <span className="text-zinc-300">{formatPrice(creatorCoin.priceUsd)}</span>
+                                </div>
+                              </div>
+                            </div>
+                          )
+                        })()}
                       </div>
                     ) : creatorCoinError ? (
                       <div className="text-[11px] text-amber-300/80">{creatorCoinError}</div>
                     ) : verifiedWallet ? (
                       <div className="text-[11px] text-zinc-700">No Creator Coin detected for this wallet.</div>
                     ) : null}
-                    <button
-                      type="button"
-                      className="w-full text-[11px] text-zinc-600 hover:text-zinc-400 transition-colors"
-                      onClick={() => {
-                        setUseWalletSig(false)
-                        setSiwfStarted(false)
-                      }}
-                    >
-                      Back
-                    </button>
                   </div>
-                )}
-
-                <div className="flex items-center justify-between pt-2">
-                  <button
-                    type="button"
-                    className="text-[11px] text-zinc-600 hover:text-zinc-400 transition-colors"
-                    disabled={busy || siwfBusy || siwe.busy}
-                    onClick={() => {
-                      if (busy || siwfBusy || siwe.busy) return
-                      goBack()
-                    }}
-                  >
-                    Back
-                  </button>
                 </div>
+
               </motion.div>
             ) : null}
 
@@ -1121,18 +1189,7 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
                   </div>
                 ) : null}
 
-                <div className="flex items-center justify-between pt-2">
-                  <button
-                    type="button"
-                    className="text-[11px] text-zinc-600 hover:text-zinc-400 transition-colors"
-                    disabled={busy}
-                    onClick={() => {
-                      if (busy) return
-                      goBack()
-                    }}
-                  >
-                    Back
-                  </button>
+                <div className="flex items-center justify-end pt-2">
                   <button
                     type="button"
                     className="btn-accent"
@@ -1237,10 +1294,31 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
                         type="button"
                         className="btn-primary w-full flex items-center justify-between gap-2"
                         onClick={() => {
-                          const template = REFERRAL_TWEET_TEMPLATES[inviteTemplateIdx % REFERRAL_TWEET_TEMPLATES.length] || REFERRAL_TWEET_TEMPLATES[0]
+                          const template =
+                            REFERRAL_TWEET_TEMPLATES[inviteTemplateIdx % REFERRAL_TWEET_TEMPLATES.length] || REFERRAL_TWEET_TEMPLATES[0]
                           const text = fillTweetTemplate(template, referralLink)
-                          const url = `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}`
-                          window.open(url, '_blank', 'noopener,noreferrer')
+                          const url = `https://x.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(referralLink)}`
+                          if (miniApp.isMiniApp) {
+                            void (async () => {
+                              try {
+                                const { sdk } = await import('@farcaster/miniapp-sdk')
+                                if (sdk?.actions?.openUrl) {
+                                  await sdk.actions.openUrl(url)
+                                  markAction('shareX')
+                                  return
+                                }
+                              } catch {
+                                // fall through
+                              }
+                              window.location.href = url
+                              markAction('shareX')
+                            })()
+                            return
+                          }
+                          const opened = window.open(url, '_blank', 'noopener,noreferrer')
+                          if (!opened) {
+                            window.location.href = url
+                          }
                           markAction('shareX')
                         }}
                       >

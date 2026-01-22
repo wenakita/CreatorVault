@@ -1,10 +1,9 @@
 import { lazy, useMemo } from 'react'
 import { Routes, Route, Navigate, Outlet, useLocation } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
-import { usePrivy } from '@privy-io/react-auth'
-import { useSmartWallets } from '@privy-io/react-auth/smart-wallets'
 import { usePrivyClientStatus } from '@/lib/privy/client'
 import { useCreatorAllowlist } from '@/hooks'
+import { useSiweAuth } from '@/hooks/useSiweAuth'
 import { apiFetch } from '@/lib/apiBase'
 import { Layout } from './components/Layout'
 import { MarketingLayout } from './components/MarketingLayout'
@@ -61,8 +60,7 @@ function AppAllowlistGate() {
 
 function AppAllowlistGatePrivyEnabled() {
   const location = useLocation()
-  const { ready: privyReady, authenticated, login } = usePrivy()
-  const { client: smartWalletClient } = useSmartWallets()
+  const siwe = useSiweAuth()
 
   // Detect whether allowlist gating is even enabled server-side.
   const allowlistModeQuery = useQuery({
@@ -78,19 +76,22 @@ function AppAllowlistGatePrivyEnabled() {
     retry: 0,
   })
 
-  const smartWalletAddress = useMemo(() => {
-    const a = (smartWalletClient as any)?.account?.address
-    return typeof a === 'string' && a.startsWith('0x') ? a : null
-  }, [smartWalletClient])
-
-  const allowQuery = useCreatorAllowlist(smartWalletAddress)
+  const authAddress = useMemo(
+    () => (typeof siwe.authAddress === 'string' && siwe.authAddress.startsWith('0x') ? siwe.authAddress.toLowerCase() : null),
+    [siwe.authAddress],
+  )
+  const allowQuery = useCreatorAllowlist(authAddress)
   const allowed = allowQuery.data?.allowed === true
   const isAdminRoute = location.pathname === '/admin' || location.pathname.startsWith('/admin/')
-  const isBypassAdmin =
-    isAdminRoute && !!smartWalletAddress && ADMIN_BYPASS_ADDRESSES.has(smartWalletAddress.toLowerCase())
+  const isBypassAdmin = isAdminRoute && !!authAddress && ADMIN_BYPASS_ADDRESSES.has(authAddress)
+  const isPublicWaitlistRoute = location.pathname === '/waitlist' || location.pathname === '/leaderboard'
 
   const allowlistMode = allowlistModeQuery.data?.mode
   const allowlistEnforced = allowlistMode === 'enforced'
+
+  if (isPublicWaitlistRoute) {
+    return <Outlet />
+  }
 
   if (allowlistModeQuery.isError) {
     return (
@@ -114,63 +115,8 @@ function AppAllowlistGatePrivyEnabled() {
   // If allowlist is not enforced (e.g. local dev / no DB / no env allowlist), don't gate.
   if (!allowlistEnforced) return <Outlet />
 
-  if (!privyReady) {
-    return (
-      <div className="min-h-screen bg-black text-white">
-        <div className="max-w-3xl mx-auto px-6 py-16">
-          <div className="text-[10px] uppercase tracking-[0.24em] text-zinc-500 mb-4">CreatorVaults</div>
-          <div className="card rounded-xl p-8 space-y-3">
-            <div className="text-sm text-zinc-400">Loading…</div>
-          </div>
-        </div>
-      </div>
-    )
-  }
-
-  if (!authenticated) {
-    return (
-      <div className="min-h-screen bg-black text-white">
-        <div className="max-w-3xl mx-auto px-6 py-16">
-          <div className="text-[10px] uppercase tracking-[0.24em] text-zinc-500 mb-4">CreatorVaults</div>
-          <div className="card rounded-xl p-8 space-y-3">
-            <div className="text-lg font-medium">Invite-only access</div>
-            <div className="text-sm text-zinc-400 leading-relaxed">
-              Sign in to check whether your wallet is allowlisted for early access.
-            </div>
-            <button
-              type="button"
-              className="btn-accent w-fit"
-              onClick={() =>
-                void Promise.resolve(
-                  login({
-                    // Force wallet-only sign-in so the gate doesn't offer social providers.
-                    loginMethods: ['wallet'],
-                  } as any),
-                )
-              }
-            >
-              Continue
-            </button>
-            <a className="text-xs text-zinc-500 hover:text-zinc-300 w-fit" href={getMarketingBaseUrl()}>
-              Join the waitlist
-            </a>
-          </div>
-        </div>
-      </div>
-    )
-  }
-
-  if (!smartWalletAddress) {
-    return (
-      <div className="min-h-screen bg-black text-white">
-        <div className="max-w-3xl mx-auto px-6 py-16">
-          <div className="text-[10px] uppercase tracking-[0.24em] text-zinc-500 mb-4">CreatorVaults</div>
-          <div className="card rounded-xl p-8 space-y-3">
-            <div className="text-sm text-zinc-400">Setting up your smart wallet…</div>
-          </div>
-        </div>
-      </div>
-    )
+  if (!siwe.isSignedIn) {
+    return <Navigate to="/waitlist" replace />
   }
 
   if (allowQuery.isLoading) {
@@ -187,25 +133,7 @@ function AppAllowlistGatePrivyEnabled() {
   }
 
   if (!allowed && !isBypassAdmin) {
-    return (
-      <div className="min-h-screen bg-black text-white">
-        <div className="max-w-3xl mx-auto px-6 py-16">
-          <div className="text-[10px] uppercase tracking-[0.24em] text-zinc-500 mb-4">CreatorVaults</div>
-          <div className="card rounded-xl p-8 space-y-3">
-            <div className="text-lg font-medium">Not allowlisted yet</div>
-            <div className="text-sm text-zinc-400 leading-relaxed">
-              This app is invite-only while we onboard creators. Join the waitlist and we’ll notify you when access opens.
-            </div>
-            <a className="btn-accent inline-flex w-fit" href={getMarketingBaseUrl()}>
-              Join the waitlist
-            </a>
-            <div className="text-xs text-zinc-600">
-              Signed in as <span className="font-mono text-zinc-300">{smartWalletAddress}</span>
-            </div>
-          </div>
-        </div>
-      </div>
-    )
+    return <Navigate to="/waitlist" replace />
   }
 
   return <Outlet />
