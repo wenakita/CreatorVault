@@ -106,7 +106,7 @@ TaxHookConfigurator.configureCreatorPool(
 │                                                                 │
 └─────────────────────────────────────────────────────────────────┘
 
-CCA Factory: 0x0000ccaDF55C911a2FbC0BB9d2942Aa77c6FAa1D
+CCA Factory (v1.1.0): 0xcca1101C61cF5cb44C968947985300DF945C3565
 Networks: Base, Mainnet, Unichain, Sepolia
 ```
 
@@ -184,7 +184,7 @@ Instead of building custom hooks (which need allowlist approval), we use:
 
 | Need | Our Solution | Address |
 |------|--------------|---------|
-| **Fair Launch** | Uniswap CCA | `0x0000ccaDF55C911a2FbC0BB9d2942Aa77c6FAa1D` |
+| **Fair Launch** | Uniswap CCA Factory (v1.1.0) | `0xcca1101C61cF5cb44C968947985300DF945C3565` |
 | **6.9% Swap Fee** | Existing Tax Hook | `0xca975B9dAF772C71161f3648437c3616E5Be0088` |
 | **Fallback Fees** | ShareOFT detection | N/A (built into ShareOFT) |
 
@@ -324,7 +324,7 @@ strategy.sweepUnsoldTokens();  // Remaining tokens to creator
 | Contract | Address | Network |
 |----------|---------|---------|
 | **V4 Tax Hook** | `0xca975B9dAF772C71161f3648437c3616E5Be0088` | Base |
-| **CCA Factory** | `0x0000ccaDF55C911a2FbC0BB9d2942Aa77c6FAa1D` | Base/Mainnet/Unichain |
+| **CCA Factory** | `0xcca1101C61cF5cb44C968947985300DF945C3565` | Base/Mainnet/Unichain |
 | V4 Pool Manager | `0x498581fF718922c3f8e6A244956aF099B2652b2b` | Base |
 | WETH | `0x4200000000000000000000000000000000000006` | Base |
 | Uniswap V3 Router | `0x2626664c2603336E57B271c5C0b26F421741e481` | Base |

@@ -1,8 +1,8 @@
-# 🔍 **CCA Deployment Deep Verification**
+# 🔍 **CCA Deployment Deep Verification (Base / Uniswap v1.1.0)**
 
-## ✅ **CCA Flow is CORRECT - But Has 1 CRITICAL Issue**
+## ✅ **CCA Flow is CORRECT (current code)**
 
-I've traced through the entire CCA launch flow. Here's what happens:
+This document is a sanity-check of the on-chain flow from vault activation → CCA auction creation, and the key deployment/config requirements for Base.
 
 ---
 
@@ -37,30 +37,30 @@ User → VaultActivationBatcher.batchActivate()
 
 ---
 
-## ⚠️ **CRITICAL ISSUE FOUND**
+## ✅ **Authorization model (no longer onlyOwner)**
 
-### **Problem: onlyOwner Modifier**
+`CCALaunchStrategy.launchAuctionSimple()` is gated by `onlyApprovedOrOwner`:
+- The **owner** can launch auctions directly.
+- The **VaultActivationBatcher** can launch auctions after it is approved via `setApprovedLauncher(batcher, true)`.
+
+### ✅ Required deployment step
+
+From your protocol owner / multisig:
 
 ```solidity
-// In CCALaunchStrategy.sol line 297-300
-function launchAuctionSimple(
-    uint256 amount,
-    uint128 requiredRaise
-) external onlyOwner nonReentrant returns (address auction) {
-    // ...
-}
-```
-
-**This means:**
-```
-❌ Only the OWNER of CCALaunchStrategy can call launchAuctionSimple()
-❌ VaultActivationBatcher cannot call it directly
-❌ User cannot call it via batcher
+ccaStrategy.setApprovedLauncher(vaultActivationBatcherAddress, true);
 ```
 
 ---
 
-## 🚨 **What This Means for Deployment**
+## 🧩 **Factory address (Uniswap v1.1.0)**
+
+Uniswap’s fully-live CCA factory on Base is:
+- `0xcca1101C61cF5cb44C968947985300DF945C3565`
+
+Our `CCALaunchStrategy` now stores the factory in **state** (`ccaFactory`) and defaults to v1.1.0. If Uniswap ships a new factory, the owner can update it via `setCcaFactory(newFactory)` without redeploying the strategy.
+
+## 🚨 **What can still break deployment**
 
 ### **Current Setup:**
 ```solidity
@@ -68,55 +68,27 @@ function launchAuctionSimple(
 auction = ICCAStrategy(ccaStrategy).launchAuctionSimple(auctionAmount, requiredRaise);
 ```
 
-### **What Will Happen:**
-```
-User calls VaultActivationBatcher.batchActivate()
-    ↓
-Batcher pulls tokens ✅
-    ↓
-Batcher deposits to vault ✅
-    ↓
-Batcher wraps to ■TOKEN ✅
-    ↓
-Batcher approves CCA strategy ✅
-    ↓
-Batcher calls launchAuctionSimple()
-    ↓
-❌ REVERT: "Ownable: caller is not the owner"
+### **If you forget `setApprovedLauncher`**
 
-RESULT: Transaction fails ❌
-```
+`VaultActivationBatcher.batchActivate()` will revert when it tries to call `launchAuctionSimple()`.
+
+### **If defaults are misconfigured**
+
+Uniswap CCA expects **Q96** pricing for `floorPrice` and `tickSpacing`. Our strategy defaults now use Q96, and the default issuance schedule includes a **large final block** issuance to reduce end-price manipulability (per Uniswap guidance).
 
 ---
 
-## 🔧 **3 Ways to Fix This**
+## ✅ Summary
 
-### **Option 1: Remove onlyOwner from launchAuctionSimple** ⭐ **RECOMMENDED**
+The happy path is:
+1. User calls `VaultActivationBatcher.batchActivate(...)`
+2. Batcher deposits → wraps → approves strategy
+3. Strategy creates auction via `ccaFactory.initializeDistribution(...)`
+4. Remaining ■TOKEN is returned to the user
 
-```solidity
-// In CCALaunchStrategy.sol
-function launchAuctionSimple(
-    uint256 amount,
-    uint128 requiredRaise
-) external nonReentrant returns (address auction) {  // Remove onlyOwner
-    // Transfer tokens from msg.sender (the batcher)
-    auctionToken.safeTransferFrom(msg.sender, address(this), amount);
-    
-    // Rest of function...
-}
-```
-
-**Pros:**
-- ✅ Anyone with ■TOKEN can launch auction
-- ✅ Works with VaultActivationBatcher
-- ✅ Simple fix
-
-**Cons:**
-- ⚠️ Anyone can launch auction (but only if they have tokens)
-
----
-
-### **Option 2: Add Approved Launchers Mapping**
+Deployment must ensure:
+- `ccaStrategy.setApprovedLauncher(vaultActivationBatcher, true)`
+- `ccaStrategy.ccaFactory == 0xcca1101C...3565` (v1.1.0)
 
 ```solidity
 // In CCALaunchStrategy.sol

@@ -54,7 +54,8 @@ interface IContinuousClearingAuction {
         bytes calldata hookData
     ) external payable returns (uint256 bidId);
     
-    function checkpoint() external returns (uint256 blockNumber, uint256 clearingPrice, uint24 cumulativeMps);
+    // v1.1.0 returns a Checkpoint struct; we don't need return data for our usage.
+    function checkpoint() external;
     function exitBid(uint256 bidId) external;
     function claimTokens(uint256 bidId) external;
     function isGraduated() external view returns (bool);
@@ -92,11 +93,14 @@ contract CCALaunchStrategy is Ownable, ReentrancyGuard {
     // CONSTANTS
     // ================================
 
-    /// @notice CCA Factory address (same on all supported chains)
-    address public constant CCA_FACTORY = address(bytes20(hex"0000ccadf55c911a2fbc0bb9d2942aa77c6faa1d"));
+    /// @notice Uniswap v1.1.0 CCA factory (canonical on Base/Mainnet/Unichain/Sepolia)
+    /// @dev See Uniswap docs deployments table.
+    address public constant UNISWAP_CCA_FACTORY_V110 = 0xcca1101C61cF5cb44C968947985300DF945C3565;
     
     /// @notice Milli-basis points constant
     uint24 public constant MPS = 1e7;
+    /// @notice Q96 fixed point scalar (2^96) used by Uniswap pricing
+    uint256 public constant Q96 = 2 ** 96;
 
     // ================================
     // STATE
@@ -107,6 +111,10 @@ contract CCALaunchStrategy is Ownable, ReentrancyGuard {
     
     /// @notice Currency to raise (address(0) for ETH)
     address public currency;
+
+    /// @notice Uniswap CCA factory used to create auctions (upgradeable by owner)
+    /// @dev Stored in state so we can migrate factory versions without redeploying this strategy.
+    address public ccaFactory;
     
     /// @notice Current active auction (if any)
     address public currentAuction;
@@ -154,11 +162,13 @@ contract CCALaunchStrategy is Ownable, ReentrancyGuard {
     /// @notice Default claim delay after auction ends
     uint64 public defaultClaimDelay = 3600; // ~2 hours
     
-    /// @notice Default tick spacing (1% of floor price recommended)
-    uint256 public defaultTickSpacing = 1e16; // 0.01 ETH
+    /// @notice Default tick spacing in Q96 (recommended ~1% of floor price)
+    /// @dev In Uniswap CCA, tickSpacing is a *price granularity* in Q96, not an ERC20/ETH amount.
+    uint256 public defaultTickSpacing = (Q96 / 1000) / 100; // 1% of 0.001 ETH per token (Q96)
     
-    /// @notice Default floor price
-    uint256 public defaultFloorPrice = 1e15; // 0.001 ETH per token
+    /// @notice Default floor price in Q96
+    /// @dev 0.001 ETH per 1 token => 1 ETH buys 1000 tokens => floorPrice = 0.001 * 2^96 = Q96/1000.
+    uint256 public defaultFloorPrice = Q96 / 1000;
 
     // ================================
     // EVENTS
@@ -182,6 +192,7 @@ contract CCALaunchStrategy is Ownable, ReentrancyGuard {
     event V4PoolConfigured(address indexed oracle, address token0, address token1);
     event TaxHookConfigured(address indexed token, address indexed recipient, uint256 taxRate);
     event LauncherApproved(address indexed launcher, bool approved);
+    event CcaFactoryUpdated(address indexed oldFactory, address indexed newFactory);
 
     // ================================
     // ERRORS
@@ -222,6 +233,9 @@ contract CCALaunchStrategy is Ownable, ReentrancyGuard {
         currency = _currency;
         fundsRecipient = _fundsRecipient;
         tokensRecipient = _tokensRecipient;
+
+        // Default to Uniswap's v1.1.0 factory deployment.
+        ccaFactory = UNISWAP_CCA_FACTORY_V110;
     }
 
     // ================================
@@ -252,6 +266,20 @@ contract CCALaunchStrategy is Ownable, ReentrancyGuard {
         if (launcher == address(0)) revert ZeroAddress();
         approvedLaunchers[launcher] = approved;
         emit LauncherApproved(launcher, approved);
+    }
+
+    /**
+     * @notice Update the Uniswap CCA factory address used for deployments.
+     * @dev Allows migrating to newer Uniswap factory deployments without redeploying this strategy.
+     */
+    function setCcaFactory(address newFactory) external onlyOwner {
+        if (newFactory == address(0)) revert ZeroAddress();
+        // Basic sanity: ensure it's a contract (avoids accidental EOA config).
+        if (newFactory.code.length == 0) revert InvalidConfig();
+
+        address old = ccaFactory;
+        ccaFactory = newFactory;
+        emit CcaFactoryUpdated(old, newFactory);
     }
 
     // ================================
@@ -299,13 +327,13 @@ contract CCALaunchStrategy is Ownable, ReentrancyGuard {
         auctionToken.safeTransferFrom(msg.sender, address(this), amount);
 
         // Approve factory to pull tokens
-        auctionToken.forceApprove(CCA_FACTORY, amount);
+        auctionToken.forceApprove(ccaFactory, amount);
 
         // Create auction via factory
         // NOTE: Uniswap's verified Base deployment expects a `bytes32 salt` parameter.
         // We derive a deterministic salt from the config to avoid collisions.
         bytes32 salt = keccak256(abi.encode(address(auctionToken), amount, configData));
-        auction = IContinuousClearingAuctionFactory(CCA_FACTORY).initializeDistribution(
+        auction = IContinuousClearingAuctionFactory(ccaFactory).initializeDistribution(
             address(auctionToken),
             amount,
             configData,
@@ -342,8 +370,10 @@ contract CCALaunchStrategy is Ownable, ReentrancyGuard {
         uint256 amount,
         uint128 requiredRaise
     ) external onlyApprovedOrOwner nonReentrant returns (address auction) {
-        // Create default linear auction steps (sell evenly over duration)
-        bytes memory auctionSteps = _createLinearSteps(defaultDuration);
+        // Create default Uniswap-safe auction steps:
+        // - monotonically increasing issuance rate
+        // - large issuance in final block to reduce end-price manipulability
+        bytes memory auctionSteps = _createUniswapSafeDefaultSteps(defaultDuration);
         
         // Use default floor price
         uint256 floorPrice = defaultFloorPrice;
@@ -592,6 +622,41 @@ contract CCALaunchStrategy is Ownable, ReentrancyGuard {
         return abi.encodePacked(packed1, packed2, packed3);
     }
 
+    /**
+     * @notice Create a Uniswap-safe default schedule.
+     * @dev Uniswap recommends the final block sells a significant amount of tokens because
+     *      the final clearing price is used to initialize downstream liquidity.
+     *      We allocate 10% over the first half, 40% over the middle, and the remainder in the final block.
+     */
+    function _createUniswapSafeDefaultSteps(uint64 duration) internal pure returns (bytes memory) {
+        // For very short auctions, fall back to linear to avoid zero-length phases.
+        if (duration <= 2) return _createLinearSteps(duration);
+
+        // Reserve the final block for a large issuance.
+        uint64 lastBlock = 1;
+        uint64 phase1Blocks = duration / 2; // ~50%
+        uint64 phase2Blocks = duration - phase1Blocks - lastBlock;
+        if (phase1Blocks == 0 || phase2Blocks == 0) return _createLinearSteps(duration);
+
+        // Compute per-block issuance (mps) for phase 1 and 2 using floor division.
+        // Then allocate the exact remainder to the final block so total issuance = 100%.
+        uint24 phase1Total = 1_000_000; // 10% of 1e7
+        uint24 phase2Total = 4_000_000; // 40% of 1e7
+
+        uint24 mps1 = uint24(uint256(phase1Total) / uint256(phase1Blocks));
+        uint24 mps2 = uint24(uint256(phase2Total) / uint256(phase2Blocks));
+
+        uint256 issued1 = uint256(mps1) * uint256(phase1Blocks);
+        uint256 issued2 = uint256(mps2) * uint256(phase2Blocks);
+        uint24 mps3 = uint24(MPS - uint24(issued1 + issued2)); // remainder (includes rounding slack)
+
+        bytes8 packed1 = bytes8(uint64(mps1) | (uint64(phase1Blocks) << 24));
+        bytes8 packed2 = bytes8(uint64(mps2) | (uint64(phase2Blocks) << 24));
+        bytes8 packed3 = bytes8(uint64(mps3) | (uint64(lastBlock) << 24));
+
+        return abi.encodePacked(packed1, packed2, packed3);
+    }
+
     // ================================
     // ADMIN
     // ================================
@@ -761,7 +826,8 @@ contract CCALaunchStrategy is Ownable, ReentrancyGuard {
      */
     function emergencyWithdrawETH(address payable to) external onlyOwner {
         if (to == address(0)) revert ZeroAddress();
-        to.transfer(address(this).balance);
+        (bool ok,) = to.call{value: address(this).balance}("");
+        require(ok, "ETH transfer failed");
     }
 
     receive() external payable {}
