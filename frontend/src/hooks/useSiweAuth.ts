@@ -9,6 +9,23 @@ type MeResponse = { address: string } | null
 
 const SESSION_TOKEN_KEY = 'cv_siwe_session_token'
 
+function coerceErrorMessage(e: unknown, fallback: string): string {
+  if (typeof e === 'string' && e.trim().length > 0) return e
+  if (e instanceof Error && typeof e.message === 'string' && e.message.trim().length > 0) return e.message
+  const maybeObj = e as any
+  const shortMessage = typeof maybeObj?.shortMessage === 'string' ? maybeObj.shortMessage.trim() : ''
+  if (shortMessage) return shortMessage
+  const message = typeof maybeObj?.message === 'string' ? maybeObj.message.trim() : ''
+  if (message) return message
+  try {
+    const s = JSON.stringify(e)
+    if (typeof s === 'string' && s.length > 0 && s !== '{}' && s !== 'null') return s
+  } catch {
+    // ignore
+  }
+  return fallback
+}
+
 function getStoredSessionToken(): string | null {
   try {
     const v = localStorage.getItem(SESSION_TOKEN_KEY)
@@ -84,7 +101,8 @@ export function useSiweAuth() {
       const nonceRes = await apiFetch('/api/auth/nonce', { headers: { Accept: 'application/json' } })
       if (!nonceRes.ok) {
         const errJson = (await nonceRes.json().catch(() => null)) as ApiEnvelope<unknown> | null
-        throw new Error(errJson?.error || `Failed to start sign-in (HTTP ${nonceRes.status})`)
+        const apiErr = coerceErrorMessage((errJson as any)?.error, '')
+        throw new Error(apiErr || `Failed to start sign-in (HTTP ${nonceRes.status})`)
       }
       const nonceJson = (await nonceRes.json().catch(() => null)) as
         | ApiEnvelope<{ nonce: string; nonceToken: string; issuedAt: string; domain: string; uri: string; chainId: number }>
@@ -109,7 +127,10 @@ export function useSiweAuth() {
         body: JSON.stringify({ message, signature, nonceToken }),
       })
       const verifyJson = (await verifyRes.json().catch(() => null)) as ApiEnvelope<{ address: string; sessionToken: string }> | null
-      if (!verifyRes.ok || !verifyJson?.success) throw new Error(verifyJson?.error || 'Sign-in failed')
+      if (!verifyRes.ok || !verifyJson?.success) {
+        const apiErr = coerceErrorMessage((verifyJson as any)?.error, '')
+        throw new Error(apiErr || 'Sign-in failed')
+      }
 
       const signed = verifyJson?.data?.address
       const sessionToken = verifyJson?.data?.sessionToken
@@ -118,8 +139,7 @@ export function useSiweAuth() {
       }
       setAuthAddress(typeof signed === 'string' ? signed : null)
     } catch (e: unknown) {
-      const msg = e instanceof Error ? e.message : 'Sign-in failed'
-      setError(msg)
+      setError(coerceErrorMessage(e, 'Sign-in failed'))
     } finally {
       setBusy(false)
     }
