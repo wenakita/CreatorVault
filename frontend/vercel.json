@@ -5,8 +5,8 @@
   "framework": "vite",
   "outputDirectory": "dist",
   "rewrites": [
-    { "source": "/__api/:path*", "destination": "/api/:path*" },
-    { "source": "/api/:path*", "destination": "/api/:path*" },
+    { "source": "/__api/:path*", "destination": "/api/[...path]?path=:path*" },
+    { "source": "/api/:path*", "destination": "/api/[...path]?path=:path*" },
     { "source": "/:path*", "destination": "/index.html" }
   ],
   "headers": [
