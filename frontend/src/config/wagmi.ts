@@ -37,10 +37,10 @@ const baseRpcUrls = (() => {
 const DEFAULT_WALLETCONNECT_PROJECT_ID = 'bc3dfd319b4a0ecaa25cdee7e36bd0c4'
 const walletConnectProjectId = (() => {
   const env = (import.meta.env.VITE_WALLETCONNECT_PROJECT_ID as string | undefined)?.trim()
-  // In production we require an explicit WalletConnect project ID to avoid flaky defaults and
-  // "allowed origins" mismatches across 4626.fun / app.4626.fun / preview domains.
-  if (!env) return import.meta.env.DEV ? DEFAULT_WALLETCONNECT_PROJECT_ID : ''
-  return env
+  // If not provided, fall back to a default project id so wallet connect still works.
+  // IMPORTANT: WalletConnect project IDs are public, but you should still set a dedicated
+  // `VITE_WALLETCONNECT_PROJECT_ID` in production and restrict Allowed Origins in WalletConnect Cloud.
+  return env || DEFAULT_WALLETCONNECT_PROJECT_ID
 })().trim()
 
 const walletConnectMetadata = {
