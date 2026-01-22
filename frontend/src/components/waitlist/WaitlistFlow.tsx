@@ -10,6 +10,7 @@ import { usePrivyClientStatus } from '@/lib/privy/client'
 import { Check, CheckCircle2, ChevronDown } from 'lucide-react'
 import { useMiniAppContext } from '@/hooks'
 import { apiAliasPath } from '@/lib/apiBase'
+import { fetchZoraCoin, fetchZoraProfile } from '@/lib/zora/client'
 
 type Persona = 'creator' | 'user'
 type Variant = 'page' | 'embedded'
@@ -37,6 +38,10 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
   const [shareToast, setShareToast] = useState<string | null>(null)
   const [userWallet, setUserWallet] = useState('')
   const [showUserWallet, setShowUserWallet] = useState(false)
+  const [creatorCoin, setCreatorCoin] = useState<{ address: string; symbol: string | null; coinType: string | null } | null>(null)
+  const [creatorCoinBusy, setCreatorCoinBusy] = useState(false)
+  const [creatorCoinError, setCreatorCoinError] = useState<string | null>(null)
+  const creatorCoinForWalletRef = useRef<string | null>(null)
 
   const emailInputRef = useRef<HTMLInputElement | null>(null)
 
@@ -194,6 +199,7 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
           intent: {
             persona,
             fid: verifiedFid,
+            hasCreatorCoin: creatorCoinBusy ? null : Boolean(creatorCoin?.address),
           },
         }),
       })
@@ -238,6 +244,10 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
     setWalletSigStarted(false)
     setUserWallet('')
     setShowUserWallet(false)
+    setCreatorCoin(null)
+    setCreatorCoinBusy(false)
+    setCreatorCoinError(null)
+    creatorCoinForWalletRef.current = null
   }
 
   // When the creator chooses "Use wallet signature", once SIWE completes we can proceed.
@@ -274,6 +284,59 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
       (custody && /^0x[a-fA-F0-9]{40}$/.test(custody) ? custody : null)
     if (first && typeof first === 'string') setVerifiedWallet(first)
   }, [isFarcasterAuthed, profile])
+
+  // Best-effort: detect the user's Zora Creator Coin (if any) from the verified wallet.
+  useEffect(() => {
+    const w = typeof verifiedWallet === 'string' && isValidEvmAddress(verifiedWallet) ? verifiedWallet : null
+    if (!w) {
+      setCreatorCoin(null)
+      setCreatorCoinBusy(false)
+      setCreatorCoinError(null)
+      creatorCoinForWalletRef.current = null
+      return
+    }
+    if (creatorCoinForWalletRef.current === w) return
+    creatorCoinForWalletRef.current = w
+
+    let cancelled = false
+    setCreatorCoinBusy(true)
+    setCreatorCoinError(null)
+    ;(async () => {
+      try {
+        const profile = await fetchZoraProfile(w)
+        const coinAddrRaw = profile?.creatorCoin?.address ? String(profile.creatorCoin.address) : ''
+        const coinAddr = isValidEvmAddress(coinAddrRaw) ? coinAddrRaw : null
+        if (!coinAddr) {
+          if (!cancelled) setCreatorCoin(null)
+          return
+        }
+
+        // Resolve metadata (symbol/type) for display. If it fails, still show the address.
+        let symbol: string | null = null
+        let coinType: string | null = null
+        try {
+          const coin = await fetchZoraCoin(coinAddr as any)
+          symbol = coin?.symbol ? String(coin.symbol) : null
+          coinType = coin?.coinType ? String(coin.coinType) : null
+        } catch {
+          // ignore
+        }
+
+        if (!cancelled) setCreatorCoin({ address: coinAddr, symbol, coinType })
+      } catch (e: any) {
+        if (!cancelled) {
+          setCreatorCoin(null)
+          setCreatorCoinError(e?.message ? String(e.message) : 'Failed to detect creator coin')
+        }
+      } finally {
+        if (!cancelled) setCreatorCoinBusy(false)
+      }
+    })()
+
+    return () => {
+      cancelled = true
+    }
+  }, [verifiedWallet])
 
   async function startSiwf() {
     setSiwfError(null)
@@ -581,6 +644,27 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
                       {siwe.busy ? 'Signing…' : 'Sign with wallet'}
                     </button>
                     {siwe.error ? <div className="text-xs text-red-400">{siwe.error}</div> : null}
+                    {creatorCoinBusy ? (
+                      <div className="text-[11px] text-zinc-600">Detecting Creator Coin…</div>
+                    ) : creatorCoin ? (
+                      <div className="text-[11px] text-zinc-600">
+                        Creator Coin:{' '}
+                        <a
+                          className="font-mono text-zinc-300 hover:text-zinc-100 transition-colors"
+                          href={`${appUrl.replace(/\/+$/, '')}/deploy?token=${encodeURIComponent(creatorCoin.address)}`}
+                          target="_blank"
+                          rel="noreferrer"
+                          title={creatorCoin.symbol ? `${creatorCoin.symbol} · ${creatorCoin.address}` : creatorCoin.address}
+                        >
+                          {creatorCoin.symbol ? `${creatorCoin.symbol} · ` : ''}
+                          {creatorCoin.address.slice(0, 6)}…{creatorCoin.address.slice(-4)}
+                        </a>
+                      </div>
+                    ) : creatorCoinError ? (
+                      <div className="text-[11px] text-amber-300/80">{creatorCoinError}</div>
+                    ) : verifiedWallet ? (
+                      <div className="text-[11px] text-zinc-700">No Creator Coin detected for this wallet.</div>
+                    ) : null}
                     <button
                       type="button"
                       className="w-full text-[11px] text-zinc-600 hover:text-zinc-400 transition-colors"
@@ -630,6 +714,16 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
                 <div className="text-sm text-zinc-600 font-light">
                   {persona === 'creator' ? 'We’ll email you when creator onboarding opens.' : 'We’ll email you when onboarding opens.'}
                 </div>
+
+                {persona === 'creator' && verifiedWallet && creatorCoin ? (
+                  <div className="rounded-xl border border-white/10 bg-black/30 px-4 py-3">
+                    <div className="text-[10px] uppercase tracking-[0.24em] text-zinc-600 mb-1">Creator Coin</div>
+                    <div className="text-sm text-zinc-300 font-mono">
+                      {creatorCoin.symbol ? `${creatorCoin.symbol} · ` : ''}
+                      {creatorCoin.address}
+                    </div>
+                  </div>
+                ) : null}
 
                 {showPrivy ? (
                   <div className="space-y-3">
