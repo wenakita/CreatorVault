@@ -50,8 +50,8 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
   const [siwfNonceToken, setSiwfNonceToken] = useState<string | null>(null)
   const [siwfBusy, setSiwfBusy] = useState(false)
   const [siwfError, setSiwfError] = useState<string | null>(null)
+  const [siwfStarted, setSiwfStarted] = useState(false)
   const [useWalletSig, setUseWalletSig] = useState(false)
-  const [walletSigStarted, setWalletSigStarted] = useState(false)
   const [shareBusy, setShareBusy] = useState(false)
   const [shareToast, setShareToast] = useState<string | null>(null)
   const [userWallet, setUserWallet] = useState('')
@@ -116,6 +116,7 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
     const raw = (q.get('persona') ?? '').trim().toLowerCase()
     return raw === 'creator' ? ('creator' as const) : raw === 'user' ? ('user' as const) : null
   }, [location.search])
+  const forcedPersonaAppliedRef = useRef(false)
 
   const refParam = useMemo(() => {
     const q = new URLSearchParams(location.search)
@@ -192,8 +193,10 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
   // jump straight into the right step.
   useEffect(() => {
     if (!forcedPersona) return
+    if (forcedPersonaAppliedRef.current) return
     // If user already progressed, don't override their choice mid-flow.
     if (step !== 'persona') return
+    forcedPersonaAppliedRef.current = true
     setPersona(forcedPersona)
     if (forcedPersona === 'creator') {
       setUseWalletSig(false)
@@ -359,8 +362,8 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
     setSiwfNonceToken(null)
     setSiwfBusy(false)
     setSiwfError(null)
+    setSiwfStarted(false)
     setUseWalletSig(false)
-    setWalletSigStarted(false)
     setUserWallet('')
     setShowUserWallet(false)
     setCreatorCoin(null)
@@ -410,20 +413,6 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [referralCode, step])
 
-  // When the creator chooses "Use wallet signature", once SIWE completes we can proceed.
-  useEffect(() => {
-    if (step !== 'verify') return
-    if (persona !== 'creator') return
-    if (!useWalletSig) return
-    // Important: if the user is already signed-in from a previous session,
-    // we should NOT auto-advance just because `siwe.isSignedIn` is true.
-    // Only advance after the user explicitly clicks "Sign with wallet" in this flow.
-    if (!walletSigStarted) return
-    if (!siwe.isSignedIn || !siwe.authAddress) return
-    setVerifiedWallet(siwe.authAddress)
-    setStep('email')
-  }, [persona, siwe.authAddress, siwe.isSignedIn, step, useWalletSig, walletSigStarted])
-
   // Auto-start SIWF nonce fetch so the button is the primary action.
   useEffect(() => {
     if (step !== 'verify') return
@@ -433,6 +422,17 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
     if (siwfBusy) return
     void startSiwf()
   }, [persona, siwfBusy, siwfNonce, step, useWalletSig])
+
+  // Only verify after the user explicitly clicks the SIWF button in this flow.
+  useEffect(() => {
+    if (!siwfStarted) return
+    if (step !== 'verify') return
+    if (persona !== 'creator') return
+    if (useWalletSig) return
+    if (siwfBusy) return
+    if (!siwfMessage || !siwfSignature) return
+    void verifySiwfOnServer()
+  }, [persona, siwfBusy, siwfMessage, siwfSignature, siwfStarted, step, useWalletSig])
 
   // When Farcaster auth-kit has a profile, capture a best-effort wallet.
   useEffect(() => {
@@ -735,6 +735,24 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
 
   const showPersonaStep = !forcedPersona
 
+  const goBack = useCallback(() => {
+    setError(null)
+    setSiwfError(null)
+    setSiwfStarted(false)
+    if (step === 'verify') {
+      setUseWalletSig(false)
+      setStep('persona')
+      return
+    }
+    if (step === 'email') {
+      if (persona === 'creator') {
+        setStep('verify')
+      } else {
+        setStep('persona')
+      }
+    }
+  }, [persona, step])
+
   function renderActionBadge(action: ActionKey) {
     const done = actionsDone[action]
     const points = ACTION_POINTS[action]
@@ -852,11 +870,21 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
                   <div className="space-y-3">
                     <div className="w-full flex justify-center">
                       {siwfNonce ? (
-                        <SignInButton
-                          nonce={siwfNonce}
-                          onSuccess={() => void verifySiwfOnServer()}
-                          onError={(e: any) => setSiwfError(e?.message ? String(e.message) : 'Farcaster sign-in failed')}
-                        />
+                        <div
+                          onClick={() => {
+                            setSiwfStarted(true)
+                            setSiwfError(null)
+                          }}
+                        >
+                          <SignInButton
+                            nonce={siwfNonce}
+                            onSuccess={() => {
+                              // Verification is gated by siwfStarted to prevent auto-advance.
+                              setSiwfError(null)
+                            }}
+                            onError={(e: any) => setSiwfError(e?.message ? String(e.message) : 'Farcaster sign-in failed')}
+                          />
+                        </div>
                       ) : (
                         <button className="btn-accent opacity-60 cursor-not-allowed" disabled>
                           Loading…
@@ -871,7 +899,7 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
                       className="w-full text-[11px] text-zinc-600 hover:text-zinc-400 transition-colors"
                       onClick={() => {
                         setUseWalletSig(true)
-                        setWalletSigStarted(false)
+                        setSiwfStarted(false)
                         // Prevent any prior session state from immediately skipping the step.
                         setVerifiedWallet(null)
                       }}
@@ -887,8 +915,12 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
                       className="btn-accent w-full disabled:opacity-50 disabled:cursor-not-allowed"
                       disabled={siwe.busy}
                       onClick={() => {
-                        setWalletSigStarted(true)
-                        void siwe.signIn()
+                        void (async () => {
+                          const signed = await siwe.signIn()
+                          if (!signed) return
+                          setVerifiedWallet(signed)
+                          setStep('email')
+                        })()
                       }}
                     >
                       {siwe.busy ? 'Signing…' : 'Sign with wallet'}
@@ -920,7 +952,7 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
                       className="w-full text-[11px] text-zinc-600 hover:text-zinc-400 transition-colors"
                       onClick={() => {
                         setUseWalletSig(false)
-                        setWalletSigStarted(false)
+                        setSiwfStarted(false)
                       }}
                     >
                       Back
@@ -935,14 +967,7 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
                     disabled={busy || siwfBusy || siwe.busy}
                     onClick={() => {
                       if (busy || siwfBusy || siwe.busy) return
-                      setError(null)
-                      setSiwfError(null)
-                      setStep(showPersonaStep ? 'persona' : 'persona')
-                      // If persona was forced via query, allow back to persona selection only when not forced.
-                      if (!showPersonaStep) {
-                        // keep them on verify (can't go back to persona if preselected)
-                        setStep('verify')
-                      }
+                      goBack()
                     }}
                   >
                     Back
@@ -1105,10 +1130,7 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
                     disabled={busy}
                     onClick={() => {
                       if (busy) return
-                      const target = persona === 'creator' ? 'verify' : showPersonaStep ? 'persona' : 'email'
-                      setError(null)
-                      setSiwfError(null)
-                      setStep(target)
+                      goBack()
                     }}
                   >
                     Back

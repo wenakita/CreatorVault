@@ -93,8 +93,8 @@ export function useSiweAuth() {
     void refresh()
   }, [refresh])
 
-  const signIn = useCallback(async () => {
-    if (!address) return
+  const signIn = useCallback(async (): Promise<string | null> => {
+    if (!address) return null
     setBusy(true)
     setError(null)
     try {
@@ -137,9 +137,12 @@ export function useSiweAuth() {
       if (typeof sessionToken === 'string' && sessionToken.trim().length > 0) {
         setStoredSessionToken(sessionToken.trim())
       }
-      setAuthAddress(typeof signed === 'string' ? signed : null)
+      const resolved = typeof signed === 'string' ? signed : null
+      setAuthAddress(resolved)
+      return resolved
     } catch (e: unknown) {
       setError(coerceErrorMessage(e, 'Sign-in failed'))
+      return null
     } finally {
       setBusy(false)
     }
