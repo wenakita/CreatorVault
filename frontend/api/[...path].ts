@@ -1,4 +1,5 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
+import { apiRoutes } from '../api_handlers/_routes'
 
 type ApiHandler = (req: VercelRequest, res: VercelResponse) => unknown | Promise<unknown>
 
@@ -35,28 +36,13 @@ function isSafeSubpath(p: string): boolean {
   return /^[a-zA-Z0-9/_-]+$/.test(p)
 }
 
-async function loadHandler(subpath: string): Promise<ApiHandler | null> {
-  const modPath = `../api_handlers/${subpath}.js`
-  try {
-    const mod = (await import(modPath)) as { default?: unknown }
-    return typeof mod?.default === 'function' ? (mod.default as ApiHandler) : null
-  } catch (e: any) {
-    // Node's ESM loader uses different error codes across versions; treat all module-not-found as 404.
-    const code = typeof e?.code === 'string' ? e.code : ''
-    const msg = e?.message ? String(e.message) : ''
-    const isNotFound = code === 'ERR_MODULE_NOT_FOUND' || msg.includes('Cannot find module')
-    if (isNotFound) return null
-    throw e
-  }
-}
-
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   const subpath = getApiSubpath(req)
   if (!isSafeSubpath(subpath)) {
     return res.status(404).json({ success: false, error: 'Not found' })
   }
 
-  const h = await loadHandler(subpath)
+  const h = (apiRoutes as Record<string, ApiHandler>)[subpath] ?? null
   if (!h) {
     return res.status(404).json({ success: false, error: 'Not found' })
   }
