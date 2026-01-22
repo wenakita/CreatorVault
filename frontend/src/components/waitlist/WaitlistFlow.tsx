@@ -67,7 +67,11 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
   } | null>(null)
   const [creatorCoinBusy, setCreatorCoinBusy] = useState(false)
   const [creatorCoinError, setCreatorCoinError] = useState<string | null>(null)
+  const [claimCoinInput, setClaimCoinInput] = useState('')
+  const [claimCoinBusy, setClaimCoinBusy] = useState(false)
+  const [claimCoinError, setClaimCoinError] = useState<string | null>(null)
   const creatorCoinForWalletRef = useRef<string | null>(null)
+  const claimCoinForWalletRef = useRef<string | null>(null)
   const [referralCodeTaken, setReferralCodeTaken] = useState(false)
   const [claimReferralCode, setClaimReferralCode] = useState('')
   const [inviteToast, setInviteToast] = useState<string | null>(null)
@@ -114,6 +118,8 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
 
   const emailTrimmed = useMemo(() => normalizeEmail(email), [email])
   const userWalletTrimmed = useMemo(() => normalizeAddress(userWallet), [userWallet])
+  const claimCoinTrimmed = useMemo(() => normalizeAddress(claimCoinInput).toLowerCase(), [claimCoinInput])
+  const claimCoinOk = useMemo(() => claimCoinTrimmed.length === 0 || isValidEvmAddress(claimCoinTrimmed), [claimCoinTrimmed])
   const userWalletOk = useMemo(
     () => userWalletTrimmed.length === 0 || isValidEvmAddress(userWalletTrimmed),
     [userWalletTrimmed],
@@ -275,6 +281,64 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
     throw lastErr ?? new Error('Request failed')
   }
 
+  async function claimCreatorCoin(coinAddress: string, source: 'auto' | 'manual') {
+    if (claimCoinBusy) return
+    const coin = normalizeAddress(coinAddress).toLowerCase()
+    if (!isValidEvmAddress(coin)) {
+      setClaimCoinError('Enter a valid coin address.')
+      return
+    }
+    setClaimCoinBusy(true)
+    setClaimCoinError(null)
+    try {
+      const res = await apiFetch('/api/creator-wallets/claim', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+        body: JSON.stringify({ coinAddress: coin }),
+      })
+      const text = await res.text().catch(() => '')
+      const json = text ? JSON.parse(text) : null
+      if (!res.ok || !json || json.success !== true) {
+        const msg = json && typeof json.error === 'string' ? json.error : `Claim failed (HTTP ${res.status})`
+        throw new Error(msg)
+      }
+
+      if (source === 'manual') {
+        try {
+          const fetched = await fetchZoraCoin(coin as any)
+          if (fetched) {
+            const imageUrl =
+              (fetched?.mediaContent?.previewImage?.medium as string | undefined) ||
+              (fetched?.mediaContent?.previewImage?.small as string | undefined) ||
+              null
+            const asNumber = (v: any): number | null => {
+              const n = Number(v)
+              return Number.isFinite(n) ? n : null
+            }
+            setCreatorCoin({
+              address: coin,
+              symbol: fetched?.symbol ? String(fetched.symbol) : null,
+              coinType: fetched?.coinType ? String(fetched.coinType) : null,
+              imageUrl,
+              marketCapUsd: asNumber(fetched?.marketCap),
+              volume24hUsd: asNumber(fetched?.volume24h),
+              holders: typeof fetched?.uniqueHolders === 'number' ? fetched.uniqueHolders : null,
+              priceUsd: asNumber(fetched?.tokenPrice?.priceInUsdc),
+            })
+          }
+        } catch {
+          // ignore
+        }
+      }
+
+      setStep('email')
+    } catch (e: any) {
+      setClaimCoinError(e?.message ? String(e.message) : 'Claim failed')
+    } finally {
+      setClaimCoinBusy(false)
+    }
+  }
+
   function primaryWalletForSubmit(): string | null {
     // Creators: verified wallet only (from SIWF profile or SIWE).
     if (persona === 'creator') {
@@ -377,6 +441,10 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
     setCreatorCoinBusy(false)
     setCreatorCoinError(null)
     creatorCoinForWalletRef.current = null
+    claimCoinForWalletRef.current = null
+    setClaimCoinInput('')
+    setClaimCoinBusy(false)
+    setClaimCoinError(null)
     setReferralCodeTaken(false)
     setClaimReferralCode('')
     setInviteToast(null)
@@ -450,6 +518,12 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
     if (first && typeof first === 'string') setVerifiedWallet(first)
   }, [isFarcasterAuthed, profile])
 
+  useEffect(() => {
+    claimCoinForWalletRef.current = null
+    setClaimCoinError(null)
+    if (!verifiedWallet) setClaimCoinInput('')
+  }, [verifiedWallet])
+
   // Best-effort: detect the user's Zora Creator Coin (if any) from the verified wallet.
   useEffect(() => {
     const w = typeof verifiedWallet === 'string' && isValidEvmAddress(verifiedWallet) ? verifiedWallet : null
@@ -522,6 +596,19 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
     }
   }, [verifiedWallet])
 
+  useEffect(() => {
+    if (step !== 'verify') return
+    if (persona !== 'creator') return
+    if (!siwe.isSignedIn) return
+    if (!verifiedWallet) return
+    if (!creatorCoin?.address) return
+    if (claimCoinBusy) return
+    const key = `${verifiedWallet.toLowerCase()}:${creatorCoin.address.toLowerCase()}`
+    if (claimCoinForWalletRef.current === key) return
+    claimCoinForWalletRef.current = key
+    void claimCreatorCoin(creatorCoin.address, 'auto')
+  }, [claimCoinBusy, creatorCoin?.address, persona, siwe.isSignedIn, step, verifiedWallet])
+
   async function startSiwf() {
     setSiwfError(null)
     setSiwfBusy(true)
@@ -568,7 +655,6 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
         throw new Error(msg)
       }
       setVerifiedFid(fid)
-      setStep('email')
     } catch (e: any) {
       setSiwfError(e?.message ? String(e.message) : 'Farcaster verification failed')
     } finally {
@@ -963,7 +1049,7 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
                           const signed = await siwe.signIn()
                           if (!signed) return
                           setVerifiedWallet(signed)
-                          setStep('email')
+                          setClaimCoinError(null)
                         })()
                       }}
                     >
@@ -1035,6 +1121,30 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
                       <div className="text-[11px] text-amber-300/80">{creatorCoinError}</div>
                     ) : verifiedWallet ? (
                       <div className="text-[11px] text-zinc-700">No Creator Coin detected for this wallet.</div>
+                    ) : null}
+                    {claimCoinError ? <div className="text-[11px] text-amber-300/80">{claimCoinError}</div> : null}
+                    {!creatorCoin && !creatorCoinBusy && verifiedWallet ? (
+                      <div className="pt-2 space-y-2">
+                        <div className="text-[10px] uppercase tracking-[0.24em] text-zinc-600">Coin address</div>
+                        <input
+                          value={claimCoinInput}
+                          onChange={(e) => setClaimCoinInput(e.target.value)}
+                          placeholder="0x..."
+                          inputMode="text"
+                          autoComplete="off"
+                          className="w-full rounded-lg border border-white/10 bg-black/40 px-3 py-2 text-sm text-zinc-200 placeholder:text-zinc-700 focus:outline-none focus:ring-2 focus:ring-brand-primary/30"
+                        />
+                        {!claimCoinOk ? <div className="text-xs text-amber-300/80">Enter a valid 0x address.</div> : null}
+                        <button
+                          type="button"
+                          className="btn-accent w-full disabled:opacity-50 disabled:cursor-not-allowed"
+                          disabled={!siwe.isSignedIn || claimCoinBusy || !isValidEvmAddress(claimCoinTrimmed)}
+                          onClick={() => void claimCreatorCoin(claimCoinTrimmed, 'manual')}
+                        >
+                          {claimCoinBusy ? 'Claiming…' : 'Claim coin'}
+                        </button>
+                        {!siwe.isSignedIn ? <div className="text-xs text-zinc-600">Sign with wallet to claim.</div> : null}
+                      </div>
                     ) : null}
                   </div>
                 </div>

@@ -22,6 +22,7 @@ export const apiRouteLoaders: Record<string, () => Promise<ApiHandlerModule>> = 
   'auth/verify': () => import('./auth/verify.js'),
 
   'creator-allowlist': () => import('./creator-allowlist.js'),
+  'creator-wallets/claim': () => import('./creator-wallets-claim.js'),
   'creator-access/debug': () => import('./creator-access/debug.js'),
   'creator-access/request': () => import('./creator-access/request.js'),
   'creator-access/status': () => import('./creator-access/status.js'),

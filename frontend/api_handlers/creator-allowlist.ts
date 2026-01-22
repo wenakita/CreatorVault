@@ -2,6 +2,8 @@ import type { VercelRequest, VercelResponse } from '@vercel/node'
 
 import { type ApiEnvelope, handleOptions, setCors, setNoStore } from '../server/auth/_shared.js'
 import { ensureCreatorAccessSchema, getDb, getDbInitError, isDbConfigured } from '../server/_lib/postgres.js'
+import { ensureCreatorWalletsSchema } from '../server/_lib/creatorWallets.js'
+import { isAddressLike, resolveCoinParties } from '../server/_lib/coinParties.js'
 import { getSupabaseAdmin, isSupabaseAdminConfigured } from '../server/_lib/supabaseAdmin.js'
 
 declare const process: { env: Record<string, string | undefined> }
@@ -21,10 +23,6 @@ type CreatorAllowlistResponse = {
   allowed: boolean
 }
 
-function isAddressLike(value: string): boolean {
-  return /^0x[a-fA-F0-9]{40}$/.test(value)
-}
-
 function parseAllowlist(raw: string | undefined): Set<string> {
   if (!raw) return new Set()
   const parts = raw
@@ -37,40 +35,6 @@ function parseAllowlist(raw: string | undefined): Set<string> {
     out.add(p.toLowerCase())
   }
   return out
-}
-
-function getBaseRpcUrl(): string {
-  const env = process.env.BASE_RPC_URL
-  if (env && env.length > 0) return env
-  return 'https://mainnet.base.org'
-}
-
-const COIN_VIEW_ABI = [
-  { type: 'function', name: 'creator', stateMutability: 'view', inputs: [], outputs: [{ type: 'address' }] },
-  { type: 'function', name: 'payoutRecipient', stateMutability: 'view', inputs: [], outputs: [{ type: 'address' }] },
-] as const
-
-async function resolveCoinParties(coin: `0x${string}`): Promise<{ creator: `0x${string}` | null; payoutRecipient: `0x${string}` | null }> {
-  try {
-    const { createPublicClient, http } = await import('viem')
-    const { base } = await import('viem/chains')
-
-    const client = createPublicClient({
-      chain: base,
-      transport: http(getBaseRpcUrl(), { timeout: 12_000 }),
-    })
-
-    const [creator, payoutRecipient] = await Promise.all([
-      client.readContract({ address: coin, abi: COIN_VIEW_ABI, functionName: 'creator' }).catch(() => null),
-      client.readContract({ address: coin, abi: COIN_VIEW_ABI, functionName: 'payoutRecipient' }).catch(() => null),
-    ])
-
-    const c = typeof creator === 'string' && isAddressLike(creator) ? (creator.toLowerCase() as `0x${string}`) : null
-    const p = typeof payoutRecipient === 'string' && isAddressLike(payoutRecipient) ? (payoutRecipient.toLowerCase() as `0x${string}`) : null
-    return { creator: c, payoutRecipient: p }
-  } catch {
-    return { creator: null, payoutRecipient: null }
-  }
 }
 
 async function dbIsAllowlisted(
@@ -90,6 +54,25 @@ async function dbIsAllowlisted(
   return false
 }
 
+async function dbHasLinkedWallet(
+  db: { sql: (strings: TemplateStringsArray, ...values: any[]) => Promise<{ rows: any[] }> },
+  address: string | null,
+): Promise<boolean> {
+  if (!address || !isAddressLike(address)) return false
+  try {
+    await ensureCreatorWalletsSchema(db)
+    const { rows } = await db.sql`
+      SELECT wallet_address
+      FROM creator_wallets
+      WHERE wallet_address = ${address.toLowerCase()}
+      LIMIT 1;
+    `
+    return rows.length > 0
+  } catch {
+    return false
+  }
+}
+
 async function supabaseIsAllowlisted(addresses: string[]): Promise<boolean> {
   const addrs = (addresses ?? [])
     .map((a) => (typeof a === 'string' ? a.trim().toLowerCase() : ''))
@@ -105,6 +88,18 @@ async function supabaseIsAllowlisted(addresses: string[]): Promise<boolean> {
     .limit(1)
   if (res.error) throw new Error(res.error.message)
   return Array.isArray(res.data) && res.data.length > 0
+}
+
+async function supabaseHasLinkedWallet(address: string | null): Promise<boolean> {
+  if (!address || !isAddressLike(address)) return false
+  const supabase = getSupabaseAdmin()
+  try {
+    const res = await supabase.from('creator_wallets').select('wallet_address').eq('wallet_address', address.toLowerCase()).limit(1)
+    if (res.error) return false
+    return Array.isArray(res.data) && res.data.length > 0
+  } catch {
+    return false
+  }
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
@@ -134,7 +129,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (isSupabaseAdminConfigured()) {
     try {
       const mode: AllowlistMode = 'enforced'
-      const allowed = await supabaseIsAllowlisted(addressesToCheck)
+      const [allowlisted, linked] = await Promise.all([
+        supabaseIsAllowlisted(addressesToCheck),
+        supabaseHasLinkedWallet(address),
+      ])
+      const allowed = allowlisted || linked
       return res.status(200).json({
         success: true,
         data: { address, coin, creator, payoutRecipient, mode, allowed } satisfies CreatorAllowlistResponse,
@@ -153,7 +152,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         .json({ success: false, error: getDbInitError() || 'Database unavailable' } satisfies ApiEnvelope<never>)
     }
     const mode: AllowlistMode = 'enforced'
-    const allowed = await dbIsAllowlisted(db, addressesToCheck)
+    const [allowlisted, linked] = await Promise.all([
+      dbIsAllowlisted(db, addressesToCheck),
+      dbHasLinkedWallet(db, address),
+    ])
+    const allowed = allowlisted || linked
     return res.status(200).json({
       success: true,
       data: {
