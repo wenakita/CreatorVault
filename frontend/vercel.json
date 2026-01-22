@@ -4,69 +4,45 @@
   "installCommand": "pnpm install --frozen-lockfile",
   "framework": "vite",
   "outputDirectory": "dist",
-  "routes": [
-    { "src": "/__api/(.*)", "dest": "/api/$1" },
-    { "src": "/api/(.*)", "dest": "/api/$1" },
+  "rewrites": [
+    { "source": "/__api/:path*", "destination": "/api/:path*" },
+    { "source": "/api/:path*", "destination": "/api/:path*" },
+    { "source": "/:path*", "destination": "/index.html" }
+  ],
+  "headers": [
     {
-      "src": "/(.*)",
-      "headers": {
-        "content-security-policy-report-only": "default-src 'self'; script-src 'self' https://challenges.cloudflare.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; child-src https://auth.privy.io https://verify.walletconnect.com https://verify.walletconnect.org; frame-src https://auth.privy.io https://verify.walletconnect.com https://verify.walletconnect.org https://challenges.cloudflare.com; connect-src 'self' https://auth.privy.io https://api.developer.coinbase.com wss://relay.walletconnect.com wss://relay.walletconnect.org wss://www.walletlink.org https://*.rpc.privy.systems https://explorer-api.walletconnect.com; worker-src 'self' blob:; manifest-src 'self'",
-        "referrer-policy": "strict-origin-when-cross-origin",
-        "x-content-type-options": "nosniff"
-      },
-      "continue": true
+      "source": "/(.*)",
+      "headers": [
+        {
+          "key": "content-security-policy-report-only",
+          "value": "default-src 'self'; script-src 'self' https://challenges.cloudflare.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; child-src https://auth.privy.io https://verify.walletconnect.com https://verify.walletconnect.org; frame-src https://auth.privy.io https://verify.walletconnect.com https://verify.walletconnect.org https://challenges.cloudflare.com; connect-src 'self' https://auth.privy.io https://api.developer.coinbase.com wss://relay.walletconnect.com wss://relay.walletconnect.org wss://www.walletlink.org https://*.rpc.privy.systems https://explorer-api.walletconnect.com; worker-src 'self' blob:; manifest-src 'self'"
+        },
+        { "key": "referrer-policy", "value": "strict-origin-when-cross-origin" },
+        { "key": "x-content-type-options", "value": "nosniff" }
+      ]
     },
     {
-      "src": "/assets/(.*)",
-      "headers": { "cache-control": "public, max-age=31536000, immutable" },
-      "continue": true
+      "source": "/assets/(.*)",
+      "headers": [{ "key": "cache-control", "value": "public, max-age=31536000, immutable" }]
     },
     {
-      "src": "/.well-known/farcaster.json",
-      "headers": { "cache-control": "no-store" },
-      "continue": true
+      "source": "/.well-known/farcaster.json",
+      "headers": [{ "key": "cache-control", "value": "no-store" }]
     },
     {
-      "src": "/manifest.json",
-      "headers": { "cache-control": "no-store" },
-      "continue": true
+      "source": "/manifest.json",
+      "headers": [{ "key": "cache-control", "value": "no-store" }]
     },
     {
-      "src": "/explore/(.*)",
-      "headers": { "x-robots-tag": "noindex, nofollow" },
-      "continue": true
+      "source": "/explore/:path*",
+      "headers": [{ "key": "x-robots-tag", "value": "noindex, nofollow" }]
     },
-    {
-      "src": "/swap",
-      "headers": { "x-robots-tag": "noindex, nofollow" },
-      "continue": true
-    },
-    {
-      "src": "/positions",
-      "headers": { "x-robots-tag": "noindex, nofollow" },
-      "continue": true
-    },
-    {
-      "src": "/portfolio",
-      "headers": { "x-robots-tag": "noindex, nofollow" },
-      "continue": true
-    },
-    {
-      "src": "/dashboard",
-      "headers": { "x-robots-tag": "noindex, nofollow" },
-      "continue": true
-    },
-    {
-      "src": "/admin(?:/.*)?",
-      "headers": { "x-robots-tag": "noindex, nofollow" },
-      "continue": true
-    },
-    { "handle": "filesystem" },
-    { "src": "/assets/(.*)", "status": 404 },
-    {
-      "src": "/(.*)",
-      "headers": { "cache-control": "no-store" },
-      "dest": "/index.html"
-    }
+    { "source": "/swap", "headers": [{ "key": "x-robots-tag", "value": "noindex, nofollow" }] },
+    { "source": "/positions", "headers": [{ "key": "x-robots-tag", "value": "noindex, nofollow" }] },
+    { "source": "/portfolio", "headers": [{ "key": "x-robots-tag", "value": "noindex, nofollow" }] },
+    { "source": "/dashboard", "headers": [{ "key": "x-robots-tag", "value": "noindex, nofollow" }] },
+    { "source": "/admin", "headers": [{ "key": "x-robots-tag", "value": "noindex, nofollow" }] },
+    { "source": "/admin/:path*", "headers": [{ "key": "x-robots-tag", "value": "noindex, nofollow" }] },
+    { "source": "/index.html", "headers": [{ "key": "cache-control", "value": "no-store" }] }
   ]
 }
