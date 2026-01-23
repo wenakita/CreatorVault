@@ -3,11 +3,12 @@ import { Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState } fro
 import { useLocation } from 'react-router-dom'
 import { getAppBaseUrl } from '@/lib/host'
 import { SignInButton, useProfile, useSignInMessage } from '@farcaster/auth-kit'
+import { useAccount } from 'wagmi'
 import { useSiweAuth } from '@/hooks/useSiweAuth'
 import { ConnectButtonWeb3 } from '@/components/ConnectButtonWeb3'
 import { isPrivyClientEnabled } from '@/lib/flags'
 import { usePrivyClientStatus } from '@/lib/privy/client'
-import { Check, CheckCircle2, ChevronDown } from 'lucide-react'
+import { Check, CheckCircle2, ChevronDown, ShieldCheck, Wallet as WalletIcon, ArrowLeft } from 'lucide-react'
 import { useMiniAppContext } from '@/hooks'
 import { apiAliasPath } from '@/lib/apiBase'
 import { fetchZoraCoin, fetchZoraProfile } from '@/lib/zora/client'
@@ -87,6 +88,7 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
   const referralSessionIdRef = useRef<string | null>(null)
 
   const appUrl = useMemo(() => getAppBaseUrl(), [])
+  const { address: connectedAddress, isConnected: isWalletConnected } = useAccount()
   const siwe = useSiweAuth()
   const miniApp = useMiniAppContext()
   const { message: siwfMessage, signature: siwfSignature } = useSignInMessage()
@@ -249,7 +251,16 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
     bases.push(appUrl)
 
     const withCreds = Boolean(init.withCredentials)
-    const headers = init.headers ?? {}
+    const headers = new Headers(init.headers ?? undefined)
+    if (typeof window !== 'undefined' && path.startsWith('/api/') && !headers.has('Authorization')) {
+      try {
+        const token = localStorage.getItem('cv_siwe_session_token')
+        if (token && token.trim()) headers.set('Authorization', `Bearer ${token.trim()}`)
+      } catch {
+        // ignore
+      }
+    }
+
     const baseInit: RequestInit = {
       ...init,
       headers,
@@ -262,6 +273,7 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
       const b = base.replace(/\/+$/, '')
       // Prefer alias to avoid extension blocks on `/api/*`, then fall back to the canonical path.
       const paths = path.startsWith('/api/') ? [apiAliasPath(path), path] : [path]
+      const alias = path.startsWith('/api/') ? apiAliasPath(path) : null
       for (const p of paths) {
         const url = `${b}${p}`
         try {
@@ -270,6 +282,7 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
           // In dev, a missing alias may return index.html; treat that as a miss and continue.
           if (ct.includes('text/html')) continue
           if (res.status === 404) continue
+          if (alias && p === alias && res.status === 405) continue
           return res
         } catch (e: unknown) {
           lastErr = e
@@ -505,6 +518,17 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
     if (!siwfMessage || !siwfSignature) return
     void verifySiwfOnServer()
   }, [persona, siwfBusy, siwfMessage, siwfSignature, siwfStarted, step])
+
+  // If SIWE has established an authenticated address, treat it as the verified wallet for this flow.
+  useEffect(() => {
+    if (step !== 'verify') return
+    if (persona !== 'creator') return
+    if (!siwe.isSignedIn) return
+    if (verifiedWallet) return
+    const a = typeof siwe.authAddress === 'string' && isValidEvmAddress(siwe.authAddress) ? siwe.authAddress : null
+    if (!a) return
+    setVerifiedWallet(a)
+  }, [persona, siwe.authAddress, siwe.isSignedIn, step, verifiedWallet])
 
   // When Farcaster auth-kit has a profile, capture a best-effort wallet.
   useEffect(() => {
@@ -898,10 +922,18 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
     <section id={variant === 'embedded' ? sectionId : undefined} className={containerClass}>
       <div className={innerWrapClass}>
         {variant === 'page' ? (
-          <div className="flex items-center justify-between mb-4 sm:mb-6">
-            <div className="text-[10px] uppercase tracking-[0.24em] text-zinc-600">4626.fun · Creator Vaults</div>
-            <div className="text-[10px] uppercase tracking-[0.24em] text-zinc-700">
-              {stepIndex}/{totalSteps}
+          <div className="flex items-center justify-between mb-5 sm:mb-7">
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-xl border border-white/10 bg-black/40 flex items-center justify-center">
+                <div className="w-1.5 h-1.5 rounded-full bg-brand-primary" />
+              </div>
+              <div>
+                <div className="text-[11px] text-zinc-200">Creator Vaults</div>
+                <div className="text-[10px] text-zinc-600">Waitlist</div>
+              </div>
+            </div>
+            <div className="rounded-full border border-white/10 bg-black/30 px-3 py-1 text-[10px] text-zinc-500">
+              Step {stepIndex} / {totalSteps}
             </div>
           </div>
         ) : (
@@ -914,18 +946,20 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
 
         <div className={cardWrapClass}>
           {step !== 'persona' && step !== 'done' ? (
-            <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center justify-between mb-4">
               <button
                 type="button"
-                className="text-[11px] text-zinc-600 hover:text-zinc-400 transition-colors"
+                className="inline-flex items-center gap-2 text-[11px] text-zinc-500 hover:text-zinc-300 transition-colors"
                 disabled={busy || siwfBusy || siwe.busy}
                 onClick={() => {
                   if (busy || siwfBusy || siwe.busy) return
                   goBack()
                 }}
               >
+                <ArrowLeft className="w-3 h-3" />
                 Back
               </button>
+              <div className="hidden sm:block text-[10px] text-zinc-700">No transactions · just signatures</div>
             </div>
           ) : null}
           <div className="mb-5 sm:mb-6">
@@ -1003,23 +1037,52 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
                 transition={{ duration: 0.18 }}
                 className="space-y-5"
               >
-                <div className="headline text-2xl sm:text-3xl leading-tight">Verify</div>
-                <div className="text-sm text-zinc-600 font-light">Verify to continue.</div>
+                <div className="flex items-start justify-between gap-4">
+                  <div className="space-y-1">
+                    <div className="headline text-2xl sm:text-3xl leading-tight">Verify</div>
+                    <div className="text-sm text-zinc-600 font-light">Pick one method to verify and continue.</div>
+                  </div>
+                  <div className="hidden sm:flex items-center gap-2">
+                    <span className="text-[10px] uppercase tracking-[0.24em] text-zinc-700">
+                      Step {stepIndex}/{totalSteps}
+                    </span>
+                  </div>
+                </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div className="rounded-xl border border-white/10 bg-black/30 p-4 space-y-3">
-                    <div className="text-[10px] uppercase tracking-[0.24em] text-zinc-600">Farcaster</div>
+                  {/* Farcaster card */}
+                  <div className="rounded-2xl border border-white/10 bg-gradient-to-b from-black/40 to-black/20 p-5 space-y-4">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="flex items-center gap-2">
+                        <div className="w-9 h-9 rounded-xl border border-white/10 bg-black/40 flex items-center justify-center">
+                          <ShieldCheck className="w-4 h-4 text-zinc-300" />
+                        </div>
+                        <div>
+                          <div className="text-sm text-zinc-200 font-medium">Farcaster</div>
+                          <div className="text-[11px] text-zinc-600">Recommended</div>
+                        </div>
+                      </div>
+                      <div className="text-[10px] rounded-full border px-2 py-1 bg-black/30 text-zinc-500 border-white/10">
+                        {typeof verifiedFid === 'number' && verifiedFid > 0
+                          ? `Verified · fid ${verifiedFid}`
+                          : siwfBusy
+                            ? 'Verifying…'
+                            : 'Not verified'}
+                      </div>
+                    </div>
+
+                    <div className="text-xs text-zinc-600">
+                      Signs a message in your Farcaster client. We verify it server-side.
+                    </div>
+
                     <div className="w-full flex justify-center">
                       {siwfNonce ? (
-                        <div
-                          onClick={() => {
-                            setSiwfStarted(true)
-                            setSiwfError(null)
-                          }}
-                        >
+                        <div>
                           <SignInButton
                             nonce={siwfNonce}
                             onSuccess={() => {
+                              // Gate verification to the explicit user action.
+                              setSiwfStarted(true)
                               // Verification is gated by siwfStarted to prevent auto-advance.
                               setSiwfError(null)
                             }}
@@ -1032,68 +1095,92 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
                         </button>
                       )}
                     </div>
+
                     {siwfError ? <div className="text-xs text-red-400 text-center">{siwfError}</div> : null}
                   </div>
 
-                  <div className="rounded-xl border border-white/10 bg-black/30 p-4 space-y-3">
-                    <div className="text-[10px] uppercase tracking-[0.24em] text-zinc-600">Wallet</div>
-                    <ConnectButtonWeb3 />
-                    <button
-                      type="button"
-                      className="btn-accent w-full disabled:opacity-50 disabled:cursor-not-allowed"
-                      disabled={siwe.busy}
-                      onClick={() => {
-                        void (async () => {
-                          const signed = await siwe.signIn()
-                          if (!signed) return
-                          setVerifiedWallet(signed)
-                          setClaimCoinError(null)
-                        })()
-                      }}
-                    >
-                      {siwe.busy ? 'Signing…' : 'Sign with wallet'}
-                    </button>
-                    {siwe.error ? <div className="text-xs text-red-400">{siwe.error}</div> : null}
-                    {creatorCoinBusy ? (
-                      <div className="text-[11px] text-zinc-600">Detecting Creator Coin…</div>
-                    ) : creatorCoin ? (
-                      <div className="text-[11px] text-zinc-600">
-                        Creator Coin:{' '}
-                        <a
-                          className="font-mono text-zinc-300 hover:text-zinc-100 transition-colors"
-                          href={`${appUrl.replace(/\/+$/, '')}/deploy?token=${encodeURIComponent(creatorCoin.address)}`}
-                          target="_blank"
-                          rel="noreferrer"
-                          title={creatorCoin.symbol ? `${creatorCoin.symbol} · ${creatorCoin.address}` : creatorCoin.address}
-                        >
-                          {creatorCoin.symbol ? `${creatorCoin.symbol} · ` : ''}
-                          {creatorCoin.address.slice(0, 6)}…{creatorCoin.address.slice(-4)}
-                        </a>
-                        {(() => {
-                          const hasStats =
-                            creatorCoin.imageUrl ||
-                            creatorCoin.marketCapUsd ||
-                            creatorCoin.volume24hUsd ||
-                            creatorCoin.holders ||
-                            creatorCoin.priceUsd
-                          if (!hasStats) return null
-                          return (
-                            <div className="mt-2 flex items-center gap-3">
-                              <div className="w-10 h-10 rounded-lg border border-white/10 bg-black/40 overflow-hidden flex items-center justify-center">
-                                {creatorCoin.imageUrl ? (
-                                  <img
-                                    src={creatorCoin.imageUrl}
-                                    alt={creatorCoin.symbol || 'Creator coin'}
-                                    className="w-full h-full object-cover"
-                                    loading="lazy"
-                                  />
-                                ) : (
-                                  <div className="text-[9px] text-zinc-500 font-mono">
-                                    {creatorCoin.symbol ? creatorCoin.symbol.slice(0, 6) : 'COIN'}
-                                  </div>
-                                )}
-                              </div>
-                              <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-[10px] text-zinc-500">
+                  {/* Wallet card */}
+                  <div className="rounded-2xl border border-white/10 bg-gradient-to-b from-black/40 to-black/20 p-5 space-y-4">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="flex items-center gap-2">
+                        <div className="w-9 h-9 rounded-xl border border-white/10 bg-black/40 flex items-center justify-center">
+                          <WalletIcon className="w-4 h-4 text-zinc-300" />
+                        </div>
+                        <div>
+                          <div className="text-sm text-zinc-200 font-medium">Wallet</div>
+                          <div className="text-[11px] text-zinc-600">Alternative</div>
+                        </div>
+                      </div>
+                      <div className="text-[10px] rounded-full border px-2 py-1 bg-black/30 text-zinc-500 border-white/10">
+                        {verifiedWallet
+                          ? `Verified · ${verifiedWallet.slice(0, 6)}…${verifiedWallet.slice(-4)}`
+                          : isWalletConnected && connectedAddress
+                            ? `Connected · ${connectedAddress.slice(0, 6)}…${connectedAddress.slice(-4)}`
+                            : 'Not connected'}
+                      </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <ConnectButtonWeb3 />
+                      <button
+                        type="button"
+                        className="btn-accent w-full disabled:opacity-50 disabled:cursor-not-allowed"
+                        disabled={siwe.busy || !isWalletConnected}
+                        onClick={() => {
+                          void (async () => {
+                            const signed = await siwe.signIn()
+                            if (!signed) return
+                            setVerifiedWallet(signed)
+                            setClaimCoinError(null)
+                          })()
+                        }}
+                      >
+                        {!isWalletConnected ? 'Connect a wallet to sign' : siwe.busy ? 'Signing…' : 'Sign message'}
+                      </button>
+                      {siwe.error ? <div className="text-xs text-red-400">{siwe.error}</div> : null}
+                    </div>
+
+                    <div className="rounded-xl border border-white/10 bg-black/40 p-4 space-y-3">
+                      <div className="text-[10px] uppercase tracking-[0.24em] text-zinc-600">Creator Coin</div>
+                      {creatorCoinBusy ? (
+                        <div className="text-[11px] text-zinc-600">Detecting Creator Coin…</div>
+                      ) : creatorCoin ? (
+                        <div className="space-y-2">
+                          <a
+                            className="inline-flex items-center gap-2 font-mono text-[12px] text-zinc-300 hover:text-zinc-100 transition-colors"
+                            href={`${appUrl.replace(/\/+$/, '')}/deploy?token=${encodeURIComponent(creatorCoin.address)}`}
+                            target="_blank"
+                            rel="noreferrer"
+                            title={creatorCoin.symbol ? `${creatorCoin.symbol} · ${creatorCoin.address}` : creatorCoin.address}
+                          >
+                            {creatorCoin.imageUrl ? (
+                              <img
+                                src={creatorCoin.imageUrl}
+                                alt={creatorCoin.symbol || 'Creator coin'}
+                                className="w-7 h-7 rounded-lg border border-white/10 object-cover"
+                                loading="lazy"
+                              />
+                            ) : (
+                              <span className="w-7 h-7 rounded-lg border border-white/10 bg-black/30 flex items-center justify-center text-[10px] text-zinc-500">
+                                {creatorCoin.symbol ? creatorCoin.symbol.slice(0, 2) : 'CC'}
+                              </span>
+                            )}
+                            <span className="rounded-lg border border-white/10 bg-black/30 px-2 py-1">
+                              {creatorCoin.symbol ? creatorCoin.symbol : 'COIN'}
+                            </span>
+                            <span>{creatorCoin.address.slice(0, 6)}…{creatorCoin.address.slice(-4)}</span>
+                          </a>
+
+                          {(() => {
+                            const hasStats =
+                              creatorCoin.imageUrl ||
+                              creatorCoin.marketCapUsd ||
+                              creatorCoin.volume24hUsd ||
+                              creatorCoin.holders ||
+                              creatorCoin.priceUsd
+                            if (!hasStats) return null
+                            return (
+                              <div className="grid grid-cols-2 gap-2 text-[10px] text-zinc-500">
                                 <div className="flex items-center justify-between gap-2">
                                   <span>MC</span>
                                   <span className="text-zinc-300">{formatUsd(creatorCoin.marketCapUsd)}</span>
@@ -1111,40 +1198,54 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
                                   <span className="text-zinc-300">{formatPrice(creatorCoin.priceUsd)}</span>
                                 </div>
                               </div>
-                            </div>
-                          )
-                        })()}
-                      </div>
-                    ) : creatorCoinError ? (
-                      <div className="text-[11px] text-amber-300/80">{creatorCoinError}</div>
-                    ) : verifiedWallet ? (
-                      <div className="text-[11px] text-zinc-700">No Creator Coin detected for this wallet.</div>
-                    ) : null}
-                    {claimCoinError ? <div className="text-[11px] text-amber-300/80">{claimCoinError}</div> : null}
-                    {!creatorCoin && !creatorCoinBusy && verifiedWallet ? (
-                      <div className="pt-2 space-y-2">
-                        <div className="text-[10px] uppercase tracking-[0.24em] text-zinc-600">Coin address</div>
-                        <input
-                          value={claimCoinInput}
-                          onChange={(e) => setClaimCoinInput(e.target.value)}
-                          placeholder="0x..."
-                          inputMode="text"
-                          autoComplete="off"
-                          className="w-full rounded-lg border border-white/10 bg-black/40 px-3 py-2 text-sm text-zinc-200 placeholder:text-zinc-700 focus:outline-none focus:ring-2 focus:ring-brand-primary/30"
-                        />
-                        {!claimCoinOk ? <div className="text-xs text-amber-300/80">Enter a valid 0x address.</div> : null}
-                        <button
-                          type="button"
-                          className="btn-accent w-full disabled:opacity-50 disabled:cursor-not-allowed"
-                          disabled={!siwe.isSignedIn || claimCoinBusy || !isValidEvmAddress(claimCoinTrimmed)}
-                          onClick={() => void claimCreatorCoin(claimCoinTrimmed, 'manual')}
-                        >
-                          {claimCoinBusy ? 'Claiming…' : 'Claim coin'}
-                        </button>
-                        {!siwe.isSignedIn ? <div className="text-xs text-zinc-600">Sign with wallet to claim.</div> : null}
-                      </div>
-                    ) : null}
+                            )
+                          })()}
+                        </div>
+                      ) : creatorCoinError ? (
+                        <div className="text-[11px] text-amber-300/80">{creatorCoinError}</div>
+                      ) : verifiedWallet ? (
+                        <div className="text-[11px] text-zinc-700">No Creator Coin detected for this wallet.</div>
+                      ) : (
+                        <div className="text-[11px] text-zinc-700">Connect + verify a wallet to detect your Creator Coin.</div>
+                      )}
+
+                      {claimCoinError ? <div className="text-[11px] text-amber-300/80">{claimCoinError}</div> : null}
+                      {!creatorCoin && !creatorCoinBusy && verifiedWallet ? (
+                        <div className="pt-2 space-y-2">
+                          <div className="text-[10px] uppercase tracking-[0.24em] text-zinc-600">Enter coin address</div>
+                          <input
+                            value={claimCoinInput}
+                            onChange={(e) => setClaimCoinInput(e.target.value)}
+                            placeholder="0x..."
+                            inputMode="text"
+                            autoComplete="off"
+                            className="w-full rounded-lg border border-white/10 bg-black/40 px-3 py-2 text-sm text-zinc-200 placeholder:text-zinc-700 focus:outline-none focus:ring-2 focus:ring-brand-primary/30"
+                          />
+                          {!claimCoinOk ? <div className="text-xs text-amber-300/80">Enter a valid 0x address.</div> : null}
+                          <button
+                            type="button"
+                            className="btn-accent w-full disabled:opacity-50 disabled:cursor-not-allowed"
+                            disabled={!siwe.isSignedIn || claimCoinBusy || !isValidEvmAddress(claimCoinTrimmed)}
+                            onClick={() => void claimCreatorCoin(claimCoinTrimmed, 'manual')}
+                          >
+                            {claimCoinBusy ? 'Claiming…' : 'Claim coin'}
+                          </button>
+                          {!siwe.isSignedIn ? <div className="text-xs text-zinc-600">Sign message to claim.</div> : null}
+                        </div>
+                      ) : null}
+                    </div>
                   </div>
+                </div>
+
+                <div className="flex items-center justify-end pt-1">
+                  <button
+                    type="button"
+                    className="btn-accent disabled:opacity-50 disabled:cursor-not-allowed"
+                    disabled={!verifiedFid && !verifiedWallet}
+                    onClick={() => setStep('email')}
+                  >
+                    Continue
+                  </button>
                 </div>
 
               </motion.div>

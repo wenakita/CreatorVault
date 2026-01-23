@@ -32,14 +32,28 @@ function isProbablyHtml(res: Response): boolean {
  */
 export async function apiFetch(path: string, init: ApiFetchInit = {}, bases?: string[]): Promise<Response> {
   const withCreds = Boolean(init.withCredentials)
+  // Best-effort: attach our SIWE session token when present.
+  // This allows authenticated routes to work even when cookies are unavailable.
+  const headers = new Headers(init.headers ?? undefined)
+  if (typeof window !== 'undefined' && path.startsWith('/api/') && !headers.has('Authorization')) {
+    try {
+      const token = localStorage.getItem('cv_siwe_session_token')
+      if (token && token.trim()) headers.set('Authorization', `Bearer ${token.trim()}`)
+    } catch {
+      // ignore
+    }
+  }
+
   const baseInit: RequestInit = {
     ...init,
+    headers,
     ...(withCreds ? { credentials: 'include' as const } : null),
   }
   delete (baseInit as any).withCredentials
 
   const tryPaths = path.startsWith('/api/') ? [apiAliasPath(path), path] : [path]
   const baseList = Array.isArray(bases) && bases.length > 0 ? bases : ['']
+  const alias = path.startsWith('/api/') ? apiAliasPath(path) : null
 
   let lastErr: unknown = null
   for (const base of baseList) {
@@ -51,6 +65,9 @@ export async function apiFetch(path: string, init: ApiFetchInit = {}, bases?: st
         if (isProbablyHtml(res)) continue
         // If the alias route isn't present yet, Vercel returns 404; fall back to next path/base.
         if (res.status === 404) continue
+        // Some deployments serve `/__api/*` as static content, which returns 405 on POST.
+        // Treat that as a miss so we fall back to the real `/api/*` handlers.
+        if (alias && p === alias && res.status === 405) continue
         return res
       } catch (e: unknown) {
         lastErr = e
