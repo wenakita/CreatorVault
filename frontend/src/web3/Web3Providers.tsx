@@ -7,8 +7,9 @@ import { WagmiProvider as BaseWagmiProvider } from 'wagmi'
 import { base } from 'wagmi/chains'
 import { useEffect, useRef } from 'react'
 import { useAccount, useConnect } from 'wagmi'
+import { useLocation } from 'react-router-dom'
 
-import { wagmiConfig } from '@/config/wagmi'
+import { wagmiConfigBase, wagmiConfigDeploy } from '@/config/wagmi'
 import { logger } from '@/lib/logger'
 import { WalletDebugPanel } from '@/components/WalletDebugPanel'
 import { PrivyWagmiSmartAccountBridge } from '@/web3/PrivyWagmiSmartAccountBridge'
@@ -54,7 +55,22 @@ function MiniAppAutoConnect() {
 }
 
 export function Web3Providers({ children }: { children: ReactNode }) {
+  const location = useLocation()
   const privyStatus = usePrivyClientStatus()
+
+  // Feature flag: keep the Zora (read-only) connector scoped to deploy flows only.
+  // Default is enabled for deploy routes unless explicitly disabled via env.
+  const zoraConnectorEnabled = (() => {
+    const raw = (import.meta.env.VITE_ENABLE_ZORA_READONLY_CONNECTOR as string | undefined)?.trim()
+    if (!raw) return true
+    return raw !== '0' && raw.toLowerCase() !== 'false'
+  })()
+  const isDeployRoute =
+    location.pathname === '/deploy' ||
+    location.pathname.startsWith('/deploy/') ||
+    location.pathname === '/admin/deploy-strategies' ||
+    location.pathname.startsWith('/admin/deploy-strategies/')
+  const wagmiConfig = zoraConnectorEnabled && isDeployRoute ? wagmiConfigDeploy : wagmiConfigBase
 
   // Coinbase Developer Platform (OnchainKit) config.
   // - `VITE_CDP_API_KEY` is the CDP key id (safe to expose; origin-restrict in CDP).
@@ -77,7 +93,7 @@ export function Web3Providers({ children }: { children: ReactNode }) {
   const WagmiProvider = privyStatus === 'ready' ? PrivyWagmiProvider : BaseWagmiProvider
 
   const content = (
-    <WagmiProvider config={wagmiConfig}>
+    <WagmiProvider config={wagmiConfig} key={zoraConnectorEnabled && isDeployRoute ? 'wagmi-deploy' : 'wagmi-base'}>
       <OnchainKitProvider
         chain={base}
         apiKey={cdpApiKey}

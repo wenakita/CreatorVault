@@ -50,6 +50,56 @@ const walletConnectMetadata = {
   icons: ['https://4626.fun/pwa-512.png'] as string[],
 }
 
+function createWagmiBaseConfig({ includeZoraReadOnly }: { includeZoraReadOnly: boolean }) {
+  return createWagmiConfig({
+    chains: [base],
+    connectors: [
+      // Base app / Farcaster Mini App connector (when available).
+      farcasterMiniApp(),
+      // Prefer Rabby explicitly (avoids multi-wallet `window.ethereum` conflicts and gives users a clear "Rabby" option).
+      injected({ target: 'rabby' }),
+      ...(walletConnectProjectId
+        ? [
+            walletConnect({
+              projectId: walletConnectProjectId,
+              metadata: walletConnectMetadata,
+              showQrModal: true,
+            }),
+          ]
+        : []),
+      ...(includeZoraReadOnly
+        ? [
+            // Privy Global Wallet (Requester): Zora embedded wallet (read-only provider).
+            zoraGlobalWalletConnector(),
+          ]
+        : []),
+    ],
+    // Avoid multi-injected provider discovery issues (MetaMask/Rabby conflicts, etc).
+    multiInjectedProviderDiscovery: false,
+    transports: {
+      [base.id]: fallback(
+        baseRpcUrls.map((url) =>
+          http(url, {
+            timeout: 15_000,
+            retryCount: 2,
+            retryDelay: 400,
+          }),
+        ),
+      ),
+    },
+  })
+}
+
+// Default app config: Base-only connectors.
+export const wagmiConfigBase = createWagmiBaseConfig({ includeZoraReadOnly: false })
+
+// Deploy config: includes Privy/Zora read-only connector (used only on deploy flows).
+export const wagmiConfigDeploy = createWagmiBaseConfig({ includeZoraReadOnly: true })
+
+// Back-compat: keep the existing export name as the base config.
+export const wagmiConfig = wagmiConfigBase
+
+/* Legacy block (kept for git history context)
 export const wagmiConfig = createWagmiConfig({
   chains: [base],
   connectors: [
@@ -83,6 +133,7 @@ export const wagmiConfig = createWagmiConfig({
     ),
   },
 })
+*/
 
 declare module 'wagmi' {
   interface Register {
