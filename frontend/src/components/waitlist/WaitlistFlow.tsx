@@ -1077,7 +1077,7 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
                 {/* Header */}
                 <div className="space-y-1">
                   <div className="headline text-2xl sm:text-3xl leading-tight">Verify</div>
-                  <div className="text-sm text-zinc-500">Sign in once. No transaction required.</div>
+                  <div className="text-sm text-zinc-500">Sign to Verify</div>
                 </div>
 
                 {/* Farcaster verified state */}
@@ -1189,7 +1189,7 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
                     animate={{ opacity: 1, height: 'auto' }}
                     exit={{ opacity: 0, height: 0 }}
                     transition={{ duration: 0.15 }}
-                    className="rounded-xl border border-white/10 bg-black/20 p-4 space-y-3"
+                    className="rounded-xl border border-white/10 bg-black/20 p-3 sm:p-4 space-y-2"
                   >
                     <ConnectButtonWeb3 />
                     <button
@@ -1222,7 +1222,6 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
                     <div className="flex items-center justify-between gap-3 px-4 py-3">
                       <div className="flex items-center gap-2">
                         <span className="text-sm text-zinc-400">Creator Coin</span>
-                        <span className="text-[10px] text-zinc-600">(optional)</span>
                       </div>
                       <div className="flex items-center gap-2">
                         <span className="text-xs text-zinc-600">
@@ -1299,7 +1298,7 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
                         </div>
                       )}
                       {claimCoinError ? (
-                        <div className="text-xs text-amber-300/80">{claimCoinError}</div>
+                        null
                       ) : null}
                     </div>
                   </div>
@@ -1315,10 +1314,6 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
                   Continue
                 </button>
 
-                {/* Footer microcopy */}
-                <div className="text-[11px] text-zinc-700 text-center">
-                  No transactions · just signatures
-                </div>
               </motion.div>
             ) : null}
 
@@ -1339,7 +1334,6 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
                     <div className="flex items-center justify-between gap-3 px-4 py-3">
                       <div className="flex items-center gap-2">
                         <span className="text-sm text-zinc-400">Creator Coin</span>
-                        <span className="text-[10px] text-zinc-600">(optional)</span>
                       </div>
                       <span className="text-xs text-zinc-600">Linked</span>
                     </div>
