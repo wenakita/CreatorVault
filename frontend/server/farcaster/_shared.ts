@@ -142,4 +142,3 @@ export function parseSiwfBasics(message: string): ParsedSiwf | null {
 
 // Re-export nonce token validation for SIWF cookie fallback.
 export { readNonceToken }
-
