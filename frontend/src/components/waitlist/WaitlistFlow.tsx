@@ -1279,7 +1279,9 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
                           privyAuthed
                             ? null
                             : privyLogin({
-                                loginMethods: ['wallet'],
+                                // Force embedded-wallet flow (email) to avoid WalletConnect-only UX.
+                                // Embedded wallet creation is configured in `PrivyClientProvider` via `embedded.ethereum.createOnLogin`.
+                                loginMethods: ['email'],
                               } as any),
                         )
                           .catch((e: any) => {
