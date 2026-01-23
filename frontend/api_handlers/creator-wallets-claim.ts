@@ -10,7 +10,7 @@ import {
 } from '../server/auth/_shared.js'
 import { getDb } from '../server/_lib/postgres.js'
 import { ensureCreatorWalletsSchema } from '../server/_lib/creatorWallets.js'
-import { isAddressLike, resolveCoinParties } from '../server/_lib/coinParties.js'
+import { isAddressLike, resolveCoinPartiesAndOwner } from '../server/_lib/coinParties.js'
 
 type ClaimBody = { coinAddress?: string }
 
@@ -44,14 +44,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(400).json({ success: false, error: 'Invalid coin address' } satisfies ApiEnvelope<never>)
   }
 
-  const parties = await resolveCoinParties(coin)
+  const parties = await resolveCoinPartiesAndOwner(coin)
   const creator = parties.creator
   const payoutRecipient = parties.payoutRecipient
-  if (!creator && !payoutRecipient) {
+  const owner = parties.owner
+  if (!creator && !payoutRecipient && !owner) {
     return res.status(404).json({ success: false, error: 'Coin not found' } satisfies ApiEnvelope<never>)
   }
 
-  const role = wallet === creator ? 'creator' : wallet === payoutRecipient ? 'payout' : null
+  // Some coins expose an Ownable-style `owner()` that may not equal `creator()` or `payoutRecipient()`.
+  // We treat `owner` as a valid "creator" claimant.
+  const role = wallet === creator ? 'creator' : wallet === payoutRecipient ? 'payout' : wallet === owner ? 'creator' : null
   if (!role) {
     return res.status(403).json({
       success: false,
