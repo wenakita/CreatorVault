@@ -26,6 +26,8 @@ const ACTION_POINTS: Record<ActionKey, number> = {
   saveApp: 6,
 }
 
+const SIGNUP_POINTS = 1
+
 const EMPTY_ACTION_STATE: Record<ActionKey, boolean> = {
   shareX: false,
   copyLink: false,
@@ -470,6 +472,28 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
     setWeeklyRank(null)
     setAllTimeRank(null)
     setReferralFetchBusy(false)
+  }
+
+  async function signOutWallet() {
+    try {
+      const maybe = siwe as any
+      if (typeof maybe?.signOut === 'function') {
+        await maybe.signOut()
+      }
+    } catch {
+      // ignore
+    } finally {
+      setVerifiedWallet(null)
+      setVerifyMethod('farcaster')
+      setCreatorCoin(null)
+      setCreatorCoinBusy(false)
+      setCreatorCoinError(null)
+      creatorCoinForWalletRef.current = null
+      claimCoinForWalletRef.current = null
+      setClaimCoinInput('')
+      setClaimCoinBusy(false)
+      setClaimCoinError(null)
+    }
   }
 
   // Fetch referral counters/ranks once we have a code to show.
@@ -948,21 +972,31 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
         )}
 
         <div className={cardWrapClass}>
-          {step !== 'persona' && step !== 'done' ? (
+          {step !== 'persona' ? (
             <div className="flex items-center justify-between mb-4">
-              <button
-                type="button"
-                className="inline-flex items-center gap-2 text-[11px] text-zinc-500 hover:text-zinc-300 transition-colors"
-                disabled={busy || siwfBusy || siwe.busy}
-                onClick={() => {
-                  if (busy || siwfBusy || siwe.busy) return
-                  goBack()
-                }}
-              >
-                <ArrowLeft className="w-3 h-3" />
-                Back
-              </button>
-              <div className="hidden sm:block text-[10px] text-zinc-700">No transactions · just signatures</div>
+              {step !== 'done' ? (
+                <button
+                  type="button"
+                  className="inline-flex items-center gap-2 text-[11px] text-zinc-500 hover:text-zinc-300 transition-colors"
+                  disabled={busy || siwfBusy || siwe.busy}
+                  onClick={() => {
+                    if (busy || siwfBusy || siwe.busy) return
+                    goBack()
+                  }}
+                >
+                  <ArrowLeft className="w-3 h-3" />
+                  Back
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  className="inline-flex items-center gap-2 text-[11px] text-zinc-500 hover:text-zinc-300 transition-colors"
+                  onClick={resetFlow}
+                >
+                  Reset
+                </button>
+              )}
+              <div className="w-8" />
             </div>
           ) : null}
           <div className="mb-5 sm:mb-6">
@@ -1061,12 +1095,19 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
                 {verifiedWallet && !(typeof verifiedFid === 'number' && verifiedFid > 0) ? (
                   <div className="flex items-center gap-3 rounded-xl border border-emerald-500/20 bg-emerald-500/5 px-4 py-3">
                     <CheckCircle2 className="w-5 h-5 text-emerald-400 shrink-0" />
-                    <div className="min-w-0">
+                    <div className="min-w-0 flex-1">
                       <div className="text-sm text-zinc-200">Wallet verified</div>
                       <div className="text-xs text-zinc-500 font-mono truncate">
                         {verifiedWallet.slice(0, 6)}…{verifiedWallet.slice(-4)}
                       </div>
                     </div>
+                    <button
+                      type="button"
+                      className="text-xs text-zinc-500 hover:text-zinc-300 transition-colors"
+                      onClick={() => void signOutWallet()}
+                    >
+                      Sign out
+                    </button>
                   </div>
                 ) : null}
 
@@ -1177,8 +1218,8 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
 
                 {/* Creator Coin section (only shown after wallet verification) */}
                 {verifiedWallet ? (
-                  <details className="rounded-xl border border-white/10 bg-black/20 group">
-                    <summary className="cursor-pointer list-none flex items-center justify-between gap-3 px-4 py-3 select-none">
+                  <div className="rounded-xl border border-white/10 bg-black/20">
+                    <div className="flex items-center justify-between gap-3 px-4 py-3">
                       <div className="flex items-center gap-2">
                         <span className="text-sm text-zinc-400">Creator Coin</span>
                         <span className="text-[10px] text-zinc-600">(optional)</span>
@@ -1191,9 +1232,8 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
                               ? 'Linked'
                               : 'Not linked'}
                         </span>
-                        <ChevronDown className="w-4 h-4 text-zinc-600 transition-transform group-open:rotate-180" />
                       </div>
-                    </summary>
+                    </div>
                     <div className="px-4 pb-4 space-y-3">
                       {creatorCoinBusy ? (
                         <div className="text-xs text-zinc-600">Detecting coin for this wallet…</div>
@@ -1262,7 +1302,7 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
                         <div className="text-xs text-amber-300/80">{claimCoinError}</div>
                       ) : null}
                     </div>
-                  </details>
+                  </div>
                 ) : null}
 
                 {/* Continue button */}
@@ -1277,7 +1317,7 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
 
                 {/* Footer microcopy */}
                 <div className="text-[11px] text-zinc-700 text-center">
-                  Signatures only · no gas fees
+                  No transactions · just signatures
                 </div>
               </motion.div>
             ) : null}
@@ -1295,11 +1335,47 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
                 <div className="text-sm text-zinc-600 font-light">We’ll email you.</div>
 
                 {persona === 'creator' && verifiedWallet && creatorCoin ? (
-                  <div className="rounded-xl border border-white/10 bg-black/30 px-4 py-3">
-                    <div className="text-[10px] uppercase tracking-[0.24em] text-zinc-600 mb-1">Creator Coin</div>
-                    <div className="text-sm text-zinc-300 font-mono">
-                      {creatorCoin.symbol ? `${creatorCoin.symbol} · ` : ''}
-                      {creatorCoin.address}
+                  <div className="rounded-xl border border-white/10 bg-black/20">
+                    <div className="flex items-center justify-between gap-3 px-4 py-3">
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm text-zinc-400">Creator Coin</span>
+                        <span className="text-[10px] text-zinc-600">(optional)</span>
+                      </div>
+                      <span className="text-xs text-zinc-600">Linked</span>
+                    </div>
+                    <div className="px-4 pb-4 space-y-3">
+                      <div className="flex items-center gap-3 rounded-lg border border-white/10 bg-black/30 px-3 py-2">
+                        {creatorCoin.imageUrl ? (
+                          <img
+                            src={creatorCoin.imageUrl}
+                            alt={creatorCoin.symbol || 'Creator coin'}
+                            className="w-8 h-8 rounded-lg border border-white/10 object-cover"
+                            loading="lazy"
+                          />
+                        ) : (
+                          <span className="w-8 h-8 rounded-lg border border-white/10 bg-black/30 flex items-center justify-center text-[10px] text-zinc-500">
+                            {creatorCoin.symbol ? creatorCoin.symbol.slice(0, 2) : 'CC'}
+                          </span>
+                        )}
+                        <div className="min-w-0 flex-1">
+                          <div className="text-sm text-zinc-200 font-medium truncate">{creatorCoin.symbol || 'Creator Coin'}</div>
+                          <div className="text-[11px] font-mono text-zinc-600 truncate">{creatorCoin.address}</div>
+                        </div>
+                        <a
+                          href={`${appUrl.replace(/\/+$/, '')}/deploy?token=${encodeURIComponent(creatorCoin.address)}`}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="text-xs text-zinc-500 hover:text-zinc-300 transition-colors"
+                        >
+                          View
+                        </a>
+                      </div>
+                      {(creatorCoin.marketCapUsd || creatorCoin.holders) ? (
+                        <div className="flex items-center gap-4 text-[11px] text-zinc-600">
+                          {creatorCoin.marketCapUsd ? <span>MC {formatUsd(creatorCoin.marketCapUsd)}</span> : null}
+                          {creatorCoin.holders ? <span>{formatCount(creatorCoin.holders)} holders</span> : null}
+                        </div>
+                      ) : null}
                     </div>
                   </div>
                 ) : null}
@@ -1461,7 +1537,7 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
                     <div className="absolute inset-0 rounded-full border border-brand-primary/20 animate-pulse-ring" />
                     <CheckCircle2 className="w-5 h-5 text-brand-accent" />
                   </div>
-                  <div className="headline text-2xl sm:text-3xl leading-tight">Invite</div>
+                  <div className="headline text-2xl sm:text-3xl leading-tight">You’re in!</div>
                 </motion.div>
 
                 <div className="text-sm text-zinc-600 font-light">
@@ -1497,23 +1573,26 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
 
                   <div className="pt-2">
                     {(() => {
-                      const count = typeof allTimeConversions === 'number' ? allTimeConversions : 0
+                      const actionPoints = (Object.keys(ACTION_POINTS) as ActionKey[]).reduce((sum, k) => {
+                        return sum + (actionsDone[k] ? ACTION_POINTS[k] : 0)
+                      }, 0)
+                      const totalPoints = SIGNUP_POINTS + actionPoints
                       return (
-                        <div className="flex items-center gap-2 flex-wrap pt-1">
-                          {REFERRAL_BADGES.map((b) => {
-                            const unlocked = count >= b.threshold
-                            return (
-                              <div
-                                key={b.threshold}
-                                className={`text-[11px] rounded-full px-2 py-1 border ${
-                                  unlocked ? 'border-brand-primary/30 bg-brand-primary/10 text-zinc-300' : 'border-white/10 bg-black/30 text-zinc-700'
-                                }`}
-                                title={unlocked ? 'Unlocked' : `Need ${b.threshold} converted invites`}
-                              >
-                                {b.label} · {b.threshold}
-                              </div>
-                            )
-                          })}
+                        <div className="rounded-lg border border-white/10 bg-black/30 px-3 py-2">
+                          <div className="flex items-center justify-between gap-3">
+                            <div className="text-[10px] uppercase tracking-[0.24em] text-zinc-600">Points</div>
+                            <div className="text-sm text-zinc-200 font-medium tabular-nums">{totalPoints}</div>
+                          </div>
+                          <div className="mt-2 space-y-1 text-[11px] text-zinc-600">
+                            <div className="flex items-center justify-between gap-3">
+                              <span>Joined waitlist</span>
+                              <span className="tabular-nums">+{SIGNUP_POINTS}</span>
+                            </div>
+                            <div className="flex items-center justify-between gap-3">
+                              <span>Actions completed</span>
+                              <span className="tabular-nums">+{actionPoints}</span>
+                            </div>
+                          </div>
                         </div>
                       )
                     })()}
@@ -1598,72 +1677,101 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
                       {inviteToast ? <div className="text-[11px] text-zinc-600">{inviteToast}</div> : null}
                     </div>
                   </div>
-                ) : (
-                  <div className="text-[11px] text-zinc-700">Link appears when ready.</div>
-                )}
+                ) : null}
 
-                <div className="space-y-3 pt-1">
-                  <div className="flex items-center justify-between gap-3">
-                    <button
-                      type="button"
-                      className="text-[11px] text-zinc-600 hover:text-zinc-400 transition-colors"
-                      onClick={resetFlow}
-                    >
-                      Reset
-                    </button>
-                    {shareToast ? <div className="text-[11px] text-zinc-600">{shareToast}</div> : null}
-                  </div>
+                <div className="space-y-2 pt-1">
+                  {shareToast ? <div className="text-[11px] text-zinc-600">{shareToast}</div> : null}
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                    <a
-                      className="btn-primary w-full flex items-center justify-between gap-2"
-                      href="https://x.com/4626fun"
-                      target="_blank"
-                      rel="noreferrer"
-                      onClick={() => markAction('follow')}
-                    >
-                      <span>Follow @4626fun</span>
-                      {renderActionBadge('follow')}
-                    </a>
-                    <button
-                      type="button"
-                      className="btn-accent w-full flex items-center justify-between gap-2"
-                      disabled={shareBusy}
-                      onClick={() => void shareOrCompose()}
-                    >
-                      <span>{shareBusy ? 'Working…' : 'Share'}</span>
-                      {renderActionBadge('share')}
-                    </button>
-                  </div>
-
-                  {miniApp.isMiniApp && miniAppAddSupported !== false ? (
-                    <button
-                      type="button"
-                      className="w-full flex items-center justify-between gap-2 text-[11px] text-zinc-600 hover:text-zinc-400 transition-colors disabled:opacity-60"
-                      disabled={shareBusy || miniAppAddSupported === null || miniApp.added === true}
-                      onClick={() => void addMiniApp()}
-                      title={
-                        miniAppAddSupported === null
-                          ? 'Checking host capabilities…'
-                          : miniApp.added === true
-                            ? `Already saved in ${miniAppHostLabel ?? 'Mini Apps'}`
-                            : `Save this Mini App in ${miniAppHostLabel ?? 'Mini Apps'}`
-                      }
-                    >
-                      <span>
-                        {miniAppAddSupported === null
-                          ? 'Checking Mini App support…'
-                          : miniApp.added === true
-                            ? `Saved in ${miniAppHostLabel ?? 'Mini Apps'}`
-                            : `Save in ${miniAppHostLabel ?? 'Mini Apps'}`}
-                      </span>
-                      {renderActionBadge('saveApp')}
-                    </button>
-                  ) : (
-                    <div className="text-[11px] text-zinc-700">
-                      Bookmark <span className="font-mono text-zinc-500">4626.fun</span>.
+                  <div className="rounded-xl border border-white/10 bg-black/30 divide-y divide-white/10">
+                    <div className="px-4 py-3 flex items-center justify-between gap-3">
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div
+                          className={`w-5 h-5 rounded-full border flex items-center justify-center ${
+                            actionsDone.follow ? 'border-emerald-500/30 bg-emerald-500/10' : 'border-white/10 bg-black/20'
+                          }`}
+                          aria-hidden="true"
+                        >
+                          {actionsDone.follow ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : null}
+                        </div>
+                        <div className="min-w-0">
+                          <div className="text-sm text-zinc-200">Follow @4626fun</div>
+                          <div className="text-[11px] text-zinc-600">+{ACTION_POINTS.follow} points</div>
+                        </div>
+                      </div>
+                      <a
+                        className="btn-primary px-3 py-2 text-sm"
+                        href="https://x.com/4626fun"
+                        target="_blank"
+                        rel="noreferrer"
+                        onClick={() => markAction('follow')}
+                      >
+                        {actionsDone.follow ? 'Done' : 'Follow'}
+                      </a>
                     </div>
-                  )}
+
+                    <div className="px-4 py-3 flex items-center justify-between gap-3">
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div
+                          className={`w-5 h-5 rounded-full border flex items-center justify-center ${
+                            actionsDone.share ? 'border-emerald-500/30 bg-emerald-500/10' : 'border-white/10 bg-black/20'
+                          }`}
+                          aria-hidden="true"
+                        >
+                          {actionsDone.share ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : null}
+                        </div>
+                        <div className="min-w-0">
+                          <div className="text-sm text-zinc-200">Share</div>
+                          <div className="text-[11px] text-zinc-600">+{ACTION_POINTS.share} points</div>
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        className="btn-accent px-3 py-2 text-sm disabled:opacity-60"
+                        disabled={shareBusy}
+                        onClick={() => void shareOrCompose()}
+                      >
+                        {shareBusy ? 'Working…' : actionsDone.share ? 'Done' : 'Share'}
+                      </button>
+                    </div>
+
+                    {miniApp.isMiniApp && miniAppAddSupported !== false ? (
+                      <div className="px-4 py-3 flex items-center justify-between gap-3">
+                        <div className="flex items-center gap-3 min-w-0">
+                          <div
+                            className={`w-5 h-5 rounded-full border flex items-center justify-center ${
+                              actionsDone.saveApp ? 'border-emerald-500/30 bg-emerald-500/10' : 'border-white/10 bg-black/20'
+                            }`}
+                            aria-hidden="true"
+                          >
+                            {actionsDone.saveApp ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : null}
+                          </div>
+                          <div className="min-w-0">
+                            <div className="text-sm text-zinc-200">Save Mini App</div>
+                            <div className="text-[11px] text-zinc-600">+{ACTION_POINTS.saveApp} points</div>
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          className="btn-primary px-3 py-2 text-sm disabled:opacity-60"
+                          disabled={shareBusy || miniAppAddSupported === null || miniApp.added === true}
+                          onClick={() => void addMiniApp()}
+                          title={
+                            miniAppAddSupported === null
+                              ? 'Checking host capabilities…'
+                              : miniApp.added === true
+                                ? `Already saved in ${miniAppHostLabel ?? 'Mini Apps'}`
+                                : `Save this Mini App in ${miniAppHostLabel ?? 'Mini Apps'}`
+                          }
+                        >
+                          {miniAppAddSupported === null
+                            ? 'Checking…'
+                            : miniApp.added === true
+                              ? 'Saved'
+                              : 'Save'}
+                        </button>
+                      </div>
+                    ) : null}
+                  </div>
                 </div>
               </motion.div>
             ) : null}
