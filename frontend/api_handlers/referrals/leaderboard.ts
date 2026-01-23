@@ -57,7 +57,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           WITH referrers AS (
             SELECT id, referral_code, primary_wallet
             FROM waitlist_signups
-            WHERE persona = 'creator' AND has_creator_coin = TRUE AND referral_code IS NOT NULL
+            WHERE referral_code IS NOT NULL
           ),
           conversions AS (
             SELECT referrer_signup_id, COUNT(*)::int AS conversions
@@ -101,7 +101,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           WITH referrers AS (
             SELECT id, referral_code, primary_wallet
             FROM waitlist_signups
-            WHERE persona = 'creator' AND has_creator_coin = TRUE AND referral_code IS NOT NULL
+            WHERE referral_code IS NOT NULL
           ),
           conversions AS (
             SELECT referrer_signup_id, COUNT(*)::int AS conversions
@@ -164,7 +164,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         WITH referrers AS (
           SELECT id
           FROM waitlist_signups
-          WHERE persona = 'creator' AND has_creator_coin = TRUE AND referral_code IS NOT NULL
+          WHERE referral_code IS NOT NULL
         ),
         scored AS (
           SELECT r.id,
@@ -189,7 +189,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         WITH referrers AS (
           SELECT id
           FROM waitlist_signups
-          WHERE persona = 'creator' AND has_creator_coin = TRUE AND referral_code IS NOT NULL
+          WHERE referral_code IS NOT NULL
         ),
         scored AS (
           SELECT r.id,

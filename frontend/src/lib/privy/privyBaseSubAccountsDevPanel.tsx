@@ -10,8 +10,6 @@ function short(addr: string) {
 }
 
 export function PrivyBaseSubAccountsDevPanel() {
-  if (!import.meta.env.DEV) return null
-
   const { ready, authenticated } = usePrivy()
   const { wallets } = useWallets()
   const { baseAccountSdk } = useBaseAccountSdk()
@@ -26,6 +24,8 @@ export function PrivyBaseSubAccountsDevPanel() {
 
   const embeddedAddr = typeof embeddedWallet?.address === 'string' && isAddress(embeddedWallet.address) ? (embeddedWallet.address as Address) : null
   const baseAddr = typeof baseAccount?.address === 'string' && isAddress(baseAccount.address) ? (baseAccount.address as Address) : null
+
+  if (!import.meta.env.DEV) return null
 
   async function createOrGetSubAccount() {
     setBusy(true)

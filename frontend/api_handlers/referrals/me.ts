@@ -64,8 +64,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             SELECT id, referral_code
             FROM waitlist_signups
             WHERE referral_code = ${codeParam.trim().toUpperCase()}
-              AND persona = 'creator'
-              AND has_creator_coin = TRUE
             LIMIT 1;
           `
         : null
@@ -101,7 +99,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     WITH referrers AS (
       SELECT id
       FROM waitlist_signups
-      WHERE persona = 'creator' AND has_creator_coin = TRUE AND referral_code IS NOT NULL
+      WHERE referral_code IS NOT NULL
     ),
     conversions AS (
       SELECT referrer_signup_id, COUNT(*)::int AS conversions
@@ -141,7 +139,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     WITH referrers AS (
       SELECT id
       FROM waitlist_signups
-      WHERE persona = 'creator' AND has_creator_coin = TRUE AND referral_code IS NOT NULL
+      WHERE referral_code IS NOT NULL
     ),
     conversions AS (
       SELECT referrer_signup_id, COUNT(*)::int AS conversions

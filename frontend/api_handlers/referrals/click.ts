@@ -38,13 +38,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (!db) return res.status(500).json({ success: false, error: 'DB unavailable' } satisfies ApiEnvelope<never>)
   await ensureReferralsSchema(db)
 
-  // Look up referrer by code (must be eligible creator).
+  // Look up referrer by code.
   const ref = await db.sql`
     SELECT id
     FROM waitlist_signups
     WHERE referral_code = ${referralCode}
-      AND persona = 'creator'
-      AND has_creator_coin = TRUE
     LIMIT 1;
   `
   const referrerId = typeof ref?.rows?.[0]?.id === 'number' ? (ref.rows[0].id as number) : null

@@ -9,11 +9,11 @@ import { ConnectButtonWeb3 } from '@/components/ConnectButtonWeb3'
 import { isPrivyClientEnabled } from '@/lib/flags'
 import { usePrivyClientStatus } from '@/lib/privy/client'
 import { usePrivy } from '@privy-io/react-auth'
-import { Check, CheckCircle2, ChevronDown, ShieldCheck, Wallet as WalletIcon, ArrowLeft } from 'lucide-react'
+import { Check, CheckCircle2, ChevronDown, ArrowLeft } from 'lucide-react'
 import { useMiniAppContext } from '@/hooks'
 import { apiAliasPath } from '@/lib/apiBase'
 import { fetchZoraCoin, fetchZoraProfile } from '@/lib/zora/client'
-import { REFERRAL_BADGES, REFERRAL_TWEET_TEMPLATES, fillTweetTemplate, INVITE_COPY } from '@/components/waitlist/referralsCopy'
+import { REFERRAL_TWEET_TEMPLATES, fillTweetTemplate, INVITE_COPY } from '@/components/waitlist/referralsCopy'
 
 type Persona = 'creator' | 'user'
 type Variant = 'page' | 'embedded'
@@ -44,7 +44,6 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
   const location = useLocation()
   const [persona, setPersona] = useState<Persona | null>(null)
   const [step, setStep] = useState<'persona' | 'verify' | 'email' | 'done'>('persona')
-  const [verifyMethod, setVerifyMethod] = useState<'farcaster' | 'wallet'>('farcaster')
   const [showWalletOption, setShowWalletOption] = useState(false)
   const [email, setEmail] = useState('')
   const [busy, setBusy] = useState(false)
@@ -52,6 +51,7 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
   const [doneEmail, setDoneEmail] = useState<string | null>(null)
   const [verifiedFid, setVerifiedFid] = useState<number | null>(null)
   const [verifiedWallet, setVerifiedWallet] = useState<string | null>(null)
+  const [verifiedSolana, setVerifiedSolana] = useState<string | null>(null)
   const [siwfNonce, setSiwfNonce] = useState<string | null>(null)
   const [siwfNonceToken, setSiwfNonceToken] = useState<string | null>(null)
   const [siwfBusy, setSiwfBusy] = useState(false)
@@ -72,7 +72,6 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
     priceUsd: number | null
   } | null>(null)
   const [creatorCoinBusy, setCreatorCoinBusy] = useState(false)
-  const [creatorCoinError, setCreatorCoinError] = useState<string | null>(null)
   const [claimCoinInput, setClaimCoinInput] = useState('')
   const [claimCoinBusy, setClaimCoinBusy] = useState(false)
   const [claimCoinError, setClaimCoinError] = useState<string | null>(null)
@@ -83,11 +82,6 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
   const [inviteToast, setInviteToast] = useState<string | null>(null)
   const [inviteTemplateIdx, setInviteTemplateIdx] = useState(0)
   const [referralCode, setReferralCode] = useState<string | null>(null)
-  const [weeklyConversions, setWeeklyConversions] = useState<number | null>(null)
-  const [allTimeConversions, setAllTimeConversions] = useState<number | null>(null)
-  const [weeklyRank, setWeeklyRank] = useState<number | null>(null)
-  const [allTimeRank, setAllTimeRank] = useState<number | null>(null)
-  const [referralFetchBusy, setReferralFetchBusy] = useState(false)
   const [waitlistPosition, setWaitlistPosition] = useState<{
     points: { total: number; invite: number; signup: number; tasks: number }
     rank: { invite: number | null; total: number | null }
@@ -102,7 +96,7 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
   const referralSessionIdRef = useRef<string | null>(null)
 
   const appUrl = useMemo(() => getAppBaseUrl(), [])
-  const { address: connectedAddress, isConnected: isWalletConnected } = useAccount()
+  const { isConnected: isWalletConnected } = useAccount()
   const siwe = useSiweAuth()
   const miniApp = useMiniAppContext()
   const { message: siwfMessage, signature: siwfSignature } = useSignInMessage()
@@ -135,6 +129,14 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
     return /^0x[a-fA-F0-9]{40}$/.test(v)
   }
 
+  function isValidSolanaAddress(v: string): boolean {
+    const s = String(v || '').trim()
+    if (!s) return false
+    // Base58-ish, 32–44 chars (covers most standard pubkeys)
+    if (s.length < 32 || s.length > 44) return false
+    return /^[1-9A-HJ-NP-Za-km-z]+$/.test(s)
+  }
+
   function extractPrivyWalletAddress(user: any): string | null {
     const wallets = Array.isArray(user?.wallets) ? user.wallets : []
     for (const w of wallets) {
@@ -145,6 +147,26 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
     for (const a of linked) {
       const addr = typeof a?.address === 'string' ? a.address : null
       if (addr && isValidEvmAddress(addr)) return addr
+    }
+    return null
+  }
+
+  function extractPrivySolanaAddress(user: any): string | null {
+    const wallets = Array.isArray(user?.wallets) ? user.wallets : []
+    for (const w of wallets) {
+      const chainType = String(w?.chain_type || w?.chainType || '').toLowerCase()
+      const addr = typeof w?.address === 'string' ? w.address : null
+      if (addr && chainType.includes('solana') && isValidSolanaAddress(addr)) return addr
+    }
+    const linked = Array.isArray(user?.linked_accounts) ? user.linked_accounts : Array.isArray(user?.linkedAccounts) ? user.linkedAccounts : []
+    for (const a of linked) {
+      const t = String(a?.type || '').toLowerCase()
+      const chainType = String(a?.chain_type || a?.chainType || '').toLowerCase()
+      const addr = typeof a?.address === 'string' ? a.address : null
+      if (!addr) continue
+      if (t.includes('solana') || chainType.includes('solana')) {
+        if (isValidSolanaAddress(addr)) return addr
+      }
     }
     return null
   }
@@ -276,53 +298,56 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
     }
   }, [step])
 
-  async function apiFetch(path: string, init: RequestInit & { withCredentials?: boolean } = {}) {
-    const bases: string[] = []
-    if (typeof window !== 'undefined') bases.push(window.location.origin)
-    bases.push(appUrl)
+  const apiFetch = useCallback(
+    async (path: string, init: RequestInit & { withCredentials?: boolean } = {}) => {
+      const bases: string[] = []
+      if (typeof window !== 'undefined') bases.push(window.location.origin)
+      bases.push(appUrl)
 
-    const withCreds = Boolean(init.withCredentials)
-    const headers = new Headers(init.headers ?? undefined)
-    if (typeof window !== 'undefined' && path.startsWith('/api/') && !headers.has('Authorization')) {
-      try {
-        const token = localStorage.getItem('cv_siwe_session_token')
-        if (token && token.trim()) headers.set('Authorization', `Bearer ${token.trim()}`)
-      } catch {
-        // ignore
-      }
-    }
-
-    const baseInit: RequestInit = {
-      ...init,
-      headers,
-      ...(withCreds ? { credentials: 'include' as const } : null),
-    }
-    delete (baseInit as any).withCredentials
-
-    let lastErr: unknown = null
-    for (const base of bases) {
-      const b = base.replace(/\/+$/, '')
-      // Prefer alias to avoid extension blocks on `/api/*`, then fall back to the canonical path.
-      const paths = path.startsWith('/api/') ? [apiAliasPath(path), path] : [path]
-      const alias = path.startsWith('/api/') ? apiAliasPath(path) : null
-      for (const p of paths) {
-        const url = `${b}${p}`
+      const withCreds = Boolean(init.withCredentials)
+      const headers = new Headers(init.headers ?? undefined)
+      if (typeof window !== 'undefined' && path.startsWith('/api/') && !headers.has('Authorization')) {
         try {
-          const res = await fetch(url, baseInit)
-          const ct = (res.headers.get('content-type') ?? '').toLowerCase()
-          // In dev, a missing alias may return index.html; treat that as a miss and continue.
-          if (ct.includes('text/html')) continue
-          if (res.status === 404) continue
-          if (alias && p === alias && res.status === 405) continue
-          return res
-        } catch (e: unknown) {
-          lastErr = e
-          continue
+          const token = localStorage.getItem('cv_siwe_session_token')
+          if (token && token.trim()) headers.set('Authorization', `Bearer ${token.trim()}`)
+        } catch {
+          // ignore
         }
       }
-    }
-    throw lastErr ?? new Error('Request failed')
-  }
+
+      const baseInit: RequestInit = {
+        ...init,
+        headers,
+        ...(withCreds ? { credentials: 'include' as const } : null),
+      }
+      delete (baseInit as any).withCredentials
+
+      let lastErr: unknown = null
+      for (const base of bases) {
+        const b = base.replace(/\/+$/, '')
+        // Prefer alias to avoid extension blocks on `/api/*`, then fall back to the canonical path.
+        const paths = path.startsWith('/api/') ? [apiAliasPath(path), path] : [path]
+        const alias = path.startsWith('/api/') ? apiAliasPath(path) : null
+        for (const p of paths) {
+          const url = `${b}${p}`
+          try {
+            const res = await fetch(url, baseInit)
+            const ct = (res.headers.get('content-type') ?? '').toLowerCase()
+            // In dev, a missing alias may return index.html; treat that as a miss and continue.
+            if (ct.includes('text/html')) continue
+            if (res.status === 404) continue
+            if (alias && p === alias && res.status === 405) continue
+            return res
+          } catch (e: unknown) {
+            lastErr = e
+            continue
+          }
+        }
+      }
+      throw lastErr ?? new Error('Request failed')
+    },
+    [appUrl],
+  )
 
   async function claimCreatorCoin(coinAddress: string, source: 'auto' | 'manual') {
     if (claimCoinBusy) return
@@ -393,13 +418,22 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
     return pw
   }
 
+  function solanaWalletForSubmit(): string | null {
+    // Creators: allow Solana-only verification (day 1).
+    if (persona === 'creator') {
+      const sw = typeof verifiedSolana === 'string' && isValidSolanaAddress(verifiedSolana) ? verifiedSolana : null
+      return sw
+    }
+    return null
+  }
+
   async function submitWaitlist(params: { email: string }) {
     setError(null)
     setReferralCodeTaken(false)
     setBusy(true)
     try {
       // Creators must verify before email submission.
-      if (persona === 'creator' && !verifiedFid && !verifiedWallet) {
+      if (persona === 'creator' && !verifiedFid && !verifiedWallet && !verifiedSolana) {
         throw new Error('Verify your identity first.')
       }
       if (persona !== 'creator' && persona !== 'user') {
@@ -425,6 +459,7 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
         body: JSON.stringify({
           email: params.email,
           primaryWallet: primaryWalletForSubmit(),
+          solanaWallet: solanaWalletForSubmit(),
           referralCode: storedRef,
           claimReferralCode: claim.length > 0 ? claim : null,
           intent: {
@@ -514,12 +549,12 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
   function resetFlow() {
     setStep('persona')
     setPersona(null)
-    setVerifyMethod('farcaster')
     setEmail('')
     setError(null)
     setDoneEmail(null)
     setVerifiedFid(null)
     setVerifiedWallet(null)
+    setVerifiedSolana(null)
     setSiwfNonce(null)
     setSiwfNonceToken(null)
     setSiwfBusy(false)
@@ -529,7 +564,6 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
     setShowUserWallet(false)
     setCreatorCoin(null)
     setCreatorCoinBusy(false)
-    setCreatorCoinError(null)
     creatorCoinForWalletRef.current = null
     claimCoinForWalletRef.current = null
     setClaimCoinInput('')
@@ -540,11 +574,6 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
     setInviteToast(null)
     setInviteTemplateIdx(0)
     setReferralCode(null)
-    setWeeklyConversions(null)
-    setAllTimeConversions(null)
-    setWeeklyRank(null)
-    setAllTimeRank(null)
-    setReferralFetchBusy(false)
   }
 
   async function signOutWallet() {
@@ -560,10 +589,9 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
       // ignore
     } finally {
       setVerifiedWallet(null)
-      setVerifyMethod('farcaster')
+      setVerifiedSolana(null)
       setCreatorCoin(null)
       setCreatorCoinBusy(false)
-      setCreatorCoinError(null)
       creatorCoinForWalletRef.current = null
       claimCoinForWalletRef.current = null
       setClaimCoinInput('')
@@ -626,6 +654,7 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
     if (siwfNonce) return
     if (siwfBusy) return
     void startSiwf()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [persona, siwfBusy, siwfNonce, step])
 
   // Only verify after the user explicitly clicks the SIWF button in this flow.
@@ -636,6 +665,7 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
     if (siwfBusy) return
     if (!siwfMessage || !siwfSignature) return
     void verifySiwfOnServer()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [persona, siwfBusy, siwfMessage, siwfSignature, siwfStarted, step])
 
   // If SIWE has established an authenticated address, treat it as the verified wallet for this flow.
@@ -672,7 +702,6 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
     if (!w) {
       setCreatorCoin(null)
       setCreatorCoinBusy(false)
-      setCreatorCoinError(null)
       creatorCoinForWalletRef.current = null
       return
     }
@@ -681,7 +710,6 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
 
     let cancelled = false
     setCreatorCoinBusy(true)
-    setCreatorCoinError(null)
     ;(async () => {
       try {
         const profile = await fetchZoraProfile(w)
@@ -726,7 +754,6 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
       } catch (e: any) {
         if (!cancelled) {
           setCreatorCoin(null)
-          setCreatorCoinError(e?.message ? String(e.message) : 'Failed to detect creator coin')
         }
       } finally {
         if (!cancelled) setCreatorCoinBusy(false)
@@ -749,6 +776,7 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
     if (claimCoinForWalletRef.current === key) return
     claimCoinForWalletRef.current = key
     void claimCreatorCoin(creatorCoin.address, 'auto')
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [claimCoinBusy, creatorCoin?.address, persona, siwe.isSignedIn, step, verifiedWallet])
 
   async function startSiwf() {
@@ -879,7 +907,7 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
         return next
       })
     },
-    [actionStorageKey, doneEmail],
+    [actionStorageKey, apiFetch, doneEmail],
   )
 
   useEffect(() => {
@@ -907,15 +935,20 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
     if (step !== 'verify') return
     if (persona !== 'creator') return
     if (!privyReady || !privyAuthed) return
-    if (verifiedWallet) return
-    const addr = extractPrivyWalletAddress(privyUser)
-    if (!addr) return
-    setVerifiedWallet(addr)
-    setVerifyMethod('wallet')
+    if (verifiedWallet || verifiedSolana) return
+    const evm = extractPrivyWalletAddress(privyUser)
+    const sol = extractPrivySolanaAddress(privyUser)
+    if (evm) {
+      setVerifiedWallet(evm)
+    } else if (sol) {
+      setVerifiedSolana(sol)
+    } else {
+      return
+    }
     setPrivyVerifyError(null)
     setPrivyVerifyBusy(false)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [persona, privyAuthed, privyReady, privyStatus, privyUser, showPrivy, step, verifiedWallet])
+  }, [persona, privyAuthed, privyReady, privyStatus, privyUser, showPrivy, step, verifiedWallet, verifiedSolana])
 
   const [miniAppAddSupported, setMiniAppAddSupported] = useState<boolean | null>(null)
   useEffect(() => {
@@ -1071,12 +1104,6 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
   function formatUsd(value: number | null): string {
     if (typeof value !== 'number' || !Number.isFinite(value)) return '—'
     return `$${compactNumber.format(value)}`
-  }
-
-  function formatPrice(value: number | null): string {
-    if (typeof value !== 'number' || !Number.isFinite(value)) return '—'
-    const digits = value < 1 ? 6 : 2
-    return `$${new Intl.NumberFormat('en-US', { maximumFractionDigits: digits }).format(value)}`
   }
 
   function formatCount(value: number | null): string {
@@ -1264,8 +1291,30 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
                   </div>
                 ) : null}
 
+                {/* Solana verified state (Privy) */}
+                {verifiedSolana && !(typeof verifiedFid === 'number' && verifiedFid > 0) && !verifiedWallet ? (
+                  <div className="flex items-center gap-3 rounded-xl border border-emerald-500/20 bg-emerald-500/5 px-4 py-3">
+                    <CheckCircle2 className="w-5 h-5 text-emerald-400 shrink-0" />
+                    <div className="min-w-0 flex-1">
+                      <div className="text-sm text-zinc-200">Solana verified</div>
+                      <div className="text-xs text-zinc-500 font-mono truncate">{verifiedSolana}</div>
+                    </div>
+                    <button
+                      type="button"
+                      className="text-xs text-zinc-500 hover:text-zinc-300 transition-colors"
+                      onClick={() => void signOutWallet()}
+                    >
+                      Sign out
+                    </button>
+                  </div>
+                ) : null}
+
                 {/* Privy-first: single verify CTA when enabled */}
-                {showPrivy && privyStatus === 'ready' && !(typeof verifiedFid === 'number' && verifiedFid > 0) && !verifiedWallet ? (
+                {showPrivy &&
+                privyStatus === 'ready' &&
+                !(typeof verifiedFid === 'number' && verifiedFid > 0) &&
+                !verifiedWallet &&
+                !verifiedSolana ? (
                   <div className="space-y-2">
                     <button
                       type="button"
@@ -1381,7 +1430,6 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
                               const signed = await siwe.signIn()
                               if (!signed) return
                               setVerifiedWallet(signed)
-                              setVerifyMethod('wallet')
                               setClaimCoinError(null)
                             })()
                           }}
@@ -1486,7 +1534,7 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
                 <button
                   type="button"
                   className="btn-accent w-full disabled:opacity-50 disabled:cursor-not-allowed"
-                  disabled={!verifiedFid && !verifiedWallet}
+                  disabled={!verifiedFid && !verifiedWallet && !verifiedSolana}
                   onClick={() => setStep('email')}
                 >
                   Continue

@@ -9,6 +9,7 @@ declare const process: { env: Record<string, string | undefined> }
 type WaitlistRequestBody = {
   email?: string
   primaryWallet?: string | null
+  solanaWallet?: string | null
   referralCode?: string | null
   claimReferralCode?: string | null
   intent?: {
@@ -38,6 +39,13 @@ function normalizeAddress(v: string): string {
 
 function isValidEvmAddress(v: string): boolean {
   return /^0x[a-fA-F0-9]{40}$/.test(v)
+}
+
+function isValidSolanaAddress(v: string): boolean {
+  const s = String(v || '').trim()
+  if (!s) return false
+  if (s.length < 32 || s.length > 44) return false
+  return /^[1-9A-HJ-NP-Za-km-z]+$/.test(s)
 }
 
 function normalizeReferralCodeOrNull(v: string | null | undefined): string | null {
@@ -198,6 +206,12 @@ export default async function handler(req: any, res: any) {
     return res.status(400).json({ success: false, error: 'Invalid primary wallet address' } satisfies ApiEnvelope<never>)
   }
 
+  const solRaw = typeof body.solanaWallet === 'string' ? body.solanaWallet : ''
+  const solanaWallet = String(solRaw || '').trim()
+  if (solanaWallet.length > 0 && !isValidSolanaAddress(solanaWallet)) {
+    return res.status(400).json({ success: false, error: 'Invalid Solana wallet address' } satisfies ApiEnvelope<never>)
+  }
+
   const persona =
     body.intent && typeof body.intent === 'object' && (body.intent as any).persona === 'creator'
       ? 'creator'
@@ -256,6 +270,7 @@ export default async function handler(req: any, res: any) {
       INSERT INTO waitlist_signups (
         email,
         primary_wallet,
+        solana_wallet,
         privy_user_id,
         embedded_wallet,
         persona,
@@ -267,6 +282,7 @@ export default async function handler(req: any, res: any) {
       VALUES (
         ${email},
         ${primaryWallet.length > 0 ? primaryWallet : null},
+        ${solanaWallet.length > 0 ? solanaWallet : null},
         ${privyUserId},
         ${embeddedWallet},
         ${persona},
@@ -277,6 +293,7 @@ export default async function handler(req: any, res: any) {
       )
       ON CONFLICT (email) DO UPDATE
         SET primary_wallet = COALESCE(EXCLUDED.primary_wallet, waitlist_signups.primary_wallet),
+            solana_wallet = COALESCE(EXCLUDED.solana_wallet, waitlist_signups.solana_wallet),
             privy_user_id = COALESCE(EXCLUDED.privy_user_id, waitlist_signups.privy_user_id),
             embedded_wallet = COALESCE(EXCLUDED.embedded_wallet, waitlist_signups.embedded_wallet),
             persona = COALESCE(EXCLUDED.persona, waitlist_signups.persona),
@@ -303,27 +320,27 @@ export default async function handler(req: any, res: any) {
       })
     }
 
-    // If this is an eligible creator, attempt to claim a referral code.
+    // Everyone gets a referral code (Babylon-style).
     let referralCodeOut: string | null = typeof row.referral_code === 'string' ? (row.referral_code as string) : null
-    if (signupId && persona === 'creator' && hasCreatorCoinRaw === true) {
+    if (signupId && !referralCodeOut) {
       const desired =
         claimReferralCode ||
-        (primaryWallet.length > 0
-          ? normalizeReferralCodeOrNull(await resolveCreatorCoinSymbolFromWallet(primaryWallet))
-          : null)
-      if (desired && !referralCodeOut) {
-        try {
-          const up = await db.sql`
-            UPDATE waitlist_signups
-            SET referral_code = ${desired}, referral_claimed_at = NOW()
-            WHERE id = ${signupId} AND referral_code IS NULL
-            RETURNING referral_code;
-          `
-          const claimed = typeof up?.rows?.[0]?.referral_code === 'string' ? String(up.rows[0].referral_code) : null
-          referralCodeOut = claimed || referralCodeOut
-        } catch (e: any) {
-          const msg = e?.message ? String(e.message) : ''
-          if (msg.toLowerCase().includes('unique') || msg.toLowerCase().includes('duplicate')) {
+        (primaryWallet.length > 0 ? normalizeReferralCodeOrNull(await resolveCreatorCoinSymbolFromWallet(primaryWallet)) : null) ||
+        `C${Number(signupId).toString(36).toUpperCase()}`
+      try {
+        const up = await db.sql`
+          UPDATE waitlist_signups
+          SET referral_code = ${desired}, referral_claimed_at = NOW()
+          WHERE id = ${signupId} AND referral_code IS NULL
+          RETURNING referral_code;
+        `
+        const claimed = typeof up?.rows?.[0]?.referral_code === 'string' ? String(up.rows[0].referral_code) : null
+        referralCodeOut = claimed || referralCodeOut
+      } catch (e: any) {
+        const msg = e?.message ? String(e.message) : ''
+        if (msg.toLowerCase().includes('unique') || msg.toLowerCase().includes('duplicate')) {
+          // If the user explicitly tried to claim a code and it collided, surface the error.
+          if (claimReferralCode) {
             return res.status(409).json({
               success: false,
               error: 'Referral code is taken. Choose a different code.',
@@ -331,7 +348,7 @@ export default async function handler(req: any, res: any) {
               suggested: desired,
             } as any)
           }
-          // otherwise ignore
+          // Otherwise ignore (we'll just proceed without a code).
         }
       }
     }
@@ -342,8 +359,6 @@ export default async function handler(req: any, res: any) {
         SELECT id
         FROM waitlist_signups
         WHERE referral_code = ${referralFromBody}
-          AND persona = 'creator'
-          AND has_creator_coin = TRUE
         LIMIT 1;
       `
       const referrerId = typeof ref?.rows?.[0]?.id === 'number' ? (ref.rows[0].id as number) : null

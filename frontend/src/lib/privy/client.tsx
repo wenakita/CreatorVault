@@ -41,7 +41,7 @@ export function PrivyClientProvider({ children }: { children: ReactNode }) {
     return () => {
       cancelled = true
     }
-  }, [MiniAppAutoLogin, PrivyProvider, appId, enabled])
+  }, [MiniAppAutoLogin, appId, enabled])
 
   useEffect(() => {
     // Dev-only helper: confirm Base App integration wiring without digging through logs.
@@ -61,7 +61,7 @@ export function PrivyClientProvider({ children }: { children: ReactNode }) {
     return () => {
       cancelled = true
     }
-  }, [BaseAppDevBadge, PrivyProvider, appId, enabled])
+  }, [BaseAppDevBadge, appId, enabled])
 
   useEffect(() => {
     // Dev-only helper: test Base Sub Accounts flow interactively.
@@ -81,7 +81,7 @@ export function PrivyClientProvider({ children }: { children: ReactNode }) {
     return () => {
       cancelled = true
     }
-  }, [BaseSubAccountsDevPanel, PrivyProvider, appId, enabled])
+  }, [BaseSubAccountsDevPanel, appId, enabled])
 
   const status: PrivyClientStatus = !enabled || !appId ? 'disabled' : 'ready'
   const ctx = useMemo(() => status, [status])
@@ -103,7 +103,8 @@ export function PrivyClientProvider({ children }: { children: ReactNode }) {
             // Include common EOA options so users can sign in with their browser wallet.
             // (Strings are Privy-defined identifiers; extra entries are safe if unsupported.)
             walletList: ['detected_wallets', 'base_account', 'metamask', 'coinbase_wallet', 'wallet_connect'],
-            walletChainType: 'ethereum-only',
+            // Enable Solana + EVM from day 1 (Privy dashboard controls final availability).
+            walletChainType: 'all' as any,
           },
           externalWallets: {
             // Prefer Coinbase Smart Wallet (Base Account) instead of EOA-only Coinbase Wallet.
@@ -117,6 +118,9 @@ export function PrivyClientProvider({ children }: { children: ReactNode }) {
           // Note: Mini Apps may not support automatic embedded wallet creation; this is still safe for web.
           embedded: {
             ethereum: {
+              createOnLogin: 'all-users',
+            },
+            solana: {
               createOnLogin: 'all-users',
             },
           },

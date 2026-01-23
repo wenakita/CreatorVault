@@ -34,6 +34,7 @@ export async function ensureWaitlistSchema(db: Db): Promise<void> {
     await db.sql`ALTER TABLE waitlist_signups ADD COLUMN IF NOT EXISTS privy_user_id TEXT NULL;`
     await db.sql`ALTER TABLE waitlist_signups ADD COLUMN IF NOT EXISTS embedded_wallet TEXT NULL;`
     await db.sql`ALTER TABLE waitlist_signups ADD COLUMN IF NOT EXISTS primary_wallet TEXT NULL;`
+    await db.sql`ALTER TABLE waitlist_signups ADD COLUMN IF NOT EXISTS solana_wallet TEXT NULL;`
     await db.sql`ALTER TABLE waitlist_signups ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ NOT NULL DEFAULT NOW();`
     await db.sql`ALTER TABLE waitlist_signups ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW();`
   } catch {
