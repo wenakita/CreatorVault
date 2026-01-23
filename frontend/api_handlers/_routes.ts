@@ -62,6 +62,10 @@ export const apiRouteLoaders: Record<string, () => Promise<ApiHandlerModule>> = 
   'referrals/me': () => import('./referrals/me.js'),
   'referrals/leaderboard': () => import('./referrals/leaderboard.js'),
   'waitlist': () => import('./waitlist.js'),
+  'waitlist/leaderboard': () => import('./waitlist/leaderboard.js'),
+  'waitlist/position': () => import('./waitlist/position.js'),
+  'waitlist/profile-complete': () => import('./waitlist/profile-complete.js'),
+  'waitlist/task-claim': () => import('./waitlist/task-claim.js'),
   'webhook': () => import('./webhook.js'),
 
   'zora/coin': () => import('./zora/coin.js'),

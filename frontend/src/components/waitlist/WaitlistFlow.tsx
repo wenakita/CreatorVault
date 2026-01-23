@@ -87,6 +87,15 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
   const [weeklyRank, setWeeklyRank] = useState<number | null>(null)
   const [allTimeRank, setAllTimeRank] = useState<number | null>(null)
   const [referralFetchBusy, setReferralFetchBusy] = useState(false)
+  const [waitlistPosition, setWaitlistPosition] = useState<{
+    points: { total: number; invite: number; signup: number; tasks: number }
+    rank: { invite: number | null; total: number | null }
+    totalCount: number
+    totalAheadInvite: number | null
+    percentileInvite: number | null
+    referrals: { qualifiedCount: number; pendingCount: number; pendingCountCapped: number; pendingCap: number }
+  } | null>(null)
+  const [waitlistPositionBusy, setWaitlistPositionBusy] = useState(false)
 
   const emailInputRef = useRef<HTMLInputElement | null>(null)
   const referralSessionIdRef = useRef<string | null>(null)
@@ -431,6 +440,52 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
       setDoneEmail(String(json?.data?.email || params.email))
       setReferralCode(typeof json?.data?.referralCode === 'string' ? String(json.data.referralCode) : null)
       setStep('done')
+
+      // Best-effort: mark profile complete + qualify referral.
+      // Do not block the UI; points awards are idempotent server-side.
+      void (async () => {
+        try {
+          const emailForSync = String(json?.data?.email || params.email)
+          await apiFetch('/api/waitlist/profile-complete', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+            body: JSON.stringify({ email: emailForSync }),
+          })
+
+          // Refresh position after awarding.
+          const posRes = await apiFetch(`/api/waitlist/position?email=${encodeURIComponent(emailForSync)}`, {
+            method: 'GET',
+            headers: { Accept: 'application/json' },
+          })
+          const posJson = (await posRes.json().catch(() => null)) as any
+          const data = posJson?.success ? posJson?.data : null
+          if (posRes.ok && data) {
+            setWaitlistPosition({
+              points: {
+                total: typeof data?.points?.total === 'number' ? data.points.total : 0,
+                invite: typeof data?.points?.invite === 'number' ? data.points.invite : 0,
+                signup: typeof data?.points?.signup === 'number' ? data.points.signup : 0,
+                tasks: typeof data?.points?.tasks === 'number' ? data.points.tasks : 0,
+              },
+              rank: {
+                invite: typeof data?.rank?.invite === 'number' ? data.rank.invite : null,
+                total: typeof data?.rank?.total === 'number' ? data.rank.total : null,
+              },
+              totalCount: typeof data?.totalCount === 'number' ? data.totalCount : 0,
+              totalAheadInvite: typeof data?.totalAheadInvite === 'number' ? data.totalAheadInvite : null,
+              percentileInvite: typeof data?.percentileInvite === 'number' ? data.percentileInvite : null,
+              referrals: {
+                qualifiedCount: typeof data?.referrals?.qualifiedCount === 'number' ? data.referrals.qualifiedCount : 0,
+                pendingCount: typeof data?.referrals?.pendingCount === 'number' ? data.referrals.pendingCount : 0,
+                pendingCountCapped: typeof data?.referrals?.pendingCountCapped === 'number' ? data.referrals.pendingCountCapped : 0,
+                pendingCap: typeof data?.referrals?.pendingCap === 'number' ? data.referrals.pendingCap : 10,
+              },
+            })
+          }
+        } catch {
+          // ignore
+        }
+      })()
     } catch (e: any) {
       setError(e?.message ? String(e.message) : 'Waitlist request failed')
     } finally {
@@ -496,15 +551,15 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
     }
   }
 
-  // Fetch referral counters/ranks once we have a code to show.
+  // Fetch waitlist points + position once we're in.
   useEffect(() => {
     if (step !== 'done') return
-    if (!referralCode) return
-    if (referralFetchBusy) return
-    setReferralFetchBusy(true)
+    if (!doneEmail) return
+    if (waitlistPositionBusy) return
+    setWaitlistPositionBusy(true)
     void (async () => {
       try {
-        const res = await apiFetch(`/api/referrals/me?referralCode=${encodeURIComponent(referralCode)}`, {
+        const res = await apiFetch(`/api/waitlist/position?email=${encodeURIComponent(doneEmail)}`, {
           method: 'GET',
           headers: { Accept: 'application/json' },
         })
@@ -513,19 +568,35 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
         if (!res.ok || !json || json.success !== true) return
         const data = json?.data ?? null
         if (!data) return
-        setReferralCode(typeof data.referralCode === 'string' ? String(data.referralCode) : referralCode)
-        setWeeklyConversions(typeof data.weeklyConversions === 'number' ? data.weeklyConversions : null)
-        setAllTimeConversions(typeof data.allTimeConversions === 'number' ? data.allTimeConversions : null)
-        setWeeklyRank(typeof data.weeklyRank === 'number' ? data.weeklyRank : null)
-        setAllTimeRank(typeof data.allTimeRank === 'number' ? data.allTimeRank : null)
+        setWaitlistPosition({
+          points: {
+            total: typeof data?.points?.total === 'number' ? data.points.total : 0,
+            invite: typeof data?.points?.invite === 'number' ? data.points.invite : 0,
+            signup: typeof data?.points?.signup === 'number' ? data.points.signup : 0,
+            tasks: typeof data?.points?.tasks === 'number' ? data.points.tasks : 0,
+          },
+          rank: {
+            invite: typeof data?.rank?.invite === 'number' ? data.rank.invite : null,
+            total: typeof data?.rank?.total === 'number' ? data.rank.total : null,
+          },
+          totalCount: typeof data?.totalCount === 'number' ? data.totalCount : 0,
+          totalAheadInvite: typeof data?.totalAheadInvite === 'number' ? data.totalAheadInvite : null,
+          percentileInvite: typeof data?.percentileInvite === 'number' ? data.percentileInvite : null,
+          referrals: {
+            qualifiedCount: typeof data?.referrals?.qualifiedCount === 'number' ? data.referrals.qualifiedCount : 0,
+            pendingCount: typeof data?.referrals?.pendingCount === 'number' ? data.referrals.pendingCount : 0,
+            pendingCountCapped: typeof data?.referrals?.pendingCountCapped === 'number' ? data.referrals.pendingCountCapped : 0,
+            pendingCap: typeof data?.referrals?.pendingCap === 'number' ? data.referrals.pendingCap : 10,
+          },
+        })
       } catch {
         // ignore
       } finally {
-        setReferralFetchBusy(false)
+        setWaitlistPositionBusy(false)
       }
     })()
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [referralCode, step])
+  }, [doneEmail, step])
 
   // Auto-start SIWF nonce fetch so the button is the primary action.
   useEffect(() => {
@@ -739,10 +810,55 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
         } catch {
           // ignore
         }
+        // Best-effort: sync task completion to server points ledger (idempotent).
+        // We key by email so all waitlist users can participate (not just wallet-auth users).
+        if (doneEmail) {
+          void (async () => {
+            try {
+              await apiFetch('/api/waitlist/task-claim', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+                body: JSON.stringify({ email: doneEmail, taskKey: action }),
+              })
+
+              const posRes = await apiFetch(`/api/waitlist/position?email=${encodeURIComponent(doneEmail)}`, {
+                method: 'GET',
+                headers: { Accept: 'application/json' },
+              })
+              const posJson = (await posRes.json().catch(() => null)) as any
+              const data = posJson?.success ? posJson?.data : null
+              if (posRes.ok && data) {
+                setWaitlistPosition({
+                  points: {
+                    total: typeof data?.points?.total === 'number' ? data.points.total : 0,
+                    invite: typeof data?.points?.invite === 'number' ? data.points.invite : 0,
+                    signup: typeof data?.points?.signup === 'number' ? data.points.signup : 0,
+                    tasks: typeof data?.points?.tasks === 'number' ? data.points.tasks : 0,
+                  },
+                  rank: {
+                    invite: typeof data?.rank?.invite === 'number' ? data.rank.invite : null,
+                    total: typeof data?.rank?.total === 'number' ? data.rank.total : null,
+                  },
+                  totalCount: typeof data?.totalCount === 'number' ? data.totalCount : 0,
+                  totalAheadInvite: typeof data?.totalAheadInvite === 'number' ? data.totalAheadInvite : null,
+                  percentileInvite: typeof data?.percentileInvite === 'number' ? data.percentileInvite : null,
+                  referrals: {
+                    qualifiedCount: typeof data?.referrals?.qualifiedCount === 'number' ? data.referrals.qualifiedCount : 0,
+                    pendingCount: typeof data?.referrals?.pendingCount === 'number' ? data.referrals.pendingCount : 0,
+                    pendingCountCapped: typeof data?.referrals?.pendingCountCapped === 'number' ? data.referrals.pendingCountCapped : 0,
+                    pendingCap: typeof data?.referrals?.pendingCap === 'number' ? data.referrals.pendingCap : 10,
+                  },
+                })
+              }
+            } catch {
+              // ignore
+            }
+          })()
+        }
         return next
       })
     },
-    [actionStorageKey],
+    [actionStorageKey, doneEmail],
   )
 
   useEffect(() => {
@@ -1544,18 +1660,18 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
                   )}
                 </div>
 
-                <div className="rounded-xl border border-white/10 bg-black/30 px-4 py-3 space-y-2">
+                  <div className="rounded-xl border border-white/10 bg-black/30 px-4 py-3 space-y-2">
                   <div className="flex items-start justify-between gap-3">
                     <div>
                       <div className="text-[10px] uppercase tracking-[0.24em] text-zinc-600 mb-1">{INVITE_COPY.counterLabel}</div>
-                      <div className="text-2xl text-zinc-200">
-                        {typeof allTimeConversions === 'number' ? allTimeConversions : '—'}
-                      </div>
-                      <div className="text-[11px] text-zinc-700">
-                        {typeof weeklyConversions === 'number' ? `${weeklyConversions} this week` : 'Loading'}
-                        {weeklyRank ? ` · #${weeklyRank} weekly` : ''}
-                        {allTimeRank ? ` · #${allTimeRank} all‑time` : ''}
-                      </div>
+                        <div className="text-2xl text-zinc-200">
+                          {waitlistPosition ? waitlistPosition.points.total.toLocaleString() : '—'}
+                        </div>
+                        <div className="text-[11px] text-zinc-700">
+                          {waitlistPosition
+                            ? `#${waitlistPosition.rank.invite ?? '—'} · Top ${waitlistPosition.percentileInvite ?? '—'}%`
+                            : 'Loading…'}
+                        </div>
                     </div>
                     <a
                       className="text-[11px] text-zinc-600 hover:text-zinc-400 transition-colors pt-1"
@@ -1567,10 +1683,13 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
 
                   <div className="pt-2">
                     {(() => {
-                      const actionPoints = (Object.keys(ACTION_POINTS) as ActionKey[]).reduce((sum, k) => {
+                      const actionPointsLocal = (Object.keys(ACTION_POINTS) as ActionKey[]).reduce((sum, k) => {
                         return sum + (actionsDone[k] ? ACTION_POINTS[k] : 0)
                       }, 0)
-                      const totalPoints = SIGNUP_POINTS + actionPoints
+                      const totalPoints = waitlistPosition?.points?.total ?? SIGNUP_POINTS + actionPointsLocal
+                      const taskPoints = waitlistPosition?.points?.tasks ?? actionPointsLocal
+                      const signupPoints = waitlistPosition?.points?.signup ?? SIGNUP_POINTS
+                      const invitePoints = waitlistPosition?.points?.invite ?? 0
                       return (
                         <div className="rounded-lg border border-white/10 bg-black/30 px-3 py-2">
                           <div className="flex items-center justify-between gap-3">
@@ -1580,11 +1699,15 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
                           <div className="mt-2 space-y-1 text-[11px] text-zinc-600">
                             <div className="flex items-center justify-between gap-3">
                               <span>Joined waitlist</span>
-                              <span className="tabular-nums">+{SIGNUP_POINTS}</span>
+                              <span className="tabular-nums">+{signupPoints}</span>
+                            </div>
+                            <div className="flex items-center justify-between gap-3">
+                              <span>Qualified referrals</span>
+                              <span className="tabular-nums">+{invitePoints}</span>
                             </div>
                             <div className="flex items-center justify-between gap-3">
                               <span>Actions completed</span>
-                              <span className="tabular-nums">+{actionPoints}</span>
+                              <span className="tabular-nums">+{taskPoints}</span>
                             </div>
                           </div>
                         </div>

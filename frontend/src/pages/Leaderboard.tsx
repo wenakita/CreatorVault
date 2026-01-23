@@ -1,46 +1,42 @@
 import { useEffect, useMemo, useState } from 'react'
 import { apiFetch } from '@/lib/apiBase'
 
-type Period = 'weekly' | 'all_time'
+type PointsType = 'invite' | 'total'
 
 type LeaderboardRow = {
   rank: number
-  referralCode: string
-  conversions: number
-  primaryWallet: string | null
+  signupId: number
+  display: string
+  referralCode: string | null
+  pointsTotal: number
+  pointsInvite: number
 }
 
 type LeaderboardResponse = {
-  period: Period
-  weekStartUtc?: string
-  weekEndUtc?: string
-  top: LeaderboardRow[]
-  me?: { weeklyRank?: number | null; allTimeRank?: number | null } | null
+  page: number
+  limit: number
+  pointsType: PointsType
+  totalPages: number
+  hasMore: boolean
+  leaderboard: LeaderboardRow[]
 }
 
 type ApiEnvelope<T> = { success: boolean; data?: T; error?: string }
 
-function shortAddr(a: string | null): string {
-  if (!a) return '—'
-  const s = String(a)
-  if (!s.startsWith('0x') || s.length < 12) return s
-  return `${s.slice(0, 6)}…${s.slice(-4)}`
-}
-
 export function Leaderboard() {
-  const [period, setPeriod] = useState<Period>('weekly')
+  const [pointsType, setPointsType] = useState<PointsType>('invite')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [data, setData] = useState<LeaderboardResponse | null>(null)
 
-  const title = period === 'weekly' ? 'This week' : 'All‑time'
+  const title = pointsType === 'invite' ? 'Invite points' : 'Total points'
 
   useEffect(() => {
     setBusy(true)
     setError(null)
     void (async () => {
       try {
-        const res = await apiFetch(`/api/referrals/leaderboard?period=${encodeURIComponent(period)}&limit=50`, {
+        const res = await apiFetch(`/api/waitlist/leaderboard?pointsType=${encodeURIComponent(pointsType)}&page=1&limit=50`, {
           method: 'GET',
           headers: { Accept: 'application/json' },
         })
@@ -55,13 +51,11 @@ export function Leaderboard() {
         setBusy(false)
       }
     })()
-  }, [period])
+  }, [pointsType])
 
   const subtitle = useMemo(() => {
-    if (!data) return null
-    if (data.period !== 'weekly') return null
-    if (!data.weekStartUtc || !data.weekEndUtc) return 'Resets weekly (UTC).'
-    return `Week: ${new Date(data.weekStartUtc).toUTCString()} → ${new Date(data.weekEndUtc).toUTCString()}`
+    void data
+    return null
   }, [data])
 
   return (
@@ -72,7 +66,7 @@ export function Leaderboard() {
             <div className="text-[10px] uppercase tracking-[0.24em] text-zinc-600 mb-2">CreatorVaults</div>
             <div className="headline text-3xl sm:text-4xl leading-tight">Leaderboard</div>
             <div className="text-sm text-zinc-600 font-light mt-2">
-              Converted invites only. Creator Coin required to rank.
+              Points-based. Earn points by joining, inviting, and completing actions.
             </div>
             {subtitle ? <div className="text-[11px] text-zinc-700 mt-2">{subtitle}</div> : null}
           </div>
@@ -85,22 +79,22 @@ export function Leaderboard() {
           <button
             type="button"
             className={`rounded-full px-3 py-1 text-[12px] border ${
-              period === 'weekly' ? 'border-brand-primary/30 bg-brand-primary/10 text-zinc-200' : 'border-white/10 bg-black/30 text-zinc-600'
+              pointsType === 'invite' ? 'border-brand-primary/30 bg-brand-primary/10 text-zinc-200' : 'border-white/10 bg-black/30 text-zinc-600'
             }`}
-            onClick={() => setPeriod('weekly')}
+            onClick={() => setPointsType('invite')}
             disabled={busy}
           >
-            This week
+            Invite points
           </button>
           <button
             type="button"
             className={`rounded-full px-3 py-1 text-[12px] border ${
-              period === 'all_time' ? 'border-brand-primary/30 bg-brand-primary/10 text-zinc-200' : 'border-white/10 bg-black/30 text-zinc-600'
+              pointsType === 'total' ? 'border-brand-primary/30 bg-brand-primary/10 text-zinc-200' : 'border-white/10 bg-black/30 text-zinc-600'
             }`}
-            onClick={() => setPeriod('all_time')}
+            onClick={() => setPointsType('total')}
             disabled={busy}
           >
-            All‑time
+            Total points
           </button>
           <div className="text-[11px] text-zinc-700 ml-2">{busy ? 'Loading…' : title}</div>
         </div>
@@ -114,19 +108,21 @@ export function Leaderboard() {
         <div className="mt-6 rounded-xl border border-white/10 bg-black/30 overflow-hidden">
           <div className="grid grid-cols-12 gap-2 px-4 py-3 border-b border-white/10 text-[10px] uppercase tracking-[0.24em] text-zinc-700">
             <div className="col-span-2">Rank</div>
-            <div className="col-span-6">Creator</div>
-            <div className="col-span-4 text-right">Converted</div>
+            <div className="col-span-6">User</div>
+            <div className="col-span-4 text-right">Points</div>
           </div>
-          {data?.top?.length ? (
+          {data?.leaderboard?.length ? (
             <div>
-              {data.top.map((r) => (
-                <div key={`${r.rank}-${r.referralCode}`} className="grid grid-cols-12 gap-2 px-4 py-3 border-b border-white/5">
+              {data.leaderboard.map((r) => (
+                <div key={`${r.rank}-${r.signupId}`} className="grid grid-cols-12 gap-2 px-4 py-3 border-b border-white/5">
                   <div className="col-span-2 text-sm text-zinc-300">#{r.rank}</div>
                   <div className="col-span-6 text-sm text-zinc-200">
-                    <div className="font-mono">{shortAddr(r.primaryWallet)}</div>
-                    <div className="text-[11px] text-zinc-700">code: {r.referralCode}</div>
+                    <div className="font-mono">{r.display}</div>
+                    {r.referralCode ? <div className="text-[11px] text-zinc-700">code: {r.referralCode}</div> : null}
                   </div>
-                  <div className="col-span-4 text-right text-sm text-zinc-200">{r.conversions}</div>
+                  <div className="col-span-4 text-right text-sm text-zinc-200 tabular-nums">
+                    {pointsType === 'invite' ? r.pointsInvite : r.pointsTotal}
+                  </div>
                 </div>
               ))}
             </div>
@@ -134,16 +130,6 @@ export function Leaderboard() {
             <div className="px-4 py-6 text-sm text-zinc-600">No ranked creators yet.</div>
           )}
         </div>
-
-        {data?.me ? (
-          <div className="mt-6 rounded-xl border border-white/10 bg-black/30 px-4 py-3">
-            <div className="text-[10px] uppercase tracking-[0.24em] text-zinc-600 mb-1">Your rank</div>
-            <div className="text-sm text-zinc-300">
-              {typeof data.me.weeklyRank === 'number' ? `#${data.me.weeklyRank} weekly` : '— weekly'} ·{' '}
-              {typeof data.me.allTimeRank === 'number' ? `#${data.me.allTimeRank} all‑time` : '— all‑time'}
-            </div>
-          </div>
-        ) : null}
       </div>
     </section>
   )

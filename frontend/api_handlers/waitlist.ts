@@ -1,53 +1,10 @@
-import type { VercelRequest, VercelResponse } from '@vercel/node'
-
 import { type ApiEnvelope, handleOptions, setCors, setNoStore } from '../server/auth/_shared.js'
 import { getDb } from '../server/_lib/postgres.js'
-import { ensureReferralsSchema, normalizeReferralCode, getClientIp, getUserAgent, hashForAttribution } from '../server/_lib/referrals.js'
+import { normalizeReferralCode, getClientIp, getUserAgent, hashForAttribution } from '../server/_lib/referrals.js'
+import { awardWaitlistPoints, ensureWaitlistPointsSchema, WAITLIST_POINTS } from '../server/_lib/waitlistPoints.js'
+import { ensureWaitlistSchema } from '../server/_lib/waitlistSchema.js'
 
 declare const process: { env: Record<string, string | undefined> }
-
-let waitlistSchemaEnsured = false
-
-async function ensureWaitlistSchema(db: { sql: (strings: TemplateStringsArray, ...values: any[]) => Promise<{ rows: any[] }> }): Promise<void> {
-  if (waitlistSchemaEnsured) return
-  waitlistSchemaEnsured = true
-
-  // Create a minimal, durable waitlist schema. Safe to run repeatedly.
-  await db.sql`
-    CREATE TABLE IF NOT EXISTS waitlist_signups (
-      id BIGSERIAL PRIMARY KEY,
-      email TEXT NOT NULL UNIQUE,
-      primary_wallet TEXT NULL,
-      privy_user_id TEXT NULL,
-      embedded_wallet TEXT NULL,
-      persona TEXT NULL,
-      has_creator_coin BOOLEAN NULL,
-      farcaster_fid BIGINT NULL,
-      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-    );
-  `
-
-  // Backfill/migrate older tables that were created without newer columns.
-  // `IF NOT EXISTS` is supported on modern Postgres versions; if it throws, we ignore.
-  try {
-    await db.sql`ALTER TABLE waitlist_signups ADD COLUMN IF NOT EXISTS persona TEXT NULL;`
-    await db.sql`ALTER TABLE waitlist_signups ADD COLUMN IF NOT EXISTS has_creator_coin BOOLEAN NULL;`
-    await db.sql`ALTER TABLE waitlist_signups ADD COLUMN IF NOT EXISTS farcaster_fid BIGINT NULL;`
-    await db.sql`ALTER TABLE waitlist_signups ADD COLUMN IF NOT EXISTS privy_user_id TEXT NULL;`
-    await db.sql`ALTER TABLE waitlist_signups ADD COLUMN IF NOT EXISTS embedded_wallet TEXT NULL;`
-    await db.sql`ALTER TABLE waitlist_signups ADD COLUMN IF NOT EXISTS primary_wallet TEXT NULL;`
-    await db.sql`ALTER TABLE waitlist_signups ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ NOT NULL DEFAULT NOW();`
-    await db.sql`ALTER TABLE waitlist_signups ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW();`
-  } catch {
-    // ignore (older Postgres or restricted perms)
-  }
-
-  await db.sql`CREATE INDEX IF NOT EXISTS waitlist_signups_created_at_idx ON waitlist_signups (created_at DESC);`
-
-  // Referral schema depends on waitlist_signups existing.
-  await ensureReferralsSchema(db)
-}
 
 type WaitlistRequestBody = {
   email?: string
@@ -210,7 +167,7 @@ async function privyCreateOrGetWaitlistUser(email: string): Promise<{ privyUserI
   return { privyUserId, embeddedWallet }
 }
 
-export default async function handler(req: VercelRequest, res: VercelResponse) {
+export default async function handler(req: any, res: any) {
   setCors(req, res)
   setNoStore(res)
   if (handleOptions(req, res)) return
@@ -269,12 +226,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   try {
-    await ensureWaitlistSchema(db)
+    await ensureWaitlistSchema(db as any)
   } catch (e: any) {
     // If the DB is reachable but schema creation is blocked, fail with a clear operator error.
     const msg = e?.message ? String(e.message) : 'Failed to initialize waitlist schema'
     return res.status(500).json({ success: false, error: msg } satisfies ApiEnvelope<never>)
   }
+  // Keep points schema ensured even if this handler is hot-reloaded separately.
+  await ensureWaitlistPointsSchema(db as any)
 
   const ipHash = hashForAttribution(getClientIp(req))
   const uaHash = hashForAttribution(getUserAgent(req))
@@ -331,6 +290,18 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (!row) throw new Error('Insert failed')
 
     const signupId = typeof row.id === 'number' ? (row.id as number) : null
+    const created = Boolean(row.created)
+
+    // Babylon-style: award points immediately on join (idempotent via ledger unique key).
+    if (signupId && created) {
+      await awardWaitlistPoints({
+        db,
+        signupId,
+        source: 'waitlist_signup',
+        sourceId: `email:${email}`,
+        amount: WAITLIST_POINTS.signup,
+      })
+    }
 
     // If this is an eligible creator, attempt to claim a referral code.
     let referralCodeOut: string | null = typeof row.referral_code === 'string' ? (row.referral_code as string) : null
@@ -395,6 +366,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             attribution,
             is_valid,
             invalid_reason,
+            status,
             created_at
           )
           VALUES (
@@ -407,6 +379,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             'last_click',
             TRUE,
             NULL,
+            'signed_up',
             NOW()
           )
           ON CONFLICT (invitee_signup_id) DO NOTHING;
@@ -414,7 +387,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }
     }
 
-    const data: WaitlistResponse = { created: Boolean(row.created), email: String(row.email ?? ''), referralCode: referralCodeOut }
+    const data: WaitlistResponse = { created, email: String(row.email ?? ''), referralCode: referralCodeOut }
     return res.status(200).json({ success: true, data } satisfies ApiEnvelope<WaitlistResponse>)
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : 'Waitlist insert failed'
@@ -423,9 +396,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     // If the table didn't exist (or was dropped), try to recreate and retry once.
     if (lower.includes('relation') && lower.includes('waitlist_signups')) {
       try {
-        // Reset guard in case we raced a cold start.
-        waitlistSchemaEnsured = false
-        await ensureWaitlistSchema(db)
+        await ensureWaitlistSchema(db as any)
         const rRetry = await db.sql`
           INSERT INTO waitlist_signups (
             email,

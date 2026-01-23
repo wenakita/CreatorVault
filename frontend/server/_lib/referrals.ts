@@ -96,6 +96,8 @@ export async function ensureReferralsSchema(db: Db): Promise<void> {
       attribution TEXT NOT NULL DEFAULT 'last_click',
       is_valid BOOLEAN NOT NULL DEFAULT TRUE,
       invalid_reason TEXT NULL,
+      status TEXT NULL,
+      qualified_at TIMESTAMPTZ NULL,
       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     );
   `
