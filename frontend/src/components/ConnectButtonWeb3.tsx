@@ -2,10 +2,12 @@ import { type Connector, useAccount, useConnect, useDisconnect, useSignMessage, 
 import { motion, AnimatePresence } from 'framer-motion'
 import { Wallet, ChevronDown, AlertCircle } from 'lucide-react'
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { usePrivy } from '@privy-io/react-auth'
 import { base } from 'wagmi/chains'
 import { useMiniAppContext } from '@/hooks'
 import { logger } from '@/lib/logger'
 import { apiFetch } from '@/lib/apiBase'
+import { usePrivyClientStatus } from '@/lib/privy/client'
 
 function uniqueConnectors(list: Array<Connector | null | undefined>): Connector[] {
   const out: Connector[] = []
@@ -38,6 +40,57 @@ function withTimeout<T>(p: Promise<T>, ms: number): Promise<T> {
 }
 
 type ConnectButtonVariant = 'default' | 'deploy'
+type GuideChoice = 'base' | 'farcaster' | 'zora' | 'other'
+
+function PrivyEmailFallbackButton({
+  isPending,
+  smartWalletConnector,
+  connectDirect,
+  onError,
+}: {
+  isPending: boolean
+  smartWalletConnector: Connector | null | undefined
+  connectDirect: (c: Connector | null | undefined, opts?: { timeoutMs?: number; label?: string }) => Promise<void>
+  onError: (message: string | null) => void
+}) {
+  const { ready, authenticated, login } = usePrivy()
+  const [busy, setBusy] = useState(false)
+
+  const handleClick = async () => {
+    if (busy) return
+    setBusy(true)
+    onError(null)
+    try {
+      if (!authenticated) {
+        await login({ loginMethods: ['email'] } as any)
+      }
+      if (!smartWalletConnector) {
+        onError('Smart wallet is still loading - try again.')
+        return
+      }
+      await connectDirect(smartWalletConnector, { timeoutMs: 60_000, label: 'Email' })
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : 'Email sign-in failed'
+      onError(msg)
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <div className="space-y-1">
+      <button
+        type="button"
+        disabled={!ready || isPending || busy}
+        onClick={() => void handleClick()}
+        className="btn-primary w-full disabled:opacity-50"
+      >
+        <span className="label">{busy ? 'Starting email sign-in...' : 'Continue with email'}</span>
+      </button>
+      <div className="text-[10px] text-zinc-600">Uses a Privy smart wallet for deploy.</div>
+    </div>
+  )
+}
 
 function ConnectButtonWeb3Wagmi({
   autoConnect = false,
@@ -46,14 +99,18 @@ function ConnectButtonWeb3Wagmi({
   autoConnect?: boolean
   variant?: ConnectButtonVariant
 }) {
-  const { address, isConnected, chain } = useAccount()
+  const { address, isConnected, chain, connector } = useAccount()
   const { connectAsync, connectors, isPending, reset } = useConnect()
   const { disconnect } = useDisconnect()
   const { switchChain } = useSwitchChain()
   const { signMessageAsync } = useSignMessage()
   const miniApp = useMiniAppContext()
+  const privyStatus = usePrivyClientStatus()
   const [showMenu, setShowMenu] = useState(false)
   const [showOptions, setShowOptions] = useState(false)
+  const [showGuide, setShowGuide] = useState(false)
+  const [guideStep, setGuideStep] = useState<1 | 2>(1)
+  const [guideChoice, setGuideChoice] = useState<GuideChoice | null>(null)
   const [copied, setCopied] = useState(false)
   const [connectError, setConnectError] = useState<string | null>(null)
   const [authAddress, setAuthAddress] = useState<string | null>(null)
@@ -73,6 +130,28 @@ function ConnectButtonWeb3Wagmi({
     const name = String(c.name ?? '').toLowerCase()
     return id === 'coinbasesmartwallet' || name.includes('coinbase') || name.includes('base')
   })
+  const zoraConnector = connectors.find((c) => {
+    const id = String(c.id ?? '').toLowerCase()
+    const name = String(c.name ?? '').toLowerCase()
+    return id === 'privy-zora' || name.includes('zora')
+  })
+  const privySmartWalletConnector = connectors.find((c) => {
+    const id = String(c.id ?? '').toLowerCase()
+    const name = String(c.name ?? '').toLowerCase()
+    if (!id && !name) return false
+    if (id === 'privy-zora' || name.includes('zora')) return false
+    if (id.includes('walletconnect') || name.includes('walletconnect')) return false
+    if (id.includes('rabby') || name.includes('rabby')) return false
+    if (id.includes('coinbase') || name.includes('coinbase') || name.includes('base app')) return false
+    if (id.includes('farcaster') || name.includes('farcaster') || name.includes('mini app')) return false
+    return id.includes('privy') || name.includes('privy') || id.includes('embedded') || name.includes('embedded') || name.includes('smart')
+  })
+  const canUseBaseApp = Boolean(baseAppConnector)
+  const canUseFarcaster = Boolean(miniAppConnector) && miniApp.isMiniApp
+  const canUseZora = Boolean(zoraConnector)
+  const baseDisabled = !canUseBaseApp
+  const farcasterDisabled = !canUseFarcaster
+  const zoraDisabled = !canUseZora
 
   const injectedProvider = typeof window !== 'undefined' ? (window as any)?.ethereum : null
   const ethereumDescriptor =
@@ -92,12 +171,13 @@ function ConnectButtonWeb3Wagmi({
   // - Rabby (if installed)
   // - WalletConnect (QR) fallback
   const isDeployVariant = variant === 'deploy'
+  const showGuidedModal = !miniApp.isMiniApp
   const preferredConnector = isDeployVariant
     ? // Deploy should use a single universal path to avoid eth_sign dead-ends:
       // - Mini App connector inside Mini Apps
-      // - WalletConnect on the open web
-      // - Base App connector as fallback when available
-      (miniApp.isMiniApp ? miniAppConnector : null) ?? walletConnectConnector ?? baseAppConnector ?? connectors[0]
+      // - Base App connector on the open web
+      // - WalletConnect fallback when needed
+      (miniApp.isMiniApp ? miniAppConnector : null) ?? baseAppConnector ?? walletConnectConnector ?? connectors[0]
     : (miniApp.isMiniApp ? miniAppConnector : null) ?? walletConnectConnector ?? rabbyConnector ?? connectors[0]
 
   const connectDirect = useCallback(
@@ -132,10 +212,10 @@ function ConnectButtonWeb3Wagmi({
         ? [
             // In Mini Apps, always use the native connector.
             miniApp.isMiniApp ? miniAppConnector : null,
-            // On web, force WalletConnect first (avoid Rabby eth_sign block).
-            !miniApp.isMiniApp ? walletConnectConnector : null,
-            // Fallback option (Base App / Coinbase Smart Wallet connector).
+            // On web, prefer Base App / Coinbase Smart Wallet first.
             !miniApp.isMiniApp ? baseAppConnector : null,
+            // Universal fallback (QR).
+            !miniApp.isMiniApp ? walletConnectConnector : null,
             preferredConnector,
           ]
         : [
@@ -251,12 +331,43 @@ function ConnectButtonWeb3Wagmi({
   const isSignedIn =
     !!address && !!authAddress && authAddress.toLowerCase() === address.toLowerCase()
 
-  const isReadOnlyConnector = false
+  const connectorId = String(connector?.id ?? '').toLowerCase()
+  const connectorName = String(connector?.name ?? '').toLowerCase()
+  const isReadOnlyConnector = connectorId === 'privy-zora' || connectorName.includes('zora')
+  const guideData =
+    guideChoice === 'base'
+      ? {
+          title: 'Base App',
+          bullets: ['Passkeys sync across devices (no seed phrase).', 'Best for 1-click deploy on Base.'],
+          connector: baseAppConnector,
+          disabled: !canUseBaseApp,
+          disabledHint: 'Open in Base App or Coinbase Wallet to continue.',
+          label: 'Base App',
+        }
+      : guideChoice === 'farcaster'
+        ? {
+            title: 'Farcaster',
+            bullets: ['Available inside Farcaster or Base mini apps.', 'Uses your Farcaster-connected wallet.'],
+            connector: miniAppConnector,
+            disabled: !canUseFarcaster,
+            disabledHint: 'Open this page inside Farcaster or Base app.',
+            label: 'Farcaster',
+          }
+        : guideChoice === 'zora'
+          ? {
+              title: 'Zora (read-only)',
+              bullets: ['Read-only address import.', 'Connect a signing wallet to deploy.'],
+              connector: zoraConnector,
+              disabled: !canUseZora,
+              disabledHint: 'Zora wallet is read-only in CreatorVault.',
+              label: 'Zora (read-only)',
+            }
+          : null
 
   async function signIn() {
     if (!address) return
     if (isReadOnlyConnector) {
-      setAuthError('Zora wallet is read-only — connect a signing wallet to sign in')
+      setAuthError('Zora wallet is read-only in CreatorVault - connect a signing wallet to sign in')
       return
     }
     setAuthBusy(true)
@@ -441,7 +552,15 @@ function ConnectButtonWeb3Wagmi({
       <button
         type="button"
         disabled={isPending || !preferredConnector}
-        onClick={() => void connectBestEffort()}
+        onClick={() => {
+          if (showGuidedModal) {
+            setGuideStep(1)
+            setGuideChoice(null)
+            setShowGuide(true)
+            return
+          }
+          void connectBestEffort()
+        }}
         className="btn-accent disabled:opacity-50 flex items-center gap-2"
         title={
           connectError
@@ -454,6 +573,168 @@ function ConnectButtonWeb3Wagmi({
         <Wallet className="w-4 h-4" />
         <span className="label">{isPending ? 'Connecting…' : primaryLabel}</span>
       </button>
+      <AnimatePresence>
+        {showGuide ? (
+          <>
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 z-50"
+              onClick={() => setShowGuide(false)}
+            />
+            <motion.div
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              className="fixed left-1/2 top-24 z-50 w-[min(420px,calc(100vw-2rem))] -translate-x-1/2 card p-5 space-y-4"
+            >
+              <div className="flex items-center justify-between">
+                <div className="label">{guideStep === 1 ? 'Choose your path' : guideData?.title ?? 'Choose your path'}</div>
+                <button
+                  type="button"
+                  className="text-[10px] text-zinc-500 hover:text-zinc-300"
+                  onClick={() => setShowGuide(false)}
+                >
+                  Close
+                </button>
+              </div>
+              {guideStep === 1 ? (
+                <div className="space-y-2">
+                  <button
+                    type="button"
+                    disabled={baseDisabled}
+                    className={`w-full text-left py-3 px-4 transition-colors ${
+                      baseDisabled ? 'opacity-50 cursor-not-allowed' : 'hover:bg-zinc-950'
+                    }`}
+                    onClick={() => {
+                      if (baseDisabled) return
+                      setGuideChoice('base')
+                      setGuideStep(2)
+                    }}
+                  >
+                    <span className="label block mb-1">Base App</span>
+                    <span className="text-xs text-zinc-600">
+                      {baseDisabled ? 'Not available on this device.' : 'Recommended for Coinbase Smart Wallet.'}
+                    </span>
+                  </button>
+                  <button
+                    type="button"
+                    disabled={farcasterDisabled}
+                    className={`w-full text-left py-3 px-4 transition-colors ${
+                      farcasterDisabled ? 'opacity-50 cursor-not-allowed' : 'hover:bg-zinc-950'
+                    }`}
+                    onClick={() => {
+                      if (farcasterDisabled) return
+                      setGuideChoice('farcaster')
+                      setGuideStep(2)
+                    }}
+                  >
+                    <span className="label block mb-1">Farcaster</span>
+                    <span className="text-xs text-zinc-600">
+                      {farcasterDisabled ? 'Open inside Farcaster or Base app.' : 'Available inside Farcaster or Base app.'}
+                    </span>
+                  </button>
+                  <button
+                    type="button"
+                    disabled={zoraDisabled}
+                    className={`w-full text-left py-3 px-4 transition-colors ${
+                      zoraDisabled ? 'opacity-50 cursor-not-allowed' : 'hover:bg-zinc-950'
+                    }`}
+                    onClick={() => {
+                      if (zoraDisabled) return
+                      setGuideChoice('zora')
+                      setGuideStep(2)
+                    }}
+                  >
+                    <span className="label block mb-1">Zora (read-only)</span>
+                    <span className="text-xs text-zinc-600">
+                      {zoraDisabled ? 'Not available on this device.' : 'Import address only (no signatures).'}
+                    </span>
+                  </button>
+                  <button
+                    type="button"
+                    className="btn-primary w-full"
+                    onClick={() => {
+                      setGuideChoice('other')
+                      setGuideStep(2)
+                    }}
+                  >
+                    Other wallets (WalletConnect or email)
+                  </button>
+                </div>
+              ) : guideChoice === 'other' ? (
+                <div className="space-y-3">
+                  <div className="text-[11px] text-zinc-500">Other wallets</div>
+                  {walletConnectConnector ? (
+                    <button
+                      type="button"
+                      disabled={isPending}
+                      className="btn-primary w-full disabled:opacity-50"
+                      onClick={() => {
+                        void connectDirect(walletConnectConnector, { timeoutMs: 90_000, label: 'WalletConnect' })
+                        setShowGuide(false)
+                      }}
+                    >
+                      Continue with WalletConnect
+                    </button>
+                  ) : (
+                    <div className="text-[11px] text-amber-300/80">WalletConnect is unavailable in this environment.</div>
+                  )}
+                  {privyStatus === 'ready' ? (
+                    <PrivyEmailFallbackButton
+                      isPending={isPending}
+                      smartWalletConnector={privySmartWalletConnector}
+                      connectDirect={connectDirect}
+                      onError={setConnectError}
+                    />
+                  ) : null}
+                  <button
+                    type="button"
+                    className="w-full text-[11px] text-zinc-500 hover:text-zinc-300 transition-colors"
+                    onClick={() => setGuideStep(1)}
+                  >
+                    Back
+                  </button>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  <div className="text-[11px] text-zinc-500">What this means</div>
+                  <ul className="text-xs text-zinc-600 list-disc list-inside space-y-1">
+                    {(guideData?.bullets ?? []).map((item) => (
+                      <li key={item}>{item}</li>
+                    ))}
+                  </ul>
+                  {guideData?.disabled ? (
+                    <div className="text-[11px] text-amber-300/80">{guideData.disabledHint}</div>
+                  ) : null}
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      className="btn-accent w-full disabled:opacity-50"
+                      disabled={isPending || guideData?.disabled || !guideData?.connector}
+                      onClick={() => {
+                        if (!guideData?.connector) return
+                        void connectDirect(guideData.connector, { timeoutMs: 60_000, label: guideData.label })
+                        setShowGuide(false)
+                      }}
+                    >
+                      Continue
+                    </button>
+                    <button
+                      type="button"
+                      className="w-full text-[11px] text-zinc-500 hover:text-zinc-300 transition-colors"
+                      onClick={() => setGuideStep(1)}
+                    >
+                      Back
+                    </button>
+                  </div>
+                </div>
+              )}
+            </motion.div>
+          </>
+        ) : null}
+      </AnimatePresence>
       {!miniApp.isMiniApp && isDeployVariant ? (
         <div className="relative">
           <button
@@ -482,18 +763,6 @@ function ConnectButtonWeb3Wagmi({
                   exit={{ opacity: 0, y: -10 }}
                   className="absolute left-0 top-full mt-3 w-[min(360px,calc(100vw-2rem))] card p-3 z-50 space-y-2"
                 >
-                  {walletConnectConnector ? (
-                    <button
-                      type="button"
-                      disabled={isPending}
-                      className="w-full text-left py-3 px-4 hover:bg-zinc-950 transition-colors disabled:opacity-50"
-                      onClick={() => void connectDirect(walletConnectConnector, { timeoutMs: 90_000, label: 'WalletConnect' })}
-                    >
-                      <span className="label block mb-1">WalletConnect (QR)</span>
-                      <span className="text-xs text-zinc-600">Recommended for deploy (works across wallets).</span>
-                    </button>
-                  ) : null}
-
                   {baseAppConnector ? (
                     <button
                       type="button"
@@ -502,7 +771,31 @@ function ConnectButtonWeb3Wagmi({
                       onClick={() => void connectDirect(baseAppConnector, { timeoutMs: 60_000, label: 'Base App' })}
                     >
                       <span className="label block mb-1">Base App</span>
-                      <span className="text-xs text-zinc-600">If you’re using a Coinbase smart wallet.</span>
+                      <span className="text-xs text-zinc-600">Best for Coinbase Smart Wallet (passkeys, cross-device).</span>
+                    </button>
+                  ) : null}
+
+                  {walletConnectConnector ? (
+                    <button
+                      type="button"
+                      disabled={isPending}
+                      className="w-full text-left py-3 px-4 hover:bg-zinc-950 transition-colors disabled:opacity-50"
+                      onClick={() => void connectDirect(walletConnectConnector, { timeoutMs: 90_000, label: 'WalletConnect' })}
+                    >
+                      <span className="label block mb-1">WalletConnect (QR)</span>
+                      <span className="text-xs text-zinc-600">Universal fallback (any wallet).</span>
+                    </button>
+                  ) : null}
+
+                  {zoraConnector ? (
+                    <button
+                      type="button"
+                      disabled={isPending}
+                      className="w-full text-left py-3 px-4 hover:bg-zinc-950 transition-colors disabled:opacity-50"
+                      onClick={() => void connectDirect(zoraConnector, { timeoutMs: 60_000, label: 'Zora (read-only)' })}
+                    >
+                      <span className="label block mb-1">Zora (read-only)</span>
+                      <span className="text-xs text-zinc-600">Read-only address import (no signatures).</span>
                     </button>
                   ) : null}
                 </motion.div>
@@ -510,6 +803,14 @@ function ConnectButtonWeb3Wagmi({
             ) : null}
           </AnimatePresence>
         </div>
+      ) : null}
+      {privyStatus === 'ready' ? (
+        <PrivyEmailFallbackButton
+          isPending={isPending}
+          smartWalletConnector={privySmartWalletConnector}
+          connectDirect={connectDirect}
+          onError={setConnectError}
+        />
       ) : null}
       {connectError ? <div className="text-[10px] text-zinc-500">{connectError}</div> : null}
     </div>

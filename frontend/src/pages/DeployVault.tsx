@@ -1634,7 +1634,7 @@ function DeployVaultBatcher({
 }
 
 function DeployVaultPrivyEnabled() {
-  const { address, isConnected } = useAccount()
+  const { address, isConnected, connector } = useAccount()
   const { config: onchainKitConfig } = useOnchainKit()
   const { ready: privyReady, authenticated: privyAuthenticated } = usePrivy()
   const { login } = useLogin()
@@ -1683,6 +1683,9 @@ function DeployVaultPrivyEnabled() {
   const myProfile = myProfileQuery.data
   const miniApp = useMiniAppContext()
   const farcasterAuth = useFarcasterAuth()
+  const connectorId = String(connector?.id ?? '').toLowerCase()
+  const connectorName = String(connector?.name ?? '').toLowerCase()
+  const isZoraReadOnly = isConnected && (connectorId === 'privy-zora' || connectorName.includes('zora'))
 
   // `sdk.context.*` is untrusted. Prefer verified Farcaster auth (Quick Auth / SIWF) when available.
   const farcasterFidForLookup = useMemo(() => {
@@ -2834,11 +2837,32 @@ function DeployVaultPrivyEnabled() {
                       )
                     }
                   >
-                    Continue
+                    Continue with wallet
+                  </button>
+                  <button
+                    type="button"
+                    className="btn-primary w-full"
+                    onClick={() =>
+                      void Promise.resolve(
+                        login({
+                          loginMethods: ['email'],
+                        } as any),
+                      )
+                    }
+                  >
+                    Continue with email
                   </button>
                   <div className="text-[11px] text-zinc-600">
                     Sign in to set up your smart wallet. Deploy will run from your Privy smart wallet on Base.
                   </div>
+                  <div className="text-[11px] text-zinc-600">
+                    Email sign-in needs your recovery password on a new device (no seed phrase).
+                  </div>
+                  {isZoraReadOnly ? (
+                    <div className="text-[11px] text-amber-300/80">
+                      Zora wallet is read-only in CreatorVault - connect a signing wallet to deploy.
+                    </div>
+                  ) : null}
                 </div>
               ) : !isConnected ? (
                 <button

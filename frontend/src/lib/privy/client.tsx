@@ -130,7 +130,8 @@ export function PrivyClientProvider({ children }: { children: ReactNode }) {
             // Include Farcaster for Mini App + Base App auth-address support.
             // Note: Telegram OAuth often fails in strict web contexts unless fully configured; keep it off by default.
             // Allow external/browser wallets as a first-class login method.
-            primary: ['wallet', 'farcaster', 'google', 'twitter'],
+            // Email login must be enabled in the Privy dashboard.
+            primary: ['wallet', 'email', 'farcaster', 'google', 'twitter'],
             overflow: [],
           },
         } as any}
