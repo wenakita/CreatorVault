@@ -213,7 +213,6 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
     forcedPersonaAppliedRef.current = true
     setPersona(forcedPersona)
     if (forcedPersona === 'creator') {
-      setUseWalletSig(false)
       setSiwfError(null)
       setStep('verify')
     } else {
@@ -958,7 +957,6 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
                     onClick={() => {
                       setPersona('creator')
                       setError(null)
-                      setUseWalletSig(false)
                       setSiwfError(null)
                       setStep('verify')
                     }}

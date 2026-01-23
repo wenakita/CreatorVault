@@ -10,6 +10,10 @@ import { logger } from '@/lib/logger'
  * This uses the Mini Apps SDK to produce a FIP-11 SIWF credential, then passes it
  * to Privy's `loginToMiniApp` for authentication.
  *
+ * Prereqs (Privy dashboard):
+ * - Enable Farcaster login.
+ * - Add https://farcaster.xyz to allowed domains for Mini Apps.
+ *
  * Notes:
  * - We set `acceptAuthAddress: true` to support auth-address signing (e.g. Base App wallet).
  * - This does NOT create embedded wallets automatically (per Privy Mini App limitation).
@@ -21,6 +25,7 @@ export function PrivyMiniAppAutoLogin() {
 
   const attemptedRef = useRef(false)
   const [error, setError] = useState<string | null>(null)
+  const [retryTick, setRetryTick] = useState(0)
 
   useEffect(() => {
     if (mini.isMiniApp !== true) return
@@ -55,7 +60,13 @@ export function PrivyMiniAppAutoLogin() {
     return () => {
       cancelled = true
     }
-  }, [authenticated, initLoginToMiniApp, loginToMiniApp, mini.isMiniApp, ready])
+  }, [authenticated, initLoginToMiniApp, loginToMiniApp, mini.isMiniApp, ready, retryTick])
+
+  const retryLogin = () => {
+    attemptedRef.current = false
+    setError(null)
+    setRetryTick((v) => v + 1)
+  }
 
   // Dev-only, non-intrusive status badge (keeps production UI clean).
   if (import.meta.env.DEV) {
@@ -84,7 +95,22 @@ export function PrivyMiniAppAutoLogin() {
     )
   }
 
-  // Silent by default in production; keep error accessible for debugging if needed.
-  return error ? <div className="sr-only">{error}</div> : null
+  if (!error || mini.isMiniApp !== true) return null
+
+  const hint = mini.isBaseApp
+    ? 'Base App users: add your Base App wallet as a Farcaster auth address, then retry.'
+    : 'If this keeps failing, try again from your Farcaster client.'
+
+  return (
+    <div className="fixed bottom-4 right-4 z-[10000]">
+      <div className="card px-3 py-2 bg-black/70 space-y-2">
+        <div className="label">Farcaster login failed</div>
+        <div className="text-[10px] text-zinc-500 max-w-[240px]">{hint}</div>
+        <button type="button" className="btn-primary w-full" onClick={retryLogin}>
+          Retry
+        </button>
+      </div>
+    </div>
+  )
 }
 
