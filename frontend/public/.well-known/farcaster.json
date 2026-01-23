@@ -17,7 +17,7 @@
     "splashBackgroundColor": "#000000",
     "homeUrl": "https://4626.fun",
     "webhookUrl": "https://4626.fun/api/webhook",
-    "canonicalDomain": "erc4626.fun",
+    "canonicalDomain": "4626.fun",
     "requiredChains": [
       "eip155:8453"
     ],
