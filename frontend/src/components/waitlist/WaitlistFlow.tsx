@@ -8,6 +8,7 @@ import { useSiweAuth } from '@/hooks/useSiweAuth'
 import { ConnectButtonWeb3 } from '@/components/ConnectButtonWeb3'
 import { isPrivyClientEnabled } from '@/lib/flags'
 import { usePrivyClientStatus } from '@/lib/privy/client'
+import { usePrivy } from '@privy-io/react-auth'
 import { Check, CheckCircle2, ChevronDown, ShieldCheck, Wallet as WalletIcon, ArrowLeft } from 'lucide-react'
 import { useMiniAppContext } from '@/hooks'
 import { apiAliasPath } from '@/lib/apiBase'
@@ -109,6 +110,9 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
 
   const privyStatus = usePrivyClientStatus()
   const showPrivy = isPrivyClientEnabled()
+  const { ready: privyReady, authenticated: privyAuthed, user: privyUser, login: privyLogin, logout: privyLogout } = usePrivy()
+  const [privyVerifyBusy, setPrivyVerifyBusy] = useState(false)
+  const [privyVerifyError, setPrivyVerifyError] = useState<string | null>(null)
   const PrivySocialConnect = useMemo(
     () =>
       lazy(async () => {
@@ -129,6 +133,20 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
   }
   function isValidEvmAddress(v: string): boolean {
     return /^0x[a-fA-F0-9]{40}$/.test(v)
+  }
+
+  function extractPrivyWalletAddress(user: any): string | null {
+    const wallets = Array.isArray(user?.wallets) ? user.wallets : []
+    for (const w of wallets) {
+      const addr = typeof w?.address === 'string' ? w.address : null
+      if (addr && isValidEvmAddress(addr)) return addr
+    }
+    const linked = Array.isArray(user?.linked_accounts) ? user.linked_accounts : Array.isArray(user?.linkedAccounts) ? user.linkedAccounts : []
+    for (const a of linked) {
+      const addr = typeof a?.address === 'string' ? a.address : null
+      if (addr && isValidEvmAddress(addr)) return addr
+    }
+    return null
   }
 
   const emailTrimmed = useMemo(() => normalizeEmail(email), [email])
@@ -531,6 +549,9 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
 
   async function signOutWallet() {
     try {
+      if (showPrivy && privyAuthed) {
+        await privyLogout()
+      }
       const maybe = siwe as any
       if (typeof maybe?.signOut === 'function') {
         await maybe.signOut()
@@ -880,6 +901,22 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
     markAction('saveApp')
   }, [markAction, miniApp.added])
 
+  // Privy-first: when Privy has an authenticated wallet, treat it as verified for creators.
+  useEffect(() => {
+    if (!showPrivy || privyStatus !== 'ready') return
+    if (step !== 'verify') return
+    if (persona !== 'creator') return
+    if (!privyReady || !privyAuthed) return
+    if (verifiedWallet) return
+    const addr = extractPrivyWalletAddress(privyUser)
+    if (!addr) return
+    setVerifiedWallet(addr)
+    setVerifyMethod('wallet')
+    setPrivyVerifyError(null)
+    setPrivyVerifyBusy(false)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [persona, privyAuthed, privyReady, privyStatus, privyUser, showPrivy, step, verifiedWallet])
+
   const [miniAppAddSupported, setMiniAppAddSupported] = useState<boolean | null>(null)
   useEffect(() => {
     if (!miniApp.isMiniApp) {
@@ -1227,8 +1264,41 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
                   </div>
                 ) : null}
 
-                {/* Primary: Farcaster Sign-In - only when not verified */}
-                {!(typeof verifiedFid === 'number' && verifiedFid > 0) && !verifiedWallet ? (
+                {/* Privy-first: single verify CTA when enabled */}
+                {showPrivy && privyStatus === 'ready' && !(typeof verifiedFid === 'number' && verifiedFid > 0) && !verifiedWallet ? (
+                  <div className="space-y-2">
+                    <button
+                      type="button"
+                      className="w-full min-h-[52px] rounded-xl border border-brand-primary/30 bg-brand-primary/20 text-zinc-100 font-medium px-4 py-3.5 transition-colors hover:bg-brand-primary/30 disabled:opacity-50 disabled:cursor-not-allowed"
+                      disabled={!privyReady || privyVerifyBusy}
+                      onClick={() => {
+                        if (!privyReady || privyVerifyBusy) return
+                        setPrivyVerifyError(null)
+                        setPrivyVerifyBusy(true)
+                        Promise.resolve(
+                          privyAuthed
+                            ? null
+                            : privyLogin({
+                                loginMethods: ['wallet'],
+                              } as any),
+                        )
+                          .catch((e: any) => {
+                            setPrivyVerifyError(e?.message ? String(e.message) : 'Sign-in failed')
+                          })
+                          .finally(() => {
+                            setPrivyVerifyBusy(false)
+                          })
+                      }}
+                    >
+                      {privyVerifyBusy ? 'Opening…' : 'Sign to verify'}
+                    </button>
+                    {privyVerifyError ? <div className="text-xs text-red-400 text-center">{privyVerifyError}</div> : null}
+                    <div className="text-center text-[11px] text-zinc-600">Powered by Privy</div>
+                  </div>
+                ) : null}
+
+                {/* Fallback: original Farcaster + SIWE flow when Privy is disabled */}
+                {!showPrivy && !(typeof verifiedFid === 'number' && verifiedFid > 0) && !verifiedWallet ? (
                   <div className="space-y-2">
                     {siwfNonce ? (
                       <div
@@ -1281,55 +1351,45 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
                         ) : null}
                       </div>
                     ) : null}
+                    <div className="text-center">
+                      <button
+                        type="button"
+                        className="inline-flex items-center gap-1.5 text-sm text-zinc-500 hover:text-zinc-300 transition-colors"
+                        onClick={() => setShowWalletOption((v) => !v)}
+                      >
+                        <span>{showWalletOption ? 'Hide wallet option' : 'Or use a wallet instead'}</span>
+                        <ChevronDown className={`w-4 h-4 transition-transform ${showWalletOption ? 'rotate-180' : ''}`} />
+                      </button>
+                    </div>
+                    {showWalletOption ? (
+                      <motion.div
+                        initial={{ opacity: 0, height: 0 }}
+                        animate={{ opacity: 1, height: 'auto' }}
+                        exit={{ opacity: 0, height: 0 }}
+                        transition={{ duration: 0.15 }}
+                        className="rounded-xl border border-white/10 bg-black/20 p-3 sm:p-4 space-y-2"
+                      >
+                        <ConnectButtonWeb3 />
+                        <button
+                          type="button"
+                          className="btn-accent w-full disabled:opacity-50 disabled:cursor-not-allowed"
+                          disabled={siwe.busy || !isWalletConnected || Boolean(verifiedWallet)}
+                          onClick={() => {
+                            void (async () => {
+                              const signed = await siwe.signIn()
+                              if (!signed) return
+                              setVerifiedWallet(signed)
+                              setVerifyMethod('wallet')
+                              setClaimCoinError(null)
+                            })()
+                          }}
+                        >
+                          {!isWalletConnected ? 'Connect wallet first' : siwe.busy ? 'Signing…' : 'Sign to verify'}
+                        </button>
+                        {siwe.error ? <div className="text-xs text-red-400">{siwe.error}</div> : null}
+                      </motion.div>
+                    ) : null}
                   </div>
-                ) : null}
-
-                {/* Secondary: Wallet option toggle - only when not verified */}
-                {!(typeof verifiedFid === 'number' && verifiedFid > 0) && !verifiedWallet ? (
-                  <div className="text-center">
-                    <button
-                      type="button"
-                      className="inline-flex items-center gap-1.5 text-sm text-zinc-500 hover:text-zinc-300 transition-colors"
-                      onClick={() => setShowWalletOption((v) => !v)}
-                    >
-                      <span>{showWalletOption ? 'Hide wallet option' : 'Or use a wallet instead'}</span>
-                      <ChevronDown className={`w-4 h-4 transition-transform ${showWalletOption ? 'rotate-180' : ''}`} />
-                    </button>
-                  </div>
-                ) : null}
-
-                {/* Wallet section (collapsible) - only when toggle is open and not verified */}
-                {showWalletOption && !(typeof verifiedFid === 'number' && verifiedFid > 0) && !verifiedWallet ? (
-                  <motion.div
-                    initial={{ opacity: 0, height: 0 }}
-                    animate={{ opacity: 1, height: 'auto' }}
-                    exit={{ opacity: 0, height: 0 }}
-                    transition={{ duration: 0.15 }}
-                    className="rounded-xl border border-white/10 bg-black/20 p-3 sm:p-4 space-y-2"
-                  >
-                    <ConnectButtonWeb3 />
-                    <button
-                      type="button"
-                      className="btn-accent w-full disabled:opacity-50 disabled:cursor-not-allowed"
-                      disabled={siwe.busy || !isWalletConnected || Boolean(verifiedWallet)}
-                      onClick={() => {
-                        void (async () => {
-                          const signed = await siwe.signIn()
-                          if (!signed) return
-                          setVerifiedWallet(signed)
-                          setVerifyMethod('wallet')
-                          setClaimCoinError(null)
-                        })()
-                      }}
-                    >
-                      {!isWalletConnected
-                        ? 'Connect wallet first'
-                        : siwe.busy
-                          ? 'Signing…'
-                          : 'Sign to verify'}
-                    </button>
-                    {siwe.error ? <div className="text-xs text-red-400">{siwe.error}</div> : null}
-                  </motion.div>
                 ) : null}
 
                 {/* Creator Coin section (only shown after wallet verification) */}
