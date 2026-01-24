@@ -15,8 +15,8 @@ export function zoraGlobalWalletConnector() {
             providerAppId: ZORA_PRIVY_PROVIDER_APP_ID,
             // `toPrivyWalletProvider` expects a list/tuple of chains; keep wagmi's canonical config shape.
             chains: config.chains as any,
-            // Read-only provider: no signatures/txs, but still allow address access.
-            smartWalletMode: false,
+            // Signing-capable provider: allow signatures/txs (subject to provider app settings + user consent).
+            smartWalletMode: true,
           }) as unknown as EIP1193Provider,
         )
       }
@@ -25,7 +25,7 @@ export function zoraGlobalWalletConnector() {
 
     return {
       id: 'privy-zora',
-      name: 'Zora (read-only)',
+      name: 'Zora',
       type: 'injected',
 
       async getProvider() {

@@ -171,14 +171,16 @@ function ConnectButtonWeb3Wagmi({
   // - Rabby (if installed)
   // - WalletConnect (QR) fallback
   const isDeployVariant = variant === 'deploy'
-  const showGuidedModal = !miniApp.isMiniApp
+  const preferZoraOnDesktop = !isDeployVariant && !miniApp.isMiniApp && Boolean(zoraConnector)
+  // If Zora cross-app is available on desktop, make it the primary one-click path.
+  const showGuidedModal = !miniApp.isMiniApp && !preferZoraOnDesktop
   const preferredConnector = isDeployVariant
     ? // Deploy should use a single universal path to avoid eth_sign dead-ends:
       // - Mini App connector inside Mini Apps
       // - Base App connector on the open web
       // - WalletConnect fallback when needed
       (miniApp.isMiniApp ? miniAppConnector : null) ?? baseAppConnector ?? walletConnectConnector ?? connectors[0]
-    : (miniApp.isMiniApp ? miniAppConnector : null) ?? walletConnectConnector ?? rabbyConnector ?? connectors[0]
+    : (miniApp.isMiniApp ? miniAppConnector : null) ?? zoraConnector ?? walletConnectConnector ?? rabbyConnector ?? connectors[0]
 
   const connectDirect = useCallback(
     async (c: Connector | null | undefined, opts?: { timeoutMs?: number; label?: string }) => {
@@ -197,7 +199,14 @@ function ConnectButtonWeb3Wagmi({
           setConnectError('Connection rejected')
           return
         }
-        setConnectError(opts?.label ? `Unable to connect (${opts.label})` : 'Unable to connect')
+        const isZora = String(c.id ?? '').toLowerCase() === 'privy-zora' || String(c.name ?? '').toLowerCase().includes('zora')
+        setConnectError(
+          isZora
+            ? 'Unable to connect Zora wallet. Make sure you’re logged into Zora and allow the consent popup (or connect another wallet).'
+            : opts?.label
+              ? `Unable to connect (${opts.label})`
+              : 'Unable to connect',
+        )
       }
     },
     [connectAsync, reset],
@@ -221,6 +230,8 @@ function ConnectButtonWeb3Wagmi({
         : [
             // Prefer Mini App connector inside Mini Apps.
             miniApp.isMiniApp ? miniAppConnector : null,
+            // If available, try Zora cross-app wallet first on desktop.
+            !miniApp.isMiniApp ? zoraConnector : null,
             // Universal fallback (QR) — also the safest option when injected wallet extensions conflict.
             !miniApp.isMiniApp ? walletConnectConnector : null,
             // Try injected wallets after WalletConnect (or skip if the injected provider is in a bad/locked state).
@@ -333,7 +344,7 @@ function ConnectButtonWeb3Wagmi({
 
   const connectorId = String(connector?.id ?? '').toLowerCase()
   const connectorName = String(connector?.name ?? '').toLowerCase()
-  const isReadOnlyConnector = connectorId === 'privy-zora' || connectorName.includes('zora')
+  const isZoraConnector = connectorId === 'privy-zora' || connectorName.includes('zora')
   const guideData =
     guideChoice === 'base'
       ? {
@@ -355,21 +366,17 @@ function ConnectButtonWeb3Wagmi({
           }
         : guideChoice === 'zora'
           ? {
-              title: 'Zora (read-only)',
-              bullets: ['Read-only address import.', 'Connect a signing wallet to deploy.'],
+              title: 'Zora',
+              bullets: ['Bring your existing Zora wallet.', 'Sign via Zora popup when needed.'],
               connector: zoraConnector,
               disabled: !canUseZora,
-              disabledHint: 'Zora wallet is read-only in CreatorVault.',
-              label: 'Zora (read-only)',
+              disabledHint: 'Zora connector is unavailable in this environment.',
+              label: 'Zora',
             }
           : null
 
   async function signIn() {
     if (!address) return
-    if (isReadOnlyConnector) {
-      setAuthError('Zora wallet is read-only in CreatorVault - connect a signing wallet to sign in')
-      return
-    }
     setAuthBusy(true)
     setAuthError(null)
     try {
@@ -405,7 +412,23 @@ function ConnectButtonWeb3Wagmi({
       setAuthAddress(typeof signed === 'string' ? signed : null)
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : 'Sign-in failed'
-      setAuthError(msg)
+      // Zora cross-app signing can fail if popups are blocked, the provider app is configured as read-only,
+      // or the user hasn't granted cross-app consent. Provide a clearer fallback hint.
+      if (isZoraConnector) {
+        const lower = String(msg || '').toLowerCase()
+        const isPopupish =
+          lower.includes('popup') || lower.includes('blocked') || lower.includes('window') || lower.includes('redirect')
+        const isDenied = lower.includes('denied') || lower.includes('rejected') || lower.includes('cancel')
+        setAuthError(
+          isDenied
+            ? 'Zora wallet signature was cancelled. You can try again or connect another wallet.'
+            : isPopupish
+              ? 'Zora wallet signature needs a popup. Please allow popups, then try again (or connect another wallet).'
+              : 'Unable to sign with Zora wallet. If Zora is read-only here, connect another wallet to continue.',
+        )
+      } else {
+        setAuthError(msg)
+      }
     } finally {
       setAuthBusy(false)
     }
@@ -496,18 +519,16 @@ function ConnectButtonWeb3Wagmi({
                     setShowMenu(false)
                   }}
                   className="w-full text-left py-3 px-4 hover:bg-zinc-950 transition-colors disabled:opacity-50"
-                  disabled={authBusy || isReadOnlyConnector}
+                  disabled={authBusy}
                   title={
-                    isReadOnlyConnector
-                      ? 'Zora connector is read-only (no signatures)'
-                      : 'Proves you control this wallet (no transaction)'
+                    isZoraConnector ? 'Proves you control your Zora wallet (no transaction)' : 'Proves you control this wallet (no transaction)'
                   }
                 >
                   <span className="label block mb-1">
-                    {isReadOnlyConnector ? 'Sign in (unavailable)' : isSignedIn ? 'Signed in' : 'Sign in'}
+                    {isSignedIn ? 'Signed in' : 'Sign in'}
                   </span>
                   <span className="text-xs text-zinc-600">
-                    {isReadOnlyConnector ? 'Read-only connector' : isSignedIn ? 'Verified for this session' : 'No transaction'}
+                    {isSignedIn ? 'Verified for this session' : 'No transaction'}
                   </span>
                 </button>
                 {authError ? (
@@ -545,7 +566,7 @@ function ConnectButtonWeb3Wagmi({
     )
   }
 
-  const primaryLabel = isDeployVariant ? 'Continue' : 'Connect Wallet'
+  const primaryLabel = isDeployVariant ? 'Continue' : preferZoraOnDesktop ? 'Continue with Zora' : 'Connect Wallet'
 
   return (
     <div className={`flex flex-col gap-2 ${isDeployVariant ? 'items-stretch' : 'items-end'}`}>
@@ -603,6 +624,23 @@ function ConnectButtonWeb3Wagmi({
                 <div className="space-y-2">
                   <button
                     type="button"
+                    disabled={zoraDisabled}
+                    className={`w-full text-left py-3 px-4 transition-colors ${
+                      zoraDisabled ? 'opacity-50 cursor-not-allowed' : 'hover:bg-zinc-950'
+                    }`}
+                    onClick={() => {
+                      if (zoraDisabled) return
+                      setGuideChoice('zora')
+                      setGuideStep(2)
+                    }}
+                  >
+                    <span className="label block mb-1">Zora</span>
+                    <span className="text-xs text-zinc-600">
+                      {zoraDisabled ? 'Not available on this device.' : 'Continue with your existing Zora wallet.'}
+                    </span>
+                  </button>
+                  <button
+                    type="button"
                     disabled={baseDisabled}
                     className={`w-full text-left py-3 px-4 transition-colors ${
                       baseDisabled ? 'opacity-50 cursor-not-allowed' : 'hover:bg-zinc-950'
@@ -633,23 +671,6 @@ function ConnectButtonWeb3Wagmi({
                     <span className="label block mb-1">Farcaster</span>
                     <span className="text-xs text-zinc-600">
                       {farcasterDisabled ? 'Open inside Farcaster or Base app.' : 'Available inside Farcaster or Base app.'}
-                    </span>
-                  </button>
-                  <button
-                    type="button"
-                    disabled={zoraDisabled}
-                    className={`w-full text-left py-3 px-4 transition-colors ${
-                      zoraDisabled ? 'opacity-50 cursor-not-allowed' : 'hover:bg-zinc-950'
-                    }`}
-                    onClick={() => {
-                      if (zoraDisabled) return
-                      setGuideChoice('zora')
-                      setGuideStep(2)
-                    }}
-                  >
-                    <span className="label block mb-1">Zora (read-only)</span>
-                    <span className="text-xs text-zinc-600">
-                      {zoraDisabled ? 'Not available on this device.' : 'Import address only (no signatures).'}
                     </span>
                   </button>
                   <button
@@ -792,10 +813,10 @@ function ConnectButtonWeb3Wagmi({
                       type="button"
                       disabled={isPending}
                       className="w-full text-left py-3 px-4 hover:bg-zinc-950 transition-colors disabled:opacity-50"
-                      onClick={() => void connectDirect(zoraConnector, { timeoutMs: 60_000, label: 'Zora (read-only)' })}
+                      onClick={() => void connectDirect(zoraConnector, { timeoutMs: 60_000, label: 'Zora' })}
                     >
-                      <span className="label block mb-1">Zora (read-only)</span>
-                      <span className="text-xs text-zinc-600">Read-only address import (no signatures).</span>
+                      <span className="label block mb-1">Zora</span>
+                      <span className="text-xs text-zinc-600">Use your existing Zora wallet.</span>
                     </button>
                   ) : null}
                 </motion.div>

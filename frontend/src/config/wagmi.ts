@@ -91,7 +91,7 @@ function createWagmiBaseConfig({ includeZoraReadOnly }: { includeZoraReadOnly: b
 }
 
 // Default app config: Base-only connectors.
-export const wagmiConfigBase = createWagmiBaseConfig({ includeZoraReadOnly: false })
+export const wagmiConfigBase = createWagmiBaseConfig({ includeZoraReadOnly: true })
 
 // Deploy config: includes Privy/Zora read-only connector (used only on deploy flows).
 export const wagmiConfigDeploy = createWagmiBaseConfig({ includeZoraReadOnly: true })
