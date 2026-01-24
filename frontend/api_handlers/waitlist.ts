@@ -1,4 +1,4 @@
-import { type ApiEnvelope, handleOptions, setCors, setNoStore } from '../server/auth/_shared.js'
+import { type ApiEnvelope, handleOptions, readSessionFromRequest, setCors, setNoStore } from '../server/auth/_shared.js'
 import { getDb } from '../server/_lib/postgres.js'
 import { normalizeReferralCode, getClientIp, getUserAgent, hashForAttribution } from '../server/_lib/referrals.js'
 import { awardWaitlistPoints, ensureWaitlistPointsSchema, WAITLIST_POINTS } from '../server/_lib/waitlistPoints.js'
@@ -201,7 +201,22 @@ export default async function handler(req: any, res: any) {
   }
 
   const walletRaw = typeof body.primaryWallet === 'string' ? body.primaryWallet : ''
-  const primaryWallet = normalizeAddress(walletRaw)
+  const primaryWalletInput = normalizeAddress(walletRaw)
+  const session = readSessionFromRequest(req)
+  const sessionWalletRaw = typeof session?.address === 'string' ? session.address : ''
+  const sessionWallet = normalizeAddress(sessionWalletRaw)
+
+  let primaryWallet = primaryWalletInput
+  if (sessionWallet && isValidEvmAddress(sessionWallet)) {
+    if (primaryWallet && primaryWallet.toLowerCase() !== sessionWallet.toLowerCase()) {
+      return res.status(400).json({
+        success: false,
+        error: 'Signed-in wallet does not match the provided wallet.',
+      } satisfies ApiEnvelope<never>)
+    }
+    primaryWallet = sessionWallet
+  }
+
   if (primaryWallet.length > 0 && !isValidEvmAddress(primaryWallet)) {
     return res.status(400).json({ success: false, error: 'Invalid primary wallet address' } satisfies ApiEnvelope<never>)
   }
@@ -490,4 +505,3 @@ export default async function handler(req: any, res: any) {
     return res.status(500).json({ success: false, error: hint ? `${msg}. ${hint}` : msg } satisfies ApiEnvelope<never>)
   }
 }
-
