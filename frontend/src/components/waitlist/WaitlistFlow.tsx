@@ -107,6 +107,8 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
   const { wallets: privyWallets } = useWallets()
   const [privyVerifyBusy, setPrivyVerifyBusy] = useState(false)
   const [privyVerifyError, setPrivyVerifyError] = useState<string | null>(null)
+  const privyVerifyAttemptRef = useRef<number>(0)
+
   function normalizeEmail(v: string): string {
     return v.trim().toLowerCase()
   }
@@ -173,6 +175,33 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
       }
     }
     return null
+  }
+
+  function hasPrivyLinkedWallet(user: any, walletsOverride?: any[]): boolean {
+    const wallets = Array.isArray(walletsOverride) ? walletsOverride : Array.isArray(user?.wallets) ? user.wallets : []
+    const primaryWallet = user?.wallet && typeof user.wallet === 'object' ? [user.wallet] : []
+    const all = [...primaryWallet, ...wallets]
+    if (all.some((w) => typeof w?.address === 'string')) return true
+    const linked = Array.isArray(user?.linked_accounts) ? user.linked_accounts : Array.isArray(user?.linkedAccounts) ? user.linkedAccounts : []
+    return linked.some((a: any) => {
+      const t = String(a?.type || '').toLowerCase()
+      const addr = typeof a?.address === 'string' ? a.address : ''
+      return t.includes('wallet') || isValidEvmAddress(addr) || isValidSolanaAddress(addr)
+    })
+  }
+
+  function getPrivyWalletMissingMessage(user: any, walletsOverride?: any[]): string {
+    const linked = Array.isArray(user?.linked_accounts) ? user.linked_accounts : Array.isArray(user?.linkedAccounts) ? user.linkedAccounts : []
+    const hasWallet = hasPrivyLinkedWallet(user, walletsOverride)
+    const hasNonWalletAccount = linked.some((a: any) => {
+      const t = String(a?.type || '').toLowerCase()
+      return Boolean(t) && !t.includes('wallet')
+    })
+    if (hasWallet) return 'Connect Base Account to verify.'
+    if (hasNonWalletAccount) {
+      return 'Wallet login is not enabled for this app or no Base Account is linked. Enable wallet login in Privy and try again.'
+    }
+    return 'Wallet login is not enabled for this app. Enable wallet login in Privy and try again.'
   }
 
   const emailTrimmed = useMemo(() => normalizeEmail(email), [email])
@@ -939,22 +968,34 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
     if (persona !== 'creator') return
     if (!privyReady || !privyAuthed) return
     if (verifiedWallet || verifiedSolana) return
-    const evm = extractPrivyWalletAddress(privyUser, privyWallets)
-    const sol = extractPrivySolanaAddress(privyUser, privyWallets)
-    if (evm) {
-      setVerifiedWallet(evm)
-    } else if (sol) {
-      setVerifiedSolana(sol)
-    } else {
+    let cancelled = false
+    const delay = privyVerifyAttemptRef.current ? 350 : 120
+    const timer = window.setTimeout(() => {
+      if (cancelled) return
+      const evm = extractPrivyWalletAddress(privyUser, privyWallets)
+      const sol = extractPrivySolanaAddress(privyUser, privyWallets)
+      if (evm) {
+        setVerifiedWallet(evm)
+        setPrivyVerifyError(null)
+        setPrivyVerifyBusy(false)
+        return
+      }
+      if (sol) {
+        setVerifiedSolana(sol)
+        setPrivyVerifyError(null)
+        setPrivyVerifyBusy(false)
+        return
+      }
       // User completed Privy auth but has no wallet attached (common for email-only login).
       // Make the next step explicit instead of silently doing nothing.
       setPrivyVerifyBusy(false)
-      const msg = 'Connect Base Account to verify.'
+      const msg = getPrivyWalletMissingMessage(privyUser, privyWallets)
       setPrivyVerifyError((prev) => (prev === msg ? prev : msg))
-      return
+    }, delay)
+    return () => {
+      cancelled = true
+      window.clearTimeout(timer)
     }
-    setPrivyVerifyError(null)
-    setPrivyVerifyBusy(false)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [persona, privyAuthed, privyReady, privyStatus, privyUser, privyWallets, showPrivy, step, verifiedWallet, verifiedSolana])
 
@@ -1343,15 +1384,24 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
                         if (!privyReady || privyVerifyBusy) return
                         setPrivyVerifyError(null)
                         setPrivyVerifyBusy(true)
+                        privyVerifyAttemptRef.current = Date.now()
                         // Single CTA: Base Account first, but EOAs are available in the same modal.
                         Promise.resolve(
                           (privyLogin as any)({
                             loginMethods: ['wallet'],
+                            loginMethodsAndOrder: { primary: ['wallet'], overflow: [] },
                             walletList: ['base_account', 'coinbase_wallet', 'detected_wallets', 'metamask', 'wallet_connect'],
                           }),
                         ).catch((e: any) => {
-                          setPrivyVerifyError(e?.message ? String(e.message) : 'Wallet connect failed')
-                          setPrivyVerifyBusy(false)
+                          const raw = e?.message ? String(e.message) : ''
+                          const lower = raw.toLowerCase()
+                          const msg = lower.includes('login method')
+                            ? 'Wallet login is not enabled for this app. Enable wallet login in Privy and try again.'
+                            : raw || 'Wallet connect failed'
+                          setPrivyVerifyError(msg)
+                        }).finally(() => {
+                          // If the user closes the modal without completing login, clear the spinner.
+                          window.setTimeout(() => setPrivyVerifyBusy(false), 250)
                         })
                       }}
                     >
@@ -1877,4 +1927,3 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
     </section>
   )
 }
-

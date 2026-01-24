@@ -115,23 +115,18 @@ export function PrivyClientProvider({ children }: { children: ReactNode }) {
               connectionOptions: 'smartWalletOnly',
             } as any),
           },
-          // Required for Sub Accounts controlled by an embedded wallet.
-          // Note: Mini Apps may not support automatic embedded wallet creation; this is still safe for web.
-          embedded: {
-            ethereum: {
-              // Treat email as lightweight identity; do not auto-create embedded wallets on login.
-              // https://docs.privy.io/guide/react/wallets/embedded/creation
-              createOnLogin: 'none',
-            },
-            solana: {
-              // https://docs.privy.io/guide/react/wallets/embedded/creation
-              createOnLogin: 'none',
-            },
-          },
           // Make embedded-wallet actions truly 1-click in-app:
           // hide Privy confirmation modals so our UI is the only "confirm" surface.
           // (You can also toggle this in the Privy dashboard: Embedded Wallets → “Add confirmation modals”.)
           embeddedWallets: {
+            // Prompt for an embedded wallet only when the user has no wallet yet.
+            // This keeps email flows viable for admin access without forcing wallet creation for everyone.
+            ethereum: {
+              createOnLogin: 'users-without-wallets',
+            },
+            solana: {
+              createOnLogin: 'off',
+            },
             showWalletUIs: false,
           },
           loginMethodsAndOrder: {
@@ -154,4 +149,3 @@ export function PrivyClientProvider({ children }: { children: ReactNode }) {
     </PrivyClientContext.Provider>
   )
 }
-

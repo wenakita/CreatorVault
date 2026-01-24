@@ -72,8 +72,9 @@ function PrivyEmailFallbackButton({
       const resolveConnector = async (): Promise<Connector | null | undefined> => {
         let resolved = smartWalletConnector ?? (typeof getSmartWalletConnector === 'function' ? getSmartWalletConnector() : null)
         if (resolved) return resolved
+        await new Promise((r) => setTimeout(r, 300))
         const started = Date.now()
-        while (Date.now() - started < 5_000) {
+        while (Date.now() - started < 10_000) {
           await new Promise((r) => setTimeout(r, 250))
           resolved = typeof getSmartWalletConnector === 'function' ? getSmartWalletConnector() : null
           if (resolved) return resolved
@@ -82,7 +83,7 @@ function PrivyEmailFallbackButton({
       }
       const resolvedConnector = await resolveConnector()
       if (!resolvedConnector) {
-        onError('Smart wallet is still loading - try again.')
+        onError('Smart wallet is still loading. Make sure embedded wallets are enabled in Privy.')
         return
       }
       await connectDirect(resolvedConnector, { timeoutMs: 60_000, label: 'Email' })
