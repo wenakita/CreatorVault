@@ -20,7 +20,9 @@
     "@openzeppelin/contracts-4.8.3": "npm:@openzeppelin/contracts@4.9.6",
     "axios": "1.13.2",
     "elliptic": "6.6.1",
+    "path-to-regexp": "6.3.0",
     "tmp": "0.2.4",
+    "undici": "6.23.0",
     "ws": "8.18.0"
   },
   "pnpm": {
@@ -33,7 +35,9 @@
       "@openzeppelin/contracts-4.7.3": "npm:@openzeppelin/contracts@4.9.6",
       "@openzeppelin/contracts-4.8.3": "npm:@openzeppelin/contracts@4.9.6",
       "axios": "1.13.2",
+      "path-to-regexp": "6.3.0",
       "tmp": "0.2.4",
+      "undici": "6.23.0",
       "ws": "8.18.0"
     },
     "peerDependencyRules": {
