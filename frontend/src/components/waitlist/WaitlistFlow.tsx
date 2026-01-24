@@ -1452,6 +1452,9 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
                       {privyVerifyBusy ? 'Opening…' : 'Continue'}
                     </button>
                     {privyVerifyError ? <div className="text-xs text-red-400 text-center">{privyVerifyError}</div> : null}
+                    <div className="text-[11px] text-zinc-500 text-center">
+                      WalletConnect works best if you have multiple wallet extensions.
+                    </div>
                   </div>
                 ) : null}
 
