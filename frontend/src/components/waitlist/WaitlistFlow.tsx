@@ -1423,14 +1423,13 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
                         setPrivyVerifyBusy(true)
                         privyVerifyAttemptRef.current = Date.now()
                         const walletOptions = {
-                          walletList: isEthereumLocked
-                            ? ['base_account', 'wallet_connect']
-                            : ['base_account', 'coinbase_wallet', 'detected_wallets', 'metamask', 'wallet_connect'],
+                          // Avoid injected-wallet conflicts by only offering Base Account + WalletConnect.
+                          walletList: ['base_account', 'wallet_connect'],
                           walletChainType: 'ethereum-only',
                           description: 'Connect Base Account to verify.',
                         } as const
                         if (isEthereumLocked) {
-                          setPrivyVerifyError('Multiple wallet extensions detected. Disable extras or use WalletConnect.')
+                          setPrivyVerifyError('Multiple wallet extensions detected. Use WalletConnect or disable extras.')
                         }
                         const openWallet = () => {
                           if (privyAuthed && typeof privyLinkWallet === 'function') {
