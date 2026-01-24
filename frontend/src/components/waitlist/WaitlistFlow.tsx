@@ -8,7 +8,7 @@ import { useSiweAuth } from '@/hooks/useSiweAuth'
 import { ConnectButtonWeb3 } from '@/components/ConnectButtonWeb3'
 import { isPrivyClientEnabled } from '@/lib/flags'
 import { usePrivyClientStatus } from '@/lib/privy/client'
-import { useLinkAccount, useLogin, usePrivy, useWallets } from '@privy-io/react-auth'
+import { usePrivy, useWallets } from '@privy-io/react-auth'
 import { Check, CheckCircle2, ChevronDown, ArrowLeft } from 'lucide-react'
 import { useMiniAppContext } from '@/hooks'
 import { apiAliasPath } from '@/lib/apiBase'
@@ -103,17 +103,17 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
 
   const privyStatus = usePrivyClientStatus()
   const showPrivy = isPrivyClientEnabled()
-  const { login: privyModalLogin } = useLogin()
-  const { ready: privyReady, authenticated: privyAuthed, user: privyUser, logout: privyLogout } = usePrivy()
+  const {
+    ready: privyReady,
+    authenticated: privyAuthed,
+    user: privyUser,
+    logout: privyLogout,
+    connectWallet: privyConnectWallet,
+  } = usePrivy()
   const { wallets: privyWallets } = useWallets()
-  const { linkWallet: privyLinkWallet } = useLinkAccount({
-    onError: (e: any) => {
-      setPrivyVerifyError(e?.message ? String(e.message) : 'Wallet link failed')
-      setPrivyVerifyBusy(false)
-    },
-  })
   const [privyVerifyBusy, setPrivyVerifyBusy] = useState(false)
   const [privyVerifyError, setPrivyVerifyError] = useState<string | null>(null)
+  const privyPendingWalletLoginRef = useRef<{ walletList: any[] } | null>(null)
   const PrivySocialConnect = useMemo(
     () =>
       lazy(async () => {
@@ -972,6 +972,32 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [persona, privyAuthed, privyReady, privyStatus, privyUser, privyWallets, showPrivy, step, verifiedWallet, verifiedSolana])
 
+  // When we explicitly trigger a "connect wallet" prompt, follow it with `loginOrLink()`
+  // to authenticate (or link) the connected wallet. This keeps the UI wallet-first.
+  useEffect(() => {
+    if (!privyPendingWalletLoginRef.current) return
+    if (!showPrivy || privyStatus !== 'ready') return
+    if (step !== 'verify') return
+    if (persona !== 'creator') return
+    if (!privyReady) return
+
+    const wallets = Array.isArray(privyWallets) ? privyWallets : []
+    const latest = [...wallets].reverse().find((w) => typeof (w as any)?.loginOrLink === 'function') as any
+    if (!latest) return
+
+    // Consume the pending intent so we don't loop on wallet list updates.
+    privyPendingWalletLoginRef.current = null
+
+    Promise.resolve(latest.loginOrLink())
+      .catch((e: any) => {
+        setPrivyVerifyError(e?.message ? String(e.message) : 'Wallet verification failed')
+      })
+      .finally(() => {
+        setPrivyVerifyBusy(false)
+      })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [persona, privyReady, privyStatus, privyWallets, showPrivy, step])
+
   // UX: once creators are verified, immediately advance to email (no extra "Continue" click).
   useEffect(() => {
     if (step !== 'verify') return
@@ -1355,22 +1381,17 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
                         if (!privyReady || privyVerifyBusy) return
                         setPrivyVerifyError(null)
                         setPrivyVerifyBusy(true)
-                        // If the user already authenticated via email, switch to wallet-linking mode
-                        // so we don't just reopen the same login modal.
-                        const action = privyAuthed ? privyLinkWallet : privyModalLogin
-                        const params = privyAuthed
-                          ? (undefined as any)
-                          : ({
-                              // Primary: connect an existing wallet (Base Account preferred via Privy config).
-                              loginMethods: ['wallet'],
-                            } as any)
-                        Promise.resolve(privyAuthed ? (action as any)() : (action as any)(params))
-                          .catch((e: any) => {
-                            setPrivyVerifyError(e?.message ? String(e.message) : 'Sign-in failed')
-                          })
-                          .finally(() => {
-                            setPrivyVerifyBusy(false)
-                          })
+                        // Use wallet-first UI (no socials/email step). Then `loginOrLink()` to verify.
+                        privyPendingWalletLoginRef.current = { walletList: ['base_account', 'coinbase_wallet'] }
+                        Promise.resolve(
+                          (privyConnectWallet as any)({
+                            walletList: ['base_account', 'coinbase_wallet'],
+                          }),
+                        ).catch((e: any) => {
+                          privyPendingWalletLoginRef.current = null
+                          setPrivyVerifyError(e?.message ? String(e.message) : 'Wallet connect failed')
+                          setPrivyVerifyBusy(false)
+                        })
                       }}
                     >
                       {privyVerifyBusy ? 'Opening…' : 'Continue with Base Account'}
@@ -1383,22 +1404,19 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
                         if (!privyReady || privyVerifyBusy) return
                         setPrivyVerifyError(null)
                         setPrivyVerifyBusy(true)
-                        // Same wallet flow, but copy explicitly signals EOAs are supported too.
-                        // Privy will still show Base Account first (per walletList config) and
-                        // users can choose other wallets from the list (MetaMask, WalletConnect, etc.).
-                        const action = privyAuthed ? privyLinkWallet : privyModalLogin
-                        const params = privyAuthed
-                          ? (undefined as any)
-                          : ({
-                              loginMethods: ['wallet'],
-                            } as any)
-                        Promise.resolve(privyAuthed ? (action as any)() : (action as any)(params))
-                          .catch((e: any) => {
-                            setPrivyVerifyError(e?.message ? String(e.message) : 'Sign-in failed')
-                          })
-                          .finally(() => {
-                            setPrivyVerifyBusy(false)
-                          })
+                        // Explicit EOA entry point.
+                        privyPendingWalletLoginRef.current = {
+                          walletList: ['detected_wallets', 'metamask', 'wallet_connect', 'coinbase_wallet'],
+                        }
+                        Promise.resolve(
+                          (privyConnectWallet as any)({
+                            walletList: ['detected_wallets', 'metamask', 'wallet_connect', 'coinbase_wallet'],
+                          }),
+                        ).catch((e: any) => {
+                          privyPendingWalletLoginRef.current = null
+                          setPrivyVerifyError(e?.message ? String(e.message) : 'Wallet connect failed')
+                          setPrivyVerifyBusy(false)
+                        })
                       }}
                     >
                       {privyVerifyBusy ? 'Opening…' : 'Use another wallet'}
