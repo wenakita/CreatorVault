@@ -102,7 +102,8 @@ export function PrivyClientProvider({ children }: { children: ReactNode }) {
             // This is safe to include even if the user never opens Privy wallet connect.
             // Include common EOA options so users can sign in with their browser wallet.
             // (Strings are Privy-defined identifiers; extra entries are safe if unsupported.)
-            walletList: ['detected_wallets', 'base_account', 'metamask', 'coinbase_wallet', 'wallet_connect'],
+            // Put Base Account first to make it the default path.
+            walletList: ['base_account', 'coinbase_wallet', 'detected_wallets', 'metamask', 'wallet_connect'],
             // Enable Solana + EVM from day 1 (Privy dashboard controls final availability).
             walletChainType: 'all' as any,
           },
@@ -118,10 +119,13 @@ export function PrivyClientProvider({ children }: { children: ReactNode }) {
           // Note: Mini Apps may not support automatic embedded wallet creation; this is still safe for web.
           embedded: {
             ethereum: {
-              createOnLogin: 'all-users',
+              // Treat email as lightweight identity; do not auto-create embedded wallets on login.
+              // https://docs.privy.io/guide/react/wallets/embedded/creation
+              createOnLogin: 'none',
             },
             solana: {
-              createOnLogin: 'all-users',
+              // https://docs.privy.io/guide/react/wallets/embedded/creation
+              createOnLogin: 'none',
             },
           },
           // Make embedded-wallet actions truly 1-click in-app:

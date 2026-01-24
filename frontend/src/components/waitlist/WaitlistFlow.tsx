@@ -8,7 +8,7 @@ import { useSiweAuth } from '@/hooks/useSiweAuth'
 import { ConnectButtonWeb3 } from '@/components/ConnectButtonWeb3'
 import { isPrivyClientEnabled } from '@/lib/flags'
 import { usePrivyClientStatus } from '@/lib/privy/client'
-import { usePrivy } from '@privy-io/react-auth'
+import { useLogin, usePrivy } from '@privy-io/react-auth'
 import { Check, CheckCircle2, ChevronDown, ArrowLeft } from 'lucide-react'
 import { useMiniAppContext } from '@/hooks'
 import { apiAliasPath } from '@/lib/apiBase'
@@ -104,7 +104,8 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
 
   const privyStatus = usePrivyClientStatus()
   const showPrivy = isPrivyClientEnabled()
-  const { ready: privyReady, authenticated: privyAuthed, user: privyUser, login: privyLogin, logout: privyLogout } = usePrivy()
+  const { login: privyModalLogin } = useLogin()
+  const { ready: privyReady, authenticated: privyAuthed, user: privyUser, logout: privyLogout } = usePrivy()
   const [privyVerifyBusy, setPrivyVerifyBusy] = useState(false)
   const [privyVerifyError, setPrivyVerifyError] = useState<string | null>(null)
   const PrivySocialConnect = useMemo(
@@ -139,6 +140,15 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
 
   function extractPrivyWalletAddress(user: any): string | null {
     const wallets = Array.isArray(user?.wallets) ? user.wallets : []
+    // Prefer Base Account / Coinbase Smart Wallet if present.
+    for (const w of wallets) {
+      const addr = typeof w?.address === 'string' ? w.address : null
+      if (!addr || !isValidEvmAddress(addr)) continue
+      const clientType = String(w?.wallet_client_type || w?.walletClientType || '').toLowerCase()
+      const connectorType = String(w?.connector_type || w?.connectorType || '').toLowerCase()
+      if (clientType.includes('base') || clientType.includes('smart') || connectorType.includes('base')) return addr
+    }
+    // Fallback: first EVM wallet.
     for (const w of wallets) {
       const addr = typeof w?.address === 'string' ? w.address : null
       if (addr && isValidEvmAddress(addr)) return addr
@@ -1256,8 +1266,8 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
               >
                 {/* Header */}
                 <div className="space-y-1">
-                  <div className="headline text-2xl sm:text-3xl leading-tight">Verify</div>
-                  <div className="text-sm text-zinc-500">Sign to Verify</div>
+                  <div className="headline text-2xl sm:text-3xl leading-tight">Connect</div>
+                  <div className="text-sm text-zinc-500">Base Account recommended</div>
                 </div>
 
                 {/* Farcaster verified state */}
@@ -1309,7 +1319,7 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
                   </div>
                 ) : null}
 
-                {/* Privy-first: single verify CTA when enabled */}
+                {/* Privy-first: prefer Base Account (Coinbase Smart Wallet) */}
                 {showPrivy &&
                 privyStatus === 'ready' &&
                 !(typeof verifiedFid === 'number' && verifiedFid > 0) &&
@@ -1325,13 +1335,10 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
                         setPrivyVerifyError(null)
                         setPrivyVerifyBusy(true)
                         Promise.resolve(
-                          privyAuthed
-                            ? null
-                            : privyLogin({
-                                // Force embedded-wallet flow (email) to avoid WalletConnect-only UX.
-                                // Embedded wallet creation is configured in `PrivyClientProvider` via `embedded.ethereum.createOnLogin`.
-                                loginMethods: ['email'],
-                              } as any),
+                          privyModalLogin({
+                            // Primary: connect an existing wallet (Base Account preferred via Privy config).
+                            loginMethods: ['wallet'],
+                          } as any),
                         )
                           .catch((e: any) => {
                             setPrivyVerifyError(e?.message ? String(e.message) : 'Sign-in failed')
@@ -1341,10 +1348,34 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
                           })
                       }}
                     >
-                      {privyVerifyBusy ? 'Opening…' : 'Sign to verify'}
+                      {privyVerifyBusy ? 'Opening…' : 'Connect Base Account'}
+                    </button>
+                    <button
+                      type="button"
+                      className="w-full min-h-[44px] rounded-xl border border-white/10 bg-black/20 text-zinc-300 font-medium px-4 py-3 transition-colors hover:bg-black/30 disabled:opacity-50 disabled:cursor-not-allowed"
+                      disabled={!privyReady || privyVerifyBusy}
+                      onClick={() => {
+                        if (!privyReady || privyVerifyBusy) return
+                        setPrivyVerifyError(null)
+                        setPrivyVerifyBusy(true)
+                        Promise.resolve(
+                          privyModalLogin({
+                            // Secondary: lightweight identity (no wallet required).
+                            loginMethods: ['email'],
+                          } as any),
+                        )
+                          .catch((e: any) => {
+                            setPrivyVerifyError(e?.message ? String(e.message) : 'Sign-in failed')
+                          })
+                          .finally(() => {
+                            setPrivyVerifyBusy(false)
+                          })
+                      }}
+                    >
+                      {privyVerifyBusy ? 'Opening…' : 'Continue with email'}
                     </button>
                     {privyVerifyError ? <div className="text-xs text-red-400 text-center">{privyVerifyError}</div> : null}
-                    <div className="text-center text-[11px] text-zinc-600">Powered by Privy</div>
+                    <div className="text-center text-[11px] text-zinc-600">No transactions · just signatures</div>
                   </div>
                 ) : null}
 
