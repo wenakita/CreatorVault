@@ -1,6 +1,7 @@
 import type { ComponentType, ReactNode } from 'react'
 import { createContext, useContext, useEffect, useMemo, useState } from 'react'
 import { getPrivyAppId, isPrivyClientEnabled } from '@/lib/flags'
+import { ZORA_PRIVY_PROVIDER_APP_ID } from './zoraGlobalWalletConnector'
 import { PrivyProvider } from '@privy-io/react-auth'
 import { SmartWalletsProvider } from '@privy-io/react-auth/smart-wallets'
 
@@ -134,7 +135,7 @@ export function PrivyClientProvider({ children }: { children: ReactNode }) {
             // Note: Telegram OAuth often fails in strict web contexts unless fully configured; keep it off by default.
             // Allow external/browser wallets as a first-class login method.
             // Email login must be enabled in the Privy dashboard.
-            primary: ['wallet', 'email', 'farcaster', 'google', 'twitter'],
+            primary: ['wallet', `privy:${ZORA_PRIVY_PROVIDER_APP_ID}`, 'email', 'farcaster', 'google', 'twitter'],
             overflow: [],
           },
         } as any}
