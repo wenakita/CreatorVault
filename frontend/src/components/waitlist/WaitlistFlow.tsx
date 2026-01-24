@@ -8,7 +8,7 @@ import { useSiweAuth } from '@/hooks/useSiweAuth'
 import { ConnectButtonWeb3 } from '@/components/ConnectButtonWeb3'
 import { isPrivyClientEnabled } from '@/lib/flags'
 import { usePrivyClientStatus } from '@/lib/privy/client'
-import { usePrivy, useWallets } from '@privy-io/react-auth'
+import { useConnectWallet, usePrivy, useWallets } from '@privy-io/react-auth'
 import { Check, CheckCircle2, ChevronDown, ArrowLeft } from 'lucide-react'
 import { useMiniAppContext } from '@/hooks'
 import { apiAliasPath } from '@/lib/apiBase'
@@ -107,9 +107,20 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
     authenticated: privyAuthed,
     user: privyUser,
     logout: privyLogout,
-    connectWallet: privyConnectWallet,
     linkWallet: privyLinkWallet,
   } = usePrivy()
+  const { connectWallet: privyConnectWallet } = useConnectWallet({
+    onSuccess: () => {
+      setPrivyVerifyError(null)
+      setPrivyVerifyBusy(false)
+    },
+    onError: (error) => {
+      const code = String(error || '')
+      const msg = formatPrivyConnectError(code)
+      setPrivyVerifyError(msg)
+      setPrivyVerifyBusy(false)
+    },
+  })
   const { wallets: privyWallets } = useWallets()
   const [privyVerifyBusy, setPrivyVerifyBusy] = useState(false)
   const [privyVerifyError, setPrivyVerifyError] = useState<string | null>(null)
@@ -181,6 +192,21 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
       }
     }
     return null
+  }
+
+  function formatPrivyConnectError(code: string): string {
+    const c = code.trim().toLowerCase()
+    if (!c) return 'Wallet connect failed.'
+    if (c.includes('user_exited') || c.includes('user_rejected')) return 'Connection cancelled.'
+    if (c.includes('client_request_timeout') || c.includes('timeout')) return 'Wallet connection timed out. Try again.'
+    if (c.includes('disallowed_login_method')) {
+      return 'Wallet login is not enabled for this app. Enable wallet login in Privy and try again.'
+    }
+    if (c.includes('unsupported_chain_id')) return 'Unsupported network. Switch to Base and try again.'
+    if (c.includes('generic_connect_wallet_error') || c.includes('unknown_connect_wallet_error')) {
+      return 'Wallet connect failed. Try another wallet.'
+    }
+    return `Wallet connect failed (${code}).`
   }
 
   function hasPrivyLinkedWallet(user: any, walletsOverride?: any[]): boolean {
@@ -1394,7 +1420,6 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
                         const walletOptions = {
                           walletList: ['base_account', 'coinbase_wallet', 'detected_wallets', 'metamask', 'wallet_connect'],
                           walletChainType: 'ethereum-only',
-                          preSelectedWalletId: 'base_account',
                           description: 'Connect Base Account to verify.',
                         } as const
                         const openWallet = () => {
@@ -1403,17 +1428,16 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
                           }
                           return privyConnectWallet ? privyConnectWallet(walletOptions as any) : null
                         }
-                        Promise.resolve(openWallet()).catch((e: any) => {
+                        try {
+                          openWallet()
+                          // Fallback: if no callback fires (e.g., modal closed), clear spinner after a short delay.
+                          window.setTimeout(() => setPrivyVerifyBusy(false), 12_000)
+                        } catch (e: any) {
                           const raw = e?.message ? String(e.message) : ''
-                          const lower = raw.toLowerCase()
-                          const msg = lower.includes('login method')
-                            ? 'Wallet login is not enabled for this app. Enable wallet login in Privy and try again.'
-                            : raw || 'Wallet connect failed'
+                          const msg = raw || 'Wallet connect failed'
                           setPrivyVerifyError(msg)
-                        }).finally(() => {
-                          // If the user closes the modal without completing login, clear the spinner.
-                          window.setTimeout(() => setPrivyVerifyBusy(false), 250)
-                        })
+                          setPrivyVerifyBusy(false)
+                        }
                       }}
                     >
                       {privyVerifyBusy ? 'Opening…' : 'Continue'}
