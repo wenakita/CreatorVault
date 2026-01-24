@@ -39,7 +39,7 @@ function withTimeout<T>(p: Promise<T>, ms: number): Promise<T> {
   })
 }
 
-type ConnectButtonVariant = 'default' | 'deploy'
+type ConnectButtonVariant = 'default' | 'deploy' | 'gate'
 type GuideChoice = 'base' | 'farcaster' | 'zora' | 'other'
 
 function PrivyEmailFallbackButton({
@@ -171,10 +171,12 @@ function ConnectButtonWeb3Wagmi({
   // - Rabby (if installed)
   // - WalletConnect (QR) fallback
   const isDeployVariant = variant === 'deploy'
-  const preferZoraOnDesktop = !isDeployVariant && !miniApp.isMiniApp && Boolean(zoraConnector)
+  const isGateVariant = variant === 'gate'
+  const isDeployLike = isDeployVariant || isGateVariant
+  const preferZoraOnDesktop = !isDeployLike && !miniApp.isMiniApp && Boolean(zoraConnector)
   // If Zora cross-app is available on desktop, make it the primary one-click path.
   const showGuidedModal = !miniApp.isMiniApp && !preferZoraOnDesktop
-  const preferredConnector = isDeployVariant
+  const preferredConnector = isDeployLike
     ? // Deploy should use a single universal path to avoid eth_sign dead-ends:
       // - Mini App connector inside Mini Apps
       // - Base App connector on the open web
@@ -217,7 +219,7 @@ function ConnectButtonWeb3Wagmi({
     setConnectError(null)
 
     const ordered = uniqueConnectors(
-      isDeployVariant
+      isDeployLike
         ? [
             // In Mini Apps, always use the native connector.
             miniApp.isMiniApp ? miniAppConnector : null,
@@ -250,7 +252,7 @@ function ConnectButtonWeb3Wagmi({
         // - Extension wallets may "hang" if the provider is in a bad state.
         //   In that case we want to auto-fallback to WalletConnect instead of staying "Connecting…" forever.
         const timeoutMs =
-          !miniApp.isMiniApp && !isDeployVariant && (id === 'rabby' || id.toLowerCase().includes('metamask'))
+          !miniApp.isMiniApp && !isDeployLike && (id === 'rabby' || id.toLowerCase().includes('metamask'))
             ? 3_000
             : // WalletConnect often requires user action (scan QR / confirm) so give it more time.
               !miniApp.isMiniApp && id.toLowerCase().includes('walletconnect')
@@ -290,7 +292,7 @@ function ConnectButtonWeb3Wagmi({
     connectors,
     baseAppConnector,
     isEthereumLocked,
-    isDeployVariant,
+    isDeployLike,
     miniApp.isMiniApp,
     miniAppConnector,
     preferredConnector,
@@ -569,7 +571,7 @@ function ConnectButtonWeb3Wagmi({
   const primaryLabel = isDeployVariant ? 'Continue' : preferZoraOnDesktop ? 'Continue with Zora' : 'Connect Wallet'
 
   return (
-    <div className={`flex flex-col gap-2 ${isDeployVariant ? 'items-stretch' : 'items-end'}`}>
+    <div className={`flex flex-col gap-2 ${isDeployLike ? 'items-stretch' : 'items-end'}`}>
       <button
         type="button"
         disabled={isPending || !preferredConnector}
@@ -756,7 +758,7 @@ function ConnectButtonWeb3Wagmi({
           </>
         ) : null}
       </AnimatePresence>
-      {!miniApp.isMiniApp && isDeployVariant ? (
+      {!miniApp.isMiniApp && isDeployLike ? (
         <div className="relative">
           <button
             type="button"
@@ -825,7 +827,7 @@ function ConnectButtonWeb3Wagmi({
           </AnimatePresence>
         </div>
       ) : null}
-      {isDeployVariant && privyStatus === 'ready' ? (
+      {isDeployLike && privyStatus === 'ready' ? (
         <PrivyEmailFallbackButton
           isPending={isPending}
           smartWalletConnector={privySmartWalletConnector}

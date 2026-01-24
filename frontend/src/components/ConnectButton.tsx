@@ -8,7 +8,7 @@ const ConnectButtonWeb3 = lazy(async () => {
   return { default: m.ConnectButtonWeb3 }
 })
 
-export function ConnectButton({ variant = 'default' }: { variant?: 'default' | 'deploy' }) {
+export function ConnectButton({ variant = 'default' }: { variant?: 'default' | 'deploy' | 'gate' }) {
   const { status, enable } = useWeb3()
   const [autoConnect, setAutoConnect] = useState(false)
 

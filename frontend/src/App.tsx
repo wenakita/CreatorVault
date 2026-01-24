@@ -75,7 +75,7 @@ function AppAccessGate(props: { variant: 'signin' | 'denied'; marketingUrl: stri
 
           <div className="flex flex-col gap-3">
             <div className="flex items-center justify-between gap-3">
-              <ConnectButton />
+              <ConnectButton variant="gate" />
               <button
                 type="button"
                 className="btn-accent"

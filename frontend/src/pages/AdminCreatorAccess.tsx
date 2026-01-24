@@ -177,7 +177,7 @@ export function AdminCreatorAccess() {
             <div className="font-display text-xl text-white">Admin</div>
             <div className="text-xs text-zinc-600">Connect your wallet to manage creator access requests.</div>
             <div className="flex justify-center">
-              <ConnectButton />
+              <ConnectButton variant="gate" />
             </div>
           </div>
         </motion.div>
