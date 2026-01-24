@@ -969,7 +969,7 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
       // User completed Privy auth but has no wallet attached (common for email-only login).
       // Make the next step explicit instead of silently doing nothing.
       setPrivyVerifyBusy(false)
-      const msg = 'Signed in — now connect a wallet (Base Account) to verify.'
+      const msg = 'Connect Base Account to verify.'
       setPrivyVerifyError((prev) => (prev === msg ? prev : msg))
       return
     }
@@ -977,6 +977,15 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
     setPrivyVerifyBusy(false)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [persona, privyAuthed, privyReady, privyStatus, privyUser, privyWallets, showPrivy, step, verifiedWallet, verifiedSolana])
+
+  // UX: once creators are verified, immediately advance to email (no extra "Continue" click).
+  useEffect(() => {
+    if (step !== 'verify') return
+    if (persona !== 'creator') return
+    if (verifiedFid || verifiedWallet || verifiedSolana) {
+      setStep('email')
+    }
+  }, [persona, step, verifiedFid, verifiedSolana, verifiedWallet])
 
   const [miniAppAddSupported, setMiniAppAddSupported] = useState<boolean | null>(null)
   useEffect(() => {
@@ -1284,8 +1293,8 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
               >
                 {/* Header */}
                 <div className="space-y-1">
-                  <div className="headline text-2xl sm:text-3xl leading-tight">Connect</div>
-                  <div className="text-sm text-zinc-500">Base Account recommended</div>
+                  <div className="headline text-2xl sm:text-3xl leading-tight">Verify</div>
+                  <div className="text-sm text-zinc-500">Continue with Base Account</div>
                 </div>
 
                 {/* Farcaster verified state */}
@@ -1370,31 +1379,7 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
                           })
                       }}
                     >
-                      {privyVerifyBusy ? 'Opening…' : 'Connect Base Account'}
-                    </button>
-                    <button
-                      type="button"
-                      className="w-full min-h-[44px] rounded-xl border border-white/10 bg-black/20 text-zinc-300 font-medium px-4 py-3 transition-colors hover:bg-black/30 disabled:opacity-50 disabled:cursor-not-allowed"
-                      disabled={!privyReady || privyVerifyBusy}
-                      onClick={() => {
-                        if (!privyReady || privyVerifyBusy) return
-                        setPrivyVerifyError(null)
-                        setPrivyVerifyBusy(true)
-                        Promise.resolve(
-                          privyModalLogin({
-                            // Secondary: lightweight identity (no wallet required).
-                            loginMethods: ['email'],
-                          } as any),
-                        )
-                          .catch((e: any) => {
-                            setPrivyVerifyError(e?.message ? String(e.message) : 'Sign-in failed')
-                          })
-                          .finally(() => {
-                            setPrivyVerifyBusy(false)
-                          })
-                      }}
-                    >
-                      {privyVerifyBusy ? 'Opening…' : 'Continue with email'}
+                      {privyVerifyBusy ? 'Opening…' : 'Continue with Base Account'}
                     </button>
                     {privyVerifyError ? <div className="text-xs text-red-400 text-center">{privyVerifyError}</div> : null}
                     <div className="text-center text-[11px] text-zinc-600">No transactions · just signatures</div>
@@ -1494,104 +1479,6 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
                     ) : null}
                   </div>
                 ) : null}
-
-                {/* Creator Coin section (only shown after wallet verification) */}
-                {verifiedWallet ? (
-                  <div className="rounded-xl border border-white/10 bg-black/20">
-                    <div className="flex items-center justify-between gap-3 px-4 py-3">
-                      <div className="flex items-center gap-2">
-                        <span className="text-sm text-zinc-400">Creator Coin</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <span className="text-xs text-zinc-600">
-                          {creatorCoinBusy
-                            ? 'Detecting…'
-                            : creatorCoin
-                              ? 'Linked'
-                              : 'Not linked'}
-                        </span>
-                      </div>
-                    </div>
-                    <div className="px-4 pb-4 space-y-3">
-                      {creatorCoinBusy ? (
-                        <div className="text-xs text-zinc-600">Detecting coin for this wallet…</div>
-                      ) : creatorCoin ? (
-                        <div className="space-y-2">
-                          <div className="flex items-center gap-3 rounded-lg border border-white/10 bg-black/30 px-3 py-2">
-                            {creatorCoin.imageUrl ? (
-                              <img
-                                src={creatorCoin.imageUrl}
-                                alt={creatorCoin.symbol || 'Creator coin'}
-                                className="w-8 h-8 rounded-lg border border-white/10 object-cover"
-                                loading="lazy"
-                              />
-                            ) : (
-                              <span className="w-8 h-8 rounded-lg border border-white/10 bg-black/30 flex items-center justify-center text-[10px] text-zinc-500">
-                                {creatorCoin.symbol ? creatorCoin.symbol.slice(0, 2) : 'CC'}
-                              </span>
-                            )}
-                            <div className="min-w-0 flex-1">
-                              <div className="text-sm text-zinc-200 font-medium truncate">
-                                {creatorCoin.symbol || 'Creator Coin'}
-                              </div>
-                              <div className="text-[11px] font-mono text-zinc-600 truncate">{creatorCoin.address}</div>
-                            </div>
-                            <a
-                              href={`${appUrl.replace(/\/+$/, '')}/deploy?token=${encodeURIComponent(creatorCoin.address)}`}
-                              target="_blank"
-                              rel="noreferrer"
-                              className="text-xs text-zinc-500 hover:text-zinc-300 transition-colors"
-                            >
-                              View
-                            </a>
-                          </div>
-                          {(creatorCoin.marketCapUsd || creatorCoin.holders) ? (
-                            <div className="flex items-center gap-4 text-[11px] text-zinc-600">
-                              {creatorCoin.marketCapUsd ? <span>MC {formatUsd(creatorCoin.marketCapUsd)}</span> : null}
-                              {creatorCoin.holders ? <span>{formatCount(creatorCoin.holders)} holders</span> : null}
-                            </div>
-                          ) : null}
-                        </div>
-                      ) : (
-                        <div className="space-y-3">
-                          <div className="text-xs text-zinc-600">No coin detected. Enter address to link manually.</div>
-                          <input
-                            value={claimCoinInput}
-                            onChange={(e) => setClaimCoinInput(e.target.value)}
-                            placeholder="0x..."
-                            inputMode="text"
-                            autoComplete="off"
-                            className="w-full rounded-lg border border-white/10 bg-black/30 px-3 py-2 text-sm text-zinc-200 placeholder:text-zinc-700 focus:outline-none focus:ring-2 focus:ring-brand-primary/30"
-                          />
-                          {claimCoinInput && !claimCoinOk ? (
-                            <div className="text-xs text-amber-300/80">Enter a valid 0x address.</div>
-                          ) : null}
-                          <button
-                            type="button"
-                            className="btn-accent w-full text-sm disabled:opacity-50 disabled:cursor-not-allowed"
-                            disabled={!siwe.isSignedIn || claimCoinBusy || !isValidEvmAddress(claimCoinTrimmed)}
-                            onClick={() => void claimCreatorCoin(claimCoinTrimmed, 'manual')}
-                          >
-                            {claimCoinBusy ? 'Linking…' : 'Link coin'}
-                          </button>
-                        </div>
-                      )}
-                      {claimCoinError ? (
-                        null
-                      ) : null}
-                    </div>
-                  </div>
-                ) : null}
-
-                {/* Continue button */}
-                <button
-                  type="button"
-                  className="btn-accent w-full disabled:opacity-50 disabled:cursor-not-allowed"
-                  disabled={!verifiedFid && !verifiedWallet && !verifiedSolana}
-                  onClick={() => setStep('email')}
-                >
-                  Continue
-                </button>
 
               </motion.div>
             ) : null}
