@@ -1,5 +1,5 @@
 import { AnimatePresence, motion } from 'framer-motion'
-import { Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useLocation } from 'react-router-dom'
 import { getAppBaseUrl } from '@/lib/host'
 import { SignInButton, useProfile, useSignInMessage } from '@farcaster/auth-kit'
@@ -14,6 +14,7 @@ import { useMiniAppContext } from '@/hooks'
 import { apiAliasPath } from '@/lib/apiBase'
 import { fetchZoraCoin, fetchZoraProfile } from '@/lib/zora/client'
 import { REFERRAL_TWEET_TEMPLATES, fillTweetTemplate, INVITE_COPY } from '@/components/waitlist/referralsCopy'
+import { Logo } from '@/components/brand/Logo'
 
 type Persona = 'creator' | 'user'
 type Variant = 'page' | 'embedded'
@@ -59,8 +60,6 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
   const [siwfStarted, setSiwfStarted] = useState(false)
   const [shareBusy, setShareBusy] = useState(false)
   const [shareToast, setShareToast] = useState<string | null>(null)
-  const [userWallet, setUserWallet] = useState('')
-  const [showUserWallet, setShowUserWallet] = useState(false)
   const [creatorCoin, setCreatorCoin] = useState<{
     address: string
     symbol: string | null
@@ -114,15 +113,6 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
   const [privyVerifyBusy, setPrivyVerifyBusy] = useState(false)
   const [privyVerifyError, setPrivyVerifyError] = useState<string | null>(null)
   const privyPendingWalletLoginRef = useRef<{ walletList: any[] } | null>(null)
-  const PrivySocialConnect = useMemo(
-    () =>
-      lazy(async () => {
-        const m = await import('@/components/waitlist/PrivySocialConnect')
-        return { default: m.PrivySocialConnect }
-      }),
-    [],
-  )
-
   function normalizeEmail(v: string): string {
     return v.trim().toLowerCase()
   }
@@ -192,12 +182,6 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
   }
 
   const emailTrimmed = useMemo(() => normalizeEmail(email), [email])
-  const userWalletTrimmed = useMemo(() => normalizeAddress(userWallet), [userWallet])
-  const userWalletOk = useMemo(
-    () => userWalletTrimmed.length === 0 || isValidEvmAddress(userWalletTrimmed),
-    [userWalletTrimmed],
-  )
-
   const forcedPersona = useMemo(() => {
     const q = new URLSearchParams(location.search)
     const raw = (q.get('persona') ?? '').trim().toLowerCase()
@@ -431,9 +415,7 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
       const pw = typeof verifiedWallet === 'string' && isValidEvmAddress(verifiedWallet) ? verifiedWallet : null
       return pw
     }
-    // Users: optional wallet input (hidden by default). Only send if valid.
-    const pw = userWalletTrimmed.length > 0 && isValidEvmAddress(userWalletTrimmed) ? userWalletTrimmed : null
-    return pw
+    return null
   }
 
   function solanaWalletForSubmit(): string | null {
@@ -457,10 +439,6 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
       if (persona !== 'creator' && persona !== 'user') {
         throw new Error('Select Creator or User first.')
       }
-      if (persona === 'user' && showUserWallet && !userWalletOk) {
-        throw new Error('Wallet address must be a valid 0x… address (or leave it blank).')
-      }
-
       const storedRef = getStoredReferralCode()
       const claim =
         persona === 'creator'
@@ -578,8 +556,6 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
     setSiwfBusy(false)
     setSiwfError(null)
     setSiwfStarted(false)
-    setUserWallet('')
-    setShowUserWallet(false)
     setCreatorCoin(null)
     setCreatorCoinBusy(false)
     creatorCoinForWalletRef.current = null
@@ -1188,9 +1164,7 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
         {variant === 'page' ? (
           <div className="flex items-center justify-between mb-5 sm:mb-7">
             <div className="flex items-center gap-3">
-              <div className="w-9 h-9 rounded-xl border border-white/10 bg-black/40 flex items-center justify-center">
-                <div className="w-1.5 h-1.5 rounded-full bg-brand-primary" />
-              </div>
+              <Logo width={36} height={36} showText={false} />
               <div>
                 <div className="text-[11px] text-zinc-200">Creator Vaults</div>
                 <div className="text-[10px] text-zinc-600">Waitlist</div>
@@ -1257,11 +1231,11 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
                 transition={{ duration: 0.18 }}
                 className="space-y-5"
               >
-                <div className="headline text-2xl sm:text-3xl leading-tight">Select</div>
-                <div className="space-y-3">
+                <div className="headline text-2xl sm:text-3xl leading-tight">Choose your path</div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <button
                     type="button"
-                    className="group w-full rounded-xl border border-white/10 bg-black/40 hover:bg-black/50 hover:border-brand-primary/30 p-4 text-left transition-colors focus:outline-none focus:ring-2 focus:ring-brand-primary/30"
+                    className="group rounded-xl border border-white/10 bg-black/40 hover:bg-black/50 hover:border-brand-primary/30 p-4 text-left transition-colors focus:outline-none focus:ring-2 focus:ring-brand-primary/30"
                     onClick={() => {
                       setPersona('creator')
                       setError(null)
@@ -1270,18 +1244,20 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
                     }}
                   >
                     <div className="flex items-center justify-between gap-4">
-                      <div className="text-zinc-100 font-medium">Creator</div>
+                      <div>
+                        <div className="text-zinc-100 font-medium">Creator</div>
+                        <div className="mt-1 text-sm text-zinc-600 font-light">Launch a vault</div>
+                      </div>
                       <div className="opacity-0 group-hover:opacity-100 transition-opacity">
                         <div className="w-6 h-6 rounded-full border border-brand-primary/20 bg-brand-primary/10 inline-flex items-center justify-center">
                           <Check className="w-4 h-4 text-brand-accent" />
                         </div>
                       </div>
                     </div>
-                    <div className="mt-1 text-sm text-zinc-600 font-light">Launch a vault · verify</div>
                   </button>
                   <button
                     type="button"
-                    className="group w-full rounded-xl border border-white/10 bg-black/40 hover:bg-black/50 hover:border-brand-primary/30 p-4 text-left transition-colors focus:outline-none focus:ring-2 focus:ring-brand-primary/30"
+                    className="group rounded-xl border border-white/10 bg-black/40 hover:bg-black/50 hover:border-brand-primary/30 p-4 text-left transition-colors focus:outline-none focus:ring-2 focus:ring-brand-primary/30"
                     onClick={() => {
                       setPersona('user')
                       setError(null)
@@ -1289,14 +1265,16 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
                     }}
                   >
                     <div className="flex items-center justify-between gap-4">
-                      <div className="text-zinc-100 font-medium">User</div>
+                      <div>
+                        <div className="text-zinc-100 font-medium">User</div>
+                        <div className="mt-1 text-sm text-zinc-600 font-light">Join early access</div>
+                      </div>
                       <div className="opacity-0 group-hover:opacity-100 transition-opacity">
                         <div className="w-6 h-6 rounded-full border border-brand-primary/20 bg-brand-primary/10 inline-flex items-center justify-center">
                           <Check className="w-4 h-4 text-brand-accent" />
                         </div>
                       </div>
                     </div>
-                    <div className="mt-1 text-sm text-zinc-600 font-light">Join early · email</div>
                   </button>
                 </div>
               </motion.div>
@@ -1381,36 +1359,13 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
                         if (!privyReady || privyVerifyBusy) return
                         setPrivyVerifyError(null)
                         setPrivyVerifyBusy(true)
-                        // Use wallet-first UI (no socials/email step). Then `loginOrLink()` to verify.
-                        privyPendingWalletLoginRef.current = { walletList: ['base_account', 'coinbase_wallet'] }
-                        Promise.resolve(
-                          (privyConnectWallet as any)({
-                            walletList: ['base_account', 'coinbase_wallet'],
-                          }),
-                        ).catch((e: any) => {
-                          privyPendingWalletLoginRef.current = null
-                          setPrivyVerifyError(e?.message ? String(e.message) : 'Wallet connect failed')
-                          setPrivyVerifyBusy(false)
-                        })
-                      }}
-                    >
-                      {privyVerifyBusy ? 'Opening…' : 'Continue with Base Account'}
-                    </button>
-                    <button
-                      type="button"
-                      className="w-full min-h-[44px] rounded-xl border border-white/10 bg-black/20 text-zinc-300 font-medium px-4 py-3 transition-colors hover:bg-black/30 disabled:opacity-50 disabled:cursor-not-allowed"
-                      disabled={!privyReady || privyVerifyBusy}
-                      onClick={() => {
-                        if (!privyReady || privyVerifyBusy) return
-                        setPrivyVerifyError(null)
-                        setPrivyVerifyBusy(true)
-                        // Explicit EOA entry point.
+                        // Single CTA: Base Account first, but EOAs are available in the same modal.
                         privyPendingWalletLoginRef.current = {
-                          walletList: ['detected_wallets', 'metamask', 'wallet_connect', 'coinbase_wallet'],
+                          walletList: ['base_account', 'coinbase_wallet', 'detected_wallets', 'metamask', 'wallet_connect'],
                         }
                         Promise.resolve(
                           (privyConnectWallet as any)({
-                            walletList: ['detected_wallets', 'metamask', 'wallet_connect', 'coinbase_wallet'],
+                            walletList: ['base_account', 'coinbase_wallet', 'detected_wallets', 'metamask', 'wallet_connect'],
                           }),
                         ).catch((e: any) => {
                           privyPendingWalletLoginRef.current = null
@@ -1419,10 +1374,9 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
                         })
                       }}
                     >
-                      {privyVerifyBusy ? 'Opening…' : 'Use another wallet'}
+                      {privyVerifyBusy ? 'Opening…' : 'Continue'}
                     </button>
                     {privyVerifyError ? <div className="text-xs text-red-400 text-center">{privyVerifyError}</div> : null}
-                    <div className="text-center text-[11px] text-zinc-600">No transactions · just signatures</div>
                   </div>
                 ) : null}
 
@@ -1608,39 +1562,6 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
                   </div>
                 ) : null}
 
-                {showPrivy ? (
-                  <div className="space-y-3">
-                    {privyStatus === 'ready' ? (
-                      <Suspense
-                        fallback={
-                          <button className="btn-primary w-full opacity-60 cursor-not-allowed" disabled>
-                            Continue
-                          </button>
-                        }
-                      >
-                        <PrivySocialConnect
-                          disabled={busy}
-                          onEmail={(e) => {
-                            setEmail(e)
-                            void submitWaitlist({ email: normalizeEmail(e) })
-                          }}
-                          onError={(msg) => setError(msg)}
-                        />
-                      </Suspense>
-                    ) : (
-                      <button className="btn-primary w-full opacity-60 cursor-not-allowed" disabled>
-                        Continue
-                      </button>
-                    )}
-
-                    <div className="flex items-center gap-3 pt-1">
-                      <div className="h-px bg-white/10 flex-1" />
-                      <div className="text-[10px] uppercase tracking-[0.24em] text-zinc-700">or</div>
-                      <div className="h-px bg-white/10 flex-1" />
-                    </div>
-                  </div>
-                ) : null}
-
                 <div>
                   <div className="flex items-center gap-3">
                     <input
@@ -1668,39 +1589,6 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
                   ) : null}
                 </div>
 
-                {persona === 'user' ? (
-                  <div className="rounded-xl border border-white/10 bg-black/30">
-                    <button
-                      type="button"
-                      className="w-full flex items-center justify-between px-4 py-3 text-left"
-                      onClick={() => setShowUserWallet((v) => !v)}
-                    >
-                      <div className="text-sm text-zinc-300">Add wallet (optional)</div>
-                      <ChevronDown
-                        className={`w-4 h-4 text-zinc-500 transition-transform ${showUserWallet ? 'rotate-180' : ''}`}
-                      />
-                    </button>
-                    {showUserWallet ? (
-                      <div className="px-4 pb-4">
-                        <div className="text-[10px] uppercase tracking-[0.24em] text-zinc-600 mb-2">Wallet</div>
-                        <input
-                          value={userWallet}
-                          onChange={(e) => setUserWallet(e.target.value)}
-                          placeholder="0x0000000000000000000000000000000000000000"
-                          inputMode="text"
-                          autoComplete="off"
-                          className="w-full rounded-lg border border-white/10 bg-black/40 px-3 py-2 text-sm text-zinc-200 placeholder:text-zinc-700 focus:outline-none focus:ring-2 focus:ring-brand-primary/30"
-                        />
-                        {!userWalletOk ? (
-                          <div className="mt-2 text-xs text-amber-300/80">Must be a valid 0x… address (or leave blank).</div>
-                        ) : (
-                          <div className="mt-2 text-xs text-zinc-700">We’ll verify later.</div>
-                        )}
-                      </div>
-                    ) : null}
-                  </div>
-                ) : null}
-
                 {error ? (
                   <div className="text-xs text-red-400" role="status" aria-live="polite">
                     {error}
@@ -1711,7 +1599,7 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
                   <button
                     type="button"
                     className="btn-accent"
-                    disabled={busy || !isValidEmail(emailTrimmed) || (persona === 'user' && showUserWallet && !userWalletOk)}
+                    disabled={busy || !isValidEmail(emailTrimmed)}
                     onClick={() => void submitWaitlist({ email: emailTrimmed })}
                   >
                     {busy ? 'Submitting…' : 'Submit'}
