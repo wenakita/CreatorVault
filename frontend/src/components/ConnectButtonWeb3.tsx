@@ -825,7 +825,7 @@ function ConnectButtonWeb3Wagmi({
           </AnimatePresence>
         </div>
       ) : null}
-      {privyStatus === 'ready' ? (
+      {isDeployVariant && privyStatus === 'ready' ? (
         <PrivyEmailFallbackButton
           isPending={isPending}
           smartWalletConnector={privySmartWalletConnector}
