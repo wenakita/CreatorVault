@@ -145,6 +145,11 @@ function ConnectButtonWeb3Wagmi({
   })
   const walletConnectConnector = connectors.find((c) => String(c.id) === 'walletConnect' || String(c.name ?? '').toLowerCase().includes('walletconnect'))
   const rabbyConnector = connectors.find((c) => String(c.id ?? '').toLowerCase() === 'rabby' || String(c.name ?? '').toLowerCase().includes('rabby'))
+  const metaMaskConnector = connectors.find((c) => {
+    const id = String(c.id ?? '').toLowerCase()
+    const name = String(c.name ?? '').toLowerCase()
+    return id === 'metamask' || name.includes('metamask')
+  })
   const baseAppConnector = connectors.find((c) => {
     const id = String(c.id ?? '').toLowerCase()
     const name = String(c.name ?? '').toLowerCase()
@@ -205,7 +210,12 @@ function ConnectButtonWeb3Wagmi({
       // - Base App connector on the open web
       // - WalletConnect fallback when needed
       (miniApp.isMiniApp ? miniAppConnector : null) ?? baseAppConnector ?? walletConnectConnector ?? connectors[0]
-    : (miniApp.isMiniApp ? miniAppConnector : null) ?? zoraConnector ?? walletConnectConnector ?? rabbyConnector ?? connectors[0]
+    : // On the open web, prefer installed extensions first, then WalletConnect fallback.
+      (miniApp.isMiniApp ? miniAppConnector : null) ??
+      zoraConnector ??
+      (!miniApp.isMiniApp && !isEthereumLocked ? rabbyConnector ?? metaMaskConnector : null) ??
+      walletConnectConnector ??
+      connectors[0]
 
   const connectDirect = useCallback(
     async (c: Connector | null | undefined, opts?: { timeoutMs?: number; label?: string }) => {
@@ -257,10 +267,11 @@ function ConnectButtonWeb3Wagmi({
             miniApp.isMiniApp ? miniAppConnector : null,
             // If available, try Zora cross-app wallet first on desktop.
             !miniApp.isMiniApp ? zoraConnector : null,
-            // Universal fallback (QR) — also the safest option when injected wallet extensions conflict.
-            !miniApp.isMiniApp ? walletConnectConnector : null,
-            // Try injected wallets after WalletConnect (or skip if the injected provider is in a bad/locked state).
+            // Try injected wallets first (or skip if the injected provider is in a bad/locked state).
             !miniApp.isMiniApp && !isEthereumLocked ? rabbyConnector : null,
+            !miniApp.isMiniApp && !isEthereumLocked ? metaMaskConnector : null,
+            // Universal fallback (QR) — safest when injected wallet extensions conflict.
+            !miniApp.isMiniApp ? walletConnectConnector : null,
             !miniApp.isMiniApp && !isEthereumLocked ? baseAppConnector : null,
             preferredConnector,
             ...connectors,
@@ -322,6 +333,7 @@ function ConnectButtonWeb3Wagmi({
     rabbyConnector,
     reset,
     walletConnectConnector,
+    metaMaskConnector,
   ])
 
   // Best-effort: preserve a single "Connect Wallet" click when Web3 is lazily enabled.
@@ -716,6 +728,19 @@ function ConnectButtonWeb3Wagmi({
               ) : guideChoice === 'other' ? (
                 <div className="space-y-3">
                   <div className="text-[11px] text-zinc-500">Other wallets</div>
+                  {metaMaskConnector ? (
+                    <button
+                      type="button"
+                      disabled={isPending}
+                      className="btn-primary w-full disabled:opacity-50"
+                      onClick={() => {
+                        void connectDirect(metaMaskConnector, { timeoutMs: 30_000, label: 'MetaMask' })
+                        setShowGuide(false)
+                      }}
+                    >
+                      Continue with MetaMask
+                    </button>
+                  ) : null}
                   {walletConnectConnector ? (
                     <button
                       type="button"

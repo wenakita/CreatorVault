@@ -1220,6 +1220,34 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
     )
   }
 
+  const walletVerifyFallback = (
+    <motion.div
+      initial={{ opacity: 0, height: 0 }}
+      animate={{ opacity: 1, height: 'auto' }}
+      exit={{ opacity: 0, height: 0 }}
+      transition={{ duration: 0.15 }}
+      className="rounded-xl border border-white/10 bg-black/20 p-3 sm:p-4 space-y-2"
+    >
+      <ConnectButtonWeb3 />
+      <button
+        type="button"
+        className="btn-accent w-full disabled:opacity-50 disabled:cursor-not-allowed"
+        disabled={siwe.busy || !isWalletConnected || Boolean(verifiedWallet)}
+        onClick={() => {
+          void (async () => {
+            const signed = await siwe.signIn()
+            if (!signed) return
+            setVerifiedWallet(signed)
+            setClaimCoinError(null)
+          })()
+        }}
+      >
+        {!isWalletConnected ? 'Connect wallet first' : siwe.busy ? 'Signing…' : 'Sign to verify'}
+      </button>
+      {siwe.error ? <div className="text-xs text-red-400">{siwe.error}</div> : null}
+    </motion.div>
+  )
+
   return (
     <section id={variant === 'embedded' ? sectionId : undefined} className={containerClass}>
       <div className={innerWrapClass}>
@@ -1354,7 +1382,7 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
                 {/* Header */}
                 <div className="space-y-1">
                   <div className="headline text-2xl sm:text-3xl leading-tight">Verify</div>
-                  <div className="text-sm text-zinc-500">Continue with Base Account</div>
+                  <div className="text-sm text-zinc-500">Continue with a wallet</div>
                 </div>
 
                 {/* Farcaster verified state */}
@@ -1423,10 +1451,12 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
                         setPrivyVerifyBusy(true)
                         privyVerifyAttemptRef.current = Date.now()
                         const walletOptions = {
-                          // Avoid injected-wallet conflicts by only offering Base Account + WalletConnect.
-                          walletList: ['base_account', 'wallet_connect'],
+                          // Offer extension wallets unless multiple injected providers are present.
+                          walletList: isEthereumLocked
+                            ? ['base_account', 'wallet_connect']
+                            : ['base_account', 'detected_wallets', 'metamask', 'coinbase_wallet', 'wallet_connect'],
                           walletChainType: 'ethereum-only',
-                          description: 'Connect Base Account to verify.',
+                          description: 'Connect a wallet to verify.',
                         } as const
                         if (isEthereumLocked) {
                           setPrivyVerifyError('Multiple wallet extensions detected. Use WalletConnect or disable extras.')
@@ -1455,6 +1485,17 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
                     <div className="text-[11px] text-zinc-500 text-center">
                       WalletConnect works best if you have multiple wallet extensions.
                     </div>
+                    <div className="text-center">
+                      <button
+                        type="button"
+                        className="inline-flex items-center gap-1.5 text-sm text-zinc-500 hover:text-zinc-300 transition-colors"
+                        onClick={() => setShowWalletOption((v) => !v)}
+                      >
+                        <span>{showWalletOption ? 'Hide browser wallets' : 'Use a browser wallet instead'}</span>
+                        <ChevronDown className={`w-4 h-4 transition-transform ${showWalletOption ? 'rotate-180' : ''}`} />
+                      </button>
+                    </div>
+                    {showWalletOption ? walletVerifyFallback : null}
                   </div>
                 ) : null}
 
@@ -1523,31 +1564,7 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
                       </button>
                     </div>
                     {showWalletOption ? (
-                      <motion.div
-                        initial={{ opacity: 0, height: 0 }}
-                        animate={{ opacity: 1, height: 'auto' }}
-                        exit={{ opacity: 0, height: 0 }}
-                        transition={{ duration: 0.15 }}
-                        className="rounded-xl border border-white/10 bg-black/20 p-3 sm:p-4 space-y-2"
-                      >
-                        <ConnectButtonWeb3 />
-                        <button
-                          type="button"
-                          className="btn-accent w-full disabled:opacity-50 disabled:cursor-not-allowed"
-                          disabled={siwe.busy || !isWalletConnected || Boolean(verifiedWallet)}
-                          onClick={() => {
-                            void (async () => {
-                              const signed = await siwe.signIn()
-                              if (!signed) return
-                              setVerifiedWallet(signed)
-                              setClaimCoinError(null)
-                            })()
-                          }}
-                        >
-                          {!isWalletConnected ? 'Connect wallet first' : siwe.busy ? 'Signing…' : 'Sign to verify'}
-                        </button>
-                        {siwe.error ? <div className="text-xs text-red-400">{siwe.error}</div> : null}
-                      </motion.div>
+                      walletVerifyFallback
                     ) : null}
                   </div>
                 ) : null}

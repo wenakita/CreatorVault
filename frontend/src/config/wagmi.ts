@@ -58,6 +58,8 @@ function createWagmiBaseConfig({ includeZoraReadOnly }: { includeZoraReadOnly: b
       farcasterMiniApp(),
       // Prefer Rabby explicitly (avoids multi-wallet `window.ethereum` conflicts and gives users a clear "Rabby" option).
       injected({ target: 'rabby' }),
+      // Explicit MetaMask option (so extensions show up even with multi-injected discovery off).
+      injected({ target: 'metaMask' }),
       ...(walletConnectProjectId
         ? [
             walletConnect({
