@@ -8,7 +8,7 @@ import { useSiweAuth } from '@/hooks/useSiweAuth'
 import { ConnectButtonWeb3 } from '@/components/ConnectButtonWeb3'
 import { isPrivyClientEnabled } from '@/lib/flags'
 import { usePrivyClientStatus } from '@/lib/privy/client'
-import { useLogin, usePrivy, useWallets } from '@privy-io/react-auth'
+import { useLinkAccount, useLogin, usePrivy, useWallets } from '@privy-io/react-auth'
 import { Check, CheckCircle2, ChevronDown, ArrowLeft } from 'lucide-react'
 import { useMiniAppContext } from '@/hooks'
 import { apiAliasPath } from '@/lib/apiBase'
@@ -107,6 +107,12 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
   const { login: privyModalLogin } = useLogin()
   const { ready: privyReady, authenticated: privyAuthed, user: privyUser, logout: privyLogout } = usePrivy()
   const { wallets: privyWallets } = useWallets()
+  const { linkWallet: privyLinkWallet } = useLinkAccount({
+    onError: (e: any) => {
+      setPrivyVerifyError(e?.message ? String(e.message) : 'Wallet link failed')
+      setPrivyVerifyBusy(false)
+    },
+  })
   const [privyVerifyBusy, setPrivyVerifyBusy] = useState(false)
   const [privyVerifyError, setPrivyVerifyError] = useState<string | null>(null)
   const PrivySocialConnect = useMemo(
@@ -1346,12 +1352,16 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
                         if (!privyReady || privyVerifyBusy) return
                         setPrivyVerifyError(null)
                         setPrivyVerifyBusy(true)
-                        Promise.resolve(
-                          privyModalLogin({
-                            // Primary: connect an existing wallet (Base Account preferred via Privy config).
-                            loginMethods: ['wallet'],
-                          } as any),
-                        )
+                        // If the user already authenticated via email, switch to wallet-linking mode
+                        // so we don't just reopen the same login modal.
+                        const action = privyAuthed ? privyLinkWallet : privyModalLogin
+                        const params = privyAuthed
+                          ? (undefined as any)
+                          : ({
+                              // Primary: connect an existing wallet (Base Account preferred via Privy config).
+                              loginMethods: ['wallet'],
+                            } as any)
+                        Promise.resolve(privyAuthed ? (action as any)() : (action as any)(params))
                           .catch((e: any) => {
                             setPrivyVerifyError(e?.message ? String(e.message) : 'Sign-in failed')
                           })
