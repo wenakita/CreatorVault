@@ -47,11 +47,13 @@ function PrivyEmailFallbackButton({
   smartWalletConnector,
   connectDirect,
   onError,
+  onReset,
 }: {
   isPending: boolean
   smartWalletConnector: Connector | null | undefined
   connectDirect: (c: Connector | null | undefined, opts?: { timeoutMs?: number; label?: string }) => Promise<void>
   onError: (message: string | null) => void
+  onReset?: () => void
 }) {
   const { ready, authenticated, login } = usePrivy()
   const [busy, setBusy] = useState(false)
@@ -61,6 +63,7 @@ function PrivyEmailFallbackButton({
     setBusy(true)
     onError(null)
     try {
+      if (typeof onReset === 'function') onReset()
       if (!authenticated) {
         await login({ loginMethods: ['email'] } as any)
       }
@@ -81,11 +84,13 @@ function PrivyEmailFallbackButton({
     <div className="space-y-1">
       <button
         type="button"
-        disabled={!ready || isPending || busy}
+        disabled={busy}
         onClick={() => void handleClick()}
         className="btn-primary w-full disabled:opacity-50"
       >
-        <span className="label">{busy ? 'Starting email sign-in...' : 'Continue with email'}</span>
+        <span className="label">
+          {busy ? 'Starting email sign-in...' : !ready && isPending ? 'Loading sign-in...' : 'Continue with email'}
+        </span>
       </button>
       <div className="text-[10px] text-zinc-600">Uses a Privy smart wallet for deploy.</div>
     </div>
@@ -574,8 +579,12 @@ function ConnectButtonWeb3Wagmi({
     <div className={`flex flex-col gap-2 ${isDeployLike ? 'items-stretch' : 'items-end'}`}>
       <button
         type="button"
-        disabled={isPending || !preferredConnector}
+        disabled={isPending}
         onClick={() => {
+          if (!preferredConnector) {
+            setConnectError('No wallet connectors are available. Try the email option below.')
+            return
+          }
           if (showGuidedModal) {
             setGuideStep(1)
             setGuideChoice(null)
@@ -833,6 +842,7 @@ function ConnectButtonWeb3Wagmi({
           smartWalletConnector={privySmartWalletConnector}
           connectDirect={connectDirect}
           onError={setConnectError}
+          onReset={reset}
         />
       ) : null}
       {connectError ? <div className="text-[10px] text-zinc-500">{connectError}</div> : null}
