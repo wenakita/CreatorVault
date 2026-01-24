@@ -25,9 +25,9 @@ export async function ensureCreatorWalletsSchema(db: Db): Promise<void> {
     await db.sql`CREATE INDEX IF NOT EXISTS creator_wallets_wallet_idx ON creator_wallets (wallet_address);`
     await db.sql`CREATE INDEX IF NOT EXISTS creator_wallets_coin_idx ON creator_wallets (coin_address);`
     creatorWalletsEnsured = true
-  } catch {
+  } catch (err) {
     // Don't permanently lock out future attempts if a migration fails transiently.
     creatorWalletsEnsured = false
-    throw
+    throw err
   }
 }

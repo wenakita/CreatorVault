@@ -104,9 +104,8 @@ export async function ensureReferralsSchema(db: Db): Promise<void> {
     await db.sql`CREATE INDEX IF NOT EXISTS referral_conversions_code_created_idx ON referral_conversions (referral_code, created_at DESC);`
 
     referralsSchemaEnsured = true
-  } catch {
+  } catch (err) {
     referralsSchemaEnsured = false
-    throw
+    throw err
   }
 }
-
