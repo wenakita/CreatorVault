@@ -94,7 +94,7 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
   const referralSessionIdRef = useRef<string | null>(null)
 
   const appUrl = useMemo(() => getAppBaseUrl(), [])
-  const { isConnected: isWalletConnected } = useAccount()
+  const { isConnected: isWalletConnected, address: connectedAddressRaw } = useAccount()
   const siwe = useSiweAuth()
   const miniApp = useMiniAppContext()
   const { message: siwfMessage, signature: siwfSignature } = useSignInMessage()
@@ -182,6 +182,22 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
   }
 
   const emailTrimmed = useMemo(() => normalizeEmail(email), [email])
+  const connectedAddress = useMemo(
+    () =>
+      typeof connectedAddressRaw === 'string' && connectedAddressRaw.startsWith('0x') ? connectedAddressRaw.toLowerCase() : null,
+    [connectedAddressRaw],
+  )
+  const adminBypassSet = useMemo(() => {
+    // Keep this in sync with `frontend/src/App.tsx` so admins can always escape the waitlist UI.
+    const seed: string[] = ['0xb05cf01231cf2ff99499682e64d3780d57c80fdd']
+    const raw = String((import.meta.env.VITE_ADMIN_BYPASS_ADDRESSES as string | undefined) ?? '')
+    const fromEnv = raw
+      .split(',')
+      .map((s) => s.trim().toLowerCase())
+      .filter((s) => isValidEvmAddress(s))
+    return new Set<string>([...seed, ...fromEnv].map((a) => a.toLowerCase()))
+  }, [])
+  const isBypassAdmin = !!connectedAddress && adminBypassSet.has(connectedAddress)
   const forcedPersona = useMemo(() => {
     const q = new URLSearchParams(location.search)
     const raw = (q.get('persona') ?? '').trim().toLowerCase()
@@ -1639,6 +1655,24 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
                     <>You’re in. Share to move up.</>
                   )}
                 </div>
+
+                {isBypassAdmin ? (
+                  <div className="rounded-xl border border-white/10 bg-black/30 px-4 py-3 space-y-2">
+                    <div className="text-[10px] uppercase tracking-[0.24em] text-zinc-600">Admin</div>
+                    <a
+                      className="btn-primary w-full inline-flex justify-center"
+                      href={`${appUrl.replace(/\/+$/, '')}/deploy`}
+                    >
+                      Continue to deploy
+                    </a>
+                    <a
+                      className="btn-accent w-full inline-flex justify-center"
+                      href={`${appUrl.replace(/\/+$/, '')}/admin/creator-access`}
+                    >
+                      Creator access
+                    </a>
+                  </div>
+                ) : null}
 
                   <div className="rounded-xl border border-white/10 bg-black/30 px-4 py-3 space-y-2">
                   <div className="flex items-start justify-between gap-3">
