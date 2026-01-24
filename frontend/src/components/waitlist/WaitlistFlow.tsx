@@ -8,7 +8,7 @@ import { useSiweAuth } from '@/hooks/useSiweAuth'
 import { ConnectButtonWeb3 } from '@/components/ConnectButtonWeb3'
 import { isPrivyClientEnabled } from '@/lib/flags'
 import { usePrivyClientStatus } from '@/lib/privy/client'
-import { useLogin, usePrivy } from '@privy-io/react-auth'
+import { useLogin, usePrivy, useWallets } from '@privy-io/react-auth'
 import { Check, CheckCircle2, ChevronDown, ArrowLeft } from 'lucide-react'
 import { useMiniAppContext } from '@/hooks'
 import { apiAliasPath } from '@/lib/apiBase'
@@ -106,6 +106,7 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
   const showPrivy = isPrivyClientEnabled()
   const { login: privyModalLogin } = useLogin()
   const { ready: privyReady, authenticated: privyAuthed, user: privyUser, logout: privyLogout } = usePrivy()
+  const { wallets: privyWallets } = useWallets()
   const [privyVerifyBusy, setPrivyVerifyBusy] = useState(false)
   const [privyVerifyError, setPrivyVerifyError] = useState<string | null>(null)
   const PrivySocialConnect = useMemo(
@@ -138,10 +139,12 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
     return /^[1-9A-HJ-NP-Za-km-z]+$/.test(s)
   }
 
-  function extractPrivyWalletAddress(user: any): string | null {
-    const wallets = Array.isArray(user?.wallets) ? user.wallets : []
+  function extractPrivyWalletAddress(user: any, walletsOverride?: any[]): string | null {
+    const wallets = Array.isArray(walletsOverride) ? walletsOverride : Array.isArray(user?.wallets) ? user.wallets : []
+    const primaryWallet = user?.wallet && typeof user.wallet === 'object' ? [user.wallet] : []
+    const all = [...primaryWallet, ...wallets]
     // Prefer Base Account / Coinbase Smart Wallet if present.
-    for (const w of wallets) {
+    for (const w of all) {
       const addr = typeof w?.address === 'string' ? w.address : null
       if (!addr || !isValidEvmAddress(addr)) continue
       const clientType = String(w?.wallet_client_type || w?.walletClientType || '').toLowerCase()
@@ -149,7 +152,7 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
       if (clientType.includes('base') || clientType.includes('smart') || connectorType.includes('base')) return addr
     }
     // Fallback: first EVM wallet.
-    for (const w of wallets) {
+    for (const w of all) {
       const addr = typeof w?.address === 'string' ? w.address : null
       if (addr && isValidEvmAddress(addr)) return addr
     }
@@ -161,9 +164,11 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
     return null
   }
 
-  function extractPrivySolanaAddress(user: any): string | null {
-    const wallets = Array.isArray(user?.wallets) ? user.wallets : []
-    for (const w of wallets) {
+  function extractPrivySolanaAddress(user: any, walletsOverride?: any[]): string | null {
+    const wallets = Array.isArray(walletsOverride) ? walletsOverride : Array.isArray(user?.wallets) ? user.wallets : []
+    const primaryWallet = user?.wallet && typeof user.wallet === 'object' ? [user.wallet] : []
+    const all = [...primaryWallet, ...wallets]
+    for (const w of all) {
       const chainType = String(w?.chain_type || w?.chainType || '').toLowerCase()
       const addr = typeof w?.address === 'string' ? w.address : null
       if (addr && chainType.includes('solana') && isValidSolanaAddress(addr)) return addr
@@ -600,6 +605,8 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
     } finally {
       setVerifiedWallet(null)
       setVerifiedSolana(null)
+      setPrivyVerifyBusy(false)
+      setPrivyVerifyError(null)
       setCreatorCoin(null)
       setCreatorCoinBusy(false)
       creatorCoinForWalletRef.current = null
@@ -946,19 +953,24 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
     if (persona !== 'creator') return
     if (!privyReady || !privyAuthed) return
     if (verifiedWallet || verifiedSolana) return
-    const evm = extractPrivyWalletAddress(privyUser)
-    const sol = extractPrivySolanaAddress(privyUser)
+    const evm = extractPrivyWalletAddress(privyUser, privyWallets)
+    const sol = extractPrivySolanaAddress(privyUser, privyWallets)
     if (evm) {
       setVerifiedWallet(evm)
     } else if (sol) {
       setVerifiedSolana(sol)
     } else {
+      // User completed Privy auth but has no wallet attached (common for email-only login).
+      // Make the next step explicit instead of silently doing nothing.
+      setPrivyVerifyBusy(false)
+      const msg = 'Signed in — now connect a wallet (Base Account) to verify.'
+      setPrivyVerifyError((prev) => (prev === msg ? prev : msg))
       return
     }
     setPrivyVerifyError(null)
     setPrivyVerifyBusy(false)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [persona, privyAuthed, privyReady, privyStatus, privyUser, showPrivy, step, verifiedWallet, verifiedSolana])
+  }, [persona, privyAuthed, privyReady, privyStatus, privyUser, privyWallets, showPrivy, step, verifiedWallet, verifiedSolana])
 
   const [miniAppAddSupported, setMiniAppAddSupported] = useState<boolean | null>(null)
   useEffect(() => {
