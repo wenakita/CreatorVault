@@ -237,6 +237,11 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
   }
 
   const emailTrimmed = useMemo(() => normalizeEmail(email), [email])
+  const isEthereumLocked = useMemo(() => {
+    if (typeof window === 'undefined') return false
+    const desc = Object.getOwnPropertyDescriptor(window, 'ethereum')
+    return !!desc && typeof desc.get === 'function' && !desc.set
+  }, [])
   const connectedAddress = useMemo(
     () =>
       typeof connectedAddressRaw === 'string' && connectedAddressRaw.startsWith('0x') ? connectedAddressRaw.toLowerCase() : null,
@@ -1418,10 +1423,15 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
                         setPrivyVerifyBusy(true)
                         privyVerifyAttemptRef.current = Date.now()
                         const walletOptions = {
-                          walletList: ['base_account', 'coinbase_wallet', 'detected_wallets', 'metamask', 'wallet_connect'],
+                          walletList: isEthereumLocked
+                            ? ['base_account', 'wallet_connect']
+                            : ['base_account', 'coinbase_wallet', 'detected_wallets', 'metamask', 'wallet_connect'],
                           walletChainType: 'ethereum-only',
                           description: 'Connect Base Account to verify.',
                         } as const
+                        if (isEthereumLocked) {
+                          setPrivyVerifyError('Multiple wallet extensions detected. Disable extras or use WalletConnect.')
+                        }
                         const openWallet = () => {
                           if (privyAuthed && typeof privyLinkWallet === 'function') {
                             return privyLinkWallet(walletOptions as any)
