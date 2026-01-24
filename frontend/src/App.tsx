@@ -1,4 +1,4 @@
-import { lazy, useMemo } from 'react'
+import { lazy, useEffect, useMemo, useRef } from 'react'
 import { Routes, Route, Navigate, Outlet, useLocation } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { useAccount } from 'wagmi'
@@ -51,6 +51,17 @@ function getMarketingBaseUrl(): string {
 
 function AppAccessGate(props: { variant: 'signin' | 'denied'; marketingUrl: string; debugAddress: string | null }) {
   const siwe = useSiweAuth()
+  const { address, isConnected } = useAccount()
+  const autoSignAttempted = useRef<string | null>(null)
+
+  useEffect(() => {
+    if (props.variant !== 'signin') return
+    if (!isConnected || siwe.isSignedIn || siwe.busy) return
+    if (!address) return
+    if (autoSignAttempted.current === address) return
+    autoSignAttempted.current = address
+    void siwe.signIn()
+  }, [address, isConnected, props.variant, siwe])
 
   return (
     <div className="min-h-screen bg-black text-white">
@@ -79,9 +90,9 @@ function AppAccessGate(props: { variant: 'signin' | 'denied'; marketingUrl: stri
               <button
                 type="button"
                 className="btn-accent"
-                disabled={siwe.busy || !siwe.authAddress}
+                disabled={siwe.busy || !isConnected}
                 onClick={() => void siwe.signIn()}
-                title={siwe.authAddress ? 'Sign a message (no tx)' : 'Connect a wallet first'}
+                title={isConnected ? 'Sign a message (no tx)' : 'Connect a wallet or email first'}
               >
                 {siwe.busy ? 'Signing…' : 'Sign in'}
               </button>
@@ -160,6 +171,7 @@ function AppAllowlistGatePrivyEnabled() {
   const allowQuery = useCreatorAllowlist(isBypassAdmin ? null : authAddress)
   const allowed = allowQuery.data?.allowed === true
   const isPublicWaitlistRoute = location.pathname === '/waitlist' || location.pathname === '/leaderboard'
+  const isAdminRoute = location.pathname === '/admin' || location.pathname.startsWith('/admin/')
 
   const allowlistMode = allowlistModeQuery.data?.mode
   const allowlistEnforced = allowlistMode === 'enforced'
@@ -198,6 +210,10 @@ function AppAllowlistGatePrivyEnabled() {
 
   if (!siwe.isSignedIn) {
     return <AppAccessGate variant="signin" marketingUrl={getMarketingBaseUrl()} debugAddress={connectedAddress} />
+  }
+
+  if (isAdminRoute) {
+    return <Outlet />
   }
 
   if (allowQuery.isLoading) {

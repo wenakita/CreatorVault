@@ -45,12 +45,14 @@ type GuideChoice = 'base' | 'farcaster' | 'zora' | 'other'
 function PrivyEmailFallbackButton({
   isPending,
   smartWalletConnector,
+  getSmartWalletConnector,
   connectDirect,
   onError,
   onReset,
 }: {
   isPending: boolean
   smartWalletConnector: Connector | null | undefined
+  getSmartWalletConnector?: () => Connector | null | undefined
   connectDirect: (c: Connector | null | undefined, opts?: { timeoutMs?: number; label?: string }) => Promise<void>
   onError: (message: string | null) => void
   onReset?: () => void
@@ -67,11 +69,23 @@ function PrivyEmailFallbackButton({
       if (!authenticated) {
         await login({ loginMethods: ['email'] } as any)
       }
-      if (!smartWalletConnector) {
+      const resolveConnector = async (): Promise<Connector | null | undefined> => {
+        let resolved = smartWalletConnector ?? (typeof getSmartWalletConnector === 'function' ? getSmartWalletConnector() : null)
+        if (resolved) return resolved
+        const started = Date.now()
+        while (Date.now() - started < 5_000) {
+          await new Promise((r) => setTimeout(r, 250))
+          resolved = typeof getSmartWalletConnector === 'function' ? getSmartWalletConnector() : null
+          if (resolved) return resolved
+        }
+        return resolved
+      }
+      const resolvedConnector = await resolveConnector()
+      if (!resolvedConnector) {
         onError('Smart wallet is still loading - try again.')
         return
       }
-      await connectDirect(smartWalletConnector, { timeoutMs: 60_000, label: 'Email' })
+      await connectDirect(resolvedConnector, { timeoutMs: 60_000, label: 'Email' })
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : 'Email sign-in failed'
       onError(msg)
@@ -140,17 +154,20 @@ function ConnectButtonWeb3Wagmi({
     const name = String(c.name ?? '').toLowerCase()
     return id === 'privy-zora' || name.includes('zora')
   })
-  const privySmartWalletConnector = connectors.find((c) => {
-    const id = String(c.id ?? '').toLowerCase()
-    const name = String(c.name ?? '').toLowerCase()
-    if (!id && !name) return false
-    if (id === 'privy-zora' || name.includes('zora')) return false
-    if (id.includes('walletconnect') || name.includes('walletconnect')) return false
-    if (id.includes('rabby') || name.includes('rabby')) return false
-    if (id.includes('coinbase') || name.includes('coinbase') || name.includes('base app')) return false
-    if (id.includes('farcaster') || name.includes('farcaster') || name.includes('mini app')) return false
-    return id.includes('privy') || name.includes('privy') || id.includes('embedded') || name.includes('embedded') || name.includes('smart')
-  })
+  const getPrivySmartWalletConnector = useCallback(() => {
+    return connectors.find((c) => {
+      const id = String(c.id ?? '').toLowerCase()
+      const name = String(c.name ?? '').toLowerCase()
+      if (!id && !name) return false
+      if (id === 'privy-zora' || name.includes('zora')) return false
+      if (id.includes('walletconnect') || name.includes('walletconnect')) return false
+      if (id.includes('rabby') || name.includes('rabby')) return false
+      if (id.includes('coinbase') || name.includes('coinbase') || name.includes('base app')) return false
+      if (id.includes('farcaster') || name.includes('farcaster') || name.includes('mini app')) return false
+      return id.includes('privy') || name.includes('privy') || id.includes('embedded') || name.includes('embedded') || name.includes('smart')
+    })
+  }, [connectors])
+  const privySmartWalletConnector = getPrivySmartWalletConnector()
   const canUseBaseApp = Boolean(baseAppConnector)
   const canUseFarcaster = Boolean(miniAppConnector) && miniApp.isMiniApp
   const canUseZora = Boolean(zoraConnector)
@@ -180,7 +197,7 @@ function ConnectButtonWeb3Wagmi({
   const isDeployLike = isDeployVariant || isGateVariant
   const preferZoraOnDesktop = !isDeployLike && !miniApp.isMiniApp && Boolean(zoraConnector)
   // If Zora cross-app is available on desktop, make it the primary one-click path.
-  const showGuidedModal = !miniApp.isMiniApp && !preferZoraOnDesktop
+  const showGuidedModal = !isGateVariant && !miniApp.isMiniApp && !preferZoraOnDesktop
   const preferredConnector = isDeployLike
     ? // Deploy should use a single universal path to avoid eth_sign dead-ends:
       // - Mini App connector inside Mini Apps
@@ -717,6 +734,7 @@ function ConnectButtonWeb3Wagmi({
                     <PrivyEmailFallbackButton
                       isPending={isPending}
                       smartWalletConnector={privySmartWalletConnector}
+                      getSmartWalletConnector={getPrivySmartWalletConnector}
                       connectDirect={connectDirect}
                       onError={setConnectError}
                     />
@@ -840,6 +858,7 @@ function ConnectButtonWeb3Wagmi({
         <PrivyEmailFallbackButton
           isPending={isPending}
           smartWalletConnector={privySmartWalletConnector}
+          getSmartWalletConnector={getPrivySmartWalletConnector}
           connectDirect={connectDirect}
           onError={setConnectError}
           onReset={reset}
