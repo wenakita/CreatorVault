@@ -9,6 +9,7 @@ interface ImportMetaEnv {
   readonly VITE_PRIVY_APP_ID?: string
   readonly VITE_PRIVY_ENABLED?: string
   readonly VITE_PRIVY_ALLOWED_ORIGINS?: string
+  readonly VITE_ENABLE_ZORA_CONNECT?: string
   readonly VITE_REGISTRY_ADDRESS: string
   readonly VITE_FACTORY_ADDRESS: string
   readonly VITE_LOTTERY_MANAGER_ADDRESS: string

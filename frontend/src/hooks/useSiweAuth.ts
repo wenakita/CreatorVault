@@ -28,7 +28,7 @@ function coerceErrorMessage(e: unknown, fallback: string): string {
 
 function getStoredSessionToken(): string | null {
   try {
-    const v = localStorage.getItem(SESSION_TOKEN_KEY)
+    const v = sessionStorage.getItem(SESSION_TOKEN_KEY)
     const t = typeof v === 'string' ? v.trim() : ''
     return t.length > 0 ? t : null
   } catch {
@@ -39,10 +39,10 @@ function getStoredSessionToken(): string | null {
 function setStoredSessionToken(token: string | null) {
   try {
     if (!token) {
-      localStorage.removeItem(SESSION_TOKEN_KEY)
+      sessionStorage.removeItem(SESSION_TOKEN_KEY)
       return
     }
-    localStorage.setItem(SESSION_TOKEN_KEY, token)
+    sessionStorage.setItem(SESSION_TOKEN_KEY, token)
   } catch {
     // ignore
   }
@@ -162,5 +162,4 @@ export function useSiweAuth() {
 
   return { authAddress, isSignedIn, busy, error, signIn, signOut, refresh }
 }
-
 

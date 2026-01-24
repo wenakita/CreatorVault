@@ -20,6 +20,20 @@ type PrivyBaseSubAccountsDevPanelComponent = ComponentType<Record<string, never>
 export function PrivyClientProvider({ children }: { children: ReactNode }) {
   const enabled = isPrivyClientEnabled()
   const appId = enabled ? getPrivyAppId() : null
+  const enableZoraConnect = (() => {
+    const raw = (import.meta.env.VITE_ENABLE_ZORA_CONNECT as string | undefined) ?? ''
+    const v = raw.trim().toLowerCase()
+    return v === '1' || v === 'true' || v === 'yes'
+  })()
+  const embeddedCreateOnLogin = (() => {
+    const raw = (import.meta.env.VITE_PRIVY_EMBEDDED_CREATE_ON_LOGIN as string | undefined) ?? ''
+    const v = raw.trim().toLowerCase()
+    if (!v) return 'users-without-wallets'
+    if (v === '0' || v === 'false' || v === 'off' || v === 'disabled') return 'off'
+    if (v === '1' || v === 'true' || v === 'all' || v === 'all-users' || v === 'all_users') return 'all-users'
+    if (v === 'users-without-wallets' || v === 'without-wallets' || v === 'auto') return 'users-without-wallets'
+    return 'users-without-wallets'
+  })()
 
   const [MiniAppAutoLogin, setMiniAppAutoLogin] = useState<PrivyMiniAppAutoLoginComponent | null>(null)
   const [BaseAppDevBadge, setBaseAppDevBadge] = useState<PrivyBaseAppDevBadgeComponent | null>(null)
@@ -123,7 +137,7 @@ export function PrivyClientProvider({ children }: { children: ReactNode }) {
             // Prompt for an embedded wallet only when the user has no wallet yet.
             // This keeps email flows viable for admin access without forcing wallet creation for everyone.
             ethereum: {
-              createOnLogin: 'users-without-wallets',
+              createOnLogin: embeddedCreateOnLogin,
             },
             solana: {
               createOnLogin: 'off',
@@ -135,7 +149,14 @@ export function PrivyClientProvider({ children }: { children: ReactNode }) {
             // Note: Telegram OAuth often fails in strict web contexts unless fully configured; keep it off by default.
             // Allow external/browser wallets as a first-class login method.
             // Email login must be enabled in the Privy dashboard.
-            primary: ['wallet', `privy:${ZORA_PRIVY_PROVIDER_APP_ID}`, 'email', 'farcaster', 'google', 'twitter'],
+            primary: [
+              'wallet',
+              ...(enableZoraConnect ? [`privy:${ZORA_PRIVY_PROVIDER_APP_ID}`] : []),
+              'email',
+              'farcaster',
+              'google',
+              'twitter',
+            ],
             overflow: [],
           },
         } as any}

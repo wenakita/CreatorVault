@@ -9,40 +9,45 @@ export const WAITLIST_POINTS = {
 
 export async function ensureWaitlistPointsSchema(db: Db): Promise<void> {
   if (waitlistPointsSchemaEnsured) return
-  waitlistPointsSchemaEnsured = true
-
-  // Profile completion (used to qualify referrals).
   try {
-    await db.sql`ALTER TABLE waitlist_signups ADD COLUMN IF NOT EXISTS profile_completed_at TIMESTAMPTZ NULL;`
-  } catch {
-    // ignore (older Postgres or restricted perms)
-  }
+    // Profile completion (used to qualify referrals).
+    try {
+      await db.sql`ALTER TABLE waitlist_signups ADD COLUMN IF NOT EXISTS profile_completed_at TIMESTAMPTZ NULL;`
+    } catch {
+      // ignore (older Postgres or restricted perms)
+    }
 
-  // Referral conversion qualification state (backwards-compatible: NULL status treated as legacy-qualified by queries).
-  try {
-    await db.sql`ALTER TABLE referral_conversions ADD COLUMN IF NOT EXISTS status TEXT NULL;`
-    await db.sql`ALTER TABLE referral_conversions ADD COLUMN IF NOT EXISTS qualified_at TIMESTAMPTZ NULL;`
-  } catch {
-    // ignore
-  }
+    // Referral conversion qualification state (backwards-compatible: NULL status treated as legacy-qualified by queries).
+    try {
+      await db.sql`ALTER TABLE referral_conversions ADD COLUMN IF NOT EXISTS status TEXT NULL;`
+      await db.sql`ALTER TABLE referral_conversions ADD COLUMN IF NOT EXISTS qualified_at TIMESTAMPTZ NULL;`
+    } catch {
+      // ignore
+    }
 
-  // Append-only points ledger (idempotent via unique key).
-  await db.sql`
-    CREATE TABLE IF NOT EXISTS waitlist_points_ledger (
-      id BIGSERIAL PRIMARY KEY,
-      signup_id BIGINT NOT NULL,
-      source TEXT NOT NULL,
-      source_id TEXT NULL,
-      amount INT NOT NULL,
-      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-    );
-  `
-  await db.sql`
-    CREATE UNIQUE INDEX IF NOT EXISTS waitlist_points_ledger_unique_source
-      ON waitlist_points_ledger (signup_id, source, source_id)
-      WHERE source_id IS NOT NULL;
-  `
-  await db.sql`CREATE INDEX IF NOT EXISTS waitlist_points_ledger_signup_idx ON waitlist_points_ledger (signup_id, created_at DESC);`
+    // Append-only points ledger (idempotent via unique key).
+    await db.sql`
+      CREATE TABLE IF NOT EXISTS waitlist_points_ledger (
+        id BIGSERIAL PRIMARY KEY,
+        signup_id BIGINT NOT NULL,
+        source TEXT NOT NULL,
+        source_id TEXT NULL,
+        amount INT NOT NULL,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      );
+    `
+    await db.sql`
+      CREATE UNIQUE INDEX IF NOT EXISTS waitlist_points_ledger_unique_source
+        ON waitlist_points_ledger (signup_id, source, source_id)
+        WHERE source_id IS NOT NULL;
+    `
+    await db.sql`CREATE INDEX IF NOT EXISTS waitlist_points_ledger_signup_idx ON waitlist_points_ledger (signup_id, created_at DESC);`
+
+    waitlistPointsSchemaEnsured = true
+  } catch {
+    waitlistPointsSchemaEnsured = false
+    throw new Error('waitlist_points_schema_ensure_failed')
+  }
 }
 
 export async function awardWaitlistPoints(params: {

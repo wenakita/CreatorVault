@@ -42,39 +42,46 @@ export async function ensureDeploySessionsSchema(): Promise<void> {
   const db = await getDb()
   if (!db) return
   if (deploySessionsSchemaEnsured) return
-  deploySessionsSchemaEnsured = true
+  try {
+    await db.sql`
+      CREATE TABLE IF NOT EXISTS deploy_sessions (
+        id TEXT PRIMARY KEY,
+        token_hash TEXT UNIQUE NOT NULL,
+        session_address TEXT NOT NULL,
+        smart_wallet TEXT NOT NULL,
+        session_owner TEXT NOT NULL,
+        deploy_token TEXT NOT NULL,
+        session_owner_key_enc TEXT NOT NULL,
+        payload JSONB NOT NULL,
+        step TEXT NOT NULL DEFAULT 'created',
+        last_error TEXT,
+        last_userop_hash TEXT,
+        last_tx_hash TEXT,
+        expires_at TIMESTAMPTZ NOT NULL,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      );
+    `
 
-  await db.sql`
-    CREATE TABLE IF NOT EXISTS deploy_sessions (
-      id TEXT PRIMARY KEY,
-      token_hash TEXT UNIQUE NOT NULL,
-      session_address TEXT NOT NULL,
-      smart_wallet TEXT NOT NULL,
-      session_owner TEXT NOT NULL,
-      deploy_token TEXT NOT NULL,
-      session_owner_key_enc TEXT NOT NULL,
-      payload JSONB NOT NULL,
-      step TEXT NOT NULL DEFAULT 'created',
-      last_error TEXT,
-      last_userop_hash TEXT,
-      last_tx_hash TEXT,
-      expires_at TIMESTAMPTZ NOT NULL,
-      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-    );
-  `
-
-  await db.sql`CREATE INDEX IF NOT EXISTS deploy_sessions_sender_idx ON deploy_sessions (smart_wallet);`
-  await db.sql`CREATE INDEX IF NOT EXISTS deploy_sessions_session_address_idx ON deploy_sessions (session_address);`
-  await db.sql`CREATE INDEX IF NOT EXISTS deploy_sessions_step_idx ON deploy_sessions (step);`
-  await db.sql`CREATE INDEX IF NOT EXISTS deploy_sessions_expires_idx ON deploy_sessions (expires_at);`
+    await db.sql`CREATE INDEX IF NOT EXISTS deploy_sessions_sender_idx ON deploy_sessions (smart_wallet);`
+    await db.sql`CREATE INDEX IF NOT EXISTS deploy_sessions_session_address_idx ON deploy_sessions (session_address);`
+    await db.sql`CREATE INDEX IF NOT EXISTS deploy_sessions_step_idx ON deploy_sessions (step);`
+    await db.sql`CREATE INDEX IF NOT EXISTS deploy_sessions_expires_idx ON deploy_sessions (expires_at);`
+    deploySessionsSchemaEnsured = true
+  } catch {
+    deploySessionsSchemaEnsured = false
+    throw
+  }
 }
 
+let _deploySecretKey: Buffer | null = null
 function requireDeploySecret(): Buffer {
+  if (_deploySecretKey) return _deploySecretKey
   const raw = (process.env.DEPLOY_SESSION_SECRET ?? '').trim()
   if (!raw) throw new Error('DEPLOY_SESSION_SECRET missing')
   // Derive a fixed 32-byte key from the secret.
-  return createHash('sha256').update(raw, 'utf8').digest()
+  _deploySecretKey = createHash('sha256').update(raw, 'utf8').digest()
+  return _deploySecretKey
 }
 
 function encryptWithSecret(plaintext: string): string {

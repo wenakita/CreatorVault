@@ -6,7 +6,7 @@ Each subdirectory defines a skill with activation triggers and context:
 
 - `creator-profile-enrichment/` - Reputation aggregation from Talent Protocol, Guild.xyz, Basenames
 - `lottery-vrf-ops/` - Chainlink VRF 2.5 lottery operations
-- `offt-chain-config/` - LayerZero V2 OFT cross-chain configuration
+- `oft-chain-config/` - LayerZero V2 OFT cross-chain configuration
 - `vault-deployment/` - ERC-4626 vault deployment workflows
 - `yield-strategy-management/` - Strategy allocation and rebalancing
 

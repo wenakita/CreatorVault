@@ -121,6 +121,7 @@ CREATE TABLE IF NOT EXISTS waitlist_signups (
   primary_wallet TEXT NULL,
   privy_user_id TEXT NULL,
   embedded_wallet TEXT NULL,
+  base_sub_account TEXT NULL,
   persona TEXT NULL,
   has_creator_coin BOOLEAN NULL,
   farcaster_fid BIGINT NULL,

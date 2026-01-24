@@ -64,6 +64,8 @@ export async function fetchDebankTotalBalanceBatch(params: { addresses: string[]
   for (const group of batches) {
     try {
       const qs = new URLSearchParams({ ids: group.join(',') })
+      // Ask the server for a small chain breakdown for UX/reputation signals.
+      qs.set('includeChains', '1')
       const envelope = await fetchJson<ApiEnvelope<DebankTotalBalanceBatch>>(`/api/debank/totalBalanceBatch?${qs.toString()}`)
       const data = envelope.data ?? null
       if (!data) continue

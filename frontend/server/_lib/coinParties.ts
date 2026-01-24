@@ -10,6 +10,21 @@ function getBaseRpcUrl(): string {
   return 'https://mainnet.base.org'
 }
 
+let _clientPromise: Promise<any> | null = null
+async function getBaseClient() {
+  // Cache the viem client on warm serverless instances to avoid re-initializing transports.
+  if (_clientPromise) return _clientPromise
+  _clientPromise = (async () => {
+    const { createPublicClient, http } = await import('viem')
+    const { base } = await import('viem/chains')
+    return createPublicClient({
+      chain: base,
+      transport: http(getBaseRpcUrl(), { timeout: 12_000 }),
+    })
+  })()
+  return _clientPromise
+}
+
 const COIN_VIEW_ABI = [
   { type: 'function', name: 'creator', stateMutability: 'view', inputs: [], outputs: [{ type: 'address' }] },
   { type: 'function', name: 'payoutRecipient', stateMutability: 'view', inputs: [], outputs: [{ type: 'address' }] },
@@ -24,13 +39,7 @@ export async function resolveCoinParties(
   coin: `0x${string}`,
 ): Promise<{ creator: `0x${string}` | null; payoutRecipient: `0x${string}` | null }> {
   try {
-    const { createPublicClient, http } = await import('viem')
-    const { base } = await import('viem/chains')
-
-    const client = createPublicClient({
-      chain: base,
-      transport: http(getBaseRpcUrl(), { timeout: 12_000 }),
-    })
+    const client = await getBaseClient()
 
     const [creator, payoutRecipient] = await Promise.all([
       client.readContract({ address: coin, abi: COIN_VIEW_ABI, functionName: 'creator' }).catch(() => null),
@@ -52,13 +61,7 @@ export async function resolveCoinPartiesAndOwner(coin: `0x${string}`): Promise<{
   owner: `0x${string}` | null
 }> {
   try {
-    const { createPublicClient, http } = await import('viem')
-    const { base } = await import('viem/chains')
-
-    const client = createPublicClient({
-      chain: base,
-      transport: http(getBaseRpcUrl(), { timeout: 12_000 }),
-    })
+    const client = await getBaseClient()
 
     const [creator, payoutRecipient, owner] = await Promise.all([
       client.readContract({ address: coin, abi: COIN_VIEW_ABI, functionName: 'creator' }).catch(() => null),

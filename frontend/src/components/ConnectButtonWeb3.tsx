@@ -891,6 +891,11 @@ function ConnectButtonWeb3Wagmi({
         />
       ) : null}
       {connectError ? <div className="text-[10px] text-zinc-500">{connectError}</div> : null}
+      {!miniApp.isMiniApp && isEthereumLocked ? (
+        <div className="text-[10px] text-amber-300/80">
+          Multiple wallet extensions detected. Disable extras or use WalletConnect.
+        </div>
+      ) : null}
     </div>
   )
 }

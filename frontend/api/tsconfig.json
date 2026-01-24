@@ -22,6 +22,7 @@
     "./onchain/**/*.ts",
     "./auth/**/*.ts",
     "./status/**/*.ts",
+    "./_handlers/**/*.ts",
     "./creator-allowlist.ts",
     "./creator-access/**/*.ts",
     "./admin/**/*.ts",

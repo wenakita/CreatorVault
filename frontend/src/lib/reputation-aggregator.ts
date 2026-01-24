@@ -6,6 +6,7 @@ import { getTalentPassport, getTalentSocials, type TalentPassport } from './tale
 import { getBaseGuildStats, type BaseGuildStats } from './guild-api'
 import { getBasenameProfile, type BasenameInfo } from './basename-api'
 import { getZoraCreatorProfile, type ZoraCreator } from './zora-api'
+import { fetchDebankTotalBalanceBatch, type DebankTotalBalance } from './debank/client'
 import { resolveCreatorAddress } from './creator-coin-resolver'
 import { logger } from './logger'
 
@@ -13,6 +14,10 @@ export interface OnchainReputation {
   // Identity
   address: string
   basename: BasenameInfo
+  debank: {
+    totalBalance: DebankTotalBalance | null
+    asOf?: number
+  }
   
   // Reputation scores
   talent: {
@@ -44,13 +49,33 @@ export interface OnchainReputation {
   }
 }
 
+function calculateDebankScore(totalBalance: DebankTotalBalance | null): number {
+  if (!totalBalance) return 0
+  const total = typeof totalBalance.totalUsdValue === 'number' ? totalBalance.totalUsdValue : NaN
+  if (!Number.isFinite(total) || total <= 0) return 0
+
+  // A conservative, bucketed signal: avoid overfitting to volatile portfolio sizes.
+  // This is NOT a measure of "quality"—it’s an activity/usage proxy.
+  let valueScore = 0
+  if (total >= 100_000) valueScore = 90
+  else if (total >= 10_000) valueScore = 75
+  else if (total >= 1_000) valueScore = 60
+  else if (total >= 100) valueScore = 40
+  else valueScore = 20
+
+  const chainCount = Array.isArray(totalBalance.chains) ? totalBalance.chains.length : 0
+  const diversityBonus = chainCount >= 4 ? 10 : chainCount >= 2 ? 5 : 0
+  return Math.min(100, valueScore + diversityBonus)
+}
+
 /**
  * Calculate weighted reputation score from all sources
  */
 function calculateAggregatedScore(
   talent: TalentPassport | null,
   guild: BaseGuildStats,
-  basename: BasenameInfo
+  basename: BasenameInfo,
+  debank: DebankTotalBalance | null
 ): number {
   let score = 0
   let weights = 0
@@ -76,6 +101,13 @@ function calculateAggregatedScore(
   const verificationScore = calculateVerificationScore(talent, guild, basename)
   score += verificationScore * 0.2
   weights += 0.2
+
+  // DeBank (10% weight, optional): portfolio totals + chain diversity (usage proxy)
+  const debankScore = calculateDebankScore(debank)
+  if (debankScore > 0) {
+    score += debankScore * 0.1
+    weights += 0.1
+  }
 
   return weights > 0 ? Math.round(score / weights) : 0
 }
@@ -142,7 +174,8 @@ function getReputationLevel(score: number): OnchainReputation['aggregated']['rep
 function generateBadges(
   talent: TalentPassport | null,
   guild: BaseGuildStats,
-  basename: BasenameInfo
+  basename: BasenameInfo,
+  debank: DebankTotalBalance | null
 ): string[] {
   const badges: string[] = []
 
@@ -166,6 +199,12 @@ function generateBadges(
   // Activity badges
   if (guild.isOnchain) badges.push('Onchain Active')
   if (guild.isBuilder) badges.push('Builder')
+
+  // DeBank badges (portfolio activity; keep language neutral)
+  if (debank && Number.isFinite(debank.totalUsdValue) && debank.totalUsdValue > 0) {
+    badges.push('DeFi Active')
+    if (Array.isArray(debank.chains) && debank.chains.length >= 2) badges.push('Multi-chain')
+  }
 
   return badges
 }
@@ -211,24 +250,34 @@ export async function getOnchainReputation(address: string): Promise<OnchainRepu
     logger.debug('[Reputation] Resolved address:', resolvedAddress)
     
     // STEP 2: Fetch all data sources in parallel using the resolved address
-    const [talent, talentSocials, guild, basename, zora] = await Promise.all([
+    const [talent, talentSocials, guild, basename, zora, debankBatch] = await Promise.all([
       getTalentPassport(resolvedAddress),
       getTalentSocials(resolvedAddress),
       getBaseGuildStats(resolvedAddress),
       getBasenameProfile(resolvedAddress),
       getZoraCreatorProfile(resolvedAddress),
+      fetchDebankTotalBalanceBatch({ addresses: [resolvedAddress] }),
     ])
 
+    const debankTotalBalance =
+      debankBatch?.results?.[resolvedAddress.toLowerCase()] ??
+      debankBatch?.results?.[resolvedAddress] ??
+      null
+
     // Calculate aggregated metrics
-    const totalScore = calculateAggregatedScore(talent, guild, basename)
+    const totalScore = calculateAggregatedScore(talent, guild, basename, debankTotalBalance)
     const reputationLevel = getReputationLevel(totalScore)
-    const badges = generateBadges(talent, guild, basename)
+    const badges = generateBadges(talent, guild, basename, debankTotalBalance)
     const trustScore = calculateVerificationScore(talent, guild, basename)
     const socialReach = estimateSocialReach(talent, guild)
 
     return {
       address: resolvedAddress, // Use resolved address for display
       basename,
+      debank: {
+        totalBalance: debankTotalBalance,
+        asOf: typeof debankBatch?.asOf === 'number' ? debankBatch.asOf : undefined,
+      },
       talent: {
         passport: talent,
         score: talent?.score || 0,
@@ -258,6 +307,9 @@ export async function getOnchainReputation(address: string): Promise<OnchainRepu
     return {
       address,
       basename: { name: null },
+      debank: {
+        totalBalance: null,
+      },
       talent: {
         passport: null,
         score: 0,

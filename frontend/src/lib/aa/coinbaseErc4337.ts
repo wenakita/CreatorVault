@@ -27,7 +27,7 @@ const SESSION_TOKEN_KEY = 'cv_siwe_session_token'
 
 function getStoredSessionToken(): string | null {
   try {
-    const v = localStorage.getItem(SESSION_TOKEN_KEY)
+    const v = sessionStorage.getItem(SESSION_TOKEN_KEY)
     const t = typeof v === 'string' ? v.trim() : ''
     return t.length > 0 ? t : null
   } catch {

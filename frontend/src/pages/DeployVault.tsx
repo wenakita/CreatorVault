@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { motion } from 'framer-motion'
 import { useAccount, usePublicClient, useReadContract, useWalletClient } from 'wagmi'
 import { base } from 'wagmi/chains'
@@ -24,7 +24,7 @@ import { useQuery } from '@tanstack/react-query'
 import { coinABI } from '@zoralabs/protocol-deployments'
 import { BarChart3, ChevronDown, Layers, Lock, Rocket, ShieldCheck } from 'lucide-react'
 import { useOnchainKit } from '@coinbase/onchainkit'
-import { useLogin, usePrivy } from '@privy-io/react-auth'
+import { useLogin, usePrivy, useWallets } from '@privy-io/react-auth'
 import { useSmartWallets } from '@privy-io/react-auth/smart-wallets'
 import { DerivedTokenIcon } from '@/components/DerivedTokenIcon'
 import { RequestCreatorAccess } from '@/components/RequestCreatorAccess'
@@ -97,6 +97,23 @@ const COINBASE_SMART_WALLET_OWNERS_ABI = [
     stateMutability: 'view',
     inputs: [{ name: 'index', type: 'uint256' }],
     outputs: [{ type: 'bytes' }],
+  },
+] as const
+
+const COINBASE_SMART_WALLET_OWNER_LINK_ABI = [
+  {
+    type: 'function',
+    name: 'addOwnerAddress',
+    stateMutability: 'nonpayable',
+    inputs: [{ name: 'owner', type: 'address' }],
+    outputs: [],
+  },
+  {
+    type: 'function',
+    name: 'isOwnerAddress',
+    stateMutability: 'view',
+    inputs: [{ name: 'account', type: 'address' }],
+    outputs: [{ name: '', type: 'bool' }],
   },
 ] as const
 
@@ -1800,9 +1817,18 @@ function DeployVaultPrivyEnabled() {
   const { address, isConnected, connector } = useAccount()
   const { config: onchainKitConfig } = useOnchainKit()
   const { ready: privyReady, authenticated: privyAuthenticated } = usePrivy()
+  const { data: walletClient } = useWalletClient({ chainId: base.id })
   const { login } = useLogin()
+  const { wallets: privyWallets } = useWallets()
   const [creatorToken, setCreatorToken] = useState('')
   const [showAdvanced, setShowAdvanced] = useState(false)
+  const [linkOwnerBusy, setLinkOwnerBusy] = useState(false)
+  const [linkOwnerError, setLinkOwnerError] = useState<string | null>(null)
+  const baseAccountWallet = useMemo(() => privyWallets.find((w) => w.walletClientType === 'base_account') ?? null, [privyWallets])
+  const baseAccountAddress = useMemo(() => {
+    const raw = typeof baseAccountWallet?.address === 'string' ? baseAccountWallet.address : ''
+    return isAddress(raw) ? (getAddress(raw) as Address) : null
+  }, [baseAccountWallet?.address])
   const deploymentVersion = useMemo(() => {
     const raw = (import.meta.env.VITE_DEPLOYMENT_VERSION as string | undefined) ?? 'v3'
     const v = String(raw).trim()
@@ -2188,6 +2214,77 @@ function DeployVaultPrivyEnabled() {
   const canonicalIdentityAddress = identity.canonicalIdentity.address
   const deploySender = (canonicalIdentityAddress as Address | null) ?? null
 
+  const canonicalIdentityBytecodeQuery = useQuery({
+    queryKey: ['bytecode', 'canonicalIdentity', canonicalIdentityAddress],
+    enabled: !!publicClient && !!canonicalIdentityAddress,
+    queryFn: async () => {
+      return await publicClient!.getBytecode({ address: canonicalIdentityAddress as Address })
+    },
+    staleTime: 60_000,
+    retry: 0,
+  })
+  const canonicalIdentityIsContract = useMemo(() => {
+    const code = canonicalIdentityBytecodeQuery.data
+    return !!code && code !== '0x'
+  }, [canonicalIdentityBytecodeQuery.data])
+  const canonicalSmartWalletAddress = useMemo(() => {
+    if (!canonicalIdentityIsContract) return null
+    const raw = typeof canonicalIdentityAddress === 'string' ? canonicalIdentityAddress : ''
+    return isAddress(raw) ? (getAddress(raw) as Address) : null
+  }, [canonicalIdentityAddress, canonicalIdentityIsContract])
+
+  const baseAccountOwnerQuery = useQuery({
+    queryKey: ['coinbaseSmartWalletOwner', canonicalSmartWalletAddress, baseAccountAddress],
+    enabled: !!publicClient && !!canonicalSmartWalletAddress && !!baseAccountAddress,
+    staleTime: 30_000,
+    retry: 0,
+    queryFn: async () => {
+      return (await publicClient!.readContract({
+        address: canonicalSmartWalletAddress as Address,
+        abi: COINBASE_SMART_WALLET_OWNER_LINK_ABI,
+        functionName: 'isOwnerAddress',
+        args: [baseAccountAddress as Address],
+      })) as boolean
+    },
+  })
+
+  const linkBaseAccountOwner = useCallback(async () => {
+    if (!publicClient || !walletClient || !canonicalSmartWalletAddress || !baseAccountAddress) return
+    setLinkOwnerBusy(true)
+    setLinkOwnerError(null)
+    try {
+      if (baseAccountOwnerQuery.data === true) return
+      const executor = connectedWalletAddress
+      if (!executor || !isAddress(executor)) {
+        throw new Error('Connect a wallet that already owns the creator smart wallet.')
+      }
+      if (executor.toLowerCase() !== canonicalSmartWalletAddress.toLowerCase()) {
+        const isOwner = (await publicClient.readContract({
+          address: canonicalSmartWalletAddress as Address,
+          abi: COINBASE_SMART_WALLET_OWNER_LINK_ABI,
+          functionName: 'isOwnerAddress',
+          args: [executor as Address],
+        })) as boolean
+        if (!isOwner) throw new Error('Connected wallet is not an owner of the creator smart wallet.')
+      }
+
+      const hash = await (walletClient as any).writeContract({
+        account: (walletClient as any).account,
+        chain: base as any,
+        address: canonicalSmartWalletAddress as Address,
+        abi: COINBASE_SMART_WALLET_OWNER_LINK_ABI,
+        functionName: 'addOwnerAddress',
+        args: [baseAccountAddress as Address],
+      })
+      await (publicClient as any).waitForTransactionReceipt({ hash })
+      await baseAccountOwnerQuery.refetch()
+    } catch (e: any) {
+      setLinkOwnerError(e?.shortMessage || e?.message || 'Failed to link Base Account')
+    } finally {
+      setLinkOwnerBusy(false)
+    }
+  }, [baseAccountAddress, baseAccountOwnerQuery, canonicalSmartWalletAddress, connectedWalletAddress, publicClient, walletClient])
+
   // Allow injected EOAs (Rabby/MetaMask/etc) to operate a Coinbase Smart Wallet canonical identity
   // when the EOA is an onchain owner of that smart wallet.
   const executionCanOperateCanonicalQuery = useQuery({
@@ -2235,6 +2332,13 @@ function DeployVaultPrivyEnabled() {
   // If the canonical identity is a smart wallet contract, wagmi should reflect that smart wallet address
   // via the Privy smart-wallet bridge.
   const isAuthorizedDeployer = !identityBlockingReason
+  const baseAccountIsOwner = baseAccountOwnerQuery.data === true
+  const showBaseAccountLink =
+    privyAuthenticated &&
+    isConnected &&
+    !!canonicalSmartWalletAddress &&
+    !!baseAccountAddress &&
+    baseAccountAddress.toLowerCase() !== canonicalSmartWalletAddress.toLowerCase()
 
   const { data: deploySenderTokenBalance } = useReadContract({
     address: tokenIsValid ? (creatorToken as `0x${string}`) : undefined,
@@ -3019,6 +3123,44 @@ function DeployVaultPrivyEnabled() {
                   <div className="text-[11px] text-zinc-700">
                     Vault ownership will be set to the canonical identity. Your connected wallet only executes the transaction.
                   </div>
+                </div>
+              ) : null}
+
+              {showBaseAccountLink ? (
+                <div className="rounded-lg border border-white/10 bg-black/20 p-4 space-y-3">
+                  <div className="text-[10px] uppercase tracking-wide text-zinc-600">Link Base Account</div>
+                  <div className="text-xs text-zinc-600">
+                    This grants your Base App smart wallet co-owner rights on the creator smart wallet. Only a current owner can approve.
+                  </div>
+                  <div className="flex items-center justify-between text-[11px] text-zinc-600">
+                    <span>Authorizing wallet</span>
+                    <span className="font-mono text-zinc-300">
+                      {connectedWalletAddress ? shortAddress(String(connectedWalletAddress)) : 'Connect wallet'}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between text-[11px] text-zinc-600">
+                    <span>Base Account</span>
+                    <span className="font-mono text-zinc-300">{shortAddress(String(baseAccountAddress))}</span>
+                  </div>
+                  <div className="flex items-center justify-between text-[11px] text-zinc-600">
+                    <span>Creator smart wallet</span>
+                    <span className="font-mono text-zinc-300">{shortAddress(String(canonicalSmartWalletAddress))}</span>
+                  </div>
+                  {baseAccountOwnerQuery.isFetching ? (
+                    <div className="text-[11px] text-zinc-600">Checking owner status…</div>
+                  ) : baseAccountIsOwner ? (
+                    <div className="text-[11px] text-emerald-300/80">Base Account is already an owner.</div>
+                  ) : (
+                    <button
+                      type="button"
+                      className="btn-accent w-full disabled:opacity-60"
+                      disabled={linkOwnerBusy}
+                      onClick={() => void linkBaseAccountOwner()}
+                    >
+                      {linkOwnerBusy ? 'Linking…' : 'Link Base Account as owner'}
+                    </button>
+                  )}
+                  {linkOwnerError ? <div className="text-[11px] text-red-400/90">{linkOwnerError}</div> : null}
                 </div>
               ) : null}
 

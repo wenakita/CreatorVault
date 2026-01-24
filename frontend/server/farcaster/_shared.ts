@@ -38,7 +38,11 @@ export function parseCookies(req: VercelRequest): Record<string, string> {
     const k = part.slice(0, idx).trim()
     const v = part.slice(idx + 1).trim()
     if (!k) continue
-    out[k] = decodeURIComponent(v)
+    try {
+      out[k] = decodeURIComponent(v)
+    } catch {
+      out[k] = v
+    }
   }
   return out
 }
@@ -53,6 +57,19 @@ function isProbablyHttps(req: VercelRequest): boolean {
   return host.length > 0
 }
 
+function appendSetCookie(res: VercelResponse, value: string) {
+  const existing = res.getHeader('Set-Cookie')
+  if (!existing) {
+    res.setHeader('Set-Cookie', value)
+    return
+  }
+  if (Array.isArray(existing)) {
+    res.setHeader('Set-Cookie', [...existing, value])
+    return
+  }
+  res.setHeader('Set-Cookie', [String(existing), value])
+}
+
 export function setCookie(
   req: VercelRequest,
   res: VercelResponse,
@@ -64,21 +81,26 @@ export function setCookie(
   if (opts.httpOnly ?? true) parts.push('HttpOnly')
   if (typeof opts.maxAgeSeconds === 'number') parts.push(`Max-Age=${Math.max(0, Math.floor(opts.maxAgeSeconds))}`)
   if (isProbablyHttps(req)) parts.push('Secure')
-  res.setHeader('Set-Cookie', parts.join('; '))
+  appendSetCookie(res, parts.join('; '))
 }
 
 export function clearCookie(req: VercelRequest, res: VercelResponse, name: string) {
   setCookie(req, res, name, '', { maxAgeSeconds: 0, httpOnly: true })
 }
 
-export async function readJsonBody<T>(req: VercelRequest): Promise<T | null> {
+export async function readJsonBody<T>(req: VercelRequest, opts: { maxBytes?: number } = {}): Promise<T | null> {
   // Vercel may populate req.body; our local dev middleware doesn't.
   const b: unknown = (req as any).body
   if (b && typeof b === 'object') return b as T
 
   const chunks: Buffer[] = []
+  const maxBytes = typeof opts.maxBytes === 'number' && Number.isFinite(opts.maxBytes) ? Math.max(1, Math.floor(opts.maxBytes)) : 1_000_000
+  let total = 0
   for await (const chunk of req as any) {
-    chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk))
+    const buf = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk)
+    total += buf.length
+    if (total > maxBytes) return null
+    chunks.push(buf)
   }
   if (chunks.length === 0) return null
   try {

@@ -9,5 +9,5 @@
     "allowSyntheticDefaultImports": true,
     "strict": true
   },
-  "include": ["vite.config.ts", "api/**/*.ts", "api_handlers/**/*.ts", "server/_lib/**/*.ts"]
+  "include": ["vite.config.ts", "api/**/*.ts", "api/_handlers/**/*.ts", "server/_lib/**/*.ts"]
 }

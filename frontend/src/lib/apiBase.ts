@@ -37,7 +37,7 @@ export async function apiFetch(path: string, init: ApiFetchInit = {}, bases?: st
   const headers = new Headers(init.headers ?? undefined)
   if (typeof window !== 'undefined' && path.startsWith('/api/') && !headers.has('Authorization')) {
     try {
-      const token = localStorage.getItem('cv_siwe_session_token')
+      const token = sessionStorage.getItem('cv_siwe_session_token')
       if (token && token.trim()) headers.set('Authorization', `Bearer ${token.trim()}`)
     } catch {
       // ignore
@@ -77,4 +77,3 @@ export async function apiFetch(path: string, init: ApiFetchInit = {}, bases?: st
   }
   throw lastErr ?? new Error('Request failed')
 }
-

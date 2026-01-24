@@ -50,6 +50,12 @@ const walletConnectMetadata = {
   icons: ['https://4626.fun/pwa-512.png'] as string[],
 }
 
+const enableZoraConnect = (() => {
+  const raw = (import.meta.env.VITE_ENABLE_ZORA_CONNECT as string | undefined) ?? ''
+  const v = raw.trim().toLowerCase()
+  return v === '1' || v === 'true' || v === 'yes'
+})()
+
 function createWagmiBaseConfig({ includeZoraReadOnly }: { includeZoraReadOnly: boolean }) {
   return createWagmiConfig({
     chains: [base],
@@ -69,7 +75,7 @@ function createWagmiBaseConfig({ includeZoraReadOnly }: { includeZoraReadOnly: b
             }),
           ]
         : []),
-      ...(includeZoraReadOnly
+      ...(includeZoraReadOnly && enableZoraConnect
         ? [
             // Privy Global Wallet (Requester): Zora embedded wallet (read-only provider).
             zoraGlobalWalletConnector(),
