@@ -72,7 +72,6 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
     priceUsd: number | null
   } | null>(null)
   const [creatorCoinBusy, setCreatorCoinBusy] = useState(false)
-  const [claimCoinInput, setClaimCoinInput] = useState('')
   const [claimCoinBusy, setClaimCoinBusy] = useState(false)
   const [claimCoinError, setClaimCoinError] = useState<string | null>(null)
   const creatorCoinForWalletRef = useRef<string | null>(null)
@@ -194,8 +193,6 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
 
   const emailTrimmed = useMemo(() => normalizeEmail(email), [email])
   const userWalletTrimmed = useMemo(() => normalizeAddress(userWallet), [userWallet])
-  const claimCoinTrimmed = useMemo(() => normalizeAddress(claimCoinInput).toLowerCase(), [claimCoinInput])
-  const claimCoinOk = useMemo(() => claimCoinTrimmed.length === 0 || isValidEvmAddress(claimCoinTrimmed), [claimCoinTrimmed])
   const userWalletOk = useMemo(
     () => userWalletTrimmed.length === 0 || isValidEvmAddress(userWalletTrimmed),
     [userWalletTrimmed],
@@ -587,7 +584,6 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
     setCreatorCoinBusy(false)
     creatorCoinForWalletRef.current = null
     claimCoinForWalletRef.current = null
-    setClaimCoinInput('')
     setClaimCoinBusy(false)
     setClaimCoinError(null)
     setReferralCodeTaken(false)
@@ -617,7 +613,6 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
       setCreatorCoinBusy(false)
       creatorCoinForWalletRef.current = null
       claimCoinForWalletRef.current = null
-      setClaimCoinInput('')
       setClaimCoinBusy(false)
       setClaimCoinError(null)
     }
@@ -716,7 +711,6 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
   useEffect(() => {
     claimCoinForWalletRef.current = null
     setClaimCoinError(null)
-    if (!verifiedWallet) setClaimCoinInput('')
   }, [verifiedWallet])
 
   // Best-effort: detect the user's Zora Creator Coin (if any) from the verified wallet.
@@ -1381,6 +1375,34 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
                     >
                       {privyVerifyBusy ? 'Opening…' : 'Continue with Base Account'}
                     </button>
+                    <button
+                      type="button"
+                      className="w-full min-h-[44px] rounded-xl border border-white/10 bg-black/20 text-zinc-300 font-medium px-4 py-3 transition-colors hover:bg-black/30 disabled:opacity-50 disabled:cursor-not-allowed"
+                      disabled={!privyReady || privyVerifyBusy}
+                      onClick={() => {
+                        if (!privyReady || privyVerifyBusy) return
+                        setPrivyVerifyError(null)
+                        setPrivyVerifyBusy(true)
+                        // Same wallet flow, but copy explicitly signals EOAs are supported too.
+                        // Privy will still show Base Account first (per walletList config) and
+                        // users can choose other wallets from the list (MetaMask, WalletConnect, etc.).
+                        const action = privyAuthed ? privyLinkWallet : privyModalLogin
+                        const params = privyAuthed
+                          ? (undefined as any)
+                          : ({
+                              loginMethods: ['wallet'],
+                            } as any)
+                        Promise.resolve(privyAuthed ? (action as any)() : (action as any)(params))
+                          .catch((e: any) => {
+                            setPrivyVerifyError(e?.message ? String(e.message) : 'Sign-in failed')
+                          })
+                          .finally(() => {
+                            setPrivyVerifyBusy(false)
+                          })
+                      }}
+                    >
+                      {privyVerifyBusy ? 'Opening…' : 'Use another wallet'}
+                    </button>
                     {privyVerifyError ? <div className="text-xs text-red-400 text-center">{privyVerifyError}</div> : null}
                     <div className="text-center text-[11px] text-zinc-600">No transactions · just signatures</div>
                   </div>
@@ -1539,6 +1561,8 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
                     </div>
                   </div>
                 ) : null}
+
+                {persona === 'creator' && claimCoinError ? <div className="text-xs text-red-400">{claimCoinError}</div> : null}
 
                 {persona === 'creator' && referralCodeTaken ? (
                   <div className="rounded-xl border border-amber-400/20 bg-amber-400/5 px-4 py-3">
