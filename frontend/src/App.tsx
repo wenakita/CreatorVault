@@ -7,6 +7,7 @@ import { useCreatorAllowlist } from '@/hooks'
 import { useSiweAuth } from '@/hooks/useSiweAuth'
 import { apiFetch } from '@/lib/apiBase'
 import { Layout } from './components/Layout'
+import { ConnectButton } from './components/ConnectButton'
 import { MarketingLayout } from './components/MarketingLayout'
 import { Home } from './pages/Home'
 import { isPublicSiteMode } from './lib/flags'
@@ -46,6 +47,58 @@ function getMarketingBaseUrl(): string {
   if (host === 'localhost' || host.endsWith('.localhost') || host === '127.0.0.1' || host === '0.0.0.0') return 'https://4626.fun'
   if (host.startsWith('app.')) return `https://${host.slice(4)}`
   return `https://${host}`
+}
+
+function AppAccessGate(props: { variant: 'signin' | 'denied'; marketingUrl: string; debugAddress: string | null }) {
+  const siwe = useSiweAuth()
+
+  return (
+    <div className="min-h-screen bg-black text-white">
+      <div className="max-w-3xl mx-auto px-6 py-16">
+        <div className="text-[10px] uppercase tracking-[0.24em] text-zinc-500 mb-4">CreatorVaults</div>
+        <div className="card rounded-xl p-8 space-y-4">
+          {props.variant === 'signin' ? (
+            <>
+              <div className="text-lg font-medium">Connect wallet to continue</div>
+              <div className="text-sm text-zinc-400 leading-relaxed">
+                You’re on the app domain. Connect a wallet (Zora / Base Account / EOA) and sign a message to check access.
+              </div>
+            </>
+          ) : (
+            <>
+              <div className="text-lg font-medium">Access not enabled yet</div>
+              <div className="text-sm text-zinc-400 leading-relaxed">
+                This wallet isn’t allowlisted for the full app yet. You can join the waitlist, or connect a different wallet.
+              </div>
+            </>
+          )}
+
+          <div className="flex flex-col gap-3">
+            <div className="flex items-center justify-between gap-3">
+              <ConnectButton />
+              <button
+                type="button"
+                className="btn-accent"
+                disabled={siwe.busy || !siwe.authAddress}
+                onClick={() => void siwe.signIn()}
+                title={siwe.authAddress ? 'Sign a message (no tx)' : 'Connect a wallet first'}
+              >
+                {siwe.busy ? 'Signing…' : 'Sign in'}
+              </button>
+            </div>
+            {siwe.error ? <div className="text-xs text-red-400">{siwe.error}</div> : null}
+            {props.debugAddress ? <div className="text-[11px] text-zinc-600 font-mono">wallet: {props.debugAddress}</div> : null}
+          </div>
+
+          <div className="flex items-center gap-3">
+            <a className="btn-accent inline-flex w-fit" href={props.marketingUrl}>
+              Join the waitlist
+            </a>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
 }
 
 function AppAllowlistGate() {
@@ -144,7 +197,7 @@ function AppAllowlistGatePrivyEnabled() {
   }
 
   if (!siwe.isSignedIn) {
-    return <Navigate to="/waitlist" replace />
+    return <AppAccessGate variant="signin" marketingUrl={getMarketingBaseUrl()} debugAddress={connectedAddress} />
   }
 
   if (allowQuery.isLoading) {
@@ -161,7 +214,7 @@ function AppAllowlistGatePrivyEnabled() {
   }
 
   if (!allowed && !isBypassAdmin) {
-    return <Navigate to="/waitlist" replace />
+    return <AppAccessGate variant="denied" marketingUrl={getMarketingBaseUrl()} debugAddress={connectedAddress} />
   }
 
   return <Outlet />
