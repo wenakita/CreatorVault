@@ -1,6 +1,7 @@
 import { lazy, useMemo } from 'react'
 import { Routes, Route, Navigate, Outlet, useLocation } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
+import { useAccount } from 'wagmi'
 import { usePrivyClientStatus } from '@/lib/privy/client'
 import { useCreatorAllowlist } from '@/hooks'
 import { useSiweAuth } from '@/hooks/useSiweAuth'
@@ -23,7 +24,21 @@ type CreatorAllowlistStatus = {
   allowed: boolean
 }
 
-const ADMIN_BYPASS_ADDRESSES = new Set<string>(['0xb05cf01231cf2ff99499682e64d3780d57c80fdd'])
+function isValidEvmAddress(v: string): boolean {
+  return /^0x[a-fA-F0-9]{40}$/.test(v)
+}
+
+function buildAdminBypassSet(): Set<string> {
+  const seed: string[] = ['0xb05cf01231cf2ff99499682e64d3780d57c80fdd']
+  const raw = (import.meta.env.VITE_ADMIN_BYPASS_ADDRESSES as string | undefined) ?? ''
+  const fromEnv = raw
+    .split(',')
+    .map((s) => s.trim().toLowerCase())
+    .filter((s) => isValidEvmAddress(s))
+  return new Set<string>([...seed, ...fromEnv].map((a) => a.toLowerCase()))
+}
+
+const ADMIN_BYPASS_ADDRESSES = buildAdminBypassSet()
 
 function getMarketingBaseUrl(): string {
   if (typeof window === 'undefined') return 'https://4626.fun'
@@ -61,6 +76,7 @@ function AppAllowlistGate() {
 function AppAllowlistGatePrivyEnabled() {
   const location = useLocation()
   const siwe = useSiweAuth()
+  const { address: connectedAddressRaw } = useAccount()
 
   // Detect whether allowlist gating is even enabled server-side.
   const allowlistModeQuery = useQuery({
@@ -80,11 +96,16 @@ function AppAllowlistGatePrivyEnabled() {
     () => (typeof siwe.authAddress === 'string' && siwe.authAddress.startsWith('0x') ? siwe.authAddress.toLowerCase() : null),
     [siwe.authAddress],
   )
-  const allowQuery = useCreatorAllowlist(authAddress)
-  const allowed = allowQuery.data?.allowed === true
+  const connectedAddress = useMemo(
+    () =>
+      typeof connectedAddressRaw === 'string' && connectedAddressRaw.startsWith('0x') ? connectedAddressRaw.toLowerCase() : null,
+    [connectedAddressRaw],
+  )
   // Allow specific operator addresses to access the full app even while allowlist is enforced.
   // (Not just /admin/* routes.)
-  const isBypassAdmin = !!authAddress && ADMIN_BYPASS_ADDRESSES.has(authAddress)
+  const isBypassAdmin = !!connectedAddress && ADMIN_BYPASS_ADDRESSES.has(connectedAddress)
+  const allowQuery = useCreatorAllowlist(isBypassAdmin ? null : authAddress)
+  const allowed = allowQuery.data?.allowed === true
   const isPublicWaitlistRoute = location.pathname === '/waitlist' || location.pathname === '/leaderboard'
 
   const allowlistMode = allowlistModeQuery.data?.mode
@@ -115,6 +136,12 @@ function AppAllowlistGatePrivyEnabled() {
 
   // If allowlist is not enforced (e.g. local dev / no DB / no env allowlist), don't gate.
   if (!allowlistEnforced) return <Outlet />
+
+  // Allow bypass admins into the app even before SIWE is established.
+  // (Admin API routes will still require SIWE; this only prevents a client-side redirect loop.)
+  if (isBypassAdmin) {
+    return <Outlet />
+  }
 
   if (!siwe.isSignedIn) {
     return <Navigate to="/waitlist" replace />
