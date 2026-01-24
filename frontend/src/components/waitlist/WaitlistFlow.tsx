@@ -8,7 +8,7 @@ import { useSiweAuth } from '@/hooks/useSiweAuth'
 import { ConnectButtonWeb3 } from '@/components/ConnectButtonWeb3'
 import { isPrivyClientEnabled } from '@/lib/flags'
 import { usePrivyClientStatus } from '@/lib/privy/client'
-import { useLogin, usePrivy, useWallets } from '@privy-io/react-auth'
+import { usePrivy, useWallets } from '@privy-io/react-auth'
 import { Check, CheckCircle2, ChevronDown, ArrowLeft } from 'lucide-react'
 import { useMiniAppContext } from '@/hooks'
 import { apiAliasPath } from '@/lib/apiBase'
@@ -102,8 +102,14 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
 
   const privyStatus = usePrivyClientStatus()
   const showPrivy = isPrivyClientEnabled()
-  const { ready: privyReady, authenticated: privyAuthed, user: privyUser, logout: privyLogout } = usePrivy()
-  const { login: privyLogin } = useLogin()
+  const {
+    ready: privyReady,
+    authenticated: privyAuthed,
+    user: privyUser,
+    logout: privyLogout,
+    connectWallet: privyConnectWallet,
+    linkWallet: privyLinkWallet,
+  } = usePrivy()
   const { wallets: privyWallets } = useWallets()
   const [privyVerifyBusy, setPrivyVerifyBusy] = useState(false)
   const [privyVerifyError, setPrivyVerifyError] = useState<string | null>(null)
@@ -1385,14 +1391,19 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
                         setPrivyVerifyError(null)
                         setPrivyVerifyBusy(true)
                         privyVerifyAttemptRef.current = Date.now()
-                        // Single CTA: Base Account first, but EOAs are available in the same modal.
-                        Promise.resolve(
-                          (privyLogin as any)({
-                            loginMethods: ['wallet'],
-                            loginMethodsAndOrder: { primary: ['wallet'], overflow: [] },
-                            walletList: ['base_account', 'coinbase_wallet', 'detected_wallets', 'metamask', 'wallet_connect'],
-                          }),
-                        ).catch((e: any) => {
+                        const walletOptions = {
+                          walletList: ['base_account', 'coinbase_wallet', 'detected_wallets', 'metamask', 'wallet_connect'],
+                          walletChainType: 'ethereum-only',
+                          preSelectedWalletId: 'base_account',
+                          description: 'Connect Base Account to verify.',
+                        } as const
+                        const openWallet = () => {
+                          if (privyAuthed && typeof privyLinkWallet === 'function') {
+                            return privyLinkWallet(walletOptions as any)
+                          }
+                          return privyConnectWallet ? privyConnectWallet(walletOptions as any) : null
+                        }
+                        Promise.resolve(openWallet()).catch((e: any) => {
                           const raw = e?.message ? String(e.message) : ''
                           const lower = raw.toLowerCase()
                           const msg = lower.includes('login method')
