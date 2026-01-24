@@ -82,8 +82,9 @@ function AppAllowlistGatePrivyEnabled() {
   )
   const allowQuery = useCreatorAllowlist(authAddress)
   const allowed = allowQuery.data?.allowed === true
-  const isAdminRoute = location.pathname === '/admin' || location.pathname.startsWith('/admin/')
-  const isBypassAdmin = isAdminRoute && !!authAddress && ADMIN_BYPASS_ADDRESSES.has(authAddress)
+  // Allow specific operator addresses to access the full app even while allowlist is enforced.
+  // (Not just /admin/* routes.)
+  const isBypassAdmin = !!authAddress && ADMIN_BYPASS_ADDRESSES.has(authAddress)
   const isPublicWaitlistRoute = location.pathname === '/waitlist' || location.pathname === '/leaderboard'
 
   const allowlistMode = allowlistModeQuery.data?.mode
