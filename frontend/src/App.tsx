@@ -381,6 +381,13 @@ function ExternalRedirect({ to }: { to: string }) {
   return null
 }
 
+function AppRedirect({ base }: { base: string }) {
+  const location = useLocation()
+  const target = `${base}${location.pathname}${location.search}${location.hash}`
+  if (typeof window !== 'undefined') window.location.replace(target)
+  return null
+}
+
 function App() {
   const publicMode = isPublicSiteMode()
   const hostMode = getHostMode()
@@ -406,6 +413,7 @@ function App() {
             <Route path="/vault/*" element={<ExternalRedirect to={`${appBase}/vault`} />} />
             <Route path="/coin/*" element={<ExternalRedirect to={`${appBase}/coin`} />} />
             <Route path="/creator/*" element={<ExternalRedirect to={`${appBase}/creator`} />} />
+            <Route path="/admin/*" element={<AppRedirect base={appBase} />} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Route>
         ) : (
