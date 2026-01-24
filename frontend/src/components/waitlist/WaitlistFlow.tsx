@@ -8,7 +8,7 @@ import { useSiweAuth } from '@/hooks/useSiweAuth'
 import { ConnectButtonWeb3 } from '@/components/ConnectButtonWeb3'
 import { isPrivyClientEnabled } from '@/lib/flags'
 import { usePrivyClientStatus } from '@/lib/privy/client'
-import { usePrivy, useWallets } from '@privy-io/react-auth'
+import { useLogin, usePrivy, useWallets } from '@privy-io/react-auth'
 import { Check, CheckCircle2, ChevronDown, ArrowLeft } from 'lucide-react'
 import { useMiniAppContext } from '@/hooks'
 import { apiAliasPath } from '@/lib/apiBase'
@@ -102,17 +102,11 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
 
   const privyStatus = usePrivyClientStatus()
   const showPrivy = isPrivyClientEnabled()
-  const {
-    ready: privyReady,
-    authenticated: privyAuthed,
-    user: privyUser,
-    logout: privyLogout,
-    connectWallet: privyConnectWallet,
-  } = usePrivy()
+  const { ready: privyReady, authenticated: privyAuthed, user: privyUser, logout: privyLogout } = usePrivy()
+  const { login: privyLogin } = useLogin()
   const { wallets: privyWallets } = useWallets()
   const [privyVerifyBusy, setPrivyVerifyBusy] = useState(false)
   const [privyVerifyError, setPrivyVerifyError] = useState<string | null>(null)
-  const privyPendingWalletLoginRef = useRef<{ walletList: any[] } | null>(null)
   function normalizeEmail(v: string): string {
     return v.trim().toLowerCase()
   }
@@ -964,32 +958,6 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [persona, privyAuthed, privyReady, privyStatus, privyUser, privyWallets, showPrivy, step, verifiedWallet, verifiedSolana])
 
-  // When we explicitly trigger a "connect wallet" prompt, follow it with `loginOrLink()`
-  // to authenticate (or link) the connected wallet. This keeps the UI wallet-first.
-  useEffect(() => {
-    if (!privyPendingWalletLoginRef.current) return
-    if (!showPrivy || privyStatus !== 'ready') return
-    if (step !== 'verify') return
-    if (persona !== 'creator') return
-    if (!privyReady) return
-
-    const wallets = Array.isArray(privyWallets) ? privyWallets : []
-    const latest = [...wallets].reverse().find((w) => typeof (w as any)?.loginOrLink === 'function') as any
-    if (!latest) return
-
-    // Consume the pending intent so we don't loop on wallet list updates.
-    privyPendingWalletLoginRef.current = null
-
-    Promise.resolve(latest.loginOrLink())
-      .catch((e: any) => {
-        setPrivyVerifyError(e?.message ? String(e.message) : 'Wallet verification failed')
-      })
-      .finally(() => {
-        setPrivyVerifyBusy(false)
-      })
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [persona, privyReady, privyStatus, privyWallets, showPrivy, step])
-
   // UX: once creators are verified, immediately advance to email (no extra "Continue" click).
   useEffect(() => {
     if (step !== 'verify') return
@@ -1376,15 +1344,12 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
                         setPrivyVerifyError(null)
                         setPrivyVerifyBusy(true)
                         // Single CTA: Base Account first, but EOAs are available in the same modal.
-                        privyPendingWalletLoginRef.current = {
-                          walletList: ['base_account', 'coinbase_wallet', 'detected_wallets', 'metamask', 'wallet_connect'],
-                        }
                         Promise.resolve(
-                          (privyConnectWallet as any)({
+                          (privyLogin as any)({
+                            loginMethods: ['wallet'],
                             walletList: ['base_account', 'coinbase_wallet', 'detected_wallets', 'metamask', 'wallet_connect'],
                           }),
                         ).catch((e: any) => {
-                          privyPendingWalletLoginRef.current = null
                           setPrivyVerifyError(e?.message ? String(e.message) : 'Wallet connect failed')
                           setPrivyVerifyBusy(false)
                         })
