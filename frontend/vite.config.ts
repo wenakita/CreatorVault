@@ -138,8 +138,14 @@ function localApiRoutesPlugin(): Plugin {
   }
 }
 
-export default defineConfig(({ command }) => ({
-  plugins: [react(), ...(command === 'serve' ? [localApiRoutesPlugin()] : [])],
+export default defineConfig(({ command }) => {
+  const enableSourcemap = (() => {
+    const raw = (process.env.VITE_BUILD_SOURCEMAP ?? '').trim().toLowerCase()
+    return raw === '1' || raw === 'true' || raw === 'yes'
+  })()
+
+  return {
+    plugins: [react(), ...(command === 'serve' ? [localApiRoutesPlugin()] : [])],
   resolve: {
     alias: {
       '@': resolve(__dirname, './src'),
@@ -162,6 +168,7 @@ export default defineConfig(({ command }) => ({
     },
   },
   build: {
+    sourcemap: enableSourcemap,
     rollupOptions: {
       output: {
         manualChunks: {
@@ -171,4 +178,5 @@ export default defineConfig(({ command }) => ({
       },
     },
   },
-}))
+  }
+})

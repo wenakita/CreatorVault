@@ -92,6 +92,24 @@ type WaitlistAction =
   | { type: 'setActions'; actions: Record<ActionKey, boolean> }
   | { type: 'toggleShowWalletOption' }
 
+const ACTION_POINTS: Record<ActionKey, number> = {
+  shareX: 10,
+  copyLink: 5,
+  share: 7,
+  follow: 4,
+  saveApp: 6,
+}
+
+const SIGNUP_POINTS = 1
+
+const EMPTY_ACTION_STATE: Record<ActionKey, boolean> = {
+  shareX: false,
+  copyLink: false,
+  share: false,
+  follow: false,
+  saveApp: false,
+}
+
 const initialFlowState: FlowState = {
   persona: null,
   step: 'persona',
@@ -295,24 +313,6 @@ function waitlistReducer(state: WaitlistState, action: WaitlistAction): Waitlist
   if (action.type === 'toggleShowWalletOption') return { ...state, showWalletOption: !state.showWalletOption }
   if (action.type === 'patch') return { ...state, ...action.patch }
   return state
-}
-
-const ACTION_POINTS: Record<ActionKey, number> = {
-  shareX: 10,
-  copyLink: 5,
-  share: 7,
-  follow: 4,
-  saveApp: 6,
-}
-
-const SIGNUP_POINTS = 1
-
-const EMPTY_ACTION_STATE: Record<ActionKey, boolean> = {
-  shareX: false,
-  copyLink: false,
-  share: false,
-  follow: false,
-  saveApp: false,
 }
 
 export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
