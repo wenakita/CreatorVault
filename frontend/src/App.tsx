@@ -167,7 +167,9 @@ function AppAllowlistGatePrivyEnabled() {
   )
   // Allow specific operator addresses to access the full app even while allowlist is enforced.
   // (Not just /admin/* routes.)
-  const isBypassAdmin = !!connectedAddress && ADMIN_BYPASS_ADDRESSES.has(connectedAddress)
+  const isBypassAdmin =
+    (connectedAddress ? ADMIN_BYPASS_ADDRESSES.has(connectedAddress) : false) ||
+    (authAddress ? ADMIN_BYPASS_ADDRESSES.has(authAddress) : false)
   const allowQuery = useCreatorAllowlist(isBypassAdmin ? null : authAddress)
   const allowed = allowQuery.data?.allowed === true
   const isPublicWaitlistRoute = location.pathname === '/waitlist' || location.pathname === '/leaderboard'
@@ -208,8 +210,10 @@ function AppAllowlistGatePrivyEnabled() {
     return <Outlet />
   }
 
+  const debugAddress = connectedAddress ?? authAddress
+
   if (!siwe.isSignedIn) {
-    return <AppAccessGate variant="signin" marketingUrl={getMarketingBaseUrl()} debugAddress={connectedAddress} />
+    return <AppAccessGate variant="signin" marketingUrl={getMarketingBaseUrl()} debugAddress={debugAddress} />
   }
 
   if (isAdminRoute) {
@@ -230,7 +234,7 @@ function AppAllowlistGatePrivyEnabled() {
   }
 
   if (!allowed && !isBypassAdmin) {
-    return <AppAccessGate variant="denied" marketingUrl={getMarketingBaseUrl()} debugAddress={connectedAddress} />
+    return <AppAccessGate variant="denied" marketingUrl={getMarketingBaseUrl()} debugAddress={debugAddress} />
   }
 
   return <Outlet />

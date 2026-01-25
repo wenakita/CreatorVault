@@ -204,18 +204,21 @@ function ConnectButtonWeb3Wagmi({
   const preferZoraOnDesktop = !isDeployLike && !miniApp.isMiniApp && Boolean(zoraConnector)
   // If Zora cross-app is available on desktop, make it the primary one-click path.
   const showGuidedModal = !isGateVariant && !miniApp.isMiniApp && !preferZoraOnDesktop
-  const preferredConnector = isDeployLike
-    ? // Deploy should use a single universal path to avoid eth_sign dead-ends:
-      // - Mini App connector inside Mini Apps
-      // - Base App connector on the open web
-      // - WalletConnect fallback when needed
-      (miniApp.isMiniApp ? miniAppConnector : null) ?? baseAppConnector ?? walletConnectConnector ?? connectors[0]
-    : // On the open web, prefer installed extensions first, then WalletConnect fallback.
-      (miniApp.isMiniApp ? miniAppConnector : null) ??
-      zoraConnector ??
-      (!miniApp.isMiniApp && !isEthereumLocked ? rabbyConnector ?? metaMaskConnector : null) ??
-      walletConnectConnector ??
-      connectors[0]
+  const preferredConnector =
+    isGateVariant && !miniApp.isMiniApp
+      ? walletConnectConnector ?? connectors[0]
+      : isDeployLike
+        ? // Deploy should use a single universal path to avoid eth_sign dead-ends:
+          // - Mini App connector inside Mini Apps
+          // - Base App connector on the open web
+          // - WalletConnect fallback when needed
+          (miniApp.isMiniApp ? miniAppConnector : null) ?? baseAppConnector ?? walletConnectConnector ?? connectors[0]
+        : // On the open web, prefer installed extensions first, then WalletConnect fallback.
+          (miniApp.isMiniApp ? miniAppConnector : null) ??
+          zoraConnector ??
+          (!miniApp.isMiniApp && !isEthereumLocked ? rabbyConnector ?? metaMaskConnector : null) ??
+          walletConnectConnector ??
+          connectors[0]
 
   const connectDirect = useCallback(
     async (c: Connector | null | undefined, opts?: { timeoutMs?: number; label?: string }) => {
