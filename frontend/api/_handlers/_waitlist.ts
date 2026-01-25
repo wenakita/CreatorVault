@@ -109,36 +109,64 @@ function getPrivyAuth(): { appId: string; appSecret: string } | null {
 }
 
 function isPrivyWaitlistEnabled(): boolean {
-  const v = (process.env.PRIVY_WAITLIST_PREGENERATE || '').trim().toLowerCase()
-  return v === '1' || v === 'true' || v === 'yes'
+  const raw = String(
+    process.env.PRIVY_WAITLIST_PREGENERATE ??
+      process.env.PRIVY_WAITLIST_ENABLED ??
+      process.env.VITE_PRIVY_WAITLIST_ENABLED ??
+      '',
+  )
+    .trim()
+    .toLowerCase()
+  return raw === '1' || raw === 'true' || raw === 'yes'
 }
 
 function getBasicAuthHeader(appId: string, appSecret: string): string {
   return `Basic ${Buffer.from(`${appId}:${appSecret}`).toString('base64')}`
 }
 
-function extractFirstEthereumWalletAddress(user: any): string | null {
-  // Prefer explicit wallets array if present.
-  const wallets = Array.isArray(user?.wallets) ? user.wallets : []
-  for (const w of wallets) {
-    const chainType = String(w?.chain_type || w?.chainType || '').toLowerCase()
-    const addr = typeof w?.address === 'string' ? w.address : null
-    if (addr && (chainType === '' || chainType === 'ethereum') && isValidEvmAddress(addr)) return addr
-  }
+type EmbeddedWalletMeta = {
+  address: string | null
+  chainType: string | null
+  walletClientType: string | null
+}
 
-  // Fallback: search linked_accounts for a wallet-like object.
-  const linked = Array.isArray(user?.linked_accounts) ? user.linked_accounts : []
-  for (const a of linked) {
-    const t = String(a?.type || '').toLowerCase()
-    const chainType = String(a?.chain_type || a?.chainType || '').toLowerCase()
-    const addr = typeof a?.address === 'string' ? a.address : null
-    if (!addr) continue
-    if (t.includes('wallet') || t === 'ethereum' || chainType === 'ethereum') {
-      if (isValidEvmAddress(addr)) return addr
+function extractEmbeddedWalletMeta(user: any): EmbeddedWalletMeta {
+  const wallets = Array.isArray(user?.wallets) ? user.wallets : []
+  const primaryWallet = user?.wallet && typeof user.wallet === 'object' ? [user.wallet] : []
+  const all = [...primaryWallet, ...wallets]
+  const normalizeChain = (v: any): string | null => {
+    const s = String(v ?? '').trim().toLowerCase()
+    return s.length > 0 ? s : null
+  }
+  const normalizeClientType = (v: any): string | null => {
+    const s = String(v ?? '').trim().toLowerCase()
+    return s.length > 0 ? s : null
+  }
+  const parseWallet = (w: any): EmbeddedWalletMeta => {
+    const addr = typeof w?.address === 'string' ? w.address : null
+    const chainType = normalizeChain(w?.chain_type || w?.chainType)
+    const walletClientType = normalizeClientType(w?.wallet_client_type || w?.walletClientType || w?.connector_type || w?.connectorType || w?.type)
+    return {
+      address: addr && isValidEvmAddress(addr) ? addr : null,
+      chainType,
+      walletClientType,
     }
   }
+  const isEmbedded = (clientType: string | null) =>
+    clientType ? clientType.includes('privy') || clientType.includes('embedded') : false
 
-  return null
+  for (const w of all) {
+    const meta = parseWallet(w)
+    if (meta.address && isEmbedded(meta.walletClientType)) return meta
+  }
+
+  for (const w of all) {
+    const meta = parseWallet(w)
+    if (!meta.address) continue
+    if (!meta.chainType || meta.chainType === 'ethereum') return meta
+  }
+
+  return { address: null, chainType: null, walletClientType: null }
 }
 
 async function privyGetUserByEmail(params: { appId: string; appSecret: string; email: string }): Promise<any | null> {
@@ -186,12 +214,21 @@ async function privyCreateUserWithEthereumWallet(params: {
   return await res.json()
 }
 
-async function privyCreateOrGetWaitlistUser(email: string): Promise<{ privyUserId: string | null; embeddedWallet: string | null }> {
+async function privyCreateOrGetWaitlistUser(email: string): Promise<{
+  privyUserId: string | null
+  embeddedWallet: string | null
+  embeddedWalletChain: string | null
+  embeddedWalletClientType: string | null
+  created: boolean
+}> {
   const auth = getPrivyAuth()
-  if (!auth) return { privyUserId: null, embeddedWallet: null }
-  if (!isPrivyWaitlistEnabled()) return { privyUserId: null, embeddedWallet: null }
+  if (!auth)
+    return { privyUserId: null, embeddedWallet: null, embeddedWalletChain: null, embeddedWalletClientType: null, created: false }
+  if (!isPrivyWaitlistEnabled())
+    return { privyUserId: null, embeddedWallet: null, embeddedWalletChain: null, embeddedWalletClientType: null, created: false }
 
   const existing = await privyGetUserByEmail({ ...auth, email })
+  const created = !existing
   const user = existing ?? (await privyCreateUserWithEthereumWallet({ ...auth, email }))
 
   const privyUserId =
@@ -201,8 +238,14 @@ async function privyCreateOrGetWaitlistUser(email: string): Promise<{ privyUserI
         ? user.user.id
         : null
 
-  const embeddedWallet = extractFirstEthereumWalletAddress(user?.user ?? user)
-  return { privyUserId, embeddedWallet }
+  const embeddedMeta = extractEmbeddedWalletMeta(user?.user ?? user)
+  return {
+    privyUserId,
+    embeddedWallet: embeddedMeta.address,
+    embeddedWalletChain: embeddedMeta.chainType,
+    embeddedWalletClientType: embeddedMeta.walletClientType,
+    created,
+  }
 }
 
 export default async function handler(req: any, res: any) {
@@ -316,11 +359,28 @@ export default async function handler(req: any, res: any) {
 
   let privyUserId: string | null = null
   let embeddedWallet: string | null = null
+  let embeddedWalletChain: string | null = null
+  let embeddedWalletClientType: string | null = null
   if (!isSyntheticEmail(email)) {
     try {
       const privy = await privyCreateOrGetWaitlistUser(email)
       privyUserId = privy.privyUserId
       embeddedWallet = privy.embeddedWallet
+      embeddedWalletChain = privy.embeddedWalletChain
+      embeddedWalletClientType = privy.embeddedWalletClientType
+      if (privyUserId || embeddedWallet) {
+        console.info(
+          'waitlist: privy user',
+          JSON.stringify({
+            email,
+            privyUserId,
+            embeddedWallet,
+            embeddedWalletChain,
+            embeddedWalletClientType,
+            created: privy.created,
+          }),
+        )
+      }
     } catch (e: any) {
       // Privy is optional. If it fails, we still accept the waitlist signup.
       // Surface a minimal warning in logs only (no PII beyond email already provided).
@@ -337,6 +397,8 @@ export default async function handler(req: any, res: any) {
         solana_wallet,
         privy_user_id,
         embedded_wallet,
+        embedded_wallet_chain,
+        embedded_wallet_client_type,
         base_sub_account,
         persona,
         has_creator_coin,
@@ -352,6 +414,8 @@ export default async function handler(req: any, res: any) {
         ${solanaWallet.length > 0 ? solanaWallet : null},
         ${privyUserId},
         ${embeddedWallet},
+        ${embeddedWalletChain},
+        ${embeddedWalletClientType},
         ${baseSubAccount.length > 0 ? baseSubAccount : null},
         ${persona},
         ${hasCreatorCoinRaw},
@@ -366,6 +430,8 @@ export default async function handler(req: any, res: any) {
             solana_wallet = COALESCE(EXCLUDED.solana_wallet, waitlist_signups.solana_wallet),
             privy_user_id = COALESCE(EXCLUDED.privy_user_id, waitlist_signups.privy_user_id),
             embedded_wallet = COALESCE(EXCLUDED.embedded_wallet, waitlist_signups.embedded_wallet),
+            embedded_wallet_chain = COALESCE(EXCLUDED.embedded_wallet_chain, waitlist_signups.embedded_wallet_chain),
+            embedded_wallet_client_type = COALESCE(EXCLUDED.embedded_wallet_client_type, waitlist_signups.embedded_wallet_client_type),
             base_sub_account = COALESCE(EXCLUDED.base_sub_account, waitlist_signups.base_sub_account),
             persona = COALESCE(EXCLUDED.persona, waitlist_signups.persona),
             has_creator_coin = COALESCE(EXCLUDED.has_creator_coin, waitlist_signups.has_creator_coin),
@@ -492,6 +558,8 @@ export default async function handler(req: any, res: any) {
             solana_wallet,
             privy_user_id,
             embedded_wallet,
+            embedded_wallet_chain,
+            embedded_wallet_client_type,
             base_sub_account,
             persona,
             has_creator_coin,
@@ -507,6 +575,8 @@ export default async function handler(req: any, res: any) {
             ${solanaWallet.length > 0 ? solanaWallet : null},
             ${privyUserId},
             ${embeddedWallet},
+            ${embeddedWalletChain},
+            ${embeddedWalletClientType},
             ${baseSubAccount.length > 0 ? baseSubAccount : null},
             ${persona},
             ${hasCreatorCoinRaw},
@@ -521,6 +591,8 @@ export default async function handler(req: any, res: any) {
                 solana_wallet = COALESCE(EXCLUDED.solana_wallet, waitlist_signups.solana_wallet),
                 privy_user_id = COALESCE(EXCLUDED.privy_user_id, waitlist_signups.privy_user_id),
                 embedded_wallet = COALESCE(EXCLUDED.embedded_wallet, waitlist_signups.embedded_wallet),
+                embedded_wallet_chain = COALESCE(EXCLUDED.embedded_wallet_chain, waitlist_signups.embedded_wallet_chain),
+                embedded_wallet_client_type = COALESCE(EXCLUDED.embedded_wallet_client_type, waitlist_signups.embedded_wallet_client_type),
                 base_sub_account = COALESCE(EXCLUDED.base_sub_account, waitlist_signups.base_sub_account),
                 persona = COALESCE(EXCLUDED.persona, waitlist_signups.persona),
                 has_creator_coin = COALESCE(EXCLUDED.has_creator_coin, waitlist_signups.has_creator_coin),
@@ -547,6 +619,8 @@ export default async function handler(req: any, res: any) {
       (lower.includes('persona') ||
         lower.includes('has_creator_coin') ||
         lower.includes('farcaster_fid') ||
+        lower.includes('embedded_wallet_chain') ||
+        lower.includes('embedded_wallet_client_type') ||
         lower.includes('contact_preference') ||
         lower.includes('verifications') ||
         lower.includes('base_sub_account'))

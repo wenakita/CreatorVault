@@ -17,6 +17,8 @@ export async function ensureWaitlistSchema(db: Db): Promise<void> {
         solana_wallet TEXT NULL,
         privy_user_id TEXT NULL,
         embedded_wallet TEXT NULL,
+        embedded_wallet_chain TEXT NULL,
+        embedded_wallet_client_type TEXT NULL,
         base_sub_account TEXT NULL,
         persona TEXT NULL,
         has_creator_coin BOOLEAN NULL,
@@ -36,6 +38,8 @@ export async function ensureWaitlistSchema(db: Db): Promise<void> {
       await db.sql`ALTER TABLE waitlist_signups ADD COLUMN IF NOT EXISTS farcaster_fid BIGINT NULL;`
       await db.sql`ALTER TABLE waitlist_signups ADD COLUMN IF NOT EXISTS privy_user_id TEXT NULL;`
       await db.sql`ALTER TABLE waitlist_signups ADD COLUMN IF NOT EXISTS embedded_wallet TEXT NULL;`
+      await db.sql`ALTER TABLE waitlist_signups ADD COLUMN IF NOT EXISTS embedded_wallet_chain TEXT NULL;`
+      await db.sql`ALTER TABLE waitlist_signups ADD COLUMN IF NOT EXISTS embedded_wallet_client_type TEXT NULL;`
       await db.sql`ALTER TABLE waitlist_signups ADD COLUMN IF NOT EXISTS base_sub_account TEXT NULL;`
       await db.sql`ALTER TABLE waitlist_signups ADD COLUMN IF NOT EXISTS primary_wallet TEXT NULL;`
       await db.sql`ALTER TABLE waitlist_signups ADD COLUMN IF NOT EXISTS solana_wallet TEXT NULL;`
