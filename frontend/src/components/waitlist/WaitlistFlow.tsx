@@ -617,11 +617,6 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
   const hasVerification = useMemo(() => Boolean(verifiedWallet || verifiedSolana), [verifiedWallet, verifiedSolana])
   const wantsEmail = contactPreference === 'email'
   const canUseWallet = hasVerification
-  function isEthereumLockedNow(): boolean {
-    if (typeof window === 'undefined') return false
-    const desc = Object.getOwnPropertyDescriptor(window, 'ethereum')
-    return !!desc && typeof desc.get === 'function' && !desc.set
-  }
   const connectedAddress = useMemo(
     () =>
       typeof connectedAddressRaw === 'string' && connectedAddressRaw.startsWith('0x') ? connectedAddressRaw.toLowerCase() : null,
@@ -1719,20 +1714,12 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
                         startPrivyVerify()
                         privyVerifyAttemptRef.current = Date.now()
                         const isBaseApp = miniApp.isBaseApp
-                        const isLocked = !isBaseApp && isEthereumLockedNow()
                         const walletOptions = {
                           // Offer extension wallets unless multiple injected providers are present.
-                          walletList: isBaseApp
-                            ? ['base_account']
-                            : isLocked
-                              ? ['wallet_connect']
-                              : ['detected_wallets', 'metamask', 'coinbase_wallet', 'wallet_connect'],
+                          walletList: isBaseApp ? ['base_account'] : ['wallet_connect'],
                           walletChainType: 'ethereum-only',
                           description: 'Connect a wallet to verify.',
                         } as const
-                        if (isLocked) {
-                          setPrivyVerifyNotice('Multiple wallet extensions detected. Use WalletConnect or disable extras.')
-                        }
                         const openWallet = () => {
                           if (privyAuthed && typeof privyLinkWallet === 'function') {
                             return privyLinkWallet(walletOptions as any)
