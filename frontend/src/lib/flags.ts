@@ -47,6 +47,8 @@ export function isPrivyClientEnabled(): boolean {
 
   // Production safety: only allow on explicitly allowlisted origins.
   if (typeof window === 'undefined') return false
+  // Admin access gate should not be blocked by Privy session failures.
+  if (window.location.pathname.startsWith('/admin/creator-access')) return false
   const allowed = getAllowedOriginsFromEnv()
   if (allowed.size === 0) return false
   return allowed.has(window.location.origin)
