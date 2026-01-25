@@ -5,6 +5,9 @@ export function isPublicSiteMode(): boolean {
   return v === '1' || v === 'true' || v === 'yes'
 }
 
+const DEFAULT_PRIVY_APP_ID = 'cmk411efm034jl50cs618o8cy'
+const DEFAULT_PRIVY_ALLOWED_ORIGINS = new Set<string>(['https://4626.fun', 'https://app.4626.fun'])
+
 function isTruthyEnv(v: unknown): boolean {
   const s = String(v ?? '')
     .trim()
@@ -14,13 +17,14 @@ function isTruthyEnv(v: unknown): boolean {
 
 export function getPrivyAppId(): string | null {
   const appId = String(import.meta.env.VITE_PRIVY_APP_ID ?? '').trim()
-  return appId.length > 0 ? appId : null
+  if (appId.length > 0) return appId
+  return DEFAULT_PRIVY_APP_ID
 }
 
 function getAllowedOriginsFromEnv(): Set<string> {
   const raw = String(import.meta.env.VITE_PRIVY_ALLOWED_ORIGINS ?? '').trim()
   const out = new Set<string>()
-  if (!raw) return out
+  if (!raw) return new Set(DEFAULT_PRIVY_ALLOWED_ORIGINS)
   for (const part of raw.split(/[\s,]+/g)) {
     const t = part.trim()
     if (!t) continue
@@ -47,4 +51,3 @@ export function isPrivyClientEnabled(): boolean {
   if (allowed.size === 0) return false
   return allowed.has(window.location.origin)
 }
-
