@@ -921,6 +921,64 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
     },
     [appUrl],
   )
+  const refreshPosition = useCallback(
+    async (emailForSync: string) => {
+      if (!emailForSync) return
+      if (refreshPositionInFlightRef.current) return refreshPositionInFlightRef.current
+
+      const controller = new AbortController()
+      refreshPositionAbortRef.current = controller
+      const run = (async () => {
+        try {
+          const res = await apiFetch(`/api/waitlist/position?email=${encodeURIComponent(emailForSync)}`, {
+            method: 'GET',
+            headers: { Accept: 'application/json' },
+            signal: controller.signal,
+          })
+          const json = (await res.json().catch(() => null)) as any
+          const data = json?.success ? json?.data : null
+          if (res.ok && data) {
+            setWaitlistPosition({
+              points: {
+                total: typeof data?.points?.total === 'number' ? data.points.total : 0,
+                invite: typeof data?.points?.invite === 'number' ? data.points.invite : 0,
+                signup: typeof data?.points?.signup === 'number' ? data.points.signup : 0,
+                tasks: typeof data?.points?.tasks === 'number' ? data.points.tasks : 0,
+              },
+              rank: {
+                invite: typeof data?.rank?.invite === 'number' ? data.rank.invite : null,
+                total: typeof data?.rank?.total === 'number' ? data.rank.total : null,
+              },
+              totalCount: typeof data?.totalCount === 'number' ? data.totalCount : 0,
+              totalAheadInvite: typeof data?.totalAheadInvite === 'number' ? data.totalAheadInvite : null,
+              percentileInvite: typeof data?.percentileInvite === 'number' ? data.percentileInvite : null,
+              referrals: {
+                qualifiedCount: typeof data?.referrals?.qualifiedCount === 'number' ? data.referrals.qualifiedCount : 0,
+                pendingCount: typeof data?.referrals?.pendingCount === 'number' ? data.referrals.pendingCount : 0,
+                pendingCountCapped: typeof data?.referrals?.pendingCountCapped === 'number' ? data.referrals.pendingCountCapped : 0,
+                pendingCap: typeof data?.referrals?.pendingCap === 'number' ? data.referrals.pendingCap : 10,
+              },
+            })
+          }
+        } catch {
+          // ignore
+        } finally {
+          refreshPositionInFlightRef.current = null
+          refreshPositionAbortRef.current = null
+        }
+      })()
+
+      refreshPositionInFlightRef.current = run
+      return run
+    },
+    [apiFetch],
+  )
+
+  useEffect(() => {
+    return () => {
+      refreshPositionAbortRef.current?.abort()
+    }
+  }, [])
 
   async function claimCreatorCoin(coinAddress: string, source: 'auto' | 'manual') {
     if (claimCoinBusy) return
@@ -1365,63 +1423,6 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
     () => (referralCode ? `cv_waitlist_actions_${referralCode}` : 'cv_waitlist_actions'),
     [referralCode],
   )
-  const refreshPosition = useCallback(
-    async (emailForSync: string) => {
-      if (!emailForSync) return
-      if (refreshPositionInFlightRef.current) return refreshPositionInFlightRef.current
-
-      const controller = new AbortController()
-      refreshPositionAbortRef.current = controller
-      const run = (async () => {
-        try {
-          const res = await apiFetch(`/api/waitlist/position?email=${encodeURIComponent(emailForSync)}`, {
-            method: 'GET',
-            headers: { Accept: 'application/json' },
-            signal: controller.signal,
-          })
-          const json = (await res.json().catch(() => null)) as any
-          const data = json?.success ? json?.data : null
-          if (res.ok && data) {
-            setWaitlistPosition({
-              points: {
-                total: typeof data?.points?.total === 'number' ? data.points.total : 0,
-                invite: typeof data?.points?.invite === 'number' ? data.points.invite : 0,
-                signup: typeof data?.points?.signup === 'number' ? data.points.signup : 0,
-                tasks: typeof data?.points?.tasks === 'number' ? data.points.tasks : 0,
-              },
-              rank: {
-                invite: typeof data?.rank?.invite === 'number' ? data.rank.invite : null,
-                total: typeof data?.rank?.total === 'number' ? data.rank.total : null,
-              },
-              totalCount: typeof data?.totalCount === 'number' ? data.totalCount : 0,
-              totalAheadInvite: typeof data?.totalAheadInvite === 'number' ? data.totalAheadInvite : null,
-              percentileInvite: typeof data?.percentileInvite === 'number' ? data.percentileInvite : null,
-              referrals: {
-                qualifiedCount: typeof data?.referrals?.qualifiedCount === 'number' ? data.referrals.qualifiedCount : 0,
-                pendingCount: typeof data?.referrals?.pendingCount === 'number' ? data.referrals.pendingCount : 0,
-                pendingCountCapped: typeof data?.referrals?.pendingCountCapped === 'number' ? data.referrals.pendingCountCapped : 0,
-                pendingCap: typeof data?.referrals?.pendingCap === 'number' ? data.referrals.pendingCap : 10,
-              },
-            })
-          }
-        } catch {
-          // ignore
-        } finally {
-          refreshPositionInFlightRef.current = null
-          refreshPositionAbortRef.current = null
-        }
-      })()
-
-      refreshPositionInFlightRef.current = run
-      return run
-    },
-    [apiFetch],
-  )
-  useEffect(() => {
-    return () => {
-      refreshPositionAbortRef.current?.abort()
-    }
-  }, [])
   const markAction = useCallback(
     (action: ActionKey) => {
       if (actionsDone[action]) return
