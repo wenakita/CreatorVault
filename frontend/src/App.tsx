@@ -1,13 +1,12 @@
 import { lazy, useEffect, useMemo, useRef } from 'react'
 import { Routes, Route, Navigate, Outlet, useLocation } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
-import { useAccount } from 'wagmi'
+import { useAccount, useConnect } from 'wagmi'
 import { usePrivyClientStatus } from '@/lib/privy/client'
 import { useCreatorAllowlist } from '@/hooks'
 import { useSiweAuth } from '@/hooks/useSiweAuth'
 import { apiFetch } from '@/lib/apiBase'
 import { Layout } from './components/Layout'
-import { ConnectButton } from './components/ConnectButton'
 import { MarketingLayout } from './components/MarketingLayout'
 import { Home } from './pages/Home'
 import { isPublicSiteMode } from './lib/flags'
@@ -52,7 +51,11 @@ function getMarketingBaseUrl(): string {
 function AppAccessGate(props: { variant: 'signin' | 'denied'; marketingUrl: string; debugAddress: string | null }) {
   const siwe = useSiweAuth()
   const { address, isConnected } = useAccount()
+  const { connectAsync, connectors, error: connectError, isPending } = useConnect()
   const autoSignAttempted = useRef<string | null>(null)
+  const walletConnectConnector = useMemo(() => {
+    return connectors.find((c) => c.id === 'walletConnect' || c.name?.toLowerCase().includes('walletconnect'))
+  }, [connectors])
 
   useEffect(() => {
     if (props.variant !== 'signin') return
@@ -86,17 +89,32 @@ function AppAccessGate(props: { variant: 'signin' | 'denied'; marketingUrl: stri
 
           <div className="flex flex-col gap-3">
             <div className="flex items-center justify-between gap-3">
-              <ConnectButton variant="gate" />
+              <button
+                type="button"
+                className="btn-accent"
+                disabled={isPending || !walletConnectConnector}
+                onClick={() => {
+                  if (!walletConnectConnector) return
+                  void connectAsync({ connector: walletConnectConnector })
+                }}
+                title={walletConnectConnector ? 'Connect with WalletConnect' : 'WalletConnect unavailable'}
+              >
+                {isPending ? 'Connecting…' : 'Connect wallet'}
+              </button>
               <button
                 type="button"
                 className="btn-accent"
                 disabled={siwe.busy || !isConnected}
                 onClick={() => void siwe.signIn()}
-                title={isConnected ? 'Sign a message (no tx)' : 'Connect a wallet or email first'}
+                title={isConnected ? 'Sign a message (no tx)' : 'Connect a wallet first'}
               >
                 {siwe.busy ? 'Signing…' : 'Sign in'}
               </button>
             </div>
+            {!walletConnectConnector ? (
+              <div className="text-xs text-amber-300/80">WalletConnect is unavailable. Check VITE_WALLETCONNECT_PROJECT_ID.</div>
+            ) : null}
+            {connectError ? <div className="text-xs text-red-400">{connectError.message}</div> : null}
             {siwe.error ? <div className="text-xs text-red-400">{siwe.error}</div> : null}
             {props.debugAddress ? <div className="text-[11px] text-zinc-600 font-mono">wallet: {props.debugAddress}</div> : null}
           </div>
