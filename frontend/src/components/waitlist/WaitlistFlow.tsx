@@ -1718,12 +1718,15 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
                         if (!privyReady || privyVerifyBusy) return
                         startPrivyVerify()
                         privyVerifyAttemptRef.current = Date.now()
-                        const isLocked = isEthereumLockedNow()
+                        const isBaseApp = miniApp.isBaseApp
+                        const isLocked = !isBaseApp && isEthereumLockedNow()
                         const walletOptions = {
                           // Offer extension wallets unless multiple injected providers are present.
-                          walletList: isLocked
-                            ? ['base_account', 'wallet_connect']
-                            : ['base_account', 'detected_wallets', 'metamask', 'coinbase_wallet', 'wallet_connect'],
+                          walletList: isBaseApp
+                            ? ['base_account']
+                            : isLocked
+                              ? ['wallet_connect']
+                              : ['detected_wallets', 'metamask', 'coinbase_wallet', 'wallet_connect'],
                           walletChainType: 'ethereum-only',
                           description: 'Connect a wallet to verify.',
                         } as const
