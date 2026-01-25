@@ -1288,7 +1288,7 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
     if (!showPrivy || privyStatus !== 'ready') return
     if (step !== 'verify') return
     if (!persona) return
-    if (!privyReady || !privyAuthed) return
+    if (!privyReady) return
     if (verifiedWallet || verifiedSolana) return
     let cancelled = false
     const delay = privyVerifyAttemptRef.current ? 350 : 120
@@ -1319,7 +1319,6 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
   }, [
     finishPrivyVerify,
     persona,
-    privyAuthed,
     privyReady,
     privyStatus,
     privyUser,
@@ -1749,9 +1748,7 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
                     {privyAuthed && baseSubAccountError ? (
                       <div className="text-[11px] text-amber-300/80 text-center">{baseSubAccountError}</div>
                     ) : null}
-                    <div className="text-[11px] text-zinc-500 text-center">
-                      WalletConnect works best if you have multiple wallet extensions.
-                    </div>
+                    <div className="text-[11px] text-zinc-500 text-center">WalletConnect only.</div>
                   </div>
                 ) : null}
 
