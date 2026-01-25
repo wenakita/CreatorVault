@@ -2,15 +2,13 @@ import { AnimatePresence, motion } from 'framer-motion'
 import { useCallback, useEffect, useMemo, useReducer, useRef } from 'react'
 import { useLocation } from 'react-router-dom'
 import { getAppBaseUrl } from '@/lib/host'
-import { SignInButton, useProfile, useSignInMessage } from '@farcaster/auth-kit'
 import { useAccount } from 'wagmi'
 import { useSiweAuth } from '@/hooks/useSiweAuth'
-import { ConnectButtonWeb3 } from '@/components/ConnectButtonWeb3'
 import { isPrivyClientEnabled } from '@/lib/flags'
 import { usePrivyClientStatus } from '@/lib/privy/client'
 import { toViemAccount, useBaseAccountSdk, useConnectWallet, usePrivy, useWallets } from '@privy-io/react-auth'
 import { base } from 'wagmi/chains'
-import { Check, CheckCircle2, ChevronDown, ArrowLeft } from 'lucide-react'
+import { Check, CheckCircle2, ArrowLeft } from 'lucide-react'
 import { useMiniAppContext } from '@/hooks'
 import { apiAliasPath } from '@/lib/apiBase'
 import { fetchZoraCoin, fetchZoraProfile } from '@/lib/zora/client'
@@ -20,15 +18,14 @@ import { Logo } from '@/components/brand/Logo'
 type Persona = 'creator' | 'user'
 type Variant = 'page' | 'embedded'
 type ActionKey = 'shareX' | 'copyLink' | 'share' | 'follow' | 'saveApp'
-type ContactPreference = 'wallet' | 'farcaster' | 'email' | 'solana'
-type VerificationMethod = 'siwe' | 'siwf' | 'privy' | 'solana'
+type ContactPreference = 'wallet' | 'email'
+type VerificationMethod = 'siwe' | 'privy' | 'solana'
 type VerificationClaim = { method: VerificationMethod; subject: string; timestamp: string }
 
 type FlowState = {
   persona: Persona | null
   step: 'persona' | 'verify' | 'email' | 'done'
   contactPreference: ContactPreference
-  userSkipVerify: boolean
   email: string
   busy: boolean
   error: string | null
@@ -36,15 +33,9 @@ type FlowState = {
 }
 
 type VerificationState = {
-  verifiedFid: number | null
   verifiedWallet: string | null
   verifiedWalletMethod: VerificationMethod | null
   verifiedSolana: string | null
-  siwfNonce: string | null
-  siwfNonceToken: string | null
-  siwfBusy: boolean
-  siwfError: string | null
-  siwfStarted: boolean
   privyVerifyBusy: boolean
   privyVerifyError: string | null
   baseSubAccount: string | null
@@ -71,7 +62,6 @@ type WaitlistState = {
   inviteToast: string | null
   inviteTemplateIdx: number
   referralCode: string | null
-  showWalletOption: boolean
   shareBusy: boolean
   shareToast: string | null
   actionsDone: Record<ActionKey, boolean>
@@ -90,7 +80,6 @@ type PatchAction<T> = { type: 'patch'; patch: Partial<T> } | { type: 'reset' }
 type WaitlistAction =
   | PatchAction<WaitlistState>
   | { type: 'setActions'; actions: Record<ActionKey, boolean> }
-  | { type: 'toggleShowWalletOption' }
 
 const ACTION_POINTS: Record<ActionKey, number> = {
   shareX: 10,
@@ -114,7 +103,6 @@ const initialFlowState: FlowState = {
   persona: null,
   step: 'persona',
   contactPreference: 'wallet',
-  userSkipVerify: false,
   email: '',
   busy: false,
   error: null,
@@ -122,15 +110,9 @@ const initialFlowState: FlowState = {
 }
 
 const initialVerificationState: VerificationState = {
-  verifiedFid: null,
   verifiedWallet: null,
   verifiedWalletMethod: null,
   verifiedSolana: null,
-  siwfNonce: null,
-  siwfNonceToken: null,
-  siwfBusy: false,
-  siwfError: null,
-  siwfStarted: false,
   privyVerifyBusy: false,
   privyVerifyError: null,
   baseSubAccount: null,
@@ -148,7 +130,6 @@ const initialWaitlistState: WaitlistState = {
   inviteToast: null,
   inviteTemplateIdx: 0,
   referralCode: null,
-  showWalletOption: false,
   shareBusy: false,
   shareToast: null,
   actionsDone: { ...EMPTY_ACTION_STATE },
@@ -162,7 +143,6 @@ type FlowAction =
   | { type: 'force_persona'; persona: Persona }
   | { type: 'back' }
   | { type: 'verified' }
-  | { type: 'use_email_fallback' }
   | { type: 'advance_email' }
   | { type: 'submit_success'; doneEmail: string | null }
   | { type: 'set_email'; email: string }
@@ -181,7 +161,6 @@ function flowReducer(state: FlowState, action: FlowAction): FlowState {
         persona: action.persona,
         step: 'verify',
         contactPreference: 'wallet',
-        userSkipVerify: false,
       }
     }
     case 'force_persona':
@@ -191,15 +170,12 @@ function flowReducer(state: FlowState, action: FlowAction): FlowState {
         persona: action.persona,
         step: 'verify',
         contactPreference: 'wallet',
-        userSkipVerify: false,
       }
     case 'back': {
       if (state.step === 'verify') return { ...state, step: 'persona' }
       if (state.step === 'email') {
         if (state.persona === 'creator') return { ...state, step: 'verify' }
-        if (state.persona === 'user') {
-          return { ...state, step: state.userSkipVerify ? 'persona' : 'verify' }
-        }
+        if (state.persona === 'user') return { ...state, step: 'verify' }
         return { ...state, step: 'persona' }
       }
       return state
@@ -208,10 +184,6 @@ function flowReducer(state: FlowState, action: FlowAction): FlowState {
       if (state.step !== 'verify') return state
       if (!state.persona) return state
       return { ...state, step: 'email' }
-    case 'use_email_fallback':
-      if (state.persona !== 'user') return state
-      if (state.step !== 'verify') return state
-      return { ...state, step: 'email', contactPreference: 'email', userSkipVerify: true }
     case 'advance_email':
       if (!state.persona) return state
       return { ...state, step: 'email' }
@@ -233,12 +205,6 @@ function flowReducer(state: FlowState, action: FlowAction): FlowState {
 
 type VerificationAction =
   | { type: 'reset' }
-  | { type: 'siwf_start' }
-  | { type: 'siwf_nonce_loaded'; nonce: string; nonceToken: string | null }
-  | { type: 'siwf_error'; error: string }
-  | { type: 'siwf_started' }
-  | { type: 'siwf_verified'; fid: number }
-  | { type: 'siwf_clear' }
   | { type: 'verify_wallet'; address: string; method: VerificationMethod | null }
   | { type: 'verify_solana'; address: string }
   | { type: 'clear_wallet_verifications' }
@@ -254,19 +220,6 @@ function verificationReducer(state: VerificationState, action: VerificationActio
   switch (action.type) {
     case 'reset':
       return initialVerificationState
-    case 'siwf_start':
-      return { ...state, siwfBusy: true, siwfError: null }
-    case 'siwf_nonce_loaded':
-      return { ...state, siwfNonce: action.nonce, siwfNonceToken: action.nonceToken, siwfBusy: false }
-    case 'siwf_error':
-      return { ...state, siwfError: action.error, siwfBusy: false }
-    case 'siwf_started':
-      return { ...state, siwfStarted: true, siwfError: null }
-    case 'siwf_verified':
-      if (!action.fid || action.fid <= 0) return state
-      return { ...state, verifiedFid: action.fid, siwfBusy: false, siwfError: null }
-    case 'siwf_clear':
-      return { ...state, siwfStarted: false, siwfError: null, siwfBusy: false, siwfNonce: null, siwfNonceToken: null }
     case 'verify_wallet': {
       if (!action.address) return state
       const nextMethod =
@@ -310,7 +263,6 @@ function verificationReducer(state: VerificationState, action: VerificationActio
 function waitlistReducer(state: WaitlistState, action: WaitlistAction): WaitlistState {
   if (action.type === 'reset') return initialWaitlistState
   if (action.type === 'setActions') return { ...state, actionsDone: action.actions }
-  if (action.type === 'toggleShowWalletOption') return { ...state, showWalletOption: !state.showWalletOption }
   if (action.type === 'patch') return { ...state, ...action.patch }
   return state
 }
@@ -334,11 +286,9 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
   const subAccountAttemptRef = useRef<string | null>(null)
 
   const appUrl = useMemo(() => getAppBaseUrl(), [])
-  const { isConnected: isWalletConnected, address: connectedAddressRaw } = useAccount()
+  const { address: connectedAddressRaw } = useAccount()
   const siwe = useSiweAuth()
   const miniApp = useMiniAppContext()
-  const { message: siwfMessage, signature: siwfSignature } = useSignInMessage()
-  const { isAuthenticated: isFarcasterAuthed, profile } = useProfile()
 
   const setWaitlist = useCallback((patch: Partial<WaitlistState>) => {
     dispatchWaitlist({ type: 'patch', patch })
@@ -349,7 +299,6 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
   const goBackFlow = useCallback(() => dispatchFlow({ type: 'back' }), [])
   const advanceAfterVerify = useCallback(() => dispatchFlow({ type: 'verified' }), [])
   const advanceToEmail = useCallback(() => dispatchFlow({ type: 'advance_email' }), [])
-  const useEmailFallback = useCallback(() => dispatchFlow({ type: 'use_email_fallback' }), [])
   const submitSuccess = useCallback((doneEmail: string | null) => dispatchFlow({ type: 'submit_success', doneEmail }), [])
   const setEmail = useCallback((email: string) => dispatchFlow({ type: 'set_email', email }), [])
   const setBusy = useCallback((busy: boolean) => dispatchFlow({ type: 'set_busy', busy }), [])
@@ -359,15 +308,6 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
     [],
   )
 
-  const startSiwfFlow = useCallback(() => dispatchVerification({ type: 'siwf_start' }), [])
-  const clearSiwf = useCallback(() => dispatchVerification({ type: 'siwf_clear' }), [])
-  const setSiwfNonceLoaded = useCallback(
-    (nonce: string, nonceToken: string | null) => dispatchVerification({ type: 'siwf_nonce_loaded', nonce, nonceToken }),
-    [],
-  )
-  const setSiwfError = useCallback((error: string) => dispatchVerification({ type: 'siwf_error', error }), [])
-  const setSiwfStarted = useCallback(() => dispatchVerification({ type: 'siwf_started' }), [])
-  const setVerifiedFid = useCallback((fid: number) => dispatchVerification({ type: 'siwf_verified', fid }), [])
   const verifyWallet = useCallback(
     (address: string, method: VerificationMethod | null) => dispatchVerification({ type: 'verify_wallet', address, method }),
     [],
@@ -403,7 +343,6 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
   const setInviteToast = useCallback((inviteToast: string | null) => setWaitlist({ inviteToast }), [setWaitlist])
   const setInviteTemplateIdx = useCallback((inviteTemplateIdx: number) => setWaitlist({ inviteTemplateIdx }), [setWaitlist])
   const setReferralCode = useCallback((referralCode: string | null) => setWaitlist({ referralCode }), [setWaitlist])
-  const toggleShowWalletOption = useCallback(() => dispatchWaitlist({ type: 'toggleShowWalletOption' }), [])
   const setShareBusy = useCallback((shareBusy: boolean) => setWaitlist({ shareBusy }), [setWaitlist])
   const setShareToast = useCallback((shareToast: string | null) => setWaitlist({ shareToast }), [setWaitlist])
   const setActionsDone = useCallback(
@@ -419,26 +358,11 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
     [setWaitlist],
   )
 
+  const { persona, step, contactPreference, email, busy, error, doneEmail } = flow
   const {
-    persona,
-    step,
-    contactPreference,
-    userSkipVerify,
-    email,
-    busy,
-    error,
-    doneEmail,
-  } = flow
-  const {
-    verifiedFid,
     verifiedWallet,
     verifiedWalletMethod,
     verifiedSolana,
-    siwfNonce,
-    siwfNonceToken,
-    siwfBusy,
-    siwfError,
-    siwfStarted,
     privyVerifyBusy,
     privyVerifyError,
     baseSubAccount,
@@ -455,7 +379,6 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
     inviteToast,
     inviteTemplateIdx,
     referralCode,
-    showWalletOption,
     shareBusy,
     shareToast,
     actionsDone,
@@ -691,14 +614,9 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
   ])
 
   const emailTrimmed = useMemo(() => normalizeEmail(email), [email])
-  const hasVerification = useMemo(
-    () => Boolean(verifiedWallet || verifiedFid || verifiedSolana),
-    [verifiedWallet, verifiedFid, verifiedSolana],
-  )
+  const hasVerification = useMemo(() => Boolean(verifiedWallet || verifiedSolana), [verifiedWallet, verifiedSolana])
   const wantsEmail = contactPreference === 'email'
-  const canUseWallet = Boolean(verifiedWallet)
-  const canUseFarcaster = typeof verifiedFid === 'number' && verifiedFid > 0
-  const canUseSolana = Boolean(verifiedSolana)
+  const canUseWallet = hasVerification
   function isEthereumLockedNow(): boolean {
     if (typeof window === 'undefined') return false
     const desc = Object.getOwnPropertyDescriptor(window, 'ethereum')
@@ -721,15 +639,6 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
   }, [])
   const isBypassAdmin = !!connectedAddress && adminBypassSet.has(connectedAddress)
 
-  useEffect(() => {
-    if (contactPreference === 'email') return
-    if (contactPreference === 'wallet' && !canUseWallet) {
-      if (canUseFarcaster) setContactPreference('farcaster')
-      else if (canUseSolana) setContactPreference('solana')
-    }
-    if (contactPreference === 'farcaster' && !canUseFarcaster && canUseWallet) setContactPreference('wallet')
-    if (contactPreference === 'solana' && !canUseSolana && canUseWallet) setContactPreference('wallet')
-  }, [canUseFarcaster, canUseSolana, canUseWallet, contactPreference, setContactPreference])
   const forcedPersona = useMemo(() => {
     const q = new URLSearchParams(location.search)
     const raw = (q.get('persona') ?? '').trim().toLowerCase()
@@ -827,25 +736,20 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
     if (step !== 'persona') return
     forcedPersonaAppliedRef.current = true
     forcePersona(forcedPersona)
-    clearSiwf()
-  }, [clearSiwf, forcePersona, forcedPersona, step])
+  }, [forcePersona, forcedPersona, step])
 
   const totalSteps = useMemo(() => {
-    // persona + verify (unless user skipped) + contact + done
-    if (persona === 'creator') return 4
-    if (persona === 'user') return userSkipVerify ? 3 : 4
+    // persona + verify + contact + done
+    if (persona === 'creator' || persona === 'user') return 4
     return 0
-  }, [persona, userSkipVerify])
+  }, [persona])
 
   const stepIndex = useMemo(() => {
     if (step === 'persona') return 1
     if (step === 'verify') return 2
-    if (step === 'email') {
-      if (persona === 'creator') return 3
-      if (persona === 'user') return userSkipVerify ? 2 : 3
-    }
+    if (step === 'email') return 3
     return totalSteps
-  }, [persona, step, totalSteps, userSkipVerify])
+  }, [step, totalSteps])
 
   const progressPct = useMemo(() => {
     if (!totalSteps) return 0
@@ -1059,9 +963,6 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
     if (verifiedWallet && isValidEvmAddress(verifiedWallet)) {
       out.push({ method: verifiedWalletMethod ?? 'siwe', subject: verifiedWallet, timestamp: ts })
     }
-    if (typeof verifiedFid === 'number' && verifiedFid > 0) {
-      out.push({ method: 'siwf', subject: String(verifiedFid), timestamp: ts })
-    }
     if (verifiedSolana && isValidSolanaAddress(verifiedSolana)) {
       out.push({ method: 'solana', subject: verifiedSolana, timestamp: ts })
     }
@@ -1071,9 +972,6 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
   function buildSyntheticEmail(): string {
     if (verifiedWallet && isValidEvmAddress(verifiedWallet)) {
       return `wallet-${verifiedWallet.toLowerCase().replace(/^0x/, '')}@noemail.4626.fun`
-    }
-    if (typeof verifiedFid === 'number' && verifiedFid > 0) {
-      return `fid-${verifiedFid}@noemail.4626.fun`
     }
     if (verifiedSolana && isValidSolanaAddress(verifiedSolana)) {
       return `sol-${verifiedSolana}@noemail.4626.fun`
@@ -1093,8 +991,8 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
       if (persona === 'creator' && !hasVerification) {
         throw new Error('Verify your identity first.')
       }
-      if (persona === 'user' && !wantsEmail && !hasVerification) {
-        throw new Error('Connect a wallet or Farcaster first (email is a fallback).')
+      if (persona === 'user' && !hasVerification) {
+        throw new Error('Connect a wallet first. Email is for notifications.')
       }
       if (persona !== 'creator' && persona !== 'user') {
         throw new Error('Select Creator or User first.')
@@ -1136,7 +1034,6 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
           verifications,
           intent: {
             persona,
-            fid: verifiedFid,
             hasCreatorCoin: creatorCoinBusy ? null : Boolean(creatorCoin?.address),
           },
         }),
@@ -1227,27 +1124,6 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
     void refreshPosition(doneEmail)
   }, [doneEmail, refreshPosition, step])
 
-  // Auto-start SIWF nonce fetch so the button is the primary action.
-  useEffect(() => {
-    if (step !== 'verify') return
-    if (!persona) return
-    if (siwfNonce) return
-    if (siwfBusy) return
-    void startSiwf()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [persona, siwfBusy, siwfNonce, step])
-
-  // Only verify after the user explicitly clicks the SIWF button in this flow.
-  useEffect(() => {
-    if (!siwfStarted) return
-    if (step !== 'verify') return
-    if (!persona) return
-    if (siwfBusy) return
-    if (!siwfMessage || !siwfSignature) return
-    void verifySiwfOnServer()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [persona, siwfBusy, siwfMessage, siwfSignature, siwfStarted, step])
-
   // If SIWE has established an authenticated address, treat it as the verified wallet for this flow.
   useEffect(() => {
     if (step !== 'verify') return
@@ -1258,19 +1134,6 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
     if (!a) return
     verifyWallet(a, 'siwe')
   }, [persona, siwe.authAddress, siwe.isSignedIn, step, verifiedWallet, verifyWallet])
-
-  // When Farcaster auth-kit has a profile, capture a best-effort wallet.
-  useEffect(() => {
-    if (!isFarcasterAuthed || !profile) return
-    const custody = typeof (profile as any)?.custody === 'string' ? String((profile as any).custody) : null
-    const verifs = Array.isArray((profile as any)?.verifications) ? ((profile as any).verifications as any[]) : []
-    const first =
-      verifs.find((a) => typeof a === 'string' && /^0x[a-fA-F0-9]{40}$/.test(a)) ??
-      (custody && /^0x[a-fA-F0-9]{40}$/.test(custody) ? custody : null)
-    if (first && typeof first === 'string') {
-      verifyWallet(first, verifiedWalletMethod ? null : 'siwf')
-    }
-  }, [isFarcasterAuthed, profile, verifiedWalletMethod, verifyWallet])
 
   useEffect(() => {
     claimCoinForWalletRef.current = null
@@ -1349,7 +1212,6 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
   useEffect(() => {
     if (step !== 'verify') return
     if (persona !== 'creator') return
-    if (!siwe.isSignedIn) return
     if (!verifiedWallet) return
     if (!creatorCoin?.address) return
     if (claimCoinBusy) return
@@ -1358,53 +1220,7 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
     claimCoinForWalletRef.current = key
     void claimCreatorCoin(creatorCoin.address, 'auto')
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [claimCoinBusy, creatorCoin?.address, persona, siwe.isSignedIn, step, verifiedWallet])
-
-  async function startSiwf() {
-    startSiwfFlow()
-    try {
-      const res = await apiFetch('/api/farcaster/nonce', {
-        headers: { Accept: 'application/json' },
-      })
-      const json = (await res.json().catch(() => null)) as any
-      const nonce = typeof json?.data?.nonce === 'string' ? json.data.nonce : ''
-      const nonceToken = typeof json?.data?.nonceToken === 'string' ? json.data.nonceToken : ''
-      if (!res.ok || !json?.success || !nonce) {
-        const msg =
-          json?.error ||
-          (res.ok ? 'Failed to start Farcaster sign-in (missing nonce)' : `Failed to start Farcaster sign-in (HTTP ${res.status})`)
-        throw new Error(msg)
-      }
-      setSiwfNonceLoaded(nonce, nonceToken || null)
-    } catch (e: any) {
-      setSiwfError(e?.message ? String(e.message) : 'Failed to start Farcaster sign-in')
-    }
-  }
-
-  async function verifySiwfOnServer() {
-    if (!siwfMessage || !siwfSignature) {
-      setSiwfError('Missing Farcaster signature')
-      return
-    }
-    startSiwfFlow()
-    try {
-      const res = await apiFetch('/api/farcaster/verify', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-        body: JSON.stringify({ message: siwfMessage, signature: siwfSignature, nonceToken: siwfNonceToken }),
-      })
-      const json = (await res.json().catch(() => null)) as any
-      const fid = typeof json?.data?.fid === 'number' ? json.data.fid : null
-      if (!res.ok || !json?.success || !fid) {
-        const msg =
-          json?.error || (res.ok ? 'Farcaster verification failed (missing fid)' : `Farcaster verification failed (HTTP ${res.status})`)
-        throw new Error(msg)
-      }
-      setVerifiedFid(fid)
-    } catch (e: any) {
-      setSiwfError(e?.message ? String(e.message) : 'Farcaster verification failed')
-    }
-  }
+  }, [claimCoinBusy, creatorCoin?.address, persona, step, verifiedWallet])
 
   const shareBaseUrl = useMemo(() => appUrl.replace(/\/+$/, ''), [appUrl])
   const displayEmail = wantsEmail ? doneEmail : null
@@ -1550,12 +1366,12 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
   // UX: once creators are verified, immediately advance to email (no extra "Continue" click).
   useEffect(() => {
     if (step !== 'verify') return
-    if (!verifiedFid && !verifiedWallet && !verifiedSolana) return
+    if (!verifiedWallet && !verifiedSolana) return
     const timer = window.setTimeout(() => {
       advanceAfterVerify()
     }, 800)
     return () => window.clearTimeout(timer)
-  }, [advanceAfterVerify, step, verifiedFid, verifiedSolana, verifiedWallet])
+  }, [advanceAfterVerify, step, verifiedSolana, verifiedWallet])
 
   useEffect(() => {
     if (!miniApp.isMiniApp) {
@@ -1687,9 +1503,8 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
 
   const goBack = useCallback(() => {
     setError(null)
-    clearSiwf()
     goBackFlow()
-  }, [clearSiwf, goBackFlow, setError])
+  }, [goBackFlow, setError])
 
   const compactNumber = useMemo(
     () => new Intl.NumberFormat('en-US', { notation: 'compact', maximumFractionDigits: 1 }),
@@ -1720,34 +1535,6 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
     )
   }
 
-  const walletVerifyFallback = (
-    <motion.div
-      initial={{ opacity: 0, height: 0 }}
-      animate={{ opacity: 1, height: 'auto' }}
-      exit={{ opacity: 0, height: 0 }}
-      transition={{ duration: 0.15 }}
-      className="rounded-xl border border-white/10 bg-black/20 p-3 sm:p-4 space-y-2"
-    >
-      <ConnectButtonWeb3 />
-      <button
-        type="button"
-        className="btn-accent w-full disabled:opacity-50 disabled:cursor-not-allowed"
-        disabled={siwe.busy || !isWalletConnected || Boolean(verifiedWallet)}
-        onClick={() => {
-          void (async () => {
-            const signed = await siwe.signIn()
-            if (!signed) return
-            verifyWallet(signed, 'siwe')
-            setClaimCoinError(null)
-          })()
-        }}
-      >
-        {!isWalletConnected ? 'Connect wallet first' : siwe.busy ? 'Signing…' : 'Sign to verify'}
-      </button>
-      {siwe.error ? <div className="text-xs text-red-400">{siwe.error}</div> : null}
-    </motion.div>
-  )
-
   return (
     <section id={variant === 'embedded' ? sectionId : undefined} className={containerClass}>
       <div className={innerWrapClass}>
@@ -1768,7 +1555,7 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
           <div className="space-y-4 mb-6">
             <span className="label">Waitlist</span>
             <div className="headline text-4xl sm:text-5xl leading-tight">Early access</div>
-            <div className="text-sm text-zinc-600 font-light">Creators verify · users choose wallet or email.</div>
+            <div className="text-sm text-zinc-600 font-light">Creators verify · email is optional.</div>
           </div>
         )}
 
@@ -1779,9 +1566,9 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
                 <button
                   type="button"
                   className="inline-flex items-center gap-2 text-[11px] text-zinc-500 hover:text-zinc-300 transition-colors"
-                  disabled={busy || siwfBusy || siwe.busy}
+                  disabled={busy || siwe.busy}
                   onClick={() => {
-                    if (busy || siwfBusy || siwe.busy) return
+                    if (busy || siwe.busy) return
                     goBack()
                   }}
                 >
@@ -1829,7 +1616,6 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
                     onClick={() => {
                       selectPersona('creator')
                       setError(null)
-                      clearSiwf()
                     }}
                   >
                     <div className="flex items-center justify-between gap-4">
@@ -1880,22 +1666,11 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
                 {/* Header */}
                 <div className="space-y-1">
                   <div className="headline text-2xl sm:text-3xl leading-tight">Verify</div>
-                  <div className="text-sm text-zinc-500">Continue with a wallet or Farcaster</div>
+                  <div className="text-sm text-zinc-500">Continue with a wallet</div>
                 </div>
 
-                {/* Farcaster verified state */}
-                {typeof verifiedFid === 'number' && verifiedFid > 0 ? (
-                  <div className="flex items-center gap-3 rounded-xl border border-emerald-500/20 bg-emerald-500/5 px-4 py-3">
-                    <CheckCircle2 className="w-5 h-5 text-emerald-400 shrink-0" />
-                    <div className="min-w-0">
-                      <div className="text-sm text-zinc-200">Farcaster verified</div>
-                      <div className="text-xs text-zinc-500 font-mono">fid {verifiedFid}</div>
-                    </div>
-                  </div>
-                ) : null}
-
-                {/* Wallet verified state (if verified via wallet but not Farcaster) */}
-                {verifiedWallet && !(typeof verifiedFid === 'number' && verifiedFid > 0) ? (
+                {/* Wallet verified state */}
+                {verifiedWallet ? (
                   <div className="flex items-center gap-3 rounded-xl border border-emerald-500/20 bg-emerald-500/5 px-4 py-3">
                     <CheckCircle2 className="w-5 h-5 text-emerald-400 shrink-0" />
                     <div className="min-w-0 flex-1">
@@ -1915,7 +1690,7 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
                 ) : null}
 
                 {/* Solana verified state (Privy) */}
-                {verifiedSolana && !(typeof verifiedFid === 'number' && verifiedFid > 0) && !verifiedWallet ? (
+                {verifiedSolana && !verifiedWallet ? (
                   <div className="flex items-center gap-3 rounded-xl border border-emerald-500/20 bg-emerald-500/5 px-4 py-3">
                     <CheckCircle2 className="w-5 h-5 text-emerald-400 shrink-0" />
                     <div className="min-w-0 flex-1">
@@ -1933,11 +1708,7 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
                 ) : null}
 
                 {/* Privy-first: prefer Base Account (Coinbase Smart Wallet) */}
-                {showPrivy &&
-                privyStatus === 'ready' &&
-                !(typeof verifiedFid === 'number' && verifiedFid > 0) &&
-                !verifiedWallet &&
-                !verifiedSolana ? (
+                {showPrivy && privyStatus === 'ready' && !verifiedWallet && !verifiedSolana ? (
                   <div className="space-y-2">
                     <button
                       type="button"
@@ -1991,99 +1762,12 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
                     <div className="text-[11px] text-zinc-500 text-center">
                       WalletConnect works best if you have multiple wallet extensions.
                     </div>
-                    <div className="text-center">
-                      <button
-                        type="button"
-                        className="inline-flex items-center gap-1.5 text-sm text-zinc-500 hover:text-zinc-300 transition-colors"
-                        onClick={toggleShowWalletOption}
-                      >
-                        <span>{showWalletOption ? 'Hide browser wallets' : 'Use a browser wallet instead'}</span>
-                        <ChevronDown className={`w-4 h-4 transition-transform ${showWalletOption ? 'rotate-180' : ''}`} />
-                      </button>
-                    </div>
-                    {showWalletOption ? walletVerifyFallback : null}
                   </div>
                 ) : null}
 
-                {/* Fallback: original Farcaster + SIWE flow when Privy is disabled */}
-                {!showPrivy && !(typeof verifiedFid === 'number' && verifiedFid > 0) && !verifiedWallet ? (
-                  <div className="space-y-2">
-                    {siwfNonce ? (
-                      <div
-                        className={[
-                          '[&_button]:w-full',
-                          '[&_button]:min-h-[52px]',
-                          '[&_button]:rounded-xl',
-                          '[&_button]:border',
-                          '[&_button]:border-brand-primary/30',
-                          '[&_button]:bg-brand-primary/20',
-                          '[&_button]:text-zinc-100',
-                          '[&_button]:font-medium',
-                          '[&_button]:px-4',
-                          '[&_button]:py-3.5',
-                          '[&_button]:transition-colors',
-                          '[&_button:hover]:bg-brand-primary/30',
-                          '[&_button:disabled]:opacity-50',
-                          '[&_button_*]:!font-inherit',
-                        ].join(' ')}
-                      >
-                        <SignInButton
-                          nonce={siwfNonce}
-                          onSuccess={() => {
-                            setSiwfStarted()
-                          }}
-                          onError={(e: any) => setSiwfError(e?.message ? String(e.message) : 'Farcaster sign-in failed')}
-                        />
-                      </div>
-                    ) : (
-                      <button
-                        className="w-full min-h-[52px] rounded-xl border border-brand-primary/30 bg-brand-primary/20 text-zinc-400 font-medium px-4 py-3.5 cursor-not-allowed"
-                        disabled
-                      >
-                        {siwfBusy ? 'Verifying…' : 'Preparing…'}
-                      </button>
-                    )}
-                    <div className="text-center text-[11px] text-zinc-600">Recommended</div>
-                    {siwfError ? (
-                      <div className="text-xs text-red-400 text-center">
-                        {siwfError}{' '}
-                        {!siwfBusy ? (
-                          <button
-                            type="button"
-                            className="underline underline-offset-2 text-red-300 hover:text-red-200"
-                          onClick={() => void startSiwf()}
-                          >
-                            Retry
-                          </button>
-                        ) : null}
-                      </div>
-                    ) : null}
-                    <div className="text-center">
-                      <button
-                        type="button"
-                        className="inline-flex items-center gap-1.5 text-sm text-zinc-500 hover:text-zinc-300 transition-colors"
-                        onClick={toggleShowWalletOption}
-                      >
-                        <span>{showWalletOption ? 'Hide wallet option' : 'Or use a wallet instead'}</span>
-                        <ChevronDown className={`w-4 h-4 transition-transform ${showWalletOption ? 'rotate-180' : ''}`} />
-                      </button>
-                    </div>
-                    {showWalletOption ? (
-                      walletVerifyFallback
-                    ) : null}
-                  </div>
-                ) : null}
-
-                {persona === 'user' && !verifiedWallet && !(typeof verifiedFid === 'number' && verifiedFid > 0) && !verifiedSolana ? (
-                  <div className="text-center pt-2">
-                    <button
-                      type="button"
-                      className="text-sm text-zinc-500 hover:text-zinc-300 transition-colors"
-                      onClick={useEmailFallback}
-                    >
-                      Use email instead
-                    </button>
-                    <div className="text-[11px] text-zinc-600 mt-1">Email is only for waitlist notifications. No marketing.</div>
+                {!showPrivy ? (
+                  <div className="rounded-xl border border-white/10 bg-black/20 px-4 py-3 text-center text-[11px] text-zinc-500">
+                    Wallet login is unavailable. Enable Privy to continue.
                   </div>
                 ) : null}
 
@@ -2116,30 +1800,6 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
                       />
                       <span>Wallet (self custody)</span>
                     </label>
-                    {canUseFarcaster ? (
-                      <label className="flex items-center gap-2">
-                        <input
-                          type="radio"
-                          name="contactPreference"
-                          className="accent-brand-primary"
-                          checked={contactPreference === 'farcaster'}
-                          onChange={() => setContactPreference('farcaster')}
-                        />
-                        <span>Farcaster (social graph)</span>
-                      </label>
-                    ) : null}
-                    {canUseSolana ? (
-                      <label className="flex items-center gap-2">
-                        <input
-                          type="radio"
-                          name="contactPreference"
-                          className="accent-brand-primary"
-                          checked={contactPreference === 'solana'}
-                          onChange={() => setContactPreference('solana')}
-                        />
-                        <span>Solana wallet</span>
-                      </label>
-                    ) : null}
                     <label className="flex items-center gap-2">
                       <input
                         type="radio"
