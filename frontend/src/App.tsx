@@ -56,6 +56,7 @@ function AppAccessGate(props: { variant: 'signin' | 'denied'; marketingUrl: stri
   const walletConnectConnector = useMemo(() => {
     return connectors.find((c) => c.id === 'walletConnect' || c.name?.toLowerCase().includes('walletconnect'))
   }, [connectors])
+  const primaryConnector = walletConnectConnector ?? connectors[0] ?? null
 
   useEffect(() => {
     if (props.variant !== 'signin') return
@@ -92,12 +93,12 @@ function AppAccessGate(props: { variant: 'signin' | 'denied'; marketingUrl: stri
               <button
                 type="button"
                 className="btn-accent"
-                disabled={isPending || !walletConnectConnector}
+                disabled={isPending || !primaryConnector}
                 onClick={() => {
-                  if (!walletConnectConnector) return
-                  void connectAsync({ connector: walletConnectConnector })
+                  if (!primaryConnector) return
+                  void connectAsync({ connector: primaryConnector })
                 }}
-                title={walletConnectConnector ? 'Connect with WalletConnect' : 'WalletConnect unavailable'}
+                title={primaryConnector ? `Connect with ${primaryConnector.name}` : 'No wallet connector available'}
               >
                 {isPending ? 'Connecting…' : 'Connect wallet'}
               </button>
@@ -111,8 +112,8 @@ function AppAccessGate(props: { variant: 'signin' | 'denied'; marketingUrl: stri
                 {siwe.busy ? 'Signing…' : 'Sign in'}
               </button>
             </div>
-            {!walletConnectConnector ? (
-              <div className="text-xs text-amber-300/80">WalletConnect is unavailable. Check VITE_WALLETCONNECT_PROJECT_ID.</div>
+            {!walletConnectConnector && primaryConnector ? (
+              <div className="text-xs text-amber-300/80">WalletConnect unavailable. Using {primaryConnector.name}.</div>
             ) : null}
             {connectError ? <div className="text-xs text-red-400">{connectError.message}</div> : null}
             {siwe.error ? <div className="text-xs text-red-400">{siwe.error}</div> : null}
