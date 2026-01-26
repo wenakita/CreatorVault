@@ -9,7 +9,7 @@ import { useEffect, useRef } from 'react'
 import { useAccount, useConnect } from 'wagmi'
 import { useLocation } from 'react-router-dom'
 
-import { wagmiConfigBase, wagmiConfigDeploy } from '@/config/wagmi'
+import { wagmiConfigBase, wagmiConfigBaseNoZora, wagmiConfigDeploy } from '@/config/wagmi'
 import { logger } from '@/lib/logger'
 import { WalletDebugPanel } from '@/components/WalletDebugPanel'
 import { PrivyWagmiSmartAccountBridge } from '@/web3/PrivyWagmiSmartAccountBridge'
@@ -70,7 +70,13 @@ export function Web3Providers({ children }: { children: ReactNode }) {
     location.pathname.startsWith('/deploy/') ||
     location.pathname === '/admin/deploy-strategies' ||
     location.pathname.startsWith('/admin/deploy-strategies/')
-  const wagmiConfig = zoraConnectorEnabled && isDeployRoute ? wagmiConfigDeploy : wagmiConfigBase
+  const isAdminRoute = location.pathname === '/admin' || location.pathname.startsWith('/admin/')
+  const disableZoraForAdmin = isAdminRoute && !isDeployRoute
+  const wagmiConfig = disableZoraForAdmin
+    ? wagmiConfigBaseNoZora
+    : zoraConnectorEnabled && isDeployRoute
+      ? wagmiConfigDeploy
+      : wagmiConfigBase
 
   // Coinbase Developer Platform (OnchainKit) config.
   // - `VITE_CDP_API_KEY` is the CDP key id (safe to expose; origin-restrict in CDP).
