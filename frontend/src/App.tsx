@@ -52,7 +52,10 @@ function AppAccessGate(props: { variant: 'signin' | 'denied'; marketingUrl: stri
   const walletConnectConnector = useMemo(() => {
     return connectors.find((c) => c.id === 'walletConnect' || c.name?.toLowerCase().includes('walletconnect'))
   }, [connectors])
-  const primaryConnector = walletConnectConnector ?? connectors[0] ?? null
+  const coinbaseSmartWalletConnector = useMemo(() => {
+    return connectors.find((c) => c.id === 'coinbaseSmartWallet' || c.name?.toLowerCase().includes('coinbase smart wallet'))
+  }, [connectors])
+  const primaryConnector = walletConnectConnector ?? coinbaseSmartWalletConnector ?? connectors[0] ?? null
 
   return (
     <div className="min-h-screen bg-black text-white">

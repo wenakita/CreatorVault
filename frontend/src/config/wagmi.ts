@@ -3,6 +3,7 @@ import { base } from 'wagmi/chains'
 import { injected, walletConnect } from 'wagmi/connectors'
 import { farcasterMiniApp } from '@farcaster/miniapp-wagmi-connector'
 import { zoraGlobalWalletConnector } from '@/lib/privy/zoraGlobalWalletConnector'
+import { coinbaseSmartWallet } from '@/web3/connectors/coinbaseSmartWallet'
 
 /**
  * Base RPC notes:
@@ -50,6 +51,11 @@ const walletConnectMetadata = {
   icons: ['https://4626.fun/pwa-512.png'] as string[],
 }
 
+const walletBranding = {
+  appName: walletConnectMetadata.name,
+  appLogoUrl: walletConnectMetadata.icons[0] ?? undefined,
+}
+
 const enableZoraConnect = (() => {
   const raw = (import.meta.env.VITE_ENABLE_ZORA_CONNECT as string | undefined) ?? ''
   const v = raw.trim().toLowerCase()
@@ -62,6 +68,11 @@ function createWagmiBaseConfig({ includeZoraReadOnly }: { includeZoraReadOnly: b
     connectors: [
       // Base app / Farcaster Mini App connector (when available).
       farcasterMiniApp(),
+      // Coinbase Smart Wallet (Base Account) connector for smart-wallet-only sessions.
+      coinbaseSmartWallet({
+        appName: walletBranding.appName,
+        appLogoUrl: walletBranding.appLogoUrl,
+      }),
       // Prefer Rabby explicitly (avoids multi-wallet `window.ethereum` conflicts and gives users a clear "Rabby" option).
       injected({ target: 'rabby' }),
       // Explicit MetaMask option (so extensions show up even with multi-injected discovery off).
