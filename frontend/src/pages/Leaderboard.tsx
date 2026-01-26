@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { apiFetch } from '@/lib/apiBase'
 
 type PointsType = 'invite' | 'total'
@@ -28,13 +28,18 @@ export function Leaderboard() {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [data, setData] = useState<LeaderboardResponse | null>(null)
+  const inFlightRef = useRef(false)
 
   const title = pointsType === 'invite' ? 'Invite points' : 'Total points'
 
-  useEffect(() => {
-    setBusy(true)
-    setError(null)
-    void (async () => {
+  const fetchLeaderboard = useCallback(
+    async (opts?: { silent?: boolean }) => {
+      if (inFlightRef.current) return
+      inFlightRef.current = true
+      if (!opts?.silent) {
+        setBusy(true)
+        setError(null)
+      }
       try {
         const res = await apiFetch(`/api/waitlist/leaderboard?pointsType=${encodeURIComponent(pointsType)}&page=1&limit=50`, {
           method: 'GET',
@@ -44,14 +49,46 @@ export function Leaderboard() {
         if (!res.ok || !json) throw new Error('Leaderboard request failed')
         if (!json.success || !json.data) throw new Error(json.error || 'Leaderboard request failed')
         setData(json.data)
+        if (!opts?.silent) setError(null)
       } catch (e: any) {
-        setError(e?.message ? String(e.message) : 'Leaderboard request failed')
-        setData(null)
+        if (!opts?.silent) {
+          setError(e?.message ? String(e.message) : 'Leaderboard request failed')
+          setData(null)
+        }
       } finally {
-        setBusy(false)
+        if (!opts?.silent) setBusy(false)
+        inFlightRef.current = false
       }
-    })()
-  }, [pointsType])
+    },
+    [pointsType],
+  )
+
+  useEffect(() => {
+    void fetchLeaderboard()
+  }, [fetchLeaderboard, pointsType])
+
+  useEffect(() => {
+    const handleFocus = () => {
+      void fetchLeaderboard({ silent: true })
+    }
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible') {
+        void fetchLeaderboard({ silent: true })
+      }
+    }
+    const interval = window.setInterval(() => {
+      if (document.visibilityState === 'visible') {
+        void fetchLeaderboard({ silent: true })
+      }
+    }, 30_000)
+    window.addEventListener('focus', handleFocus)
+    document.addEventListener('visibilitychange', handleVisibility)
+    return () => {
+      window.removeEventListener('focus', handleFocus)
+      document.removeEventListener('visibilitychange', handleVisibility)
+      window.clearInterval(interval)
+    }
+  }, [fetchLeaderboard])
 
   const subtitle = useMemo(() => {
     void data
@@ -134,4 +171,3 @@ export function Leaderboard() {
     </section>
   )
 }
-
