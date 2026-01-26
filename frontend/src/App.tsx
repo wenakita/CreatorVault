@@ -399,11 +399,9 @@ function App() {
               <Route element={<AppAllowlistGate />}>
                 <Route element={<Layout />}>
                   {/* App host */}
-                  {/* Keep users on "/" so the allowlist gate is visible on the root URL. */}
-                  <Route path="/" element={<ExploreCreators />} />
+                  <Route path="/" element={<Home />} />
                   {/* Keep /waitlist route as a back-compat target (marketing is on 4626.fun). */}
                   <Route path="/waitlist" element={<Waitlist />} />
-                  {/* Optional: keep existing Home page available at /home if you still want it */}
                   <Route path="/home" element={<Home />} />
 
                   <Route path="/explore" element={<Navigate to="/explore/creators" replace />} />
