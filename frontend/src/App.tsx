@@ -1,8 +1,7 @@
-import { lazy, useEffect, useMemo, useRef } from 'react'
+import { lazy, useMemo } from 'react'
 import { Routes, Route, Navigate, Outlet, useLocation } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { useAccount, useConnect } from 'wagmi'
-import { usePrivyClientStatus } from '@/lib/privy/client'
 import { useCreatorAllowlist } from '@/hooks'
 import { useSiweAuth } from '@/hooks/useSiweAuth'
 import { apiFetch } from '@/lib/apiBase'
@@ -49,23 +48,11 @@ function getMarketingBaseUrl(): string {
 }
 
 function AppAccessGate(props: { variant: 'signin' | 'denied'; marketingUrl: string; debugAddress: string | null }) {
-  const siwe = useSiweAuth()
-  const { address, isConnected } = useAccount()
   const { connectAsync, connectors, error: connectError, isPending } = useConnect()
-  const autoSignAttempted = useRef<string | null>(null)
   const walletConnectConnector = useMemo(() => {
     return connectors.find((c) => c.id === 'walletConnect' || c.name?.toLowerCase().includes('walletconnect'))
   }, [connectors])
   const primaryConnector = walletConnectConnector ?? connectors[0] ?? null
-
-  useEffect(() => {
-    if (props.variant !== 'signin') return
-    if (!isConnected || siwe.isSignedIn || siwe.busy) return
-    if (!address) return
-    if (autoSignAttempted.current === address) return
-    autoSignAttempted.current = address
-    void siwe.signIn()
-  }, [address, isConnected, props.variant, siwe])
 
   return (
     <div className="min-h-screen bg-black text-white">
@@ -76,7 +63,7 @@ function AppAccessGate(props: { variant: 'signin' | 'denied'; marketingUrl: stri
             <>
               <div className="text-lg font-medium">Connect wallet to continue</div>
               <div className="text-sm text-zinc-400 leading-relaxed">
-                You’re on the app domain. Connect a wallet (Zora / Base Account / EOA) and sign a message to check access.
+                You’re on the app domain. Connect a wallet (Zora / Base Account / EOA) to check access.
               </div>
             </>
           ) : (
@@ -102,21 +89,11 @@ function AppAccessGate(props: { variant: 'signin' | 'denied'; marketingUrl: stri
               >
                 {isPending ? 'Connecting…' : 'Connect wallet'}
               </button>
-              <button
-                type="button"
-                className="btn-accent"
-                disabled={siwe.busy || !isConnected}
-                onClick={() => void siwe.signIn()}
-                title={isConnected ? 'Sign a message (no tx)' : 'Connect a wallet first'}
-              >
-                {siwe.busy ? 'Signing…' : 'Sign in'}
-              </button>
             </div>
             {!walletConnectConnector && primaryConnector ? (
               <div className="text-xs text-amber-300/80">WalletConnect unavailable. Using {primaryConnector.name}.</div>
             ) : null}
             {connectError ? <div className="text-xs text-red-400">{connectError.message}</div> : null}
-            {siwe.error ? <div className="text-xs text-red-400">{siwe.error}</div> : null}
             {props.debugAddress ? <div className="text-[11px] text-zinc-600 font-mono">wallet: {props.debugAddress}</div> : null}
           </div>
 
@@ -132,33 +109,11 @@ function AppAccessGate(props: { variant: 'signin' | 'denied'; marketingUrl: stri
 }
 
 function AppAllowlistGate() {
-  const privyClientStatus = usePrivyClientStatus()
-
-  if (privyClientStatus !== 'ready') {
-    return (
-      <div className="min-h-screen bg-black text-white">
-        <div className="max-w-3xl mx-auto px-6 py-16">
-          <div className="text-[10px] uppercase tracking-[0.24em] text-zinc-500 mb-4">CreatorVaults</div>
-          <div className="card rounded-xl p-8 space-y-3">
-            <div className="text-lg font-medium">App is not configured</div>
-            <div className="text-sm text-zinc-400 leading-relaxed">
-              This app uses Privy smart wallets. Privy is currently disabled for this environment.
-            </div>
-            <a className="btn-accent inline-flex w-fit" href={getMarketingBaseUrl()}>
-              Join the waitlist
-            </a>
-          </div>
-        </div>
-      </div>
-    )
-  }
-
   return <AppAllowlistGatePrivyEnabled />
 }
 
 function AppAllowlistGatePrivyEnabled() {
   const location = useLocation()
-  const siwe = useSiweAuth()
   const { address: connectedAddressRaw } = useAccount()
 
   // Detect whether allowlist gating is even enabled server-side.
@@ -175,21 +130,21 @@ function AppAllowlistGatePrivyEnabled() {
     retry: 0,
   })
 
-  const authAddress = useMemo(
-    () => (typeof siwe.authAddress === 'string' && siwe.authAddress.startsWith('0x') ? siwe.authAddress.toLowerCase() : null),
-    [siwe.authAddress],
-  )
   const connectedAddress = useMemo(
     () =>
       typeof connectedAddressRaw === 'string' && connectedAddressRaw.startsWith('0x') ? connectedAddressRaw.toLowerCase() : null,
     [connectedAddressRaw],
   )
+  const siwe = useSiweAuth()
+  const siweAuthAddress = useMemo(() => {
+    const raw = typeof siwe.authAddress === 'string' ? siwe.authAddress : ''
+    return isValidEvmAddress(raw) ? raw.toLowerCase() : null
+  }, [siwe.authAddress])
+  const effectiveAddress = connectedAddress ?? siweAuthAddress
   // Allow specific operator addresses to access the full app even while allowlist is enforced.
   // (Not just /admin/* routes.)
-  const isBypassAdmin =
-    (connectedAddress ? ADMIN_BYPASS_ADDRESSES.has(connectedAddress) : false) ||
-    (authAddress ? ADMIN_BYPASS_ADDRESSES.has(authAddress) : false)
-  const allowQuery = useCreatorAllowlist(isBypassAdmin ? null : authAddress)
+  const isBypassAdmin = effectiveAddress ? ADMIN_BYPASS_ADDRESSES.has(effectiveAddress) : false
+  const allowQuery = useCreatorAllowlist(isBypassAdmin ? null : effectiveAddress)
   const allowed = allowQuery.data?.allowed === true
   const isPublicWaitlistRoute = location.pathname === '/waitlist' || location.pathname === '/leaderboard'
   const isAdminRoute = location.pathname === '/admin' || location.pathname.startsWith('/admin/')
@@ -201,24 +156,7 @@ function AppAllowlistGatePrivyEnabled() {
     return <Outlet />
   }
 
-  if (allowlistModeQuery.isError) {
-    return (
-      <div className="min-h-screen bg-black text-white">
-        <div className="max-w-3xl mx-auto px-6 py-16">
-          <div className="text-[10px] uppercase tracking-[0.24em] text-zinc-500 mb-4">CreatorVaults</div>
-          <div className="card rounded-xl p-8 space-y-3">
-            <div className="text-lg font-medium">Access check unavailable</div>
-            <div className="text-sm text-zinc-400 leading-relaxed">
-              We couldn’t verify allowlist status right now. Please try again in a moment.
-            </div>
-            <a className="btn-accent inline-flex w-fit" href={getMarketingBaseUrl()}>
-              Join the waitlist
-            </a>
-          </div>
-        </div>
-      </div>
-    )
-  }
+  if (allowlistModeQuery.isError) return <WaitlistLanding />
 
   // If allowlist is not enforced (e.g. local dev / no DB / no env allowlist), don't gate.
   if (!allowlistEnforced) return <Outlet />
@@ -229,31 +167,22 @@ function AppAllowlistGatePrivyEnabled() {
     return <Outlet />
   }
 
-  const debugAddress = connectedAddress ?? authAddress
-
-  if (!siwe.isSignedIn) {
-    return <AppAccessGate variant="signin" marketingUrl={getMarketingBaseUrl()} debugAddress={debugAddress} />
-  }
+  const debugAddress = effectiveAddress
 
   if (isAdminRoute) {
     return <Outlet />
   }
 
+  if (!connectedAddress) {
+    return <WaitlistLanding />
+  }
+
   if (allowQuery.isLoading) {
-    return (
-      <div className="min-h-screen bg-black text-white">
-        <div className="max-w-3xl mx-auto px-6 py-16">
-          <div className="text-[10px] uppercase tracking-[0.24em] text-zinc-500 mb-4">CreatorVaults</div>
-          <div className="card rounded-xl p-8 space-y-3">
-            <div className="text-sm text-zinc-400">Checking access…</div>
-          </div>
-        </div>
-      </div>
-    )
+    return <AppAccessGate variant="signin" marketingUrl={getMarketingBaseUrl()} debugAddress={debugAddress} />
   }
 
   if (!allowed && !isBypassAdmin) {
-    return <AppAccessGate variant="denied" marketingUrl={getMarketingBaseUrl()} debugAddress={debugAddress} />
+    return <WaitlistLanding />
   }
 
   return <Outlet />
@@ -322,6 +251,11 @@ const Status = lazy(async () => {
 const AdminCreatorAccess = lazy(async () => {
   const m = await import('./pages/AdminCreatorAccess')
   return { default: m.AdminCreatorAccess }
+})
+
+const AdminWaitlist = lazy(async () => {
+  const m = await import('./pages/AdminWaitlist')
+  return { default: m.AdminWaitlist }
 })
 
 const AdminMiniApp = lazy(async () => {
@@ -452,6 +386,7 @@ function App() {
 
                 {/* Admin routes must remain reachable even in public mode (auth is enforced server-side). */}
                 <Route path="/admin/creator-access" element={<AdminCreatorAccess />} />
+                <Route path="/admin/waitlist" element={<AdminWaitlist />} />
                 <Route path="/admin/miniapp" element={<AdminMiniApp />} />
                 <Route path="/admin/deploy-strategies" element={<AdminDeployStrategies />} />
 
@@ -494,6 +429,7 @@ function App() {
                   <Route path="/faq/how-it-works" element={<FaqHowItWorks />} />
                   <Route path="/status" element={<Status />} />
                   <Route path="/admin/creator-access" element={<AdminCreatorAccess />} />
+                  <Route path="/admin/waitlist" element={<AdminWaitlist />} />
                   <Route path="/admin/miniapp" element={<AdminMiniApp />} />
                   <Route path="/admin/deploy-strategies" element={<AdminDeployStrategies />} />
                   <Route path="/vote" element={<GaugeVoting />} />
