@@ -67,39 +67,7 @@ export const EmailStep = memo(function EmailStep({
       transition={{ duration: 0.18 }}
       className="space-y-5"
     >
-      <div className="headline text-2xl sm:text-3xl leading-tight">Contact</div>
-      <div className="text-sm text-zinc-600 font-light">Choose how we should notify you.</div>
-
-      {isCreator ? (
-        <div className="rounded-xl border border-white/10 bg-black/20 px-4 py-3 space-y-2">
-          <div className="text-[10px] uppercase tracking-[0.24em] text-zinc-600">Preference</div>
-          <div className="space-y-2 text-sm text-zinc-300">
-            <label className={`flex items-center gap-2 ${canUseWallet ? '' : 'opacity-50 cursor-not-allowed'}`}>
-              <input
-                type="radio"
-                name="contactPreference"
-                className="accent-brand-primary"
-                disabled={!canUseWallet}
-                checked={contactPreference === 'wallet'}
-                onChange={() => onContactPreferenceChange('wallet')}
-              />
-              <span>Wallet (self custody)</span>
-            </label>
-            <label className="flex items-center gap-2">
-              <input
-                type="radio"
-                name="contactPreference"
-                className="accent-brand-primary"
-                checked={contactPreference === 'email'}
-                onChange={() => onContactPreferenceChange('email')}
-              />
-              <span>Email (notifications)</span>
-            </label>
-          </div>
-        </div>
-      ) : null}
-
-      <div className="text-[11px] text-zinc-600">Email required for launch updates. No marketing.</div>
+      <div className="headline text-2xl sm:text-3xl leading-tight">Email</div>
 
       {persona === 'creator' && verifiedWallet && creatorCoin ? (
         <div className="rounded-xl border border-white/10 bg-black/20">
