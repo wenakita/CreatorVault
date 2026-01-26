@@ -142,7 +142,7 @@ export function AdminWaitlist() {
             <div className="font-display text-xl text-white">Admin</div>
             <div className="text-xs text-zinc-600">Connect your wallet to manage waitlist entries.</div>
             <div className="flex justify-center">
-              <ConnectButton variant="gate" />
+              <ConnectButton variant="default" />
             </div>
           </div>
         </div>
