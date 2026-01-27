@@ -9,10 +9,10 @@ import { fetchZoraExplore } from '@/lib/zora/client'
 import type { ZoraCoin, ZoraExploreListType } from '@/lib/zora/types'
 
 const SORT_TO_LIST_TYPE: Record<string, ZoraExploreListType> = {
-  volume: 'TOP_VOLUME_CREATORS_24H',
-  marketCap: 'MOST_VALUABLE_CREATORS',
+  volume: 'TOP_VOLUME_24H',
+  marketCap: 'MOST_VALUABLE',
   priceChange: 'TOP_GAINERS',
-  new: 'NEW_CREATORS',
+  new: 'NEW',
 }
 
 const PAGE_SIZE = 20
@@ -52,7 +52,7 @@ export function ExploreCreators() {
     staleTime: 30_000,
   })
 
-  // Flatten all pages into a single array of creator coins
+  // Flatten all pages into a single array of coins
   const allCoins = useMemo(() => {
     if (!data?.pages) return []
     const coins: ZoraCoin[] = []
@@ -60,11 +60,7 @@ export function ExploreCreators() {
       if (page?.edges) {
         for (const edge of page.edges) {
           if (edge?.node) {
-            // Filter to only CREATOR type coins (or coins without type which are likely creators)
-            const coinType = edge.node.coinType?.toUpperCase()
-            if (coinType === 'CREATOR' || !coinType) {
-              coins.push(edge.node)
-            }
+            coins.push(edge.node)
           }
         }
       }
