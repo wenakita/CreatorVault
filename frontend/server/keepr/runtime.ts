@@ -808,8 +808,8 @@ export async function startKeeprRuntime(): Promise<void> {
 
   // Register Base App-specific content types so we can send/receive Quick Actions.
   try {
-    // Note: package root isn't exported in some versions; import the dist entry directly.
-    const primitives: any = await import('@xmtp/content-type-primitives/dist/index.js')
+    // Use the package's public export (avoid importing non-exported internal paths).
+    const primitives: any = await import('@xmtp/content-type-primitives')
     const ContentTypeId: any = primitives?.ContentTypeId
     if (typeof ContentTypeId === 'function' && typeof agent?.client?.registerCodec === 'function') {
       const actionsType = new ContentTypeId(BASE_ACTIONS_CT_PARTS)

@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { motion } from 'framer-motion'
 import { CheckCircle2, Loader2, RefreshCw, ShieldCheck, XCircle } from 'lucide-react'
 import { useMemo, useState } from 'react'
+import { Link, useLocation } from 'react-router-dom'
 import { useAccount } from 'wagmi'
 
 import { ConnectButton } from '@/components/ConnectButton'
@@ -97,6 +98,7 @@ export function AdminCreatorAccess() {
   const { isConnected } = useAccount()
   const { isSignedIn, busy: authBusy, error: authError, signIn } = useSiweAuth()
   const qc = useQueryClient()
+  const location = useLocation()
 
   const [notes, setNotes] = useState<Record<number, string>>({})
   const [allowlistNotes, setAllowlistNotes] = useState<Record<string, string>>({})
@@ -166,6 +168,22 @@ export function AdminCreatorAccess() {
     return e.message
   }, [allowlistListQuery.error, listQuery.error])
 
+  const adminTabs = useMemo(
+    () => [
+      {
+        label: 'Waitlist',
+        to: '/admin/waitlist',
+        description: 'Signups and verification metadata',
+      },
+      {
+        label: 'Creator Access',
+        to: '/admin/creator-access',
+        description: 'Allowlist requests and approvals',
+      },
+    ],
+    [],
+  )
+
   if (!isConnected) {
     return (
       <div className="min-h-[60vh] flex items-center justify-center px-4">
@@ -227,6 +245,28 @@ export function AdminCreatorAccess() {
           <RefreshCw className={`w-4 h-4 ${listQuery.isFetching ? 'animate-spin' : ''}`} />
           Refresh
         </button>
+      </div>
+
+      <div className="rounded-xl border border-white/10 bg-black/30 p-2">
+        <div className="grid gap-2 sm:grid-cols-2">
+          {adminTabs.map((tab) => {
+            const active = location.pathname === tab.to
+            return (
+              <Link
+                key={tab.to}
+                to={tab.to}
+                className={`rounded-lg px-4 py-3 border text-left transition-colors ${
+                  active
+                    ? 'border-brand-primary/40 bg-brand-primary/10 text-zinc-100'
+                    : 'border-white/10 bg-black/20 text-zinc-400 hover:text-zinc-200 hover:border-white/20'
+                }`}
+              >
+                <div className="text-[10px] uppercase tracking-[0.24em]">{tab.label}</div>
+                <div className="text-xs text-zinc-500 mt-1">{tab.description}</div>
+              </Link>
+            )
+          })}
+        </div>
       </div>
 
       {flash ? <div className="text-xs text-emerald-300">{flash}</div> : null}

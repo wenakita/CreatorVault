@@ -585,6 +585,7 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
     getPrivyWalletMissingMessage,
     ensureBaseSubAccount,
   })
+  void handlePrivyContinue
 
   const emailTrimmed = useMemo(() => normalizeEmail(email), [email])
   const isEmailValid = useMemo(() => isValidEmail(emailTrimmed), [emailTrimmed])

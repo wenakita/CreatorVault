@@ -71,11 +71,12 @@ export async function ensureKeeprSchema(): Promise<void> {
         executed_at TIMESTAMPTZ
       );
     `
-    await db.sql`CREATE INDEX IF NOT EXISTS keepr_actions_status_idx ON keepr_actions (status, created_at DESC);`
-    await db.sql`CREATE INDEX IF NOT EXISTS keepr_actions_group_idx ON keepr_actions (group_id, created_at DESC);`
-    await db.sql`CREATE INDEX IF NOT EXISTS keepr_actions_dedupe_idx ON keepr_actions (dedupe_key, created_at DESC);`
 
     // Back-compat: add columns to existing deployments safely.
+    //
+    // IMPORTANT:
+    // Some deployments may already have `keepr_actions` without newer columns. Creating an index that references
+    // a missing column will error *before* we have a chance to ALTER TABLE. So we add columns first, then indexes.
     try {
       await db.sql`ALTER TABLE keepr_actions ADD COLUMN IF NOT EXISTS action_type TEXT;`
     } catch {
@@ -93,6 +94,23 @@ export async function ensureKeeprSchema(): Promise<void> {
     }
     try {
       await db.sql`ALTER TABLE keepr_actions ADD COLUMN IF NOT EXISTS next_attempt_at TIMESTAMPTZ;`
+    } catch {
+      // ignore
+    }
+
+    // Indexes (best-effort; don't fail startup if they can't be created yet).
+    try {
+      await db.sql`CREATE INDEX IF NOT EXISTS keepr_actions_status_idx ON keepr_actions (status, created_at DESC);`
+    } catch {
+      // ignore
+    }
+    try {
+      await db.sql`CREATE INDEX IF NOT EXISTS keepr_actions_group_idx ON keepr_actions (group_id, created_at DESC);`
+    } catch {
+      // ignore
+    }
+    try {
+      await db.sql`CREATE INDEX IF NOT EXISTS keepr_actions_dedupe_idx ON keepr_actions (dedupe_key, created_at DESC);`
     } catch {
       // ignore
     }

@@ -1454,6 +1454,7 @@ function DeployVaultBatcher({
         // 2. External EOA (user connected external wallet that owns the smart wallet)
         const smartWalletAddr = smartWalletAddrForAuth
         const connectedAddr = connectedAddrForAuth
+        void smartWalletAddr
 
         const hasMultipleInjectedProviders =
           typeof window !== 'undefined' &&
@@ -1705,6 +1706,7 @@ function DeployVaultBatcher({
 
   const canAutoUpdatePayoutRecipient =
     !payoutMismatch || canUsePrivySmartWallet || canUseExternalOwner
+  void canAutoUpdatePayoutRecipient
 
   const expectedError = expectedQuery.isError
     ? ((expectedQuery.error as any)?.message || 'Failed to compute deployment addresses.')
