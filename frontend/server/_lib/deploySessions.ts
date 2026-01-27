@@ -68,9 +68,9 @@ export async function ensureDeploySessionsSchema(): Promise<void> {
     await db.sql`CREATE INDEX IF NOT EXISTS deploy_sessions_step_idx ON deploy_sessions (step);`
     await db.sql`CREATE INDEX IF NOT EXISTS deploy_sessions_expires_idx ON deploy_sessions (expires_at);`
     deploySessionsSchemaEnsured = true
-  } catch {
+  } catch (err) {
     deploySessionsSchemaEnsured = false
-    throw
+    throw err
   }
 }
 

@@ -2,7 +2,7 @@ import type { VercelRequest, VercelResponse } from '@vercel/node'
 import fs from 'node:fs'
 import path from 'node:path'
 
-declare const process: { env: Record<string, string | undefined> }
+declare const process: { env: Record<string, string | undefined>; cwd: () => string }
 
 function setNoStore(res: VercelResponse) {
   res.setHeader('Cache-Control', 'no-store')
