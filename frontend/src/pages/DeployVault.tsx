@@ -1460,6 +1460,21 @@ function DeployVaultBatcher({
         const connectedAddr = connectedAddrForAuth
         void smartWalletAddr
 
+        let activeWalletClient = walletClient
+        if (!activeWalletClient && connector && typeof (connector as any).getWalletClient === 'function') {
+          try {
+            activeWalletClient = await (connector as any).getWalletClient({ chainId: base.id })
+          } catch {
+            activeWalletClient = null
+          }
+        }
+
+        const canUseExternalOwner =
+          !canUsePrivySmartWallet &&
+          !!activeWalletClient &&
+          !!connectedAddr &&
+          connectedAddr.toLowerCase() !== owner.toLowerCase()
+
         const hasMultipleInjectedProviders =
           typeof window !== 'undefined' &&
           Array.isArray((window as any)?.ethereum?.providers) &&
@@ -1470,6 +1485,9 @@ function DeployVaultBatcher({
             throw new Error(
               'Multiple wallet extensions detected. Disable one (MetaMask/Coinbase/Rabby) or use email sign-in to continue.',
             )
+          }
+          if (!activeWalletClient && connectedAddr) {
+            throw new Error('Wallet connection is not ready. Reconnect your wallet and retry.')
           }
           throw new Error(
             'Sign in with Privy to use your smart wallet, or connect an external wallet that owns the smart wallet.',
@@ -1615,7 +1633,7 @@ function DeployVaultBatcher({
           // Use external EOA owner
           const r1 = await sendCoinbaseSmartWalletUserOperation({
             publicClient: publicClient as any,
-            walletClient: walletClient as any,
+            walletClient: activeWalletClient as any,
             bundlerUrl: cdpRpcUrl,
             smartWallet: owner,
             ownerAddress: externalOwnerExec as Address,
@@ -1639,7 +1657,7 @@ function DeployVaultBatcher({
         } else {
           const r2 = await sendCoinbaseSmartWalletUserOperation({
             publicClient: publicClient as any,
-            walletClient: walletClient as any,
+            walletClient: activeWalletClient as any,
             bundlerUrl: cdpRpcUrl,
             smartWallet: owner,
             ownerAddress: externalOwnerExec as Address,
@@ -1664,7 +1682,7 @@ function DeployVaultBatcher({
           } else {
             const r3 = await sendCoinbaseSmartWalletUserOperation({
               publicClient: publicClient as any,
-              walletClient: walletClient as any,
+              walletClient: activeWalletClient as any,
               bundlerUrl: cdpRpcUrl,
               smartWallet: owner,
               ownerAddress: externalOwnerExec as Address,
