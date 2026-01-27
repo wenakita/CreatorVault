@@ -182,19 +182,6 @@ function AppAllowlistGatePrivyEnabled() {
   // If allowlist is not enforced (e.g. local dev / no DB / no env allowlist), don't gate.
   if (!allowlistEnforced) return <Outlet />
 
-  // Debug logging for admin bypass check
-  if (typeof window !== 'undefined' && (window as any).__CV_DEBUG_ADMIN) {
-    console.log('[AdminBypass]', {
-      connectedAddress,
-      siweAuthAddress,
-      effectiveAddress,
-      resolvedEoa,
-      resolvedSmartWallet,
-      isBypassAdmin,
-      adminAddresses: Array.from(ADMIN_BYPASS_ADDRESSES),
-    })
-  }
-
   // Allow bypass admins into the app even before SIWE is established.
   // (Admin API routes will still require SIWE; this only prevents a client-side redirect loop.)
   if (isBypassAdmin) {
@@ -216,35 +203,6 @@ function AppAllowlistGatePrivyEnabled() {
   }
 
   if (!allowed && !isBypassAdmin) {
-    // Show debug info in development or with ?debug=1
-    const urlDebug = typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('debug') === '1'
-    const showDebug = import.meta.env.DEV || urlDebug || (typeof window !== 'undefined' && (window as any).__CV_DEBUG_ADMIN)
-    if (showDebug) {
-      return (
-        <div className="min-h-screen bg-black text-white p-8">
-          <div className="max-w-xl mx-auto space-y-4">
-            <div className="text-xl font-bold text-red-400">Access Blocked - Debug Info</div>
-            <div className="bg-zinc-900 rounded p-4 font-mono text-xs space-y-2">
-              <div>connectedAddress: {connectedAddress ?? 'null'}</div>
-              <div>siweAuthAddress: {siweAuthAddress ?? 'null'}</div>
-              <div>effectiveAddress: {effectiveAddress ?? 'null'}</div>
-              <div>resolvedEoa: {resolvedEoa ?? 'null'}</div>
-              <div>resolvedSmartWallet: {resolvedSmartWallet ?? 'null'}</div>
-              <div>isBypassAdmin: {String(isBypassAdmin)}</div>
-              <div>allowed: {String(allowed)}</div>
-              <div>allowlistEnforced: {String(allowlistEnforced)}</div>
-              <div>adminAddresses: {Array.from(ADMIN_BYPASS_ADDRESSES).join(', ')}</div>
-            </div>
-            <button
-              className="btn-accent"
-              onClick={() => window.location.reload()}
-            >
-              Reload
-            </button>
-          </div>
-        </div>
-      )
-    }
     return <WaitlistLanding />
   }
 
