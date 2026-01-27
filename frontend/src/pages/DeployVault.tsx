@@ -784,13 +784,12 @@ function DeployVaultBatcher({
   const cdpApiKey = import.meta.env.VITE_CDP_API_KEY as string | undefined
   const cdpRpcUrl = useMemo(() => {
     const explicit = (import.meta.env.VITE_CDP_PAYMASTER_URL as string | undefined)?.trim()
-    // For Privy-native smart wallet ops we bypass our `/api/paymaster` proxy entirely.
-    // If a proxy URL is set (common for legacy flows), ignore it here and use the direct CDP endpoint.
+    // If set, allow same-origin proxy (recommended in production when `/api/paymaster` forwards to a secret `CDP_PAYMASTER_URL`).
     if (explicit) {
-      if (explicit === '/api/paymaster') return null
+      if (explicit === '/api/paymaster') return '/api/paymaster'
       try {
         const u = new URL(explicit, typeof window !== 'undefined' ? window.location.origin : 'https://4626.fun')
-        if (u.pathname === '/api/paymaster') return null
+        if (u.pathname === '/api/paymaster') return u.pathname
       } catch {
         // If it's not a valid URL, treat it as a non-URL string and fall through.
       }
@@ -1453,7 +1452,9 @@ function DeployVaultBatcher({
         // Deploy path: Privy Smart Wallet or External EOA Owner
         // ============================================================
         if (!publicClient) throw new Error('Public client not ready.')
-        if (!cdpRpcUrl) throw new Error('Bundler / paymaster endpoint is not configured.')
+        // Bundler/paymaster is only required for UserOp flows.
+        // Privy smart wallet client submissions don't require our CDP endpoint.
+        if (!canUsePrivySmartWallet && !cdpRpcUrl) throw new Error('Bundler / paymaster endpoint is not configured.')
 
         // Determine deploy method:
         // 1. Privy smart wallet client (user logged in via Privy, embedded wallet signs for smart wallet)
