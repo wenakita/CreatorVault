@@ -3189,7 +3189,7 @@ function DeployVaultMain() {
                 >
                   Loading…
                 </button>
-              ) : !privyAuthenticated ? (
+              ) : !privyAuthenticated && !isConnected ? (
                 <div className="space-y-3">
                   <button
                     type="button"
@@ -3200,6 +3200,19 @@ function DeployVaultMain() {
                   </button>
                   <div className="text-[11px] text-zinc-600">
                     Sign in to link your Coinbase Smart Wallet and deploy.
+                  </div>
+                </div>
+              ) : !privyAuthenticated && !executionCanOperateCanonical ? (
+                <div className="space-y-3">
+                  <button
+                    type="button"
+                    className="btn-accent w-full"
+                    onClick={() => void login({ loginMethods: ['email'] })}
+                  >
+                    Sign in with email
+                  </button>
+                  <div className="text-[11px] text-zinc-600">
+                    Sign in or connect a wallet that owns the creator smart wallet.
                   </div>
                 </div>
               ) : !isConnected ? (
