@@ -6,7 +6,7 @@ import { useAccount } from 'wagmi'
 import { useSiweAuth } from '@/hooks/useSiweAuth'
 import { isPrivyClientEnabled } from '@/lib/flags'
 import { usePrivyClientStatus } from '@/lib/privy/client'
-import { toViemAccount, useBaseAccountSdk, useConnectWallet, usePrivy, useWallets } from '@privy-io/react-auth'
+import { toViemAccount, useBaseAccountSdk, useConnectWallet, useLogin, usePrivy, useWallets } from '@privy-io/react-auth'
 import { base } from 'wagmi/chains'
 import { ArrowLeft } from 'lucide-react'
 import { useMiniAppContext } from '@/hooks'
@@ -421,6 +421,16 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
   const showPrivyReady = showPrivy && privyStatus === 'ready'
   const { connectWallet: privyConnectWallet } = useConnectWallet({
     onSuccess: () => {
+      finishPrivyVerify()
+    },
+    onError: (error) => {
+      const code = String(error || '')
+      const msg = formatPrivyConnectError(code)
+      setPrivyVerifyError(msg)
+    },
+  })
+  const { login: privyLogin } = useLogin({
+    onComplete: () => {
       finishPrivyVerify()
     },
     onError: (error) => {
@@ -1274,7 +1284,10 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
                 busy={busy}
                 canSubmit={canSubmit}
                 onSignOutWallet={signOutWallet}
-                onPrivyContinue={handlePrivyContinue}
+                onPrivyContinue={() => {
+                  startPrivyVerify()
+                  privyLogin()
+                }}
                 onSubmit={submitWaitlist}
               />
             ) : null}
