@@ -2917,13 +2917,28 @@ function DeployVaultPrivyEnabled() {
                     )}
 
                     {isConnected && zoraCoin?.creatorAddress && !isAuthorizedDeployerOrOperator && (
-                      <div className="text-xs text-red-400/90">
-                        You are connected as{' '}
-                        <span className="font-mono">
-                          {address?.slice(0, 6)}…{address?.slice(-4)}
-                        </span>
-                        . Only the coin creator or current payout recipient can deploy this vault.
-                      </div>
+                      <>
+                        <div className="text-xs text-red-400/90">
+                          You are connected as{' '}
+                          <span className="font-mono">
+                            {address?.slice(0, 6)}…{address?.slice(-4)}
+                          </span>
+                          . Only the coin creator or current payout recipient can deploy this vault.
+                        </div>
+                        {/* Debug info */}
+                        {(import.meta.env.DEV || new URLSearchParams(window.location.search).get('debug') === '1') && (
+                          <div className="mt-2 p-2 bg-zinc-900/50 rounded text-[10px] font-mono text-zinc-500 space-y-1">
+                            <div>creatorAddress: {zoraCoin?.creatorAddress ?? 'null'}</div>
+                            <div>payoutRecipient: {payoutRecipient ?? 'null'}</div>
+                            <div>canonicalIdentity: {canonicalIdentityAddress ?? 'null'}</div>
+                            <div>connectedWallet: {connectedWalletAddress ?? 'null'}</div>
+                            <div>identityBlockingReason: {identityBlockingReason ?? 'null'}</div>
+                            <div>executionCanOperate: {String(executionCanOperateCanonicalQuery.data)}</div>
+                            <div>executionCanOperateLoading: {String(executionCanOperateCanonicalQuery.isLoading)}</div>
+                            <div>isAuthorizedDeployer: {String(isAuthorizedDeployer)}</div>
+                          </div>
+                        )}
+                      </>
                     )}
                   </div>
                 ) : (
