@@ -116,6 +116,11 @@ function localApiRoutesPlugin(): Plugin {
       const routes: Record<string, () => Promise<{ default: (req: any, res: any) => any }>> = {
         '/api/creator-allowlist': () => import('./api/_handlers/_creator-allowlist'),
         '/api/waitlist': () => import('./api/_handlers/_waitlist'),
+        '/api/waitlist/ledger': () => import('./api/_handlers/waitlist/_ledger'),
+        '/api/waitlist/leaderboard': () => import('./api/_handlers/waitlist/_leaderboard'),
+        '/api/waitlist/position': () => import('./api/_handlers/waitlist/_position'),
+        '/api/waitlist/profile-complete': () => import('./api/_handlers/waitlist/_profile-complete'),
+        '/api/waitlist/task-claim': () => import('./api/_handlers/waitlist/_task-claim'),
         '/api/onchain/coinMarketRewardsByCoin': () => import('./api/_handlers/onchain/_coinMarketRewardsByCoin'),
         '/api/onchain/coinMarketRewardsCurrency': () => import('./api/_handlers/onchain/_coinMarketRewardsCurrency'),
         '/api/onchain/coinTradeRewardsBatch': () => import('./api/_handlers/onchain/_coinTradeRewardsBatch'),
@@ -133,6 +138,7 @@ function localApiRoutesPlugin(): Plugin {
         '/api/auth/verify': () => import('./api/_handlers/auth/_verify'),
         '/api/auth/me': () => import('./api/_handlers/auth/_me'),
         '/api/auth/logout': () => import('./api/_handlers/auth/_logout'),
+        '/api/creator-wallets/claim': () => import('./api/_handlers/_creator-wallets-claim'),
 
         // Keepr (local dev)
         '/api/keepr/nonce': () => import('./api/_handlers/keepr/_nonce'),
