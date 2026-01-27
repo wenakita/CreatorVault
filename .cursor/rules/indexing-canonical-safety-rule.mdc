@@ -1,0 +1,19 @@
+---
+alwaysApply: true
+---
+Indexing & Canonical Rules:
+
+- Crawlability gate (blocking):
+  - If we can't reliably serve meaningful HTML + correct metadata to crawlers (SSR/prerender), default to `noindex` until fixed (even for Creator/Vault).
+- Only one canonical URL per content entity
+- Sort, filter, pagination, and tracking parameters MUST not create indexable URLs
+  - Examples: `?page=`, `?sort=`, `?filter=`, `?tag=`, `utm_*`, `gclid`, etc.
+  - These variants should be `noindex` and canonicalize to the hub/entity URL (strip params).
+  - Robots for variants: `noindex,follow` (canonical is not a substitute for `noindex`).
+- Paginated pages must use rel=canonical to the main hub
+- Canonical alone is not enough:
+  - If variants are discoverable (links, sitemaps, internal search), they still need `noindex` to avoid accidental indexation.
+- If content value is ambiguous, default to `noindex`
+
+When unsure:
+- Ask before marking a page indexable

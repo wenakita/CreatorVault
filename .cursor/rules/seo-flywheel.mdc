@@ -1,0 +1,26 @@
+---
+alwaysApply: true
+---
+Internal Linking Rules:
+
+- Link safety:
+  - Only link to canonical URLs (no sort/filter/pagination/tracking params).
+  - Do not recommend links to `noindex` pages or to parameterized variants; link to the hub/entity URL instead.
+
+- Creator pages MUST link to:
+  - Their Vaults
+  - Relevant Categories/Tags
+  - 3–5 related Creators (contextual)
+
+- Vault pages MUST link to:
+  - Their Creator
+  - Relevant Category/Tag hubs
+  - Related Vaults when appropriate
+
+- Category pages MUST link to:
+  - Top Creators
+  - Top Vaults
+  - Related Categories
+
+- Avoid footer or sitewide link spam
+- Prefer contextual links inside content sections

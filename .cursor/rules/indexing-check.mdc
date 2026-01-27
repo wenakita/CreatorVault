@@ -1,0 +1,22 @@
+---
+alwaysApply: true
+---
+Indexing check (frontend pages only):
+
+- Confirm this is a user-facing frontend route/page (otherwise ignore SEO rules).
+- Crawlability gate (blocking):
+  - If we can't reliably serve meaningful HTML + correct metadata to crawlers (SSR/prerender), default to `noindex` until fixed (even for Creator/Vault).
+- Decide indexability:
+  - Creator + Vault pages: indexable by default if they provide unique user-visible value.
+  - Sort/filter/pagination variants: `noindex` + canonical to the hub URL.
+  - Ambiguous/thin/duplicate pages: default to `noindex`.
+- Canonical:
+  - Exactly one canonical URL per entity.
+  - Paginated pages canonicalize to the hub.
+- Metadata:
+  - Unique title/description per URL.
+  - Robots (`index,follow` vs `noindex,follow`) must match the indexability decision.
+  - OG + Twitter tags required for indexable pages.
+- Performance:
+  - Call out any LCP/CLS/TTFB regressions (performance is an SEO feature).
+

@@ -1,0 +1,8 @@
+---
+alwaysApply: true
+---
+Framework detection first:
+
+- Before giving Next.js-specific recommendations (App Router, RSC, generateMetadata), confirm the actual frontend framework and router from the repo.
+- If the stack is not Next.js App Router, do not mention app/ routes, RSC, or Next-only APIs.
+- If stack is unclear, ask a single clarifying question OR provide two short branches: (Next.js App Router) vs (Vite/React/other).

@@ -32,7 +32,12 @@ target/deploy/*-keypair.json
 
 # IDE and editor files
 .vscode/
-.cursor/
+# Cursor (ignore state, but keep shareable config)
+.cursor/*
+!.cursor/rules/
+!.cursor/rules/**
+!.cursor/skills/
+!.cursor/skills/**
 *.swp
 *.swo
 *~

@@ -1,0 +1,34 @@
+---
+alwaysApply: true
+---
+Project: creatorvault.fun
+
+Domain model (authoritative):
+- Creator is the primary entity
+- Vault is a product/offering owned by a Creator
+- Categories/Tags are discovery and SEO hub pages
+
+SEO rules (must follow):
+- Treat Creator and Vault pages as indexable by default
+- Filtered or sorted URLs MUST be noindex and canonicalized
+- Avoid duplicate content across Creator and Vault pages
+- Every indexable page MUST provide unique, user-visible value
+- Do not generate doorway pages or thin list pages
+
+Architecture rules (must follow):
+- Always follow `framework-detection-first` before suggesting framework-specific APIs.
+- Current stack is **Vite + React Router (SPA)** (deployed from `frontend/` on Vercel).
+- For pages intended to rank, prefer **pre-rendering or SSR** when available; if we can't reliably serve content + metadata to crawlers, default to `noindex` until fixed.
+- If/when the repo is migrated to **Next.js App Router**, then use App Router conventions and prefer SSG/ISR; use SSR only when clearly justified.
+- Centralize SEO metadata generation and internal linking logic (data-driven; avoid sitewide spam).
+- Do NOT rely on client-side-only SEO hacks for indexable pages.
+
+Content rules (strict):
+- Do NOT add AI-fluff or filler copy
+- Do NOT make financial guarantees or misleading claims
+- Use neutral, factual, creator-first language
+- Optimize for clarity and trust over hype
+
+If a requested change violates any rule above:
+- Call it out explicitly
+- Propose a compliant alternative

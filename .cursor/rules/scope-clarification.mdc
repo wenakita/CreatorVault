@@ -1,0 +1,13 @@
+---
+alwaysApply: true
+---
+Scope Clarification Rules:
+
+- SEO, indexing, metadata, and internal linking apply ONLY to user-facing frontend routes/pages/components.
+- Litmus test:
+  - If the file is not under `frontend/` (or otherwise confirmed as the deployed frontend root), treat it as NOT a page.
+- Solidity contracts, backend logic, and infrastructure files are NOT pages.
+- Do NOT apply SEO concepts to non-UI code.
+- If a request says “this page” and the file is not a frontend route/component:
+  - Ask for clarification before proceeding.
+- See also: `scope-guard` for framework/root detection guardrails.

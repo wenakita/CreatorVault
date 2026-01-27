@@ -1,0 +1,12 @@
+---
+alwaysApply: true
+---
+Performance is an SEO feature.
+
+- Consider LCP, CLS, and TTFB in all recommendations
+- Prefer server-rendering or pre-rendering when possible (Next.js: Server Components; SPA: prerender/SSR for SEO-critical routes)
+- Avoid unnecessary client-side JS
+- Optimize images and data fetching by default
+
+If a change harms performance:
+- Call it out explicitly

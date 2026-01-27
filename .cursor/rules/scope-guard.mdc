@@ -1,0 +1,10 @@
+---
+alwaysApply: true
+---
+scope-guard:
+
+- SEO/indexing/metadata/internal-linking rules apply only to the frontend web app (typically `frontend/` in this repo).
+- The contracts workspace (solidity, hardhat/foundry, onchain deps) is not a \"page\".
+- If the current file/package.json lacks `react`/`vite`/`next`, do not assume this is a frontend page or that Next.js APIs apply.
+- When asked “optimize this page”, first confirm the deployed frontend root (Vercel rootDirectory, `vercel.json`, or the `package.json` that contains `react`/`vite`/`next`) before proposing SEO changes.
+- If unsure, run the repo’s stack detection command and only then give framework-specific guidance.

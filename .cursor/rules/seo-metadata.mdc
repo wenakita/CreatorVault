@@ -1,0 +1,18 @@
+---
+alwaysApply: true
+---
+SEO Metadata Rules:
+
+- All indexable pages MUST use a centralized metadata generator (framework-appropriate)
+  - Next.js App Router: `generateMetadata` / layout metadata
+  - Vite/React Router (SPA): centralized helper (e.g. `react-helmet-async`) and/or pre-render/SSR for SEO-critical routes
+- Crawlability gate (blocking):
+  - If metadata cannot be served reliably to crawlers (SPA-only), default the page to `noindex` until SSR/prerender is available for that route.
+- Titles must be unique per URL and intent-aligned
+- Descriptions must summarize value, not stuff keywords
+- Robots must be explicitly defined and match the indexability decision (`index,follow` vs `noindex,follow`)
+- Canonical URLs must be explicitly defined (one per entity) and should be absolute (production origin, e.g. `https://creatorvault.fun/...`)
+- Open Graph and Twitter metadata are required for indexable pages
+
+If metadata is missing or duplicated:
+- Treat it as a blocking issue (default the page to `noindex` until fixed)
