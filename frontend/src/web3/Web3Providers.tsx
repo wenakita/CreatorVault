@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react'
 // Use the browser-safe Buffer shim (Vite can externalize Node built-ins like `buffer`).
 import { Buffer } from 'buffer/'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { OnchainKitProvider } from '@coinbase/onchainkit'
 import { WagmiProvider } from 'wagmi'
 import { base } from 'wagmi/chains'
@@ -15,6 +16,17 @@ import { WalletDebugPanel } from '@/components/WalletDebugPanel'
 if (typeof window !== 'undefined') {
   ;(window as any).Buffer = Buffer
 }
+
+// Shared QueryClient for wagmi + app queries.
+// Must be inside WagmiProvider per wagmi v2 requirements.
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 1000 * 60 * 5, // 5 minutes
+      retry: 2,
+    },
+  },
+})
 
 /**
  * Auto-connect to Farcaster wallet when running inside a Mini App.
@@ -78,17 +90,19 @@ export function Web3Providers({ children }: { children: ReactNode }) {
 
   return (
     <WagmiProvider config={wagmiConfig}>
-      <OnchainKitProvider
-        chain={base}
-        apiKey={cdpApiKey}
-        config={{
-          paymaster: cdpPaymasterUrl || undefined,
-        }}
-      >
-        <MiniAppAutoConnect />
-        {import.meta.env.DEV ? <WalletDebugPanel /> : null}
-        {children}
-      </OnchainKitProvider>
+      <QueryClientProvider client={queryClient}>
+        <OnchainKitProvider
+          chain={base}
+          apiKey={cdpApiKey}
+          config={{
+            paymaster: cdpPaymasterUrl || undefined,
+          }}
+        >
+          <MiniAppAutoConnect />
+          {import.meta.env.DEV ? <WalletDebugPanel /> : null}
+          {children}
+        </OnchainKitProvider>
+      </QueryClientProvider>
     </WagmiProvider>
   )
 }
