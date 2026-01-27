@@ -1717,9 +1717,7 @@ function DeployVaultBatcher({
         ? 'Computing deployment addresses…'
         : !expected
           ? expectedError || 'Deployment addresses are not ready.'
-          : !canAutoUpdatePayoutRecipient
-            ? 'Payout recipient must be updated by the identity wallet before deploy.'
-            : null
+          : null
 
   const disabled = Boolean(disabledReason)
 
@@ -1789,16 +1787,9 @@ function DeployVaultBatcher({
 
       {payoutMismatch ? (
         <div className="text-[11px] text-amber-300/80">
-          {canAutoUpdatePayoutRecipient ? (
-            <>
-              Payout recipient will update to <span className="font-mono text-amber-200">{shortAddress(expectedGauge!)}</span> during deploy.
-            </>
-          ) : (
-            <>
-              Payout recipient must be updated to{' '}
-              <span className="font-mono text-amber-200">{shortAddress(expectedGauge!)}</span> by the identity wallet.
-            </>
-          )}
+          Payout recipient will update to{' '}
+          <span className="font-mono text-amber-200">{shortAddress(expectedGauge!)}</span> during deploy. Continue only if this is
+          intended.
         </div>
       ) : null}
 
