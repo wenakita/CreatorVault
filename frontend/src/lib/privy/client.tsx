@@ -12,15 +12,15 @@ export function usePrivyClientStatus(): PrivyClientStatus {
 }
 
 /**
- * Privy Client Provider (Auth-Only Mode)
+ * Privy Client Provider
  *
- * Privy is used ONLY for social authentication (email, Farcaster, Google, Twitter).
- * Wallet management is handled by Coinbase Smart Wallet via OnchainKit.
+ * Privy handles:
+ * - Authentication (email, Farcaster, etc.)
+ * - Embedded wallet creation (the signer for the user's Coinbase Smart Wallet)
+ * - Smart wallet operations via useSmartWallets hook
  *
- * This provider:
- * - Enables Privy login for social auth
- * - Disables Privy embedded wallets (we use Coinbase Smart Wallet instead)
- * - Provides access tokens for backend session verification
+ * The embedded wallet is the key that signs for the Coinbase Smart Wallet.
+ * Users don't have direct access to smart wallet keys - they access it through Privy.
  */
 export function PrivyClientProvider({ children }: { children: ReactNode }) {
   const enabled = isPrivyClientEnabled()
@@ -39,25 +39,16 @@ export function PrivyClientProvider({ children }: { children: ReactNode }) {
         appId={appId}
         config={{
           appearance: {
-            // Wallet options shown in Privy UI (for users who want to link a wallet to their account)
             walletList: ['coinbase_wallet', 'wallet_connect', 'detected_wallets'],
           },
-          externalWallets: {
-            // Prefer Coinbase Smart Wallet when connecting via Privy
-            coinbaseWallet: {
-              connectionOptions: 'smartWalletOnly',
-            } as any,
-          },
-          // DISABLED: We use Coinbase Smart Wallet directly, not Privy embedded wallets
+          // Enable embedded wallets - this is the signer for the Coinbase Smart Wallet
           embeddedWallets: {
-            ethereum: { createOnLogin: 'off' },
+            ethereum: { createOnLogin: 'users-without-wallets' },
             solana: { createOnLogin: 'off' },
-            showWalletUIs: false,
           },
           loginMethodsAndOrder: {
-            // Social auth methods (wallet connection is handled separately via wagmi)
-            primary: ['email', 'farcaster', 'google', 'twitter'],
-            overflow: [],
+            primary: ['email', 'farcaster'],
+            overflow: ['google', 'twitter'],
           },
         } as any}
       >
