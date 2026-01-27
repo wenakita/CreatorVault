@@ -784,17 +784,24 @@ function DeployVaultBatcher({
   const cdpApiKey = import.meta.env.VITE_CDP_API_KEY as string | undefined
   const cdpRpcUrl = useMemo(() => {
     const explicit = (import.meta.env.VITE_CDP_PAYMASTER_URL as string | undefined)?.trim()
-    // If set, allow same-origin proxy (recommended in production when `/api/paymaster` forwards to a secret `CDP_PAYMASTER_URL`).
+    // Prefer same-origin proxy in the browser.
+    // The raw CDP endpoint often does not allow browser CORS, so `/api/paymaster` is the recommended default.
     if (explicit) {
       if (explicit === '/api/paymaster') return '/api/paymaster'
       try {
         const u = new URL(explicit, typeof window !== 'undefined' ? window.location.origin : 'https://4626.fun')
         if (u.pathname === '/api/paymaster') return u.pathname
+        // If an absolute URL is provided, use it as-is.
+        // (Recommended only for server-side usage; browsers may hit CORS.)
+        return u.toString()
       } catch {
         // If it's not a valid URL, treat it as a non-URL string and fall through.
       }
       return explicit
     }
+    // Default for browsers: use the proxy.
+    if (typeof window !== 'undefined') return '/api/paymaster'
+    // Non-browser fallback (tests/SSR): use direct endpoint if configured.
     if (cdpApiKey) return `https://api.developer.coinbase.com/rpc/v1/base/${cdpApiKey}`
     return null
   }, [cdpApiKey])
@@ -894,6 +901,9 @@ function DeployVaultBatcher({
       lower.includes('missing paymaster')
     ) {
       return 'Bundler / paymaster is not configured. Set `VITE_CDP_API_KEY` (recommended) or `VITE_CDP_PAYMASTER_URL=/api/paymaster` (and configure `CDP_PAYMASTER_URL` server-side) and retry.'
+    }
+    if (lower.includes('failed to fetch')) {
+      return 'Paymaster request failed to reach the endpoint (network/CORS). Prefer `VITE_CDP_PAYMASTER_URL=/api/paymaster` and ensure the server env `CDP_PAYMASTER_URL` is set.'
     }
     if (lower.includes('market floor price not available')) {
       return 'Market floor price is still loading. Wait a moment and try again.'
