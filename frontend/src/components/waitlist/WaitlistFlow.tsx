@@ -1286,7 +1286,7 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
                 onSignOutWallet={signOutWallet}
                 onPrivyContinue={() => {
                   startPrivyVerify()
-                  privyLogin({ loginMethods: ['email'] })
+                  privyLogin()
                 }}
                 onSubmit={submitWaitlist}
               />
