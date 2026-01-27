@@ -23,7 +23,7 @@ import { useSearchParams } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { coinABI } from '@zoralabs/protocol-deployments'
 import { BarChart3, ChevronDown, Layers, Lock, Rocket, ShieldCheck } from 'lucide-react'
-import { useOnchainKit } from '@coinbase/onchainkit'
+// OnchainKit removed - using direct env config instead
 import { useLogin, usePrivy, useWallets } from '@privy-io/react-auth'
 import { useSmartWallets } from '@privy-io/react-auth/smart-wallets'
 import { DerivedTokenIcon } from '@/components/DerivedTokenIcon'
@@ -1884,7 +1884,6 @@ function DeployVaultBatcher({
 
 function DeployVaultPrivyEnabled() {
   const { address, isConnected, connector } = useAccount()
-  const { config: onchainKitConfig } = useOnchainKit()
   const { ready: privyReady, authenticated: privyAuthenticated } = usePrivy()
   const { data: walletClient } = useWalletClient({ chainId: base.id })
   const { login } = useLogin()
@@ -1907,8 +1906,9 @@ function DeployVaultPrivyEnabled() {
   const [searchParams] = useSearchParams()
   const prefillToken = useMemo(() => searchParams.get('token') ?? '', [searchParams])
   const cdpApiKey = import.meta.env.VITE_CDP_API_KEY as string | undefined
+  const cdpPaymasterUrl = import.meta.env.VITE_CDP_PAYMASTER_URL as string | undefined
   const paymasterStatus = useMemo(() => {
-    const paymasterUrl = resolveCdpPaymasterUrl(onchainKitConfig?.paymaster ?? null, cdpApiKey)
+    const paymasterUrl = resolveCdpPaymasterUrl(cdpPaymasterUrl ?? null, cdpApiKey)
     if (!paymasterUrl || typeof paymasterUrl !== 'string') {
       return { ok: false, hint: 'missing' }
     }
@@ -1918,7 +1918,7 @@ function DeployVaultPrivyEnabled() {
     } catch {
       return { ok: true, hint: 'configured' }
     }
-  }, [cdpApiKey, onchainKitConfig?.paymaster])
+  }, [cdpApiKey, cdpPaymasterUrl])
 
   useEffect(() => {
     if (!prefillToken) return

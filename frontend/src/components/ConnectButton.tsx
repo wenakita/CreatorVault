@@ -1,50 +1,9 @@
-import { lazy, Suspense, useCallback, useState } from 'react'
-import { Wallet } from 'lucide-react'
+import { ConnectButtonWeb3 } from './ConnectButtonWeb3'
 
-import { useWeb3 } from '@/web3/Web3Context'
-
-const ConnectButtonWeb3 = lazy(async () => {
-  const m = await import('./ConnectButtonWeb3')
-  return { default: m.ConnectButtonWeb3 }
-})
-
-export function ConnectButton({ variant = 'default' }: { variant?: 'default' | 'deploy' | 'gate' }) {
-  const { status, enable } = useWeb3()
-  const [autoConnect, setAutoConnect] = useState(false)
-
-  const startWeb3 = useCallback(() => {
-    setAutoConnect(true)
-    enable()
-  }, [enable])
-
-  if (status === 'disabled') {
-    return (
-      <button onClick={startWeb3} className="btn-accent">
-        <Wallet className="w-4 h-4 inline mr-2" />
-        <span className="label">{variant === 'deploy' ? 'Continue' : 'Connect Wallet'}</span>
-      </button>
-    )
-  }
-
-  if (status === 'loading') {
-    return (
-      <button disabled className="btn-accent disabled:opacity-50">
-        <Wallet className="w-4 h-4 inline mr-2" />
-        <span className="label">Loading…</span>
-      </button>
-    )
-  }
-
-  return (
-    <Suspense
-      fallback={
-        <button disabled className="btn-accent disabled:opacity-50">
-          <Wallet className="w-4 h-4 inline mr-2" />
-          <span className="label">Loading…</span>
-        </button>
-      }
-    >
-      <ConnectButtonWeb3 autoConnect={autoConnect} variant={variant} />
-    </Suspense>
-  )
+/**
+ * Simple wrapper around ConnectButtonWeb3.
+ * Web3 is always available since providers are loaded at app startup.
+ */
+export function ConnectButton() {
+  return <ConnectButtonWeb3 />
 }

@@ -8,7 +8,6 @@
  */
 
 import { useState, memo } from 'react'
-import { useWeb3 } from '@/web3/Web3Context'
 import { useTokenMetadata } from '../hooks/useTokenMetadata'
 import { OrbBorder } from './brand/OrbBorder'
 
@@ -157,45 +156,6 @@ export const TokenImage = memo(function TokenImage({
   fallbackColor = 'from-orange-500 to-red-600',
   isWrapped = false,
 }: TokenImageProps) {
-  const { status } = useWeb3()
-  const sizeClass = sizeClasses[size]
-  const padClass = innerPadBySize[size]
-  
-  // If web3 isn't ready, show simple fallback
-  if (status !== 'ready') {
-    if (!isWrapped) {
-      return (
-        <div className={className}>
-          <TokenFallback symbol={symbol} sizeClass={sizeClass} fallbackColor={fallbackColor} />
-        </div>
-      )
-    }
-    // Wrapped fallback (no wagmi hooks): still render the vault bezel.
-    return (
-      <div className={`relative ${className}`}>
-        <div className={`${sizeClass} relative`}>
-          <OrbBorder intensity="low">
-            <div className={`w-full h-full ${padClass} bg-obsidian rounded-full`}>
-              <div className="w-full h-full rounded-full overflow-hidden relative shadow-[inset_0_0_20px_black]">
-                <div className="absolute inset-0 rounded-full overflow-hidden bg-black">
-                  <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-brand-primary/25 via-brand-accent/10 to-black">
-                    <span className="text-white/80 font-serif text-base leading-none select-none">
-                      {symbol.trim()?.[0]?.toUpperCase() || '?'}
-                    </span>
-                  </div>
-                  <div className="absolute inset-0 shadow-[inset_0_0_40px_rgba(0,0,0,0.8)] pointer-events-none" />
-                </div>
-                <div className="absolute inset-0 rounded-full pointer-events-none opacity-40 mix-blend-overlay bg-[radial-gradient(circle_at_30%_20%,rgba(255,255,255,0.75)_0%,transparent_60%)]" />
-                <div className="absolute inset-0 rounded-full border border-white/10 pointer-events-none shadow-[inset_0_4px_20px_rgba(255,255,255,0.1)]" />
-              </div>
-            </div>
-          </OrbBorder>
-        </div>
-      </div>
-    )
-  }
-  
-  // Web3 is ready - use full component with metadata
   return (
     <TokenImageInner
       tokenAddress={tokenAddress}

@@ -1,5 +1,4 @@
 import { memo, useState } from 'react'
-import { useWeb3 } from '@/web3/Web3Context'
 import { useTokenMetadata } from '@/hooks/useTokenMetadata'
 
 type DerivedTokenVariant = 'vault' | 'share'
@@ -107,45 +106,6 @@ export const DerivedTokenIcon = memo(function DerivedTokenIcon({
   size?: TokenSize
   className?: string
 }) {
-  const { status } = useWeb3()
-
-  // Avoid wagmi hooks until Web3 providers are ready (same pattern as TokenImage).
-  if (status !== 'ready') {
-    const badge = variant === 'vault' ? 's' : 'ws'
-    const derived = `${badge}${symbol}`
-    const ariaLabel =
-      variant === 'vault' ? `Vault share token (${derived})` : `Wrapped vault share token (${derived})`
-    const showCornerMark = variant === 'vault'
-    const showGoldRing = variant === 'share'
-    return (
-      <div
-        className={`relative ${sizeClasses[size]} ${className} select-none`}
-        role="img"
-        aria-label={ariaLabel}
-      >
-        {showGoldRing ? (
-          <>
-            <div className="absolute -inset-[2px] rounded-full bg-[conic-gradient(from_0deg,#4D3A11_0%,#140E02_15%,#8F711E_25%,#D4AF37_35%,#FFFFFF_40%,#D4AF37_45%,#8F711E_55%,#140E02_70%,#B5922B_85%,#4D3A11_100%)] opacity-90 motion-safe:animate-[spin_18s_linear_infinite] motion-reduce:animate-none" />
-            <div className="absolute -inset-[2px] rounded-full blur-[1.5px] bg-[conic-gradient(from_180deg,transparent_0%,#C5A028_20%,transparent_40%,#FFF7D6_50%,transparent_60%,#C5A028_80%,transparent_100%)] opacity-55" />
-          </>
-        ) : null}
-        <div className="absolute inset-0 rounded-full overflow-hidden bg-black border border-white/10 shadow-[inset_0_0_24px_rgba(0,0,0,0.9)]">
-          <div className="absolute inset-0 bg-gradient-to-br from-white/[0.06] via-black to-black" />
-          <div className="absolute inset-0 pointer-events-none shadow-[inset_0_0_40px_rgba(0,0,0,0.85)]" />
-          <div className="absolute inset-0 pointer-events-none opacity-35 mix-blend-overlay bg-[radial-gradient(circle_at_30%_20%,rgba(255,255,255,0.75)_0%,transparent_60%)]" />
-        </div>
-        {showCornerMark ? (
-          <div
-            className={`absolute -bottom-1 -right-1 rounded-full backdrop-blur-md border border-white/10 bg-black/70 text-zinc-100 font-mono leading-none ${badgeTextSize[size]}`}
-            aria-hidden="true"
-          >
-            {badge}
-          </div>
-        ) : null}
-      </div>
-    )
-  }
-
   return (
     <DerivedTokenIconInner
       tokenAddress={tokenAddress}

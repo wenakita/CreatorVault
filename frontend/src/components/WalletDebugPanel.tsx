@@ -5,7 +5,6 @@ import { CheckCircle2, Copy, XCircle } from 'lucide-react'
 
 import { useFarcasterAuth, useMiniAppContext } from '@/hooks'
 import { useSiweAuth } from '@/hooks/useSiweAuth'
-import { useWeb3 } from '@/web3/Web3Context'
 
 function isDebugEnabled(search: string): boolean {
   const params = new URLSearchParams(search)
@@ -30,7 +29,6 @@ export function WalletDebugPanel() {
   const location = useLocation()
   const enabled = useMemo(() => isDebugEnabled(location.search), [location.search])
 
-  const web3 = useWeb3()
   const mini = useMiniAppContext()
   const farcaster = useFarcasterAuth()
   const siwe = useSiweAuth()
@@ -88,7 +86,6 @@ export function WalletDebugPanel() {
   const debugPayload = useMemo(() => {
     return {
       route: `${location.pathname}${location.search}${location.hash}`,
-      web3: { status: web3.status },
       miniApp: { isMiniApp: mini.isMiniApp, fid: mini.fid, username: mini.username },
       farcasterAuth: {
         status: farcaster.status,
@@ -132,7 +129,6 @@ export function WalletDebugPanel() {
     siwe.authAddress,
     siwe.error,
     siwe.isSignedIn,
-    web3.status,
   ])
 
   if (!enabled) return null
@@ -179,7 +175,6 @@ export function WalletDebugPanel() {
 
       <div className="mt-4 space-y-2">
         <DebugRow k="route" v={`${location.pathname}${location.search}${location.hash}`} />
-        <DebugRow k="web3" v={web3.status} />
         <DebugRow k="miniapp" v={miniFlag} />
         <DebugRow k="farcaster" v={farcasterSummary} />
         <DebugRow k="siwe" v={siweSummary} />

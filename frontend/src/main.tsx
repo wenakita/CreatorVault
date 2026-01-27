@@ -3,25 +3,25 @@ import ReactDOM from 'react-dom/client'
 import { BrowserRouter } from 'react-router-dom'
 
 import App from './App'
-import { Web3Gate } from './web3/Web3Gate'
-import { initZoraCoinsSdk } from '@/lib/zora/init'
+import { Web3Providers } from './web3/Web3Providers'
 import { PrivyClientProvider } from '@/lib/privy/client'
-import '@coinbase/onchainkit/styles.css'
 import './index.css'
 
-// Safe to call without a key: the app will use server-side proxy endpoints by default.
-void initZoraCoinsSdk()
-
-// NOTE: QueryClientProvider is now inside Web3Providers (required by wagmi v2).
-// Wagmi v2 uses TanStack Query internally and expects QueryClientProvider to be
-// nested inside WagmiProvider, not outside.
+/**
+ * Minimal provider stack:
+ * 
+ * PrivyClientProvider (social auth only)
+ *   └── BrowserRouter
+ *         └── Web3Providers (wagmi + react-query)
+ *               └── App
+ */
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
     <PrivyClientProvider>
       <BrowserRouter>
-        <Web3Gate>
+        <Web3Providers>
           <App />
-        </Web3Gate>
+        </Web3Providers>
       </BrowserRouter>
     </PrivyClientProvider>
   </React.StrictMode>,
