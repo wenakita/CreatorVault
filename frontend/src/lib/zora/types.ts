@@ -121,5 +121,15 @@ export type ZoraExploreListType =
   | 'NEW'
   | 'LAST_TRADED'
   | 'LAST_TRADED_UNIQUE'
+  // Creator-specific lists
+  | 'NEW_CREATORS'
+  | 'MOST_VALUABLE_CREATORS'
+  | 'TOP_VOLUME_CREATORS_24H'
+  | 'FEATURED_CREATORS'
+  // Content-specific lists
+  | 'FEATURED_VIDEOS'
+  // Combined lists
+  | 'TOP_VOLUME_ALL_24H'
+  | 'NEW_ALL'
 
 

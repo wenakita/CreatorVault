@@ -109,18 +109,29 @@ export async function fetchZoraExplore(params: {
   const sdk = await import('@zoralabs/coins-sdk')
 
   const options = { count, after }
-  const response =
-    list === 'TOP_GAINERS'
-      ? await sdk.getCoinsTopGainers(options)
-      : list === 'TOP_VOLUME_24H'
-        ? await sdk.getCoinsTopVolume24h(options)
-        : list === 'MOST_VALUABLE'
-          ? await sdk.getCoinsMostValuable(options)
-          : list === 'NEW'
-            ? await sdk.getCoinsNew(options)
-            : list === 'LAST_TRADED'
-              ? await sdk.getCoinsLastTraded(options)
-              : await sdk.getCoinsLastTradedUnique(options)
+  
+  // Map list type to SDK function
+  const sdkFunctions: Record<ZoraExploreListType, () => Promise<any>> = {
+    'TOP_GAINERS': () => sdk.getCoinsTopGainers(options),
+    'TOP_VOLUME_24H': () => sdk.getCoinsTopVolume24h(options),
+    'MOST_VALUABLE': () => sdk.getCoinsMostValuable(options),
+    'NEW': () => sdk.getCoinsNew(options),
+    'LAST_TRADED': () => sdk.getCoinsLastTraded(options),
+    'LAST_TRADED_UNIQUE': () => sdk.getCoinsLastTradedUnique(options),
+    // Creator-specific
+    'NEW_CREATORS': () => (sdk as any).getCreatorCoins?.(options) ?? sdk.getCoinsNew(options),
+    'MOST_VALUABLE_CREATORS': () => (sdk as any).getMostValuableCreatorCoins?.(options) ?? sdk.getCoinsMostValuable(options),
+    'TOP_VOLUME_CREATORS_24H': () => (sdk as any).getExploreTopVolumeCreators24h?.(options) ?? sdk.getCoinsTopVolume24h(options),
+    'FEATURED_CREATORS': () => (sdk as any).getExploreFeaturedCreators?.(options) ?? sdk.getCoinsMostValuable(options),
+    // Content-specific
+    'FEATURED_VIDEOS': () => (sdk as any).getExploreFeaturedVideos?.(options) ?? sdk.getCoinsNew(options),
+    // Combined
+    'TOP_VOLUME_ALL_24H': () => (sdk as any).getExploreTopVolumeAll24h?.(options) ?? sdk.getCoinsTopVolume24h(options),
+    'NEW_ALL': () => (sdk as any).getExploreNewAll?.(options) ?? sdk.getCoinsNew(options),
+  }
+
+  const fn = sdkFunctions[list] || (() => sdk.getCoinsLastTradedUnique(options))
+  const response = await fn()
 
   return (response.data?.exploreList as any) ?? null
 }
