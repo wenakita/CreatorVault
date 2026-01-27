@@ -2956,19 +2956,19 @@ function DeployVaultPrivyEnabled() {
                           . Only the coin creator or current payout recipient can deploy this vault.
                         </div>
                         {/* Debug info */}
-                        {(import.meta.env.DEV || new URLSearchParams(window.location.search).get('debug') === '1') && (
+                        {(import.meta.env.DEV || (typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('debug') === '1')) && (
                           <div className="mt-2 p-2 bg-zinc-900/50 rounded text-[10px] font-mono text-zinc-500 space-y-1">
-                            <div>creatorAddress: {zoraCoin?.creatorAddress ?? 'null'}</div>
-                            <div>payoutRecipient: {payoutRecipient ?? 'null'}</div>
-                            <div>canonicalIdentity: {canonicalIdentityAddress ?? 'null'}</div>
-                            <div>connectedWallet: {connectedWalletAddress ?? 'null'}</div>
-                            <div>creatorToken: {creatorToken ?? 'null'}</div>
-                            <div>identity.blockingReason: {identity.blockingReason ?? 'null'}</div>
-                            <div>identityBlockingReason: {identityBlockingReason ?? 'null'}</div>
-                            <div>executionCanOperate: {String(executionCanOperateCanonicalQuery.data)}</div>
-                            <div>executionCanOperateLoading: {String(executionCanOperateCanonicalQuery.isLoading)}</div>
-                            <div>executionCanOperateFetching: {String(executionCanOperateCanonicalQuery.isFetching)}</div>
-                            <div>executionCanOperateError: {String(executionCanOperateCanonicalQuery.error?.message ?? 'none')}</div>
+                            <div>creatorAddress: {String(zoraCoin?.creatorAddress ?? 'null')}</div>
+                            <div>payoutRecipient: {String(payoutRecipient ?? 'null')}</div>
+                            <div>canonicalIdentity: {String(canonicalIdentityAddress ?? 'null')}</div>
+                            <div>connectedWallet: {String(connectedWalletAddress ?? 'null')}</div>
+                            <div>creatorToken: {String(creatorToken ?? 'null')}</div>
+                            <div>identity.blockingReason: {String(identity?.blockingReason ?? 'null')}</div>
+                            <div>identityBlockingReason: {String(identityBlockingReason ?? 'null')}</div>
+                            <div>executionCanOperate: {String(executionCanOperateCanonicalQuery?.data ?? 'undefined')}</div>
+                            <div>executionCanOperateLoading: {String(executionCanOperateCanonicalQuery?.isLoading ?? 'undefined')}</div>
+                            <div>executionCanOperateFetching: {String(executionCanOperateCanonicalQuery?.isFetching ?? 'undefined')}</div>
+                            <div>executionCanOperateError: {executionCanOperateCanonicalQuery?.error ? String((executionCanOperateCanonicalQuery.error as any)?.message ?? 'unknown error') : 'none'}</div>
                             <div>isAuthorizedDeployer: {String(isAuthorizedDeployer)}</div>
                           </div>
                         )}
