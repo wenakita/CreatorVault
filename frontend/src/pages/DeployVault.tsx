@@ -1873,6 +1873,15 @@ function DeployVaultMain() {
   const { login } = useLogin()
   const { client: smartWalletClient } = useSmartWallets()
   
+  // Privy knows the user's Coinbase Smart Wallet from Zora global wallet integration
+  const privySmartWalletAddress = useMemo(() => {
+    try {
+      const addr = smartWalletClient?.account?.address
+      return addr && isAddress(addr) ? getAddress(addr) as Address : null
+    } catch {
+      return null
+    }
+  }, [smartWalletClient])
   
   const [creatorToken, setCreatorToken] = useState('')
   const [showAdvanced, setShowAdvanced] = useState(false)
@@ -2011,30 +2020,8 @@ function DeployVaultMain() {
     return isAddress(v) ? (v as Address) : null
   }, [farcasterProfileQuery.data?.creatorCoin?.address])
 
-  const detectedSmartWallet = useMemo(() => {
-    const edges = myProfile?.linkedWallets?.edges ?? []
-    for (const e of edges) {
-      const n: any = (e as any)?.node
-      const t = typeof n?.walletType === 'string' ? n.walletType : ''
-      const a = typeof n?.walletAddress === 'string' ? n.walletAddress : ''
-      if (String(t).toUpperCase() !== 'SMART_WALLET') continue
-      if (isAddress(a)) return a as Address
-    }
-    return null
-  }, [myProfile?.linkedWallets?.edges])
-
-  // Defensive: some indexers/wallet graphs can incorrectly label an EOA as a "SMART_WALLET".
-  // Coinbase Smart Wallet is a contract account onchain, so require bytecode to treat it as a smart wallet.
+  // Privy provides the smart wallet directly - no need to detect from Zora profile
   const publicClient = usePublicClient({ chainId: base.id })
-  const smartWalletBytecodeQuery = useQuery({
-    queryKey: ['bytecode', 'smartWallet', detectedSmartWallet],
-    enabled: !!publicClient && !!detectedSmartWallet,
-    queryFn: async () => {
-      return await publicClient!.getBytecode({ address: detectedSmartWallet as Address })
-    },
-    staleTime: 60_000,
-    retry: 0,
-  })
   const entryPointBytecodeQuery = useQuery({
     queryKey: ['bytecode', 'entryPointV06', COINBASE_ENTRYPOINT_V06],
     enabled: !!publicClient,
@@ -2044,13 +2031,6 @@ function DeployVaultMain() {
     staleTime: 60_000,
     retry: 0,
   })
-
-  const detectedSmartWalletContract = useMemo(() => {
-    const code = smartWalletBytecodeQuery.data
-    if (!detectedSmartWallet) return null
-    if (!code || code === '0x') return null
-    return detectedSmartWallet
-  }, [detectedSmartWallet, smartWalletBytecodeQuery.data])
   const entryPointV06Ready = useMemo(() => {
     const code = entryPointBytecodeQuery.data
     return !!code && code !== '0x'
@@ -2221,20 +2201,15 @@ function DeployVaultMain() {
     !!address && !!payoutRecipient && address.toLowerCase() === payoutRecipient.toLowerCase()
   void isPayoutRecipient // reserved for future UX
 
-  // Zora creators often deploy coins from a smart wallet (Privy-managed), then add EOAs later.
-  // Treat the Smart Wallet address as canonical and allow the connected EOA to act if it is an onchain owner.
+  // Privy provides the user's smart wallet directly via Zora global wallet integration.
+  // Use this as the source of truth instead of detecting from Zora profile.
   const coinSmartWallet = useMemo(() => {
-    // Highest-confidence: the coin's payout recipient is already a deployed contract.
-    // (This is the common Coinbase Smart Wallet setup.)
+    // Privy smart wallet is the source of truth
+    if (privySmartWalletAddress) return privySmartWalletAddress
+    // Fallback: the coin's payout recipient if it's a contract
     if (payoutRecipientContract) return payoutRecipientContract
-
-    // Fallback: use Zora profile-linked wallet graphs if present (requires onchain bytecode).
-    if (!detectedSmartWalletContract) return null
-    const smartLc = detectedSmartWalletContract.toLowerCase()
-    if (payoutRecipient && payoutRecipient.toLowerCase() === smartLc) return detectedSmartWalletContract
-    if (creatorAddress && creatorAddress.toLowerCase() === smartLc) return detectedSmartWalletContract
     return null
-  }, [payoutRecipientContract, detectedSmartWalletContract, payoutRecipient, creatorAddress])
+  }, [privySmartWalletAddress, payoutRecipientContract])
   void coinSmartWallet // reserved for future UX
 
   // Canonical identity enforcement (prevents irreversible fragmentation).
@@ -2264,11 +2239,22 @@ function DeployVaultMain() {
     const code = canonicalIdentityBytecodeQuery.data
     return !!code && code !== '0x'
   }, [canonicalIdentityBytecodeQuery.data])
+  
+  // Use Privy smart wallet as canonical if it matches the coin's creator identity
   const canonicalSmartWalletAddress = useMemo(() => {
+    // Privy smart wallet is source of truth - if user is authenticated, use it
+    if (privySmartWalletAddress) {
+      // Verify it matches the coin's canonical identity (creator or payout recipient)
+      const privyLc = privySmartWalletAddress.toLowerCase()
+      if (canonicalIdentityAddress && canonicalIdentityAddress.toLowerCase() === privyLc) {
+        return privySmartWalletAddress
+      }
+    }
+    // Fallback: check if canonical identity is a contract (for EOA ownership path)
     if (!canonicalIdentityIsContract) return null
     const raw = typeof canonicalIdentityAddress === 'string' ? canonicalIdentityAddress : ''
     return isAddress(raw) ? (getAddress(raw) as Address) : null
-  }, [canonicalIdentityAddress, canonicalIdentityIsContract])
+  }, [privySmartWalletAddress, canonicalIdentityAddress, canonicalIdentityIsContract])
 
   const baseAccountOwnerQuery = useQuery({
     queryKey: ['coinbaseSmartWalletOwner', canonicalSmartWalletAddress, connectedWalletAddress],
