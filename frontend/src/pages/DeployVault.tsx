@@ -2179,14 +2179,22 @@ function DeployVaultMain() {
 
   // Canonical identity enforcement (prevents irreversible fragmentation).
   // For existing creator coins, we enforce `zoraCoin.creatorAddress` as the identity wallet.
+  // Prefer Privy smart wallet over wagmi connected address for identity matching.
+  const effectiveConnectedWallet = useMemo(() => {
+    // If Privy smart wallet is available, use it as the "connected" identity
+    // This allows Privy-authenticated users to match their Zora smart wallet
+    if (privySmartWalletAddress) return privySmartWalletAddress
+    return connectedWalletAddress
+  }, [privySmartWalletAddress, connectedWalletAddress])
+  
   const identity = useMemo(() => {
     return resolveCreatorIdentity({
-      connectedWallet: connectedWalletAddress,
+      connectedWallet: effectiveConnectedWallet,
       zoraCoin: zoraCoin ?? null,
       farcasterZoraProfile: farcasterProfileQuery.data ?? null,
       farcasterCustodyAddress,
     })
-  }, [connectedWalletAddress, farcasterCustodyAddress, farcasterProfileQuery.data, zoraCoin])
+  }, [effectiveConnectedWallet, farcasterCustodyAddress, farcasterProfileQuery.data, zoraCoin])
 
   const canonicalIdentityAddress = identity.canonicalIdentity.address
   const deploySender = (canonicalIdentityAddress as Address | null) ?? null
