@@ -2,6 +2,7 @@ import { memo } from 'react'
 import { motion } from 'framer-motion'
 import { CheckCircle2, Loader2 } from 'lucide-react'
 import type { WaitlistState } from '../waitlistTypes'
+import { ConnectButtonWeb3 } from '@/components/ConnectButtonWeb3'
 
 type VerifyStepProps = {
   verifiedWallet: string | null
@@ -10,6 +11,16 @@ type VerifyStepProps = {
   privyReady: boolean
   privyVerifyBusy: boolean
   privyVerifyError: string | null
+  // Optional: enable 1-click deploy by linking Privy embedded EOA as an owner of a Coinbase Smart Wallet
+  showDeployOwnerLink?: boolean
+  deployOwnerLinkBusy?: boolean
+  deployOwnerLinkError?: string | null
+  cswAddress?: string | null
+  embeddedEoaAddress?: string | null
+  connectedOwnerAddress?: string | null
+  embeddedEoaIsOwner?: boolean | null
+  connectedOwnerIsOwner?: boolean | null
+  onLinkEmbeddedEoaAsOwner?: () => void | Promise<void>
   // Auto-fetched Creator Coin
   creatorCoin: WaitlistState['creatorCoin']
   creatorCoinDeclaredMissing: boolean
@@ -30,6 +41,15 @@ export const VerifyStep = memo(function VerifyStep({
   privyReady,
   privyVerifyBusy,
   privyVerifyError,
+  showDeployOwnerLink,
+  deployOwnerLinkBusy,
+  deployOwnerLinkError,
+  cswAddress,
+  embeddedEoaAddress,
+  connectedOwnerAddress,
+  embeddedEoaIsOwner,
+  connectedOwnerIsOwner,
+  onLinkEmbeddedEoaAsOwner,
   creatorCoin,
   creatorCoinDeclaredMissing,
   creatorCoinBusy,
@@ -42,6 +62,7 @@ export const VerifyStep = memo(function VerifyStep({
 }: VerifyStepProps) {
   const hasCreatorCoin = !!creatorCoin?.address
   const showSubmitButton = verifiedWallet && (hasCreatorCoin || creatorCoinDeclaredMissing)
+  const short = (v: string) => `${v.slice(0, 6)}…${v.slice(-4)}`
 
   return (
     <motion.div
@@ -158,6 +179,71 @@ export const VerifyStep = memo(function VerifyStep({
           {creatorCoinDeclaredMissing ? (
             <div className="text-xs text-emerald-400">Got it. You can still join the waitlist.</div>
           ) : null}
+        </div>
+      ) : null}
+
+      {showDeployOwnerLink ? (
+        <div className="rounded-xl border border-white/10 bg-black/30 px-4 py-3 space-y-3">
+          <div>
+            <div className="text-[10px] uppercase tracking-[0.24em] text-zinc-600">Enable 1‑click deploy</div>
+            <div className="text-xs text-zinc-500 mt-1">
+              This adds your Privy embedded wallet as an owner on the creator smart wallet, so deploys don’t depend on
+              Rabby’s blocked signature method.
+            </div>
+          </div>
+
+          <div className="space-y-2 text-[11px] text-zinc-600">
+            <div className="flex items-center justify-between gap-3">
+              <span>Creator smart wallet</span>
+              <span className="font-mono text-zinc-300">{cswAddress ? short(cswAddress) : '—'}</span>
+            </div>
+            <div className="flex items-center justify-between gap-3">
+              <span>Privy embedded EOA</span>
+              <span className="font-mono text-zinc-300">
+                {embeddedEoaAddress ? short(embeddedEoaAddress) : 'Sign in with Privy'}
+              </span>
+            </div>
+          </div>
+
+          {embeddedEoaIsOwner ? (
+            <div className="text-[11px] text-emerald-300/80">Already enabled.</div>
+          ) : (
+            <div className="space-y-2">
+              <div className="text-[11px] text-zinc-600">Connect an existing owner wallet to approve:</div>
+              <ConnectButtonWeb3 />
+
+              {connectedOwnerAddress ? (
+                <div className="flex items-center justify-between gap-3 text-[11px] text-zinc-600">
+                  <span>Connected owner</span>
+                  <span className="font-mono text-zinc-300">{short(connectedOwnerAddress)}</span>
+                </div>
+              ) : null}
+
+              {connectedOwnerAddress && connectedOwnerIsOwner === false ? (
+                <div className="text-[11px] text-amber-300/80">
+                  Connected wallet is not an owner of the creator smart wallet. Switch wallets and retry.
+                </div>
+              ) : null}
+
+              <button
+                type="button"
+                className="btn-accent w-full disabled:opacity-60 disabled:cursor-not-allowed"
+                disabled={
+                  Boolean(busy || deployOwnerLinkBusy) ||
+                  !embeddedEoaAddress ||
+                  !cswAddress ||
+                  !connectedOwnerAddress ||
+                  connectedOwnerIsOwner === false ||
+                  typeof onLinkEmbeddedEoaAsOwner !== 'function'
+                }
+                onClick={() => void onLinkEmbeddedEoaAsOwner?.()}
+              >
+                {deployOwnerLinkBusy ? 'Linking…' : 'Add Privy embedded EOA as owner'}
+              </button>
+
+              {deployOwnerLinkError ? <div className="text-xs text-red-400 text-center">{deployOwnerLinkError}</div> : null}
+            </div>
+          )}
         </div>
       ) : null}
 

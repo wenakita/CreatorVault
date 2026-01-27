@@ -1,14 +1,15 @@
 import { AnimatePresence, motion } from 'framer-motion'
-import { useCallback, useEffect, useMemo, useReducer, useRef } from 'react'
+import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from 'react'
 import { useLocation } from 'react-router-dom'
 import { getAppBaseUrl } from '@/lib/host'
-import { useAccount } from 'wagmi'
+import { useAccount, usePublicClient, useWalletClient } from 'wagmi'
 import { useSiweAuth } from '@/hooks/useSiweAuth'
 import { isPrivyClientEnabled } from '@/lib/flags'
 import { usePrivyClientStatus } from '@/lib/privy/client'
 import { toViemAccount, useBaseAccountSdk, useConnectWallet, useLogin, usePrivy, useWallets } from '@privy-io/react-auth'
 import { base } from 'wagmi/chains'
 import { ArrowLeft } from 'lucide-react'
+import { getAddress, isAddress } from 'viem'
 import { useMiniAppContext } from '@/hooks'
 import { apiAliasPath } from '@/lib/apiBase'
 import { fetchZoraCoin, fetchZoraProfile } from '@/lib/zora/client'
@@ -35,6 +36,23 @@ const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 const EVM_RE = /^0x[a-fA-F0-9]{40}$/
 const SOL_RE = /^[1-9A-HJ-NP-Za-km-z]+$/
 const SHARE_MESSAGE = 'Creator vaults on Base — join the waitlist.'
+
+const COINBASE_SMART_WALLET_OWNER_LINK_ABI = [
+  {
+    type: 'function',
+    name: 'addOwnerAddress',
+    stateMutability: 'nonpayable',
+    inputs: [{ name: 'owner', type: 'address' }],
+    outputs: [],
+  },
+  {
+    type: 'function',
+    name: 'isOwnerAddress',
+    stateMutability: 'view',
+    inputs: [{ name: 'account', type: 'address' }],
+    outputs: [{ name: '', type: 'bool' }],
+  },
+] as const
 
 type PatchAction<T> = { type: 'patch'; patch: Partial<T> } | { type: 'reset' }
 type WaitlistAction =
@@ -351,6 +369,8 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
   const appUrl = useMemo(() => getAppBaseUrl(), [])
   const { apiFetch } = useWaitlistApi(appUrl)
   const { address: connectedAddressRaw } = useAccount()
+  const publicClient = usePublicClient({ chainId: base.id })
+  const { data: walletClient } = useWalletClient({ chainId: base.id })
   const siwe = useSiweAuth()
   const miniApp = useMiniAppContext()
 
@@ -597,6 +617,120 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
       typeof connectedAddressRaw === 'string' && connectedAddressRaw.startsWith('0x') ? connectedAddressRaw.toLowerCase() : null,
     [connectedAddressRaw],
   )
+
+  // Optional: Link Privy embedded EOA as owner on CSW to enable Privy-based deploy signing.
+  const [zoraProfileSmartWalletAddress, setZoraProfileSmartWalletAddress] = useState<string | null>(null)
+  const cswAddress = useMemo(() => {
+    const raw = typeof zoraProfileSmartWalletAddress === 'string' ? zoraProfileSmartWalletAddress : ''
+    return isAddress(raw) ? (getAddress(raw) as any) : null
+  }, [zoraProfileSmartWalletAddress])
+  const embeddedEoaAddressForLink = embeddedWalletAddress
+  const connectedOwnerAddressForLink = useMemo(() => {
+    const raw = typeof connectedAddressRaw === 'string' ? connectedAddressRaw : ''
+    return isValidEvmAddress(raw) ? raw : null
+  }, [connectedAddressRaw])
+
+  const [deployOwnerLinkBusy, setDeployOwnerLinkBusy] = useState(false)
+  const [deployOwnerLinkError, setDeployOwnerLinkError] = useState<string | null>(null)
+  const [embeddedEoaIsOwner, setEmbeddedEoaIsOwner] = useState<boolean | null>(null)
+  const [connectedOwnerIsOwner, setConnectedOwnerIsOwner] = useState<boolean | null>(null)
+
+  useEffect(() => {
+    let cancelled = false
+    const run = async () => {
+      if (!publicClient || !cswAddress || !embeddedEoaAddressForLink) {
+        if (!cancelled) setEmbeddedEoaIsOwner(null)
+        return
+      }
+      try {
+        const ok = (await (publicClient as any).readContract({
+          address: cswAddress,
+          abi: COINBASE_SMART_WALLET_OWNER_LINK_ABI,
+          functionName: 'isOwnerAddress',
+          args: [embeddedEoaAddressForLink],
+        })) as boolean
+        if (!cancelled) setEmbeddedEoaIsOwner(Boolean(ok))
+      } catch {
+        if (!cancelled) setEmbeddedEoaIsOwner(null)
+      }
+    }
+    void run()
+    return () => {
+      cancelled = true
+    }
+  }, [cswAddress, embeddedEoaAddressForLink, publicClient])
+
+  useEffect(() => {
+    let cancelled = false
+    const run = async () => {
+      if (!publicClient || !cswAddress || !connectedOwnerAddressForLink) {
+        if (!cancelled) setConnectedOwnerIsOwner(null)
+        return
+      }
+      try {
+        const ok = (await (publicClient as any).readContract({
+          address: cswAddress,
+          abi: COINBASE_SMART_WALLET_OWNER_LINK_ABI,
+          functionName: 'isOwnerAddress',
+          args: [connectedOwnerAddressForLink],
+        })) as boolean
+        if (!cancelled) setConnectedOwnerIsOwner(Boolean(ok))
+      } catch {
+        if (!cancelled) setConnectedOwnerIsOwner(null)
+      }
+    }
+    void run()
+    return () => {
+      cancelled = true
+    }
+  }, [connectedOwnerAddressForLink, cswAddress, publicClient])
+
+  const linkEmbeddedEoaAsOwner = useCallback(async () => {
+    if (deployOwnerLinkBusy) return
+    setDeployOwnerLinkBusy(true)
+    setDeployOwnerLinkError(null)
+    try {
+      if (!publicClient) throw new Error('Network client not ready.')
+      if (!walletClient) throw new Error('Connect an owner wallet to continue.')
+      if (!cswAddress) throw new Error('Creator smart wallet is not configured.')
+      if (!embeddedEoaAddressForLink) throw new Error('Sign in with Privy to create your embedded wallet.')
+      if (!connectedOwnerAddressForLink) throw new Error('Connect a wallet that already owns the creator smart wallet.')
+
+      const isOwner = (await (publicClient as any).readContract({
+        address: cswAddress,
+        abi: COINBASE_SMART_WALLET_OWNER_LINK_ABI,
+        functionName: 'isOwnerAddress',
+        args: [connectedOwnerAddressForLink],
+      })) as boolean
+      if (!isOwner) throw new Error('Connected wallet is not an owner of the creator smart wallet.')
+
+      const hash = await (walletClient as any).writeContract({
+        account: connectedOwnerAddressForLink,
+        chain: base as any,
+        address: cswAddress,
+        abi: COINBASE_SMART_WALLET_OWNER_LINK_ABI,
+        functionName: 'addOwnerAddress',
+        args: [embeddedEoaAddressForLink],
+      })
+
+      await (publicClient as any).waitForTransactionReceipt({ hash })
+
+      // Refresh status
+      setConnectedOwnerIsOwner(true)
+      setEmbeddedEoaIsOwner(true)
+    } catch (e: any) {
+      setDeployOwnerLinkError(e?.shortMessage || e?.message || 'Failed to link deploy signer')
+    } finally {
+      setDeployOwnerLinkBusy(false)
+    }
+  }, [
+    connectedOwnerAddressForLink,
+    cswAddress,
+    deployOwnerLinkBusy,
+    embeddedEoaAddressForLink,
+    publicClient,
+    walletClient,
+  ])
 
   const adminBypassSet = useMemo(() => {
     // Keep this in sync with `frontend/src/App.tsx` so admins can always escape the waitlist UI.
@@ -1004,6 +1138,7 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
     if (!w) {
       patchWaitlist({ creatorCoin: null, creatorCoinBusy: false, creatorCoinDeclaredMissing: false })
       creatorCoinForWalletRef.current = null
+      setZoraProfileSmartWalletAddress(null)
       return
     }
     if (creatorCoinForWalletRef.current === w) return
@@ -1018,6 +1153,7 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
         const coinAddr = isValidEvmAddress(coinAddrRaw) ? coinAddrRaw : null
         if (!coinAddr) {
           if (!cancelled) patchWaitlist({ creatorCoin: null })
+          if (!cancelled) setZoraProfileSmartWalletAddress(null)
           return
         }
 
@@ -1028,6 +1164,7 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
         let volume24hUsd: number | null = null
         let holders: number | null = null
         let priceUsd: number | null = null
+        let smartWallet: string | null = null
         try {
           const coin = await fetchZoraCoin(coinAddr as any)
           symbol = coin?.symbol ? String(coin.symbol) : null
@@ -1036,6 +1173,8 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
             (coin?.mediaContent?.previewImage?.medium as string | undefined) ||
             (coin?.mediaContent?.previewImage?.small as string | undefined) ||
             null
+          const payoutRaw = typeof coin?.payoutRecipientAddress === 'string' ? coin.payoutRecipientAddress : ''
+          smartWallet = isValidEvmAddress(payoutRaw) ? payoutRaw : null
           const asNumber = (v: any): number | null => {
             const n = Number(v)
             return Number.isFinite(n) ? n : null
@@ -1048,15 +1187,38 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
           // ignore
         }
 
+        // If the payout recipient isn't available, try to infer a smart wallet from linked wallets.
+        // (Best-effort; schema can vary by API source.)
+        if (!smartWallet) {
+          const edges = Array.isArray((profile as any)?.linkedWallets?.edges) ? ((profile as any).linkedWallets.edges as any[]) : []
+          const candidates = edges
+            .map((e) => (e && typeof e === 'object' ? (e as any).node : null))
+            .map((n) => (n && typeof n === 'object' ? String((n as any).walletAddress ?? '') : ''))
+            .filter((addr) => isValidEvmAddress(addr))
+          smartWallet = candidates.length > 0 ? candidates[0] : null
+        }
+
+        // Ensure this looks like a smart wallet (contract) when possible.
+        if (smartWallet && publicClient) {
+          try {
+            const code = await publicClient.getBytecode({ address: getAddress(smartWallet) as any })
+            if (!code || code === '0x') smartWallet = null
+          } catch {
+            // ignore
+          }
+        }
+
         if (!cancelled) {
           patchWaitlist({
             creatorCoin: { address: coinAddr, symbol, coinType, imageUrl, marketCapUsd, volume24hUsd, holders, priceUsd },
             creatorCoinDeclaredMissing: false,
           })
+          setZoraProfileSmartWalletAddress(smartWallet)
         }
       } catch {
         if (!cancelled) {
           patchWaitlist({ creatorCoin: null })
+          setZoraProfileSmartWalletAddress(null)
         }
       } finally {
         if (!cancelled) patchWaitlist({ creatorCoinBusy: false })
@@ -1310,6 +1472,15 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
                 privyReady={privyReady}
                 privyVerifyBusy={privyVerifyBusy}
                 privyVerifyError={privyVerifyError}
+                showDeployOwnerLink={Boolean(showPrivyReady && privyAuthed && cswAddress)}
+                deployOwnerLinkBusy={deployOwnerLinkBusy}
+                deployOwnerLinkError={deployOwnerLinkError}
+                cswAddress={cswAddress}
+                embeddedEoaAddress={embeddedEoaAddressForLink}
+                connectedOwnerAddress={connectedOwnerAddressForLink}
+                embeddedEoaIsOwner={embeddedEoaIsOwner}
+                connectedOwnerIsOwner={connectedOwnerIsOwner}
+                onLinkEmbeddedEoaAsOwner={linkEmbeddedEoaAsOwner}
                 creatorCoin={creatorCoin}
                 creatorCoinDeclaredMissing={creatorCoinDeclaredMissing}
                 creatorCoinBusy={creatorCoinBusy}
