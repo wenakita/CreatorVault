@@ -9,7 +9,7 @@ import { usePrivyClientStatus } from '@/lib/privy/client'
 import { toViemAccount, useBaseAccountSdk, useConnectWallet, useLogin, usePrivy, useWallets } from '@privy-io/react-auth'
 import { base } from 'wagmi/chains'
 import { ArrowLeft } from 'lucide-react'
-import { getAddress, isAddress } from 'viem'
+import { encodeAbiParameters, getAddress, isAddress } from 'viem'
 import { useMiniAppContext } from '@/hooks'
 import { apiAliasPath } from '@/lib/apiBase'
 import { fetchZoraCoin, fetchZoraProfile } from '@/lib/zora/client'
@@ -53,6 +53,28 @@ const COINBASE_SMART_WALLET_OWNER_LINK_ABI = [
     outputs: [{ name: '', type: 'bool' }],
   },
 ] as const
+
+const COINBASE_SMART_WALLET_FACTORY_ABI = [
+  {
+    inputs: [
+      { name: 'owners', type: 'bytes[]' },
+      { name: 'nonce', type: 'uint256' },
+    ],
+    name: 'getAddress',
+    outputs: [{ name: '', type: 'address' }],
+    stateMutability: 'view',
+    type: 'function',
+  },
+] as const
+
+const COINBASE_SMART_WALLET_FACTORIES = [
+  getAddress(`0x${'0ba5ed0c6aa8c49038f819e587e2633c4a9f428a'}`),
+  getAddress(`0x${'ba5ed110efdba3d005bfc882d75358acbbb85842'}`),
+] as const
+
+function asOwnerBytes(owner: `0x${string}`) {
+  return encodeAbiParameters([{ type: 'address' }], [owner])
+}
 
 type PatchAction<T> = { type: 'patch'; patch: Partial<T> } | { type: 'reset' }
 type WaitlistAction =
@@ -620,6 +642,7 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
 
   // Optional: Link Privy embedded EOA as owner on CSW to enable Privy-based deploy signing.
   const [zoraProfileSmartWalletAddress, setZoraProfileSmartWalletAddress] = useState<string | null>(null)
+  const [zoraProfileExists, setZoraProfileExists] = useState<boolean | null>(null)
   const cswAddress = useMemo(() => {
     const raw = typeof zoraProfileSmartWalletAddress === 'string' ? zoraProfileSmartWalletAddress : ''
     return isAddress(raw) ? (getAddress(raw) as any) : null
@@ -1139,6 +1162,7 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
       patchWaitlist({ creatorCoin: null, creatorCoinBusy: false, creatorCoinDeclaredMissing: false })
       creatorCoinForWalletRef.current = null
       setZoraProfileSmartWalletAddress(null)
+      setZoraProfileExists(null)
       return
     }
     if (creatorCoinForWalletRef.current === w) return
@@ -1148,14 +1172,74 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
     patchWaitlist({ creatorCoinBusy: true })
     ;(async () => {
       try {
+        let fallbackSmartWallet: string | null = null
+        if (publicClient) {
+          try {
+            const code = await publicClient.getBytecode({ address: getAddress(w) as any })
+            if (code && code !== '0x') {
+              try {
+                await (publicClient as any).readContract({
+                  address: getAddress(w) as any,
+                  abi: COINBASE_SMART_WALLET_OWNER_LINK_ABI,
+                  functionName: 'isOwnerAddress',
+                  args: [w],
+                })
+                fallbackSmartWallet = w
+              } catch {
+                // ignore
+              }
+            } else {
+              const ownerBytes = asOwnerBytes(w as `0x${string}`)
+              const nonces = [0n, 1n, 2n]
+              for (const factory of COINBASE_SMART_WALLET_FACTORIES) {
+                for (const nonce of nonces) {
+                  try {
+                    const predicted = await (publicClient as any).readContract({
+                      address: factory,
+                      abi: COINBASE_SMART_WALLET_FACTORY_ABI,
+                      functionName: 'getAddress',
+                      args: [[ownerBytes], nonce],
+                    })
+                    const predictedAddress = typeof predicted === 'string' ? predicted : ''
+                    if (!isValidEvmAddress(predictedAddress)) continue
+                    const predictedCode = await publicClient.getBytecode({ address: getAddress(predictedAddress) as any })
+                    if (!predictedCode || predictedCode === '0x') continue
+                    const isOwner = await (publicClient as any).readContract({
+                      address: getAddress(predictedAddress) as any,
+                      abi: COINBASE_SMART_WALLET_OWNER_LINK_ABI,
+                      functionName: 'isOwnerAddress',
+                      args: [w],
+                    })
+                    if (isOwner) {
+                      fallbackSmartWallet = predictedAddress
+                      break
+                    }
+                  } catch {
+                    // ignore
+                  }
+                }
+                if (fallbackSmartWallet) break
+              }
+            }
+          } catch {
+            // ignore
+          }
+        }
         const profile = await fetchZoraProfile(w)
+        const profileExists = Boolean(profile)
+        if (!cancelled) setZoraProfileExists(profileExists)
         const coinAddrRaw = profile?.creatorCoin?.address ? String(profile.creatorCoin.address) : ''
         const coinAddr = isValidEvmAddress(coinAddrRaw) ? coinAddrRaw : null
-        if (!coinAddr) {
-          if (!cancelled) patchWaitlist({ creatorCoin: null })
-          if (!cancelled) setZoraProfileSmartWalletAddress(null)
-          return
-        }
+        let smartWallet: string | null = null
+        const linkedWalletEdges = Array.isArray((profile as any)?.linkedWallets?.edges)
+          ? ((profile as any).linkedWallets.edges as any[])
+          : []
+        const linkedWalletCandidates = linkedWalletEdges
+          .map((e) => (e && typeof e === 'object' ? (e as any).node : null))
+          .map((n) => (n && typeof n === 'object' ? String((n as any).walletAddress ?? '') : ''))
+          .filter((addr) => isValidEvmAddress(addr))
+
+        smartWallet = linkedWalletCandidates.length > 0 ? linkedWalletCandidates[0] : null
 
         let symbol: string | null = null
         let coinType: string | null = null
@@ -1164,38 +1248,38 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
         let volume24hUsd: number | null = null
         let holders: number | null = null
         let priceUsd: number | null = null
-        let smartWallet: string | null = null
-        try {
-          const coin = await fetchZoraCoin(coinAddr as any)
-          symbol = coin?.symbol ? String(coin.symbol) : null
-          coinType = coin?.coinType ? String(coin.coinType) : null
-          imageUrl =
-            (coin?.mediaContent?.previewImage?.medium as string | undefined) ||
-            (coin?.mediaContent?.previewImage?.small as string | undefined) ||
-            null
-          const payoutRaw = typeof coin?.payoutRecipientAddress === 'string' ? coin.payoutRecipientAddress : ''
-          smartWallet = isValidEvmAddress(payoutRaw) ? payoutRaw : null
-          const asNumber = (v: any): number | null => {
-            const n = Number(v)
-            return Number.isFinite(n) ? n : null
+        if (coinAddr) {
+          try {
+            const coin = await fetchZoraCoin(coinAddr as any)
+            symbol = coin?.symbol ? String(coin.symbol) : null
+            coinType = coin?.coinType ? String(coin.coinType) : null
+            imageUrl =
+              (coin?.mediaContent?.previewImage?.medium as string | undefined) ||
+              (coin?.mediaContent?.previewImage?.small as string | undefined) ||
+              null
+            const payoutRaw = typeof coin?.payoutRecipientAddress === 'string' ? coin.payoutRecipientAddress : ''
+            smartWallet = isValidEvmAddress(payoutRaw) ? payoutRaw : smartWallet
+            const asNumber = (v: any): number | null => {
+              const n = Number(v)
+              return Number.isFinite(n) ? n : null
+            }
+            marketCapUsd = asNumber(coin?.marketCap)
+            volume24hUsd = asNumber(coin?.volume24h)
+            holders = typeof coin?.uniqueHolders === 'number' ? coin.uniqueHolders : null
+            priceUsd = asNumber(coin?.tokenPrice?.priceInUsdc)
+          } catch {
+            // ignore
           }
-          marketCapUsd = asNumber(coin?.marketCap)
-          volume24hUsd = asNumber(coin?.volume24h)
-          holders = typeof coin?.uniqueHolders === 'number' ? coin.uniqueHolders : null
-          priceUsd = asNumber(coin?.tokenPrice?.priceInUsdc)
-        } catch {
-          // ignore
         }
 
         // If the payout recipient isn't available, try to infer a smart wallet from linked wallets.
         // (Best-effort; schema can vary by API source.)
-        if (!smartWallet) {
-          const edges = Array.isArray((profile as any)?.linkedWallets?.edges) ? ((profile as any).linkedWallets.edges as any[]) : []
-          const candidates = edges
-            .map((e) => (e && typeof e === 'object' ? (e as any).node : null))
-            .map((n) => (n && typeof n === 'object' ? String((n as any).walletAddress ?? '') : ''))
-            .filter((addr) => isValidEvmAddress(addr))
-          smartWallet = candidates.length > 0 ? candidates[0] : null
+        if (!smartWallet && linkedWalletCandidates.length > 0) {
+          smartWallet = linkedWalletCandidates[0] ?? null
+        }
+
+        if (!smartWallet && fallbackSmartWallet && profileExists) {
+          smartWallet = fallbackSmartWallet
         }
 
         // Ensure this looks like a smart wallet (contract) when possible.
@@ -1209,16 +1293,21 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
         }
 
         if (!cancelled) {
-          patchWaitlist({
-            creatorCoin: { address: coinAddr, symbol, coinType, imageUrl, marketCapUsd, volume24hUsd, holders, priceUsd },
-            creatorCoinDeclaredMissing: false,
-          })
+          patchWaitlist(
+            coinAddr
+              ? {
+                  creatorCoin: { address: coinAddr, symbol, coinType, imageUrl, marketCapUsd, volume24hUsd, holders, priceUsd },
+                  creatorCoinDeclaredMissing: false,
+                }
+              : { creatorCoin: null },
+          )
           setZoraProfileSmartWalletAddress(smartWallet)
         }
       } catch {
         if (!cancelled) {
           patchWaitlist({ creatorCoin: null })
           setZoraProfileSmartWalletAddress(null)
+          setZoraProfileExists(null)
         }
       } finally {
         if (!cancelled) patchWaitlist({ creatorCoinBusy: false })
@@ -1481,6 +1570,7 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
                 embeddedEoaIsOwner={embeddedEoaIsOwner}
                 connectedOwnerIsOwner={connectedOwnerIsOwner}
                 onLinkEmbeddedEoaAsOwner={linkEmbeddedEoaAsOwner}
+                zoraProfileExists={zoraProfileExists}
                 creatorCoin={creatorCoin}
                 creatorCoinDeclaredMissing={creatorCoinDeclaredMissing}
                 creatorCoinBusy={creatorCoinBusy}

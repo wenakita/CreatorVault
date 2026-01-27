@@ -21,6 +21,7 @@ type VerifyStepProps = {
   embeddedEoaIsOwner?: boolean | null
   connectedOwnerIsOwner?: boolean | null
   onLinkEmbeddedEoaAsOwner?: () => void | Promise<void>
+  zoraProfileExists?: boolean | null
   // Auto-fetched Creator Coin
   creatorCoin: WaitlistState['creatorCoin']
   creatorCoinDeclaredMissing: boolean
@@ -50,6 +51,7 @@ export const VerifyStep = memo(function VerifyStep({
   embeddedEoaIsOwner,
   connectedOwnerIsOwner,
   onLinkEmbeddedEoaAsOwner,
+  zoraProfileExists,
   creatorCoin,
   creatorCoinDeclaredMissing,
   creatorCoinBusy,
@@ -146,20 +148,26 @@ export const VerifyStep = memo(function VerifyStep({
       {verifiedWallet && !creatorCoinBusy && !hasCreatorCoin ? (
         <div className="rounded-xl border border-amber-500/20 bg-amber-500/5 px-4 py-3 space-y-3">
           <div>
-            <div className="text-sm text-amber-300/90">No Creator Coin yet</div>
+            <div className="text-sm text-amber-300/90">
+              {zoraProfileExists === false ? 'No Zora account yet' : 'Zora account found'}
+            </div>
             <div className="text-xs text-zinc-500 mt-1">
-              We could not find a Creator Coin for this wallet on Zora. Create one, try a different wallet, or continue without a coin.
+              {zoraProfileExists === false
+                ? 'Create a Zora account to set up your creator smart wallet. We will link your embedded wallet as an owner after you sign in.'
+                : 'No creator coin was found for this wallet yet. You can continue and we will link your embedded wallet to your Zora smart wallet.'}
             </div>
           </div>
           <div className="flex flex-col gap-2">
-            <a
-              href="https://zora.co/create"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex-1 text-center text-sm font-medium px-4 py-2 rounded-lg bg-brand-primary/20 border border-brand-primary/30 text-zinc-100 hover:bg-brand-primary/30 transition-colors"
-            >
-              Create a Creator Coin on Zora
-            </a>
+            {zoraProfileExists === false ? (
+              <a
+                href="https://zora.co"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex-1 text-center text-sm font-medium px-4 py-2 rounded-lg bg-brand-primary/20 border border-brand-primary/30 text-zinc-100 hover:bg-brand-primary/30 transition-colors"
+              >
+                Create a Zora account
+              </a>
+            ) : null}
             <button
               type="button"
               className="flex-1 text-sm font-medium px-4 py-2 rounded-lg bg-white/5 border border-white/10 text-zinc-400 hover:text-zinc-200 hover:bg-white/10 transition-colors"
@@ -173,7 +181,7 @@ export const VerifyStep = memo(function VerifyStep({
               onClick={onNoCreatorCoin}
               disabled={creatorCoinDeclaredMissing}
             >
-              I do not have a Creator Coin
+              Continue without a Creator Coin
             </button>
           </div>
           {creatorCoinDeclaredMissing ? (
