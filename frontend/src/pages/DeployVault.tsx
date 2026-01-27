@@ -2286,11 +2286,11 @@ function DeployVaultPrivyEnabled() {
   }, [baseAccountAddress, baseAccountOwnerQuery, canonicalSmartWalletAddress, connectedWalletAddress, publicClient, walletClient])
 
   // Allow injected EOAs (Rabby/MetaMask/etc) to operate a Coinbase Smart Wallet canonical identity
-  // when the EOA is an onchain owner of that smart wallet.
+  // when the EOA is an onchain owner of that smart wallet OR an owner of the Creator Coin.
   // Also checks if EOA can operate the payoutRecipient smart wallet (covers the common case
   // where the payout recipient is a Smart Wallet owned by the connected EOA).
   const executionCanOperateCanonicalQuery = useQuery({
-    queryKey: ['coinbaseSmartWalletOwner', canonicalIdentityAddress, payoutRecipient, connectedWalletAddress],
+    queryKey: ['coinbaseSmartWalletOwner', canonicalIdentityAddress, payoutRecipient, connectedWalletAddress, creatorToken],
     enabled: !!publicClient && !!connectedWalletAddress && !!identity.blockingReason && (!!canonicalIdentityAddress || !!payoutRecipient),
     staleTime: 60_000,
     retry: 0,
@@ -2303,7 +2303,7 @@ function DeployVaultPrivyEnabled() {
       if (executionIsContract) return false // Smart wallets can't operate other smart wallets this way
 
       // Helper to check if EOA is owner of a smart wallet
-      const canOperate = async (targetAddress: Address | null): Promise<boolean> => {
+      const canOperateSmartWallet = async (targetAddress: Address | null): Promise<boolean> => {
         if (!targetAddress) return false
         if (targetAddress.toLowerCase() === execution.toLowerCase()) return true
 
@@ -2323,14 +2323,44 @@ function DeployVaultPrivyEnabled() {
       }
 
       // Check canonical identity (creator address)
-      if (canonicalIdentityAddress && await canOperate(canonicalIdentityAddress as Address)) {
+      if (canonicalIdentityAddress && await canOperateSmartWallet(canonicalIdentityAddress as Address)) {
         return true
       }
 
       // Check payout recipient (handles case where payout recipient is a different smart wallet)
       if (payoutRecipient && payoutRecipient.toLowerCase() !== (canonicalIdentityAddress ?? '').toLowerCase()) {
-        if (await canOperate(payoutRecipient)) {
+        if (await canOperateSmartWallet(payoutRecipient)) {
           return true
+        }
+      }
+
+      // Check if EOA is an owner of the Creator Coin contract itself
+      // (Zora Creator Coins have an `ownerAt` function that lists authorized addresses)
+      if (creatorToken && isAddress(creatorToken)) {
+        try {
+          const totalOwners = await publicClient!.readContract({
+            address: creatorToken as Address,
+            abi: [{ type: 'function', name: 'totalOwners', stateMutability: 'view', inputs: [], outputs: [{ type: 'uint256' }] }],
+            functionName: 'totalOwners',
+          }) as bigint
+          
+          const count = Number(totalOwners)
+          if (count > 0) {
+            for (let i = 0; i < Math.min(count, 20); i++) {
+              const owner = await publicClient!.readContract({
+                address: creatorToken as Address,
+                abi: [{ type: 'function', name: 'ownerAt', stateMutability: 'view', inputs: [{ type: 'uint256' }], outputs: [{ type: 'address' }] }],
+                functionName: 'ownerAt',
+                args: [BigInt(i)],
+              }) as Address
+              
+              if (owner && owner.toLowerCase() === execution.toLowerCase()) {
+                return true
+              }
+            }
+          }
+        } catch {
+          // Creator coin might not have ownerAt function, continue
         }
       }
 
