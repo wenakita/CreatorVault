@@ -2286,88 +2286,35 @@ function DeployVaultPrivyEnabled() {
   }, [baseAccountAddress, baseAccountOwnerQuery, canonicalSmartWalletAddress, connectedWalletAddress, publicClient, walletClient])
 
   // Allow injected EOAs (Rabby/MetaMask/etc) to operate a Coinbase Smart Wallet canonical identity
-  // when the EOA is an onchain owner of that smart wallet OR an owner of the Creator Coin.
+  // when the EOA is an onchain owner of that smart wallet.
   const executionCanOperateCanonicalQuery = useQuery({
-    queryKey: ['executionCanOperate', canonicalIdentityAddress, payoutRecipient, connectedWalletAddress, creatorToken],
-    enabled: !!publicClient && !!connectedWalletAddress && !!identity.blockingReason,
+    queryKey: ['coinbaseSmartWalletOwner', canonicalIdentityAddress, connectedWalletAddress],
+    enabled: !!publicClient && !!canonicalIdentityAddress && !!connectedWalletAddress && !!identity.blockingReason,
     staleTime: 60_000,
-    retry: 1,
+    retry: 0,
     queryFn: async () => {
+      const canonical = canonicalIdentityAddress as Address
       const execution = connectedWalletAddress as Address
-      if (!execution) return false
+      if (canonical.toLowerCase() === execution.toLowerCase()) return true
 
-      // Direct match - no further checks needed
-      if (canonicalIdentityAddress && canonicalIdentityAddress.toLowerCase() === execution.toLowerCase()) {
-        return true
+      const [canonicalCode, execCode] = await Promise.all([
+        publicClient!.getBytecode({ address: canonical }),
+        publicClient!.getBytecode({ address: execution }),
+      ])
+      const canonicalIsContract = !!canonicalCode && canonicalCode !== '0x'
+      const executionIsContract = !!execCode && execCode !== '0x'
+      if (!canonicalIsContract) return false
+      if (executionIsContract) return false
+
+      try {
+        return await isCoinbaseSmartWalletOwner({
+          publicClient: publicClient as any,
+          smartWallet: canonical,
+          ownerAddress: execution,
+        })
+      } catch {
+        return false
       }
-      if (payoutRecipient && payoutRecipient.toLowerCase() === execution.toLowerCase()) {
-        return true
-      }
-
-      // Check if execution wallet is a contract (can't operate other contracts)
-      const execCode = await publicClient!.getBytecode({ address: execution })
-      if (execCode && execCode !== '0x') return false
-
-      // Check if EOA is owner of canonical Smart Wallet
-      if (canonicalIdentityAddress) {
-        const canonicalCode = await publicClient!.getBytecode({ address: canonicalIdentityAddress as Address })
-        if (canonicalCode && canonicalCode !== '0x') {
-          try {
-            const isOwner = await isCoinbaseSmartWalletOwner({
-              publicClient: publicClient as any,
-              smartWallet: canonicalIdentityAddress as Address,
-              ownerAddress: execution,
-            })
-            if (isOwner) return true
-          } catch {
-            // Not a Coinbase Smart Wallet or call failed
-          }
-        }
-      }
-
-      // Check if EOA is owner of payoutRecipient Smart Wallet
-      if (payoutRecipient && payoutRecipient.toLowerCase() !== (canonicalIdentityAddress ?? '').toLowerCase()) {
-        const prCode = await publicClient!.getBytecode({ address: payoutRecipient })
-        if (prCode && prCode !== '0x') {
-          try {
-            const isOwner = await isCoinbaseSmartWalletOwner({
-              publicClient: publicClient as any,
-              smartWallet: payoutRecipient,
-              ownerAddress: execution,
-            })
-            if (isOwner) return true
-          } catch {
-            // Not a Coinbase Smart Wallet or call failed
-          }
-        }
-      }
-
-      // Check if EOA is in the Creator Coin's owner list
-      if (creatorToken && isAddress(creatorToken)) {
-        try {
-          const totalOwners = await publicClient!.readContract({
-            address: creatorToken as Address,
-            abi: [{ type: 'function', name: 'totalOwners', stateMutability: 'view', inputs: [], outputs: [{ type: 'uint256' }] }],
-            functionName: 'totalOwners',
-          })
-          const count = Number(totalOwners)
-          for (let i = 0; i < Math.min(count, 10); i++) {
-            const owner = await publicClient!.readContract({
-              address: creatorToken as Address,
-              abi: [{ type: 'function', name: 'ownerAt', stateMutability: 'view', inputs: [{ type: 'uint256' }], outputs: [{ type: 'address' }] }],
-              functionName: 'ownerAt',
-              args: [BigInt(i)],
-            })
-            if (owner && String(owner).toLowerCase() === execution.toLowerCase()) {
-              return true
-            }
-          }
-        } catch {
-          // Creator coin might not have these functions
-        }
-      }
-
-      return false
     },
   })
 
@@ -2956,9 +2903,6 @@ function DeployVaultPrivyEnabled() {
                           {address?.slice(0, 6)}…{address?.slice(-4)}
                         </span>
                         . Only the coin creator or current payout recipient can deploy this vault.
-                        {executionCanOperateCanonicalQuery.isLoading && (
-                          <span className="ml-2 text-zinc-500">(checking ownership...)</span>
-                        )}
                       </div>
                     )}
                   </div>
