@@ -2287,34 +2287,54 @@ function DeployVaultPrivyEnabled() {
 
   // Allow injected EOAs (Rabby/MetaMask/etc) to operate a Coinbase Smart Wallet canonical identity
   // when the EOA is an onchain owner of that smart wallet.
+  // Also checks if EOA can operate the payoutRecipient smart wallet (covers the common case
+  // where the payout recipient is a Smart Wallet owned by the connected EOA).
   const executionCanOperateCanonicalQuery = useQuery({
-    queryKey: ['coinbaseSmartWalletOwner', canonicalIdentityAddress, connectedWalletAddress],
-    enabled: !!publicClient && !!canonicalIdentityAddress && !!connectedWalletAddress && !!identity.blockingReason,
+    queryKey: ['coinbaseSmartWalletOwner', canonicalIdentityAddress, payoutRecipient, connectedWalletAddress],
+    enabled: !!publicClient && !!connectedWalletAddress && !!identity.blockingReason && (!!canonicalIdentityAddress || !!payoutRecipient),
     staleTime: 60_000,
     retry: 0,
     queryFn: async () => {
-      const canonical = canonicalIdentityAddress as Address
       const execution = connectedWalletAddress as Address
-      if (canonical.toLowerCase() === execution.toLowerCase()) return true
 
-      const [canonicalCode, execCode] = await Promise.all([
-        publicClient!.getBytecode({ address: canonical }),
-        publicClient!.getBytecode({ address: execution }),
-      ])
-      const canonicalIsContract = !!canonicalCode && canonicalCode !== '0x'
+      // Check execution wallet bytecode once
+      const execCode = await publicClient!.getBytecode({ address: execution })
       const executionIsContract = !!execCode && execCode !== '0x'
-      if (!canonicalIsContract) return false
-      if (executionIsContract) return false
+      if (executionIsContract) return false // Smart wallets can't operate other smart wallets this way
 
-      try {
-        return await isCoinbaseSmartWalletOwner({
-          publicClient: publicClient as any,
-          smartWallet: canonical,
-          ownerAddress: execution,
-        })
-      } catch {
-        return false
+      // Helper to check if EOA is owner of a smart wallet
+      const canOperate = async (targetAddress: Address | null): Promise<boolean> => {
+        if (!targetAddress) return false
+        if (targetAddress.toLowerCase() === execution.toLowerCase()) return true
+
+        const targetCode = await publicClient!.getBytecode({ address: targetAddress })
+        const targetIsContract = !!targetCode && targetCode !== '0x'
+        if (!targetIsContract) return false
+
+        try {
+          return await isCoinbaseSmartWalletOwner({
+            publicClient: publicClient as any,
+            smartWallet: targetAddress,
+            ownerAddress: execution,
+          })
+        } catch {
+          return false
+        }
       }
+
+      // Check canonical identity (creator address)
+      if (canonicalIdentityAddress && await canOperate(canonicalIdentityAddress as Address)) {
+        return true
+      }
+
+      // Check payout recipient (handles case where payout recipient is a different smart wallet)
+      if (payoutRecipient && payoutRecipient.toLowerCase() !== (canonicalIdentityAddress ?? '').toLowerCase()) {
+        if (await canOperate(payoutRecipient)) {
+          return true
+        }
+      }
+
+      return false
     },
   })
 
