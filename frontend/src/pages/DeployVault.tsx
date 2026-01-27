@@ -1497,6 +1497,32 @@ function DeployVaultBatcher({
           }
         }
 
+        if (!activeWalletClient && typeof window !== 'undefined' && (window as any)?.ethereum?.request) {
+          try {
+            const provider = (window as any).ethereum
+            const request = provider.request.bind(provider)
+            activeWalletClient = {
+              request,
+              signMessage: async ({ account, message }: any) => {
+                const raw = message?.raw ?? message
+                return (await request({ method: 'personal_sign', params: [raw, account] })) as Hex
+              },
+              signTypedData: async (typedData: any) => {
+                const account = typedData?.account
+                const payload = JSON.stringify({
+                  domain: typedData?.domain,
+                  types: typedData?.types,
+                  primaryType: typedData?.primaryType,
+                  message: typedData?.message,
+                })
+                return (await request({ method: 'eth_signTypedData_v4', params: [account, payload] })) as Hex
+              },
+            } as any
+          } catch {
+            // ignore
+          }
+        }
+
         if (!connectedAddr && activeWalletClient) {
           try {
             const wc: any = activeWalletClient as any
@@ -1521,6 +1547,16 @@ function DeployVaultBatcher({
               const first = Array.isArray(addrs) && typeof addrs[0] === 'string' ? addrs[0] : ''
               if (isAddress(first)) connectedAddr = getAddress(first) as Address
             }
+          } catch {
+            // ignore
+          }
+        }
+
+        if (!connectedAddr && typeof window !== 'undefined' && (window as any)?.ethereum?.request) {
+          try {
+            const addrs = (await (window as any).ethereum.request({ method: 'eth_accounts', params: [] })) as string[] | undefined
+            const first = Array.isArray(addrs) && typeof addrs[0] === 'string' ? addrs[0] : ''
+            if (isAddress(first)) connectedAddr = getAddress(first) as Address
           } catch {
             // ignore
           }
@@ -1557,267 +1593,8 @@ function DeployVaultBatcher({
             'Rabby blocks the eth_sign method required for smart wallet operations. Please sign in with Privy instead.',
           )
         }
+
         
-        const externalOwnerExec = canUseExternalOwner ? connectedAddr : null
-
-        // Enforce custody: the smart wallet sender must already hold the initial deposit.
-        const smartWalletBalance = (await publicClient.readContract({
-          address: creatorToken,
-          abi: erc20Abi,
-          functionName: 'balanceOf',
-          args: [owner],
-        })) as bigint
-        if (smartWalletBalance < depositAmount) {
-          throw new Error(
-            `Creator smart wallet needs ${formatDeposit(depositAmount)} ${depositSymbol} (has ${formatDeposit(smartWalletBalance)}). Transfer funds to ${shortAddress(owner)} and retry.`,
-          )
-        }
-
-        const phase1Calls: Array<{ target: Address; value: bigint; data: Hex }> = [phase1Call]
-
-        const phase2Calls: Array<{ target: Address; value: bigint; data: Hex }> = []
-        const swAllowanceToBatcher = (await publicClient.readContract({
-          address: creatorToken,
-          abi: erc20Abi,
-          functionName: 'allowance',
-          args: [owner, batcherAddress],
-        })) as bigint
-
-        if (swAllowanceToBatcher < depositAmount) {
-          if (swAllowanceToBatcher !== 0n) {
-            phase2Calls.push({
-              target: creatorToken,
-              value: 0n,
-              data: encodeFunctionData({
-                abi: erc20Abi,
-                functionName: 'approve',
-                args: [batcherAddress, 0n],
-              }),
-            })
-          }
-          phase2Calls.push({
-            target: creatorToken,
-            value: 0n,
-            data: encodeFunctionData({
-              abi: erc20Abi,
-              functionName: 'approve',
-              args: [batcherAddress, depositAmount],
-            }),
-          })
-        }
-
-        phase2Calls.push({
-          target: batcherAddress,
-          value: 0n,
-          data: encodeFunctionData({
-            abi: CREATOR_VAULT_BATCHER_ABI,
-            functionName: 'deployPhase2AndLaunch',
-            args: [phase2Params, codeIds],
-          }),
-        })
-
-        if (!burnStreamAlreadyDeployed) phase2Calls.push(burnStreamDeployCall)
-        if (!payoutRouterAlreadyDeployed) phase2Calls.push(payoutRouterDeployCall)
-        phase2Calls.push(vaultSetBurnStreamCall)
-        phase2Calls.push(vaultWhitelistRouterCall)
-        if (payoutMismatch) {
-          phase2Calls.push({
-            target: creatorToken,
-            value: 0n,
-            data: encodeFunctionData({
-              abi: COIN_PAYOUT_RECIPIENT_ABI,
-              functionName: 'setPayoutRecipient',
-              args: [expectedPayoutRouter],
-            }),
-          })
-        }
-
-        const phase3Calls: Array<{ target: Address; value: bigint; data: Hex }> = [
-          {
-            target: batcherAddress,
-            value: 0n,
-            data: encodeFunctionData({
-              abi: CREATOR_VAULT_BATCHER_ABI,
-              functionName: 'deployPhase3Strategies',
-              args: [phase3Params, strategyCodeIds],
-            }),
-          },
-        ]
-
-        // Safety: constrain target addresses to known deploy surfaces (no arbitrary calldata UI).
-        const assertSafe = (calls: Array<{ target: Address; value: bigint; data: Hex }>) => {
-          const allow = new Set<string>([
-            getAddress(creatorToken).toLowerCase(),
-            getAddress(batcherAddress).toLowerCase(),
-            getAddress(expectedCreate2Deployer).toLowerCase(),
-            getAddress(expected.vault).toLowerCase(),
-          ])
-          for (const c of calls) {
-            const to = getAddress(c.target).toLowerCase()
-            if (!allow.has(to)) throw new Error(`Unsafe call target blocked: ${to}`)
-            if (c.value !== 0n) throw new Error('Unsafe call value blocked (non-zero ETH value)')
-            const d = String(c.data ?? '')
-            if (!d.startsWith('0x')) throw new Error('Unsafe call data blocked (missing 0x prefix)')
-          }
-        }
-
-        assertSafe(phase1Calls)
-        assertSafe(phase2Calls)
-        assertSafe(phase3Calls)
-
-        logger.warn('[DeployVault] deploy_start', {
-          creatorToken,
-          owner,
-          deploymentVersion,
-          batcher: batcherAddress,
-          phases: { phase3: phase3Calls.length > 0 },
-        })
-
-        // Helper to convert calls format for Privy
-        const toCalls = (calls: Array<{ target: Address; value: bigint; data: Hex }>) =>
-          calls.map((c) => ({ to: c.target, value: c.value, data: c.data }))
-
-        setPhase('phase1')
-        if (canUsePrivySmartWallet) {
-          // Use Privy smart wallet client (embedded wallet signs for smart wallet)
-          const h1 = await smartWalletClient.sendTransaction({
-            calls: toCalls(phase1Calls),
-          })
-          setTxId(h1)
-          setPhaseTxs((s) => ({ ...s, tx1: h1 }))
-          logger.warn('[DeployVault] phase1_confirmed (privy)', { txHash: h1 })
-        } else {
-          // Use external EOA owner
-          const r1 = await sendCoinbaseSmartWalletUserOperation({
-            publicClient: publicClient as any,
-            walletClient: activeWalletClient as any,
-            bundlerUrl: cdpRpcUrl,
-            smartWallet: owner,
-            ownerAddress: externalOwnerExec as Address,
-            calls: toCalls(phase1Calls),
-            version: '1',
-            userOpSignMode: 'eth_sign',
-          })
-          setTxId(r1.transactionHash)
-          setPhaseTxs((s) => ({ ...s, userOp1: r1.userOpHash, tx1: r1.transactionHash }))
-          logger.warn('[DeployVault] phase1_confirmed', { userOpHash: r1.userOpHash, txHash: r1.transactionHash })
-        }
-
-        setPhase('phase2')
-        if (canUsePrivySmartWallet) {
-          const h2 = await smartWalletClient.sendTransaction({
-            calls: toCalls(phase2Calls),
-          })
-          setTxId(h2)
-          setPhaseTxs((s) => ({ ...s, tx2: h2 }))
-          logger.warn('[DeployVault] phase2_confirmed (privy)', { txHash: h2 })
-        } else {
-          const r2 = await sendCoinbaseSmartWalletUserOperation({
-            publicClient: publicClient as any,
-            walletClient: activeWalletClient as any,
-            bundlerUrl: cdpRpcUrl,
-            smartWallet: owner,
-            ownerAddress: externalOwnerExec as Address,
-            calls: toCalls(phase2Calls),
-            version: '1',
-            userOpSignMode: 'eth_sign',
-          })
-          setTxId(r2.transactionHash)
-          setPhaseTxs((s) => ({ ...s, userOp2: r2.userOpHash, tx2: r2.transactionHash }))
-          logger.warn('[DeployVault] phase2_confirmed', { userOpHash: r2.userOpHash, txHash: r2.transactionHash })
-        }
-
-        if (phase3Calls.length > 0) {
-          setPhase('phase3')
-          if (canUsePrivySmartWallet) {
-            const h3 = await smartWalletClient.sendTransaction({
-              calls: toCalls(phase3Calls),
-            })
-            setTxId(h3)
-            setPhaseTxs((s) => ({ ...s, tx3: h3 }))
-            logger.warn('[DeployVault] phase3_confirmed (privy)', { txHash: h3 })
-          } else {
-            const r3 = await sendCoinbaseSmartWalletUserOperation({
-              publicClient: publicClient as any,
-              walletClient: activeWalletClient as any,
-              bundlerUrl: cdpRpcUrl,
-              smartWallet: owner,
-              ownerAddress: externalOwnerExec as Address,
-              calls: toCalls(phase3Calls),
-              version: '1',
-              userOpSignMode: 'eth_sign',
-            })
-            setTxId(r3.transactionHash)
-            setPhaseTxs((s) => ({ ...s, userOp3: r3.userOpHash, tx3: r3.transactionHash }))
-            logger.warn('[DeployVault] phase3_confirmed', { userOpHash: r3.userOpHash, txHash: r3.transactionHash })
-          }
-        }
-
-        setPhase('done')
-        logger.warn('[DeployVault] deploy_success', { creatorToken, owner, deploymentVersion })
-        onSuccess(expected)
-        return
-      }
-
-      throw new Error('No supported deploy path matched. Ensure ERC-4337 prerequisites are met and retry.')
-    } catch (e: any) {
-      let pretty = formatDeployError(e)
-      const raw = e instanceof Error ? e.message : String(e ?? '')
-      const lc = String(raw).toLowerCase()
-      const code = (e as any)?.code
-      const looksLikeEthSignBlocked =
-        lc.includes('eth_sign') ||
-        code === -32601 ||
-        lc.includes('-32601') ||
-        (lc.includes('method not found') && lc.includes('sign'))
-      const userRejected = lc.includes('user rejected') || lc.includes('userrejected')
-      if (looksLikeEthSignBlocked && !userRejected) {
-        pretty = `Your connected wallet blocked the raw signature (\`eth_sign\`) required for smart wallet UserOps. Click “${
-          switchAuthLabel ?? 'Switch sign-in'
-        }” to continue (recommended).`
-      }
-      logger.warn('[DeployVault] deploy_failed', { error: pretty })
-      setError(pretty)
-    } finally {
-      setBusy(false)
-    }
-  }
-
-  const canAutoUpdatePayoutRecipient =
-    !payoutMismatch || canUsePrivySmartWallet || canUseExternalOwner
-  void canAutoUpdatePayoutRecipient
-
-  const expectedError = expectedQuery.isError
-    ? ((expectedQuery.error as any)?.message || 'Failed to compute deployment addresses.')
-    : null
-
-  const disabledReason =
-    busy
-      ? 'Deployment in progress…'
-      : expectedQuery.isLoading
-        ? 'Computing deployment addresses…'
-        : !expected
-          ? expectedError || 'Deployment addresses are not ready.'
-          : null
-
-  const disabled = Boolean(disabledReason)
-
-  return (
-    <div className="space-y-3">
-      <div className="text-[11px] text-zinc-500 leading-relaxed">
-        One click will submit <span className="text-zinc-200">up to 3</span> onchain operations (Phases 1–3) via your creator smart wallet.
-        If you’re connected with an injected EOA (Rabby/MetaMask), you may see wallet prompts—track progress below.
-      </div>
-      {authIsStale ? (
-        <div className="text-[11px] text-amber-300/70">
-          You’re signed in from an earlier session. Clicking deploy will submit transactions immediately.
-        </div>
-      ) : null}
-
-      <div className="rounded-lg border border-white/5 bg-black/20 p-4 space-y-2">
-        <div className="text-[10px] uppercase tracking-[0.24em] text-zinc-500">Progress</div>
-        <div className="grid grid-cols-1 gap-2 text-[11px]">
-          <div className="flex items-center justify-between gap-4">
             <div className={phase === 'phase1' ? 'text-zinc-100' : phase === 'idle' ? 'text-zinc-500' : 'text-zinc-300'}>
               Phase 1: deploy core contracts
             </div>
