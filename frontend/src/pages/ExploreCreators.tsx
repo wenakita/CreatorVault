@@ -52,7 +52,7 @@ export function ExploreCreators() {
     staleTime: 30_000,
   })
 
-  // Flatten all pages into a single array of coins
+  // Flatten all pages into a single array of creator coins
   const allCoins = useMemo(() => {
     if (!data?.pages) return []
     const coins: ZoraCoin[] = []
@@ -60,8 +60,11 @@ export function ExploreCreators() {
       if (page?.edges) {
         for (const edge of page.edges) {
           if (edge?.node) {
-            // Show all coins (Uniswap style - no type filtering)
-            coins.push(edge.node)
+            // Filter to only CREATOR type coins (or coins without type which are likely creators)
+            const coinType = edge.node.coinType?.toUpperCase()
+            if (coinType === 'CREATOR' || !coinType) {
+              coins.push(edge.node)
+            }
           }
         }
       }
@@ -121,7 +124,7 @@ export function ExploreCreators() {
           className="mb-8"
         >
           <h1 className="text-3xl sm:text-4xl font-medium text-white mb-2">
-            Top creators on Base
+            Top Creators on Base
           </h1>
           <p className="text-zinc-400 text-sm">
             Creator Coins ranked by volume, market cap, and more.

@@ -35,7 +35,7 @@
     "@wagmi/core": "^2.22.1",
     "@xmtp/agent-sdk": "^1.1.12",
     "@xmtp/content-type-primitives": "^3.0.0",
-    "@zoralabs/coins-sdk": "0.2.1",
+    "@zoralabs/coins-sdk": "0.4.1",
     "@zoralabs/protocol-deployments": "^0.6.5",
     "autoprefixer": "^10.4.23",
     "buffer": "^6.0.3",

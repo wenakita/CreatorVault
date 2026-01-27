@@ -124,7 +124,7 @@ export function ExploreContent() {
           className="mb-8"
         >
           <h1 className="text-3xl sm:text-4xl font-medium text-white mb-2">
-            Top content on Base
+            Top Content on Base
           </h1>
           <p className="text-zinc-400 text-sm">
             Content Coins ranked by volume, market cap, and more.
