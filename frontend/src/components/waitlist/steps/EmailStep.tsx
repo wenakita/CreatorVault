@@ -12,6 +12,13 @@ type EmailStepProps = {
   isEmailValid: boolean
   onContinue: () => void
   onInvalidEmail: () => void
+  // Privy props
+  showPrivy?: boolean
+  privyReady?: boolean
+  privyAuthenticated?: boolean
+  privyVerifyBusy?: boolean
+  privyVerifyError?: string | null
+  onPrivyLogin?: () => void
 }
 
 export const EmailStep = memo(function EmailStep({
@@ -24,6 +31,12 @@ export const EmailStep = memo(function EmailStep({
   isEmailValid,
   onContinue,
   onInvalidEmail,
+  showPrivy,
+  privyReady,
+  privyAuthenticated,
+  privyVerifyBusy,
+  privyVerifyError,
+  onPrivyLogin,
 }: EmailStepProps) {
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key !== 'Enter') return
@@ -33,6 +46,8 @@ export const EmailStep = memo(function EmailStep({
     }
     onContinue()
   }
+
+  const showPrivyLogin = showPrivy && privyReady && !privyAuthenticated && onPrivyLogin
 
   return (
     <motion.div
@@ -45,8 +60,28 @@ export const EmailStep = memo(function EmailStep({
     >
       <div className="space-y-1">
         <div className="headline text-2xl sm:text-3xl leading-tight">Join the waitlist</div>
-        <div className="text-sm text-zinc-500">Enter your email (same one you use on Zora)</div>
+        <div className="text-sm text-zinc-500">Sign in or enter your email to continue</div>
       </div>
+
+      {/* Privy login button */}
+      {showPrivyLogin ? (
+        <div className="space-y-3">
+          <button
+            type="button"
+            className="w-full min-h-[52px] rounded-xl border border-brand-primary/30 bg-brand-primary/20 text-zinc-100 font-medium px-4 py-3.5 transition-colors hover:bg-brand-primary/30 disabled:opacity-50 disabled:cursor-not-allowed"
+            disabled={privyVerifyBusy || busy}
+            onClick={onPrivyLogin}
+          >
+            {privyVerifyBusy ? 'Opening…' : 'Sign in with Privy'}
+          </button>
+          {privyVerifyError ? <div className="text-xs text-red-400 text-center">{privyVerifyError}</div> : null}
+          <div className="flex items-center gap-3 my-4">
+            <div className="flex-1 h-px bg-white/10" />
+            <span className="text-xs text-zinc-500">or enter email</span>
+            <div className="flex-1 h-px bg-white/10" />
+          </div>
+        </div>
+      ) : null}
 
       <div>
         <div className="flex items-center gap-3">

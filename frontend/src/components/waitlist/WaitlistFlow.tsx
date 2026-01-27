@@ -618,6 +618,21 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
     }
   }, [step])
 
+  // Auto-fill email from Privy user and advance to verify step when authenticated
+  useEffect(() => {
+    if (!privyAuthed || !privyUser) return
+    if (step !== 'email') return
+
+    // Extract email from Privy user
+    const privyEmail = privyUser.email?.address || null
+    if (privyEmail && isValidEmail(privyEmail)) {
+      setEmail(privyEmail)
+    }
+
+    // Auto-advance to verify step after Privy login
+    advanceToEmail()
+  }, [privyAuthed, privyUser, step, setEmail, advanceToEmail])
+
   const refreshPosition = useCallback(
     async (emailForSync: string) => {
       if (!emailForSync) return
@@ -1303,6 +1318,15 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
                 isEmailValid={isEmailValid}
                 onContinue={advanceToEmail}
                 onInvalidEmail={handleInvalidEmail}
+                showPrivy={showPrivy}
+                privyReady={privyReady}
+                privyAuthenticated={privyAuthed}
+                privyVerifyBusy={privyVerifyBusy}
+                privyVerifyError={privyVerifyError}
+                onPrivyLogin={() => {
+                  startPrivyVerify()
+                  privyLogin()
+                }}
               />
             ) : null}
 
