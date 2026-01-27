@@ -21,7 +21,7 @@ import { useSearchParams } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { coinABI } from '@zoralabs/protocol-deployments'
 import { BarChart3, ChevronDown, Layers, Lock, Rocket, ShieldCheck } from 'lucide-react'
-import { useLogin, usePrivy } from '@privy-io/react-auth'
+import { useLogin, usePrivy, useWallets } from '@privy-io/react-auth'
 import { useSmartWallets } from '@privy-io/react-auth/smart-wallets'
 import { ConnectButtonWeb3 } from '@/components/ConnectButtonWeb3'
 import { usePrivyClientStatus } from '@/lib/privy/client'
@@ -120,6 +120,38 @@ async function isCoinbaseSmartWalletOwner(params: {
 }
 
 const shortAddress = (addr: string) => `${addr.slice(0, 6)}…${addr.slice(-4)}`
+
+// Extract the Coinbase Smart Wallet address from Privy user/wallets
+// Prefers Base Account / Coinbase Smart Wallet over embedded wallet
+function extractPrivySmartWalletAddress(user: any, wallets: any[]): Address | null {
+  const userWallets = Array.isArray(user?.wallets) ? user.wallets : []
+  const primaryWallet = user?.wallet && typeof user.wallet === 'object' ? [user.wallet] : []
+  const all = [...primaryWallet, ...userWallets, ...wallets]
+  
+  // Prefer Base Account / Coinbase Smart Wallet if present
+  for (const w of all) {
+    const addr = typeof w?.address === 'string' ? w.address : null
+    if (!addr || !isAddress(addr)) continue
+    const clientType = String(w?.wallet_client_type || w?.walletClientType || '').toLowerCase()
+    const connectorType = String(w?.connector_type || w?.connectorType || '').toLowerCase()
+    if (clientType.includes('coinbase_smart_wallet') || clientType.includes('base') || connectorType.includes('base')) {
+      return getAddress(addr) as Address
+    }
+  }
+  
+  // Check linked accounts for Coinbase Smart Wallet
+  const linked = Array.isArray(user?.linked_accounts) ? user.linked_accounts : Array.isArray(user?.linkedAccounts) ? user.linkedAccounts : []
+  for (const a of linked) {
+    const addr = typeof a?.address === 'string' ? a.address : null
+    if (!addr || !isAddress(addr)) continue
+    const t = String(a?.type || '').toLowerCase()
+    if (t.includes('smart_wallet') || t.includes('coinbase')) {
+      return getAddress(addr) as Address
+    }
+  }
+  
+  return null
+}
 
 function formatEthPerTokenForUi(weiPerToken: bigint): string {
   if (weiPerToken <= 0n) return '0'
@@ -1834,19 +1866,25 @@ function DeployVaultBatcher({
 function DeployVaultMain() {
   const { address, isConnected } = useAccount()
   const { data: walletClient } = useWalletClient({ chainId: base.id })
-  const { ready: privyReady, authenticated: privyAuthenticated } = usePrivy()
+  const { ready: privyReady, authenticated: privyAuthenticated, user: privyUser } = usePrivy()
   const { login } = useLogin()
+  const { wallets: privyWallets } = useWallets()
   const { client: smartWalletClient } = useSmartWallets()
   
-  // Privy knows the user's Coinbase Smart Wallet from Zora global wallet integration
+  // Extract Coinbase Smart Wallet from Privy (prefers linked Zora wallet over embedded)
   const privySmartWalletAddress = useMemo(() => {
+    // First try to find linked Coinbase Smart Wallet (e.g., from Zora)
+    const linkedSmartWallet = extractPrivySmartWalletAddress(privyUser, privyWallets)
+    if (linkedSmartWallet) return linkedSmartWallet
+    
+    // Fallback to smartWalletClient (embedded wallet's smart wallet)
     try {
       const addr = smartWalletClient?.account?.address
       return addr && isAddress(addr) ? getAddress(addr) as Address : null
     } catch {
       return null
     }
-  }, [smartWalletClient])
+  }, [privyUser, privyWallets, smartWalletClient])
   
   const [creatorToken, setCreatorToken] = useState('')
   const [showAdvanced, setShowAdvanced] = useState(false)
