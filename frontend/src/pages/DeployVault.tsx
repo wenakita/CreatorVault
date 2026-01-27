@@ -789,10 +789,12 @@ function DeployVaultBatcher({
     if (explicit) {
       if (explicit === '/api/paymaster') return '/api/paymaster'
       try {
-        const u = new URL(explicit, typeof window !== 'undefined' ? window.location.origin : 'https://4626.fun')
+        const base = typeof window !== 'undefined' ? window.location.origin : 'https://4626.fun'
+        const u = new URL(explicit, base)
         if (u.pathname === '/api/paymaster') return u.pathname
-        // If an absolute URL is provided, use it as-is.
-        // (Recommended only for server-side usage; browsers may hit CORS.)
+        // If an absolute URL is provided, browsers may hit CORS/network policy.
+        // Force the same-origin proxy instead.
+        if (typeof window !== 'undefined' && u.origin !== window.location.origin) return '/api/paymaster'
         return u.toString()
       } catch {
         // If it's not a valid URL, treat it as a non-URL string and fall through.
