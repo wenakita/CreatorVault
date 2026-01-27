@@ -878,8 +878,22 @@ function DeployVaultBatcher({
     ) {
       return 'MetaMask failed to initialize because another wallet extension already controls window.ethereum. Disable one extension (MetaMask/Coinbase/Rabby), or use WalletConnect/Privy sign-in.'
     }
-    if (lower.includes('bundler') || lower.includes('paymaster')) {
-      return 'Bundler / paymaster is not configured. Set `VITE_CDP_API_KEY` (recommended) or a valid `VITE_CDP_PAYMASTER_URL` and retry.'
+    // Paymaster/bundler errors: be specific (don’t mask real server-side errors).
+    if (lower.includes('cdp paymaster endpoint is not configured')) {
+      return 'Paymaster proxy is missing a server-side CDP endpoint. Keep `VITE_CDP_PAYMASTER_URL=/api/paymaster`, and set `CDP_PAYMASTER_URL` (server env) to `https://api.developer.coinbase.com/rpc/v1/base/<CDP_API_KEY_ID>`.'
+    }
+    if (lower.includes('server misconfigured: auth_session_secret')) {
+      return 'Server misconfigured: set `AUTH_SESSION_SECRET` in production so `/api/paymaster` can validate SIWE sessions.'
+    }
+    // Only show the “not configured” message for true missing-config errors.
+    if (
+      msg === 'Bundler / paymaster endpoint is not configured.' ||
+      lower.includes('missing bundler url') ||
+      lower.includes('missing bundler') ||
+      lower.includes('missing paymaster url') ||
+      lower.includes('missing paymaster')
+    ) {
+      return 'Bundler / paymaster is not configured. Set `VITE_CDP_API_KEY` (recommended) or `VITE_CDP_PAYMASTER_URL=/api/paymaster` (and configure `CDP_PAYMASTER_URL` server-side) and retry.'
     }
     if (lower.includes('market floor price not available')) {
       return 'Market floor price is still loading. Wait a moment and try again.'
