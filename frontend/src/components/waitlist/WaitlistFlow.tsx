@@ -354,9 +354,6 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
   const setEmail = useCallback((email: string) => dispatchFlow({ type: 'set_email', email }), [])
   const setBusy = useCallback((busy: boolean) => dispatchFlow({ type: 'set_busy', busy }), [])
   const setError = useCallback((error: string | null) => dispatchFlow({ type: 'set_error', error }), [])
-  const handleInvalidEmail = useCallback(() => {
-    setError('Enter a valid email address.')
-  }, [setError])
 
   const verifyWallet = useCallback(
     (address: string, method: VerificationMethod | null) => dispatchVerification({ type: 'verify_wallet', address, method }),
@@ -1309,15 +1306,8 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
 
             {step === 'email' ? (
               <EmailStep
-                email={email}
-                emailTrimmed={emailTrimmed}
-                emailInputRef={emailInputRef}
-                onEmailChange={setEmail}
                 error={error}
                 busy={busy}
-                isEmailValid={isEmailValid}
-                onContinue={advanceToEmail}
-                onInvalidEmail={handleInvalidEmail}
                 showPrivy={showPrivy}
                 privyReady={privyReady}
                 privyAuthenticated={privyAuthed}
