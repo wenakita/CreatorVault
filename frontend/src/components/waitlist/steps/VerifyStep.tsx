@@ -55,8 +55,8 @@ export const VerifyStep = memo(function VerifyStep({
         </div>
       </div>
 
-      {/* Wallet connection status */}
-      {verifiedWallet ? (
+      {/* Wallet connection status - only show prominently when creator coin found */}
+      {verifiedWallet && (hasCreatorCoin || creatorCoinBusy) ? (
         <div className="flex items-center gap-3 rounded-xl border border-emerald-500/20 bg-emerald-500/5 px-4 py-3">
           <CheckCircle2 className="w-5 h-5 text-emerald-400 shrink-0" />
           <div className="min-w-0 flex-1">
@@ -65,15 +65,6 @@ export const VerifyStep = memo(function VerifyStep({
               {verifiedWallet.slice(0, 6)}…{verifiedWallet.slice(-4)}
             </div>
           </div>
-          {!hasCreatorCoin && !creatorCoinBusy ? (
-            <button
-              type="button"
-              className="text-xs text-zinc-500 hover:text-zinc-300 transition-colors"
-              onClick={onSignOutWallet}
-            >
-              Change
-            </button>
-          ) : null}
         </div>
       ) : null}
 
@@ -128,10 +119,29 @@ export const VerifyStep = memo(function VerifyStep({
 
       {/* No Creator Coin found */}
       {verifiedWallet && !creatorCoinBusy && !hasCreatorCoin ? (
-        <div className="rounded-xl border border-amber-500/20 bg-amber-500/5 px-4 py-3">
-          <div className="text-sm text-amber-300/90">No Creator Coin found</div>
-          <div className="text-xs text-zinc-500 mt-1">
-            This wallet doesn't have a Creator Coin on Zora. Try connecting a different wallet.
+        <div className="rounded-xl border border-amber-500/20 bg-amber-500/5 px-4 py-3 space-y-3">
+          <div>
+            <div className="text-sm text-amber-300/90">No Creator Coin found</div>
+            <div className="text-xs text-zinc-500 mt-1">
+              This account doesn't have a Creator Coin on Zora yet.
+            </div>
+          </div>
+          <div className="flex flex-col sm:flex-row gap-2">
+            <a
+              href="https://zora.co/create"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex-1 text-center text-sm font-medium px-4 py-2 rounded-lg bg-brand-primary/20 border border-brand-primary/30 text-zinc-100 hover:bg-brand-primary/30 transition-colors"
+            >
+              Create a Coin on Zora
+            </a>
+            <button
+              type="button"
+              className="flex-1 text-sm font-medium px-4 py-2 rounded-lg bg-white/5 border border-white/10 text-zinc-400 hover:text-zinc-200 hover:bg-white/10 transition-colors"
+              onClick={onSignOutWallet}
+            >
+              Try different wallet
+            </button>
           </div>
         </div>
       ) : null}
