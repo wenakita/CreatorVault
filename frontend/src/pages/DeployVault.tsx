@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import { Component, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { motion } from 'framer-motion'
 import { useAccount, usePublicClient, useReadContract, useWalletClient } from 'wagmi'
 import { base } from 'wagmi/chains'
@@ -234,6 +234,71 @@ function deriveBaseSalt(params: { creatorToken: Address; owner: Address; chainId
   )
 }
 
+// Error boundary to catch React rendering errors (like #426) and allow retry
+class DeployVaultErrorBoundary extends Component<
+  { children: ReactNode },
+  { hasError: boolean; error: Error | null; retryCount: number }
+> {
+  constructor(props: { children: ReactNode }) {
+    super(props)
+    this.state = { hasError: false, error: null, retryCount: 0 }
+  }
+
+  static getDerivedStateFromError(error: Error) {
+    return { hasError: true, error }
+  }
+
+  componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
+    console.error('[DeployVault] Error caught by boundary:', error, errorInfo)
+  }
+
+  handleRetry = () => {
+    this.setState((s) => ({ hasError: false, error: null, retryCount: s.retryCount + 1 }))
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="min-h-screen bg-black text-white">
+          <section className="max-w-3xl mx-auto px-6 py-16">
+            <div className="text-[10px] uppercase tracking-[0.24em] text-zinc-500 mb-4">Deploy</div>
+            <div className="card rounded-xl p-8 space-y-4">
+              <div className="text-lg font-medium text-red-400">Something went wrong</div>
+              <div className="text-sm text-zinc-400 leading-relaxed">
+                The deploy page encountered an error. This may be due to wallet extension conflicts or a temporary issue.
+              </div>
+              <div className="text-xs text-zinc-600 font-mono break-all">
+                {this.state.error?.message || 'Unknown error'}
+              </div>
+              <div className="flex gap-3">
+                <button
+                  type="button"
+                  className="btn-accent"
+                  onClick={this.handleRetry}
+                >
+                  Retry
+                </button>
+                <button
+                  type="button"
+                  className="btn-secondary"
+                  onClick={() => window.location.reload()}
+                >
+                  Reload page
+                </button>
+              </div>
+              <div className="text-xs text-zinc-600">
+                Tip: Try disabling other wallet extensions (MetaMask, Rabby) if this persists.
+              </div>
+            </div>
+          </section>
+        </div>
+      )
+    }
+
+    return this.props.children
+  }
+}
+
 export function DeployVault() {
   const privyClientStatus = usePrivyClientStatus()
 
@@ -261,7 +326,11 @@ export function DeployVault() {
     )
   }
 
-  return <DeployVaultPrivyEnabled />
+  return (
+    <DeployVaultErrorBoundary>
+      <DeployVaultPrivyEnabled />
+    </DeployVaultErrorBoundary>
+  )
 }
 
 function saltFor(baseSalt: Hex, label: string): Hex {
