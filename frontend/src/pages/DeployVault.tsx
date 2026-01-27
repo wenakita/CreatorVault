@@ -21,7 +21,7 @@ import { useSearchParams } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { coinABI } from '@zoralabs/protocol-deployments'
 import { BarChart3, ChevronDown, Layers, Lock, Rocket, ShieldCheck } from 'lucide-react'
-import { useLogin, usePrivy } from '@privy-io/react-auth'
+import { useLogin, usePrivy, useWallets } from '@privy-io/react-auth'
 import { useSmartWallets } from '@privy-io/react-auth/smart-wallets'
 import { ConnectButtonWeb3 } from '@/components/ConnectButtonWeb3'
 import { usePrivyClientStatus } from '@/lib/privy/client'
@@ -745,6 +745,7 @@ function DeployVaultBatcher({
   onSuccess,
   switchAuthCta,
   smartWalletClient,
+  embeddedPrivyWallet,
 }: {
   creatorToken: Address
   owner: Address
@@ -763,6 +764,7 @@ function DeployVaultBatcher({
   onSuccess: (addresses: ServerDeployResponse['addresses']) => void
   switchAuthCta?: { label: string; onClick: () => void }
   smartWalletClient?: any
+  embeddedPrivyWallet?: any
 }) {
   const publicClient = usePublicClient({ chainId: base.id })
   const { address: connectedAddress, connector } = useAccount()
@@ -1563,6 +1565,48 @@ function DeployVaultBatcher({
           }
         }
 
+        // Prefer using Privy embedded EOA as the CSW owner signer when available.
+        // This avoids injected-wallet edge cases (e.g. Rabby blocking `eth_sign`).
+        let embeddedOwnerAddr: Address | null = null
+        let embeddedWalletClient: any = null
+        try {
+          const w: any = embeddedPrivyWallet as any
+          const raw = typeof w?.address === 'string' ? w.address : ''
+          if (isAddress(raw) && typeof w?.getEthereumProvider === 'function') {
+            embeddedOwnerAddr = getAddress(raw) as Address
+            const provider = await w.getEthereumProvider()
+            if (provider?.request) {
+              const request = provider.request.bind(provider)
+              embeddedWalletClient = {
+                request,
+                signMessage: async ({ account, message }: any) => {
+                  const rawMsg = message?.raw ?? message
+                  return (await request({ method: 'personal_sign', params: [rawMsg, account] })) as Hex
+                },
+                signTypedData: async (typedData: any) => {
+                  const account = typedData?.account
+                  const payload = JSON.stringify({
+                    domain: typedData?.domain,
+                    types: typedData?.types,
+                    primaryType: typedData?.primaryType,
+                    message: typedData?.message,
+                  })
+                  return (await request({ method: 'eth_signTypedData_v4', params: [account, payload] })) as Hex
+                },
+              } as any
+            }
+          }
+        } catch {
+          embeddedOwnerAddr = null
+          embeddedWalletClient = null
+        }
+
+        const canUsePrivyEmbeddedOwner =
+          !canUsePrivySmartWallet &&
+          !!embeddedWalletClient &&
+          !!embeddedOwnerAddr &&
+          embeddedOwnerAddr.toLowerCase() !== owner.toLowerCase()
+
         const canUseExternalOwner =
           !canUsePrivySmartWallet &&
           !!activeWalletClient &&
@@ -1574,7 +1618,7 @@ function DeployVaultBatcher({
           Array.isArray((window as any)?.ethereum?.providers) &&
           ((window as any).ethereum.providers as any[]).length > 1
         
-        if (!canUsePrivySmartWallet && !canUseExternalOwner) {
+        if (!canUsePrivySmartWallet && !canUsePrivyEmbeddedOwner && !canUseExternalOwner) {
           if (hasMultipleInjectedProviders) {
             throw new Error(
               'Multiple wallet extensions detected. Disable one (MetaMask/Coinbase/Rabby) or use email sign-in to continue.',
@@ -1584,7 +1628,7 @@ function DeployVaultBatcher({
             throw new Error('Wallet connection is not ready. Reconnect your wallet and retry.')
           }
           throw new Error(
-            'Sign in with Privy to use your smart wallet, or connect an external wallet that owns the smart wallet.',
+            'Sign in with Privy to use your embedded wallet, or connect an external wallet that owns the creator smart wallet.',
           )
         }
         
@@ -1596,6 +1640,9 @@ function DeployVaultBatcher({
         }
         
         const externalOwnerExec = canUseExternalOwner ? connectedAddr : null
+        const embeddedOwnerExec = canUsePrivyEmbeddedOwner ? embeddedOwnerAddr : null
+        const ownerExec = (embeddedOwnerExec ?? externalOwnerExec) as Address | null
+        const ownerWalletClient = canUsePrivyEmbeddedOwner ? (embeddedWalletClient as any) : (activeWalletClient as any)
 
         // Enforce custody: the smart wallet sender must already hold the initial deposit.
         const smartWalletBalance = (await publicClient.readContract({
@@ -1724,16 +1771,17 @@ function DeployVaultBatcher({
           setPhaseTxs((s) => ({ ...s, tx1: h1 }))
           logger.warn('[DeployVault] phase1_confirmed (privy)', { txHash: h1 })
         } else {
+          if (!ownerExec) throw new Error('Missing owner signer for smart wallet execution.')
           // Use external EOA owner
           const r1 = await sendCoinbaseSmartWalletUserOperation({
             publicClient: publicClient as any,
-            walletClient: activeWalletClient as any,
+            walletClient: ownerWalletClient as any,
             bundlerUrl: cdpRpcUrl,
             smartWallet: owner,
-            ownerAddress: externalOwnerExec as Address,
+            ownerAddress: ownerExec as Address,
             calls: toCalls(phase1Calls),
             version: '1',
-            userOpSignMode: 'eth_sign',
+            userOpSignMode: 'auto',
           })
           setTxId(r1.transactionHash)
           setPhaseTxs((s) => ({ ...s, userOp1: r1.userOpHash, tx1: r1.transactionHash }))
@@ -1749,15 +1797,16 @@ function DeployVaultBatcher({
           setPhaseTxs((s) => ({ ...s, tx2: h2 }))
           logger.warn('[DeployVault] phase2_confirmed (privy)', { txHash: h2 })
         } else {
+          if (!ownerExec) throw new Error('Missing owner signer for smart wallet execution.')
           const r2 = await sendCoinbaseSmartWalletUserOperation({
             publicClient: publicClient as any,
-            walletClient: activeWalletClient as any,
+            walletClient: ownerWalletClient as any,
             bundlerUrl: cdpRpcUrl,
             smartWallet: owner,
-            ownerAddress: externalOwnerExec as Address,
+            ownerAddress: ownerExec as Address,
             calls: toCalls(phase2Calls),
             version: '1',
-            userOpSignMode: 'eth_sign',
+            userOpSignMode: 'auto',
           })
           setTxId(r2.transactionHash)
           setPhaseTxs((s) => ({ ...s, userOp2: r2.userOpHash, tx2: r2.transactionHash }))
@@ -1774,15 +1823,16 @@ function DeployVaultBatcher({
             setPhaseTxs((s) => ({ ...s, tx3: h3 }))
             logger.warn('[DeployVault] phase3_confirmed (privy)', { txHash: h3 })
           } else {
+            if (!ownerExec) throw new Error('Missing owner signer for smart wallet execution.')
             const r3 = await sendCoinbaseSmartWalletUserOperation({
               publicClient: publicClient as any,
-              walletClient: activeWalletClient as any,
+              walletClient: ownerWalletClient as any,
               bundlerUrl: cdpRpcUrl,
               smartWallet: owner,
-              ownerAddress: externalOwnerExec as Address,
+              ownerAddress: ownerExec as Address,
               calls: toCalls(phase3Calls),
               version: '1',
-              userOpSignMode: 'eth_sign',
+              userOpSignMode: 'auto',
             })
             setTxId(r3.transactionHash)
             setPhaseTxs((s) => ({ ...s, userOp3: r3.userOpHash, tx3: r3.transactionHash }))
@@ -2012,8 +2062,9 @@ function DeployVaultBatcher({
 function DeployVaultMain() {
   const { address, isConnected } = useAccount()
   const { data: walletClient } = useWalletClient({ chainId: base.id })
-  const { ready: privyReady, authenticated: privyAuthenticated } = usePrivy()
+  const { ready: privyReady, authenticated: privyAuthenticated, logout } = usePrivy()
   const { login } = useLogin()
+  const { wallets } = useWallets()
   const { client: smartWalletClient } = useSmartWallets()
   
   // Get smart wallet address - simplified approach
@@ -2045,11 +2096,28 @@ function DeployVaultMain() {
 
   const switchAuthCta = useMemo(() => {
     if (!privyReady) return undefined
+    const run = async () => {
+      // If we're already authenticated, `login()` can no-op in some Privy configurations.
+      // Force a re-auth flow so the user can switch to an embedded/email session if needed.
+      try {
+        if (privyAuthenticated && typeof logout === 'function') {
+          await logout()
+        }
+      } catch {
+        // ignore
+      }
+      await login({ loginMethods: ['wallet', 'email'] })
+    }
     return {
       label: privyAuthenticated ? 'Switch sign-in' : 'Sign in with Privy',
-      onClick: () => void login({ loginMethods: ['wallet', 'email'] }),
+      onClick: () => void run(),
     }
-  }, [login, privyAuthenticated, privyReady])
+  }, [login, logout, privyAuthenticated, privyReady])
+
+  const embeddedPrivyWallet = useMemo(() => {
+    const ws = Array.isArray(wallets) ? (wallets as any[]) : []
+    return ws.find((w) => (w as any)?.walletClientType === 'privy') ?? null
+  }, [wallets])
 
   const [searchParams] = useSearchParams()
   const prefillToken = useMemo(() => searchParams.get('token') ?? '', [searchParams])
@@ -3507,6 +3575,7 @@ function DeployVaultMain() {
                     onSuccess={() => {}}
                     switchAuthCta={switchAuthCta}
                     smartWalletClient={smartWalletClient}
+                    embeddedPrivyWallet={embeddedPrivyWallet}
                   />
                 </>
               ) : (

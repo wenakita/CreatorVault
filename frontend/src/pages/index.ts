@@ -1,6 +1,0 @@
-export { Home } from './Home'
-export { Dashboard } from './Dashboard'
-export { Vault } from './Vault'
-export { CompleteAuction } from './CompleteAuction'
-export { AuctionBid } from './AuctionBid'
-export { default as GaugeVoting } from './GaugeVoting'

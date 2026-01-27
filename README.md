@@ -574,6 +574,15 @@ forge script script/DeployCreatorVault.s.sol \
 cd frontend && pnpm dev
 ```
 
+### Repo build philosophy (Zora-style)
+
+This repo is intentionally split into:
+
+- **Fast UI loop**: `frontend/` (Vite + React). Prefer `pnpm -C frontend dev` / `pnpm -C frontend build` for day-to-day changes.
+- **Heavy onchain loop**: Foundry contracts at repo root. Run `forge build` / `forge test` when you’re changing Solidity.
+
+For the Vercel API surface, avoid “hidden” dynamic imports: add endpoints by registering them in `frontend/api/_handlers/_routes.ts` so the bundler includes them.
+
 ---
 
 ## License

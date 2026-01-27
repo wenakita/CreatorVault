@@ -16,15 +16,23 @@ Launch vaults. Reward holders. Win jackpots. All onchain.
 
 ```bash
 # Install dependencies
-npm install
+pnpm install
 
 # Set up environment
 cp .env.example .env
 # Edit .env with your CDP API key
 
 # Run development server
-npm run dev
+pnpm dev
 ```
+
+## Build workflow (fast vs full)
+
+- **Frontend-only (fast)**: `pnpm build` (Vite build for the SPA)
+- **Type safety (fast)**: `pnpm typecheck`
+- **Contracts (slow)**: done from repo root via Foundry (`forge build`, `forge test`) when you’re actively changing Solidity
+
+This mirrors the “build vs build:js” split described in Zora’s monorepo architecture doc: keep the default loop fast, and only pay the heavy compile cost when you need it.
 
 ## Tech Stack
 
@@ -51,6 +59,14 @@ frontend/
   api/                   # Vercel API routes
 ```
 
+## API routing & bundling (important)
+
+Vercel routes all API traffic through `frontend/api/[...path].ts`, which dispatches to handlers under `frontend/api/_handlers/*`.
+
+- **Do not** add new API handlers and rely on dynamic imports.
+- **Do** register new endpoints in `frontend/api/_handlers/_routes.ts` (static loader map) so Vercel’s bundler includes them.
+- For local dev, `frontend/vite.config.ts` also maps a subset of `/api/*` to handlers.
+
 ## Pages
 
 | Route | Description |
@@ -58,7 +74,7 @@ frontend/
 | `/` | Landing page with features |
 | `/deploy` | Deploy + activate vault (canonical) |
 | `/waitlist` | Collect emails for early access |
-| `/dashboard` | Browse all creator vaults |
+| `/dashboard` | Legacy route (redirects) |
 | `/vault/:address` | Deposit/withdraw from vault |
 | `/launch` | Redirects to `/deploy` (legacy) |
 
