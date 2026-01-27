@@ -1457,7 +1457,7 @@ function DeployVaultBatcher({
         // 1. Privy smart wallet client (user logged in via Privy, embedded wallet signs for smart wallet)
         // 2. External EOA (user connected external wallet that owns the smart wallet)
         const smartWalletAddr = smartWalletAddrForAuth
-        const connectedAddr = connectedAddrForAuth
+        let connectedAddr = connectedAddrForAuth
         void smartWalletAddr
 
         let activeWalletClient = walletClient
@@ -1466,6 +1466,63 @@ function DeployVaultBatcher({
             activeWalletClient = await (connector as any).getWalletClient({ chainId: base.id })
           } catch {
             activeWalletClient = null
+          }
+        }
+
+        if (!activeWalletClient && connector && typeof (connector as any).getProvider === 'function') {
+          try {
+            const provider = await (connector as any).getProvider()
+            if (provider?.request) {
+              const request = provider.request.bind(provider)
+              activeWalletClient = {
+                request,
+                signMessage: async ({ account, message }: any) => {
+                  const raw = message?.raw ?? message
+                  return (await request({ method: 'personal_sign', params: [raw, account] })) as Hex
+                },
+                signTypedData: async (typedData: any) => {
+                  const account = typedData?.account
+                  const payload = JSON.stringify({
+                    domain: typedData?.domain,
+                    types: typedData?.types,
+                    primaryType: typedData?.primaryType,
+                    message: typedData?.message,
+                  })
+                  return (await request({ method: 'eth_signTypedData_v4', params: [account, payload] })) as Hex
+                },
+              } as any
+            }
+          } catch {
+            // ignore
+          }
+        }
+
+        if (!connectedAddr && activeWalletClient) {
+          try {
+            const wc: any = activeWalletClient as any
+            const addr = typeof wc?.account?.address === 'string' ? wc.account.address : ''
+            if (isAddress(addr)) {
+              connectedAddr = getAddress(addr) as Address
+            } else if (typeof wc?.getAddresses === 'function') {
+              const addrs = await wc.getAddresses()
+              const first = Array.isArray(addrs) && typeof addrs[0] === 'string' ? addrs[0] : ''
+              if (isAddress(first)) connectedAddr = getAddress(first) as Address
+            }
+          } catch {
+            // ignore
+          }
+        }
+
+        if (!connectedAddr && connector && typeof (connector as any).getProvider === 'function') {
+          try {
+            const provider = await (connector as any).getProvider()
+            if (provider?.request) {
+              const addrs = (await provider.request({ method: 'eth_accounts', params: [] })) as string[] | undefined
+              const first = Array.isArray(addrs) && typeof addrs[0] === 'string' ? addrs[0] : ''
+              if (isAddress(first)) connectedAddr = getAddress(first) as Address
+            }
+          } catch {
+            // ignore
           }
         }
 
