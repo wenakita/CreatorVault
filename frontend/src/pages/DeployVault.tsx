@@ -1875,11 +1875,13 @@ function DeployVaultMain() {
   const privySmartWalletAddress = useMemo(() => {
     // First try to find linked Coinbase Smart Wallet (e.g., from Zora)
     const linkedSmartWallet = extractPrivySmartWalletAddress(privyUser, privyWallets)
+    console.log('[DeployVault] extractPrivySmartWalletAddress:', { linkedSmartWallet, privyUser, privyWallets })
     if (linkedSmartWallet) return linkedSmartWallet
     
     // Fallback to smartWalletClient (embedded wallet's smart wallet)
     try {
       const addr = smartWalletClient?.account?.address
+      console.log('[DeployVault] smartWalletClient fallback:', addr)
       return addr && isAddress(addr) ? getAddress(addr) as Address : null
     } catch {
       return null
@@ -2341,12 +2343,15 @@ function DeployVaultMain() {
       if (executionIsContract) return false
 
       try {
-        return await isCoinbaseSmartWalletOwner({
+        const isOwner = await isCoinbaseSmartWalletOwner({
           publicClient: publicClient as any,
           smartWallet: canonical,
           ownerAddress: execution,
         })
-      } catch {
+        console.log('[DeployVault] ownership check:', { canonical, execution, isOwner })
+        return isOwner
+      } catch (err) {
+        console.error('[DeployVault] ownership check failed:', err)
         return false
       }
     },
