@@ -81,23 +81,6 @@ type ServerDeployResponse = {
   }
 }
 
-const COINBASE_SMART_WALLET_OWNERS_ABI = [
-  {
-    type: 'function',
-    name: 'ownerCount',
-    stateMutability: 'view',
-    inputs: [],
-    outputs: [{ type: 'uint256' }],
-  },
-  {
-    type: 'function',
-    name: 'ownerAtIndex',
-    stateMutability: 'view',
-    inputs: [{ name: 'index', type: 'uint256' }],
-    outputs: [{ type: 'bytes' }],
-  },
-] as const
-
 const COINBASE_SMART_WALLET_OWNER_LINK_ABI = [
   {
     type: 'function',
@@ -120,38 +103,20 @@ const CREATOR_COIN_OWNERS_ABI = [
   { type: 'function', name: 'ownerAt', inputs: [{ type: 'uint256' }], outputs: [{ type: 'address' }], stateMutability: 'view' },
 ] as const
 
-function asCoinbaseSmartWalletOwnerBytes(owner: Address): Hex {
-  // Coinbase Smart Wallet stores EOA owners as 32-byte left-padded address bytes.
-  return encodeAbiParameters([{ type: 'address' }], [owner]) as Hex
-}
-
 async function isCoinbaseSmartWalletOwner(params: {
   publicClient: { readContract: (args: any) => Promise<any> }
   smartWallet: Address
   ownerAddress: Address
-  maxScan?: number
 }): Promise<boolean> {
-  const { publicClient, smartWallet, ownerAddress, maxScan = 64 } = params
-  const countRaw = (await publicClient.readContract({
+  const { publicClient, smartWallet, ownerAddress } = params
+  // Use isOwnerAddress directly - simpler and more reliable than iterating ownerAtIndex
+  const isOwner = (await publicClient.readContract({
     address: smartWallet,
-    abi: COINBASE_SMART_WALLET_OWNERS_ABI,
-    functionName: 'ownerCount',
-  })) as bigint
-  const count = Number(countRaw)
-  if (!Number.isFinite(count) || count <= 0) return false
-
-  const expected = asCoinbaseSmartWalletOwnerBytes(ownerAddress).toLowerCase()
-  const limit = Math.min(count, Math.max(1, maxScan))
-  for (let i = 0; i < limit; i++) {
-    const b = (await publicClient.readContract({
-      address: smartWallet,
-      abi: COINBASE_SMART_WALLET_OWNERS_ABI,
-      functionName: 'ownerAtIndex',
-      args: [BigInt(i)],
-    })) as Hex
-    if (String(b).toLowerCase() === expected) return true
-  }
-  return false
+    abi: COINBASE_SMART_WALLET_OWNER_LINK_ABI,
+    functionName: 'isOwnerAddress',
+    args: [ownerAddress],
+  })) as boolean
+  return isOwner === true
 }
 
 const shortAddress = (addr: string) => `${addr.slice(0, 6)}…${addr.slice(-4)}`
