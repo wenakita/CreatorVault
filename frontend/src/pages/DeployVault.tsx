@@ -21,8 +21,9 @@ import { useSearchParams } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { coinABI } from '@zoralabs/protocol-deployments'
 import { BarChart3, ChevronDown, Layers, Lock, Rocket, ShieldCheck } from 'lucide-react'
-// Privy removed - using connected wallet directly
+import { useLogin, usePrivy } from '@privy-io/react-auth'
 import { ConnectButtonWeb3 } from '@/components/ConnectButtonWeb3'
+import { usePrivyClientStatus } from '@/lib/privy/client'
 import { DerivedTokenIcon } from '@/components/DerivedTokenIcon'
 import { RequestCreatorAccess } from '@/components/RequestCreatorAccess'
 import { CONTRACTS } from '@/config/contracts'
@@ -296,6 +297,28 @@ class DeployVaultErrorBoundary extends Component<
 }
 
 export function DeployVault() {
+  const privyClientStatus = usePrivyClientStatus()
+
+  // Privy is used for auth/session - if not configured, show setup hint
+  if (privyClientStatus !== 'ready') {
+    return (
+      <div className="min-h-screen bg-black text-white">
+        <section className="max-w-3xl mx-auto px-6 py-16">
+          <div className="text-[10px] uppercase tracking-[0.24em] text-zinc-500 mb-4">Deploy</div>
+          <div className="card rounded-xl p-8 space-y-3">
+            <div className="text-lg font-medium">Authentication not configured</div>
+            <div className="text-sm text-zinc-400 leading-relaxed">
+              Deploy requires Privy for authentication. Your Coinbase Smart Wallet will be used for signing.
+            </div>
+            <div className="text-xs text-zinc-500 leading-relaxed">
+              Set <span className="font-mono text-zinc-300">VITE_PRIVY_ENABLED=true</span> in environment variables.
+            </div>
+          </div>
+        </section>
+      </div>
+    )
+  }
+
   return (
     <DeployVaultErrorBoundary>
       <DeployVaultMain />
@@ -1790,6 +1813,8 @@ function DeployVaultBatcher({
 function DeployVaultMain() {
   const { address, isConnected } = useAccount()
   const { data: walletClient } = useWalletClient({ chainId: base.id })
+  const { ready: privyReady, authenticated: privyAuthenticated } = usePrivy()
+  const { login } = useLogin()
   const [creatorToken, setCreatorToken] = useState('')
   const [showAdvanced, setShowAdvanced] = useState(false)
   const [linkOwnerBusy, setLinkOwnerBusy] = useState(false)
@@ -3118,7 +3143,27 @@ function DeployVaultMain() {
                 </div>
               ) : null}
 
-              {!isConnected ? (
+              {!privyReady ? (
+                <button
+                  disabled
+                  className="w-full py-4 bg-black/30 border border-zinc-900/60 rounded-lg text-zinc-600 text-sm cursor-not-allowed"
+                >
+                  Loading…
+                </button>
+              ) : !privyAuthenticated ? (
+                <div className="space-y-3">
+                  <button
+                    type="button"
+                    className="btn-accent w-full"
+                    onClick={() => void login({ loginMethods: ['email'] })}
+                  >
+                    Sign in with email
+                  </button>
+                  <div className="text-[11px] text-zinc-600">
+                    Sign in to link your Coinbase Smart Wallet and deploy.
+                  </div>
+                </div>
+              ) : !isConnected ? (
                 <div className="space-y-3">
                   <ConnectButtonWeb3 />
                   <div className="text-[11px] text-zinc-600">
