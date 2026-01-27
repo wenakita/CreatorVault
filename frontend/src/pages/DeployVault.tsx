@@ -2320,70 +2320,11 @@ function DeployVaultPrivyEnabled() {
 
   const executionCanOperateCanonical = executionCanOperateCanonicalQuery.data === true
   const executionCanOperateCanonicalPending = !!identity.blockingReason && executionCanOperateCanonicalQuery.isFetching
-
-  // Check if connected EOA is in the Creator Coin's owner list (using useEffect to avoid render issues)
-  const [isCreatorCoinOwner, setIsCreatorCoinOwner] = useState(false)
-  const [creatorCoinOwnershipChecked, setCreatorCoinOwnershipChecked] = useState(false)
-  
-  useEffect(() => {
-    // Reset when inputs change
-    setIsCreatorCoinOwner(false)
-    setCreatorCoinOwnershipChecked(false)
-    
-    if (!publicClient || !creatorToken || !isAddress(creatorToken) || !connectedWalletAddress) {
-      return
-    }
-    
-    let cancelled = false
-    const checkOwnership = async () => {
-      const coinAddr = creatorToken as Address
-      const wallet = connectedWalletAddress as Address
-      try {
-        const totalOwners = await publicClient.readContract({
-          address: coinAddr,
-          abi: [{ type: 'function', name: 'totalOwners', stateMutability: 'view', inputs: [], outputs: [{ type: 'uint256' }] }] as const,
-          functionName: 'totalOwners',
-        })
-        const count = Number(totalOwners)
-        if (Number.isFinite(count) && count > 0) {
-          for (let i = 0; i < Math.min(count, 10); i++) {
-            if (cancelled) return
-            const owner = await publicClient.readContract({
-              address: coinAddr,
-              abi: [{ type: 'function', name: 'ownerAt', stateMutability: 'view', inputs: [{ type: 'uint256' }], outputs: [{ type: 'address' }] }] as const,
-              functionName: 'ownerAt',
-              args: [BigInt(i)],
-            })
-            if (owner && String(owner).toLowerCase() === wallet.toLowerCase()) {
-              if (!cancelled) {
-                setIsCreatorCoinOwner(true)
-                setCreatorCoinOwnershipChecked(true)
-              }
-              return
-            }
-          }
-        }
-      } catch {
-        // Creator coin might not have ownerAt
-      }
-      if (!cancelled) {
-        setCreatorCoinOwnershipChecked(true)
-      }
-    }
-    
-    void checkOwnership()
-    return () => { cancelled = true }
-  }, [publicClient, creatorToken, connectedWalletAddress])
-
-  // Combine both checks: Smart Wallet ownership OR Creator Coin ownership
-  const canOperateAsOwner = executionCanOperateCanonical || isCreatorCoinOwner
-  const ownershipCheckPending = executionCanOperateCanonicalPending || (!creatorCoinOwnershipChecked && !!identity.blockingReason)
-
   const identityBlockingReason = identity.blockingReason
-    ? canOperateAsOwner
+    ? executionCanOperateCanonical
       ? null
-      : ownershipCheckPending
-        ? 'Checking whether your connected wallet is an owner…'
+      : executionCanOperateCanonicalPending
+        ? 'Checking whether your connected wallet is an owner of the creator smart wallet…'
         : identity.blockingReason
     : null
 
