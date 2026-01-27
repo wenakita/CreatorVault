@@ -46,7 +46,7 @@ export function PrivyClientProvider({ children }: { children: ReactNode }) {
           // Enable embedded wallets - this is the signer for the Coinbase Smart Wallet
           embeddedWallets: {
             ethereum: { createOnLogin: 'users-without-wallets' },
-            solana: { createOnLogin: 'off' },
+            solana: { createOnLogin: 'users-without-wallets' },
           },
           loginMethods: ['wallet', 'email'],
         } as any}
