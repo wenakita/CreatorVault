@@ -1,31 +1,103 @@
 import { useMemo } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { usePublicClient } from 'wagmi'
-import { isAddress, type Address } from 'viem'
+import { isAddress, encodeAbiParameters, type Address, type Hex } from 'viem'
 import { base } from 'wagmi/chains'
 import { useZoraProfile } from '@/lib/zora/hooks'
 
+// Coinbase Smart Wallet ABI for owner lookup
+const COINBASE_SMART_WALLET_OWNERS_ABI = [
+  {
+    type: 'function',
+    name: 'ownerCount',
+    stateMutability: 'view',
+    inputs: [],
+    outputs: [{ type: 'uint256' }],
+  },
+  {
+    type: 'function',
+    name: 'ownerAtIndex',
+    stateMutability: 'view',
+    inputs: [{ name: 'index', type: 'uint256' }],
+    outputs: [{ type: 'bytes' }],
+  },
+] as const
+
 /**
- * Hook to resolve an EOA's linked Coinbase Smart Wallet via Zora profile.
- *
- * When a user connects with their EOA, this hook:
- * 1. Fetches their Zora profile
- * 2. Extracts any linked Smart Wallet addresses
- * 3. Verifies the Smart Wallet is a contract onchain (not a mislabeled EOA)
- *
- * Use case: Users deploy creator coins on Zora with their EOA, but the
- * Smart Wallet (owned by the EOA) is listed as the coin owner.
+ * Convert an EOA address to the bytes format used by Coinbase Smart Wallet.
+ * Smart Wallet stores owners as 32-byte left-padded address bytes.
  */
-export function useLinkedSmartWallet(eoaAddress: Address | string | undefined) {
+function asOwnerBytes(owner: Address): Hex {
+  return encodeAbiParameters([{ type: 'address' }], [owner]) as Hex
+}
+
+/**
+ * Check if an EOA is an owner of a Coinbase Smart Wallet onchain.
+ */
+async function checkIsSmartWalletOwner(
+  publicClient: any,
+  smartWallet: Address,
+  eoaAddress: Address,
+  maxScan = 10,
+): Promise<boolean> {
+  try {
+    // First check if it's a contract
+    const code = await publicClient.getBytecode({ address: smartWallet })
+    if (!code || code === '0x') return false
+
+    // Get owner count
+    const countRaw = await publicClient.readContract({
+      address: smartWallet,
+      abi: COINBASE_SMART_WALLET_OWNERS_ABI,
+      functionName: 'ownerCount',
+    })
+    const count = Number(countRaw)
+    if (!Number.isFinite(count) || count <= 0) return false
+
+    // Check each owner slot
+    const expected = asOwnerBytes(eoaAddress).toLowerCase()
+    const limit = Math.min(count, maxScan)
+    for (let i = 0; i < limit; i++) {
+      const ownerBytes = await publicClient.readContract({
+        address: smartWallet,
+        abi: COINBASE_SMART_WALLET_OWNERS_ABI,
+        functionName: 'ownerAtIndex',
+        args: [BigInt(i)],
+      })
+      if (String(ownerBytes).toLowerCase() === expected) {
+        return true
+      }
+    }
+    return false
+  } catch {
+    // Not a Smart Wallet or call failed
+    return false
+  }
+}
+
+/**
+ * Hook to resolve an EOA's linked Coinbase Smart Wallet.
+ *
+ * Resolution order:
+ * 1. Zora profile (if user has linked their Smart Wallet on Zora)
+ * 2. Onchain lookup (checks if EOA is owner of any candidate Smart Wallets)
+ *
+ * @param eoaAddress - The connected EOA address
+ * @param candidateSmartWallets - Optional list of addresses to check onchain (e.g., creator coin owners)
+ */
+export function useLinkedSmartWallet(
+  eoaAddress: Address | string | undefined,
+  candidateSmartWallets?: Array<Address | string>,
+) {
   const addressStr = typeof eoaAddress === 'string' && isAddress(eoaAddress) ? eoaAddress : undefined
   const publicClient = usePublicClient({ chainId: base.id })
 
-  // Fetch Zora profile for the connected address
+  // === Method 1: Zora Profile Lookup ===
   const profileQuery = useZoraProfile(addressStr)
   const profile = profileQuery.data
 
-  // Extract Smart Wallet from linked wallets
-  const candidateSmartWallet = useMemo(() => {
+  // Extract Smart Wallet from linked wallets in Zora profile
+  const zoraSmartWallet = useMemo(() => {
     const edges = profile?.linkedWallets?.edges ?? []
     for (const e of edges) {
       const node: any = (e as any)?.node
@@ -37,30 +109,70 @@ export function useLinkedSmartWallet(eoaAddress: Address | string | undefined) {
     return null
   }, [profile?.linkedWallets?.edges])
 
-  // Verify the Smart Wallet is actually a contract (not a mislabeled EOA)
-  const bytecodeQuery = useQuery({
-    queryKey: ['smartWallet', 'bytecode', candidateSmartWallet],
+  // Verify Zora-provided Smart Wallet is actually a contract
+  const zoraBytecodeQuery = useQuery({
+    queryKey: ['smartWallet', 'bytecode', zoraSmartWallet],
     queryFn: async () => {
-      if (!candidateSmartWallet || !publicClient) return null
-      const code = await publicClient.getBytecode({ address: candidateSmartWallet })
-      return code && code !== '0x' ? candidateSmartWallet : null
+      if (!zoraSmartWallet || !publicClient) return null
+      const code = await publicClient.getBytecode({ address: zoraSmartWallet })
+      return code && code !== '0x' ? zoraSmartWallet : null
     },
-    enabled: !!candidateSmartWallet && !!publicClient,
-    staleTime: 1000 * 60 * 10, // Cache for 10 min (bytecode doesn't change)
+    enabled: !!zoraSmartWallet && !!publicClient,
+    staleTime: 1000 * 60 * 10,
   })
 
-  const smartWallet = bytecodeQuery.data ?? null
-  const isLoading = profileQuery.isLoading || bytecodeQuery.isLoading
-  const error = profileQuery.error || bytecodeQuery.error
+  const verifiedZoraSmartWallet = zoraBytecodeQuery.data ?? null
+
+  // === Method 2: Onchain Fallback ===
+  // If Zora didn't find a Smart Wallet, check if EOA owns any of the candidate addresses
+  const validCandidates = useMemo(() => {
+    if (!candidateSmartWallets) return []
+    return candidateSmartWallets
+      .map((a) => (typeof a === 'string' && isAddress(a) ? (a as Address) : null))
+      .filter((a): a is Address => a !== null)
+      // Don't check the EOA itself
+      .filter((a) => a.toLowerCase() !== addressStr?.toLowerCase())
+  }, [candidateSmartWallets, addressStr])
+
+  const onchainLookupQuery = useQuery({
+    queryKey: ['smartWallet', 'onchainLookup', addressStr, validCandidates.join(',')],
+    queryFn: async () => {
+      if (!addressStr || !publicClient || validCandidates.length === 0) return null
+
+      // Check each candidate to see if EOA is an owner
+      for (const candidate of validCandidates) {
+        const isOwner = await checkIsSmartWalletOwner(publicClient, candidate, addressStr as Address)
+        if (isOwner) {
+          return candidate
+        }
+      }
+      return null
+    },
+    // Only run if Zora lookup didn't find anything
+    enabled: !!addressStr && !!publicClient && validCandidates.length > 0 && !verifiedZoraSmartWallet,
+    staleTime: 1000 * 60 * 5,
+  })
+
+  // Use Zora result first, then onchain fallback
+  const smartWallet = verifiedZoraSmartWallet ?? onchainLookupQuery.data ?? null
+  const source = verifiedZoraSmartWallet ? 'zora' : onchainLookupQuery.data ? 'onchain' : null
+
+  const isLoading =
+    profileQuery.isLoading ||
+    zoraBytecodeQuery.isLoading ||
+    (onchainLookupQuery.isLoading && !verifiedZoraSmartWallet)
+  const error = profileQuery.error || zoraBytecodeQuery.error || onchainLookupQuery.error
 
   return {
     /** The connected EOA address */
     eoa: addressStr ?? null,
     /** The verified Smart Wallet address (or null if none found) */
     smartWallet,
+    /** How the Smart Wallet was discovered: 'zora' | 'onchain' | null */
+    source,
     /** Raw candidate from Zora profile (before bytecode verification) */
-    candidateSmartWallet,
-    /** Whether the profile/bytecode queries are still loading */
+    zoraCandidate: zoraSmartWallet,
+    /** Whether the queries are still loading */
     isLoading,
     /** Any error from the queries */
     error,
@@ -75,12 +187,14 @@ export function useLinkedSmartWallet(eoaAddress: Address | string | undefined) {
  * This accounts for the EOA → Smart Wallet relationship:
  * - If the EOA is directly in the owners list, returns true
  * - If the EOA's linked Smart Wallet is in the owners list, returns true
+ * - Uses onchain lookup as fallback if Zora profile doesn't have linked wallet
  */
 export function useIsOwner(
   connectedAddress: Address | string | undefined,
   owners: Array<Address | string> | undefined,
 ) {
-  const { eoa, smartWallet, isLoading } = useLinkedSmartWallet(connectedAddress)
+  // Pass owners as candidates for onchain fallback lookup
+  const { eoa, smartWallet, isLoading, source } = useLinkedSmartWallet(connectedAddress, owners)
 
   const isOwner = useMemo(() => {
     if (!owners || owners.length === 0) return false
@@ -114,6 +228,8 @@ export function useIsOwner(
     eoa,
     /** The linked Smart Wallet (if any) */
     smartWallet,
+    /** How the Smart Wallet was discovered: 'zora' | 'onchain' | null */
+    source,
   }
 }
 
@@ -122,9 +238,15 @@ export function useIsOwner(
  *
  * If the user has a linked Smart Wallet, prefer that for transactions
  * (enables gas sponsorship, batch calls, etc.)
+ *
+ * @param connectedAddress - The connected EOA address
+ * @param candidateSmartWallets - Optional list of addresses to check onchain
  */
-export function useEffectiveAddress(connectedAddress: Address | string | undefined) {
-  const { eoa, smartWallet, isLoading } = useLinkedSmartWallet(connectedAddress)
+export function useEffectiveAddress(
+  connectedAddress: Address | string | undefined,
+  candidateSmartWallets?: Array<Address | string>,
+) {
+  const { eoa, smartWallet, isLoading, source } = useLinkedSmartWallet(connectedAddress, candidateSmartWallets)
 
   return {
     /** The address to use for transactions (Smart Wallet if available, else EOA) */
@@ -135,6 +257,8 @@ export function useEffectiveAddress(connectedAddress: Address | string | undefin
     eoa,
     /** The linked Smart Wallet */
     smartWallet,
+    /** How the Smart Wallet was discovered */
+    source,
     isLoading,
   }
 }
