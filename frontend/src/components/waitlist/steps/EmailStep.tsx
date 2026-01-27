@@ -36,7 +36,7 @@ export const EmailStep = memo(function EmailStep({
     >
       <div className="space-y-2 text-center">
         <div className="headline text-2xl sm:text-3xl leading-tight">Join the waitlist</div>
-        <div className="text-sm text-zinc-500">Sign in with your Zora account to continue</div>
+        <div className="text-sm text-zinc-500">Connect wallet or continue with email</div>
       </div>
 
       {/* Privy login */}

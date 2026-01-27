@@ -1315,7 +1315,7 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
                 privyVerifyError={privyVerifyError}
                 onPrivyLogin={() => {
                   startPrivyVerify()
-                  privyLogin({ loginMethods: ['email', 'google', 'farcaster', 'twitter', 'apple'] })
+                  privyLogin()
                 }}
               />
             ) : null}

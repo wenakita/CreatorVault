@@ -41,17 +41,14 @@ export function PrivyClientProvider({ children }: { children: ReactNode }) {
         appId={appId}
         config={{
           appearance: {
-            walletList: ['coinbase_wallet', 'wallet_connect', 'detected_wallets'],
+            walletList: ['metamask', 'coinbase_wallet', 'phantom', 'detected_wallets', 'wallet_connect'],
           },
           // Enable embedded wallets - this is the signer for the Coinbase Smart Wallet
           embeddedWallets: {
             ethereum: { createOnLogin: 'users-without-wallets' },
             solana: { createOnLogin: 'off' },
           },
-          loginMethodsAndOrder: {
-            primary: ['email', 'google', 'farcaster', 'twitter', 'apple'],
-            overflow: ['discord', 'github'],
-          },
+          loginMethods: ['wallet', 'email'],
         } as any}
       >
         {children}
