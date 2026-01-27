@@ -7,3 +7,4 @@ export type { CreatorAllowlistMode, CreatorAllowlistStatus } from './useCreatorA
 export { useMiniAppContext } from './useMiniAppContext'
 export { useFarcasterAuth } from './useFarcasterAuth'
 export { useLinkedSmartWallet, useIsOwner, useEffectiveAddress } from './useLinkedSmartWallet'
+export { useCreatorCoinOwnership, useIsCreatorCoinAdmin } from './useCreatorCoinOwnership'
