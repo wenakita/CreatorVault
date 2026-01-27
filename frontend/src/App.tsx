@@ -216,8 +216,9 @@ function AppAllowlistGatePrivyEnabled() {
   }
 
   if (!allowed && !isBypassAdmin) {
-    // Show debug info in development
-    const showDebug = import.meta.env.DEV || (typeof window !== 'undefined' && (window as any).__CV_DEBUG_ADMIN)
+    // Show debug info in development or with ?debug=1
+    const urlDebug = typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('debug') === '1'
+    const showDebug = import.meta.env.DEV || urlDebug || (typeof window !== 'undefined' && (window as any).__CV_DEBUG_ADMIN)
     if (showDebug) {
       return (
         <div className="min-h-screen bg-black text-white p-8">
