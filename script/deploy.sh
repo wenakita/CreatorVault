@@ -12,6 +12,7 @@
 # Environment:
 #   PRIVATE_KEY         - Deployer private key
 #   RPC_URL             - Base RPC URL (default: https://mainnet.base.org)
+#   BASE_RPC_URL        - Base RPC URL for v2 deployer (Alchemy recommended)
 #   ETHERSCAN_API_KEY   - For contract verification
 #
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -49,6 +50,7 @@ print_banner() {
 print_usage() {
     echo -e "${YELLOW}Usage:${NC}"
     echo "  ./script/deploy.sh infrastructure         Deploy all core contracts"
+    echo "  ./script/deploy.sh infra-v2               Deploy v2 bytecode store + deployer"
     echo "  ./script/deploy.sh vault <TOKEN_ADDRESS>  Deploy vault for creator coin"
     echo "  ./script/deploy.sh aa <TOKEN> [--gasless] Deploy via ERC-4337"
     echo ""
@@ -60,6 +62,7 @@ print_usage() {
     echo -e "${YELLOW}Environment Variables:${NC}"
     echo "  PRIVATE_KEY         - Your deployer private key"
     echo "  RPC_URL             - Base RPC URL (default: mainnet.base.org)"
+    echo "  BASE_RPC_URL        - Base RPC URL for v2 deployer"
     echo "  ETHERSCAN_API_KEY   - For contract verification"
     echo "  CREATOR_FACTORY     - Factory address (for vault deployment)"
     echo ""
@@ -96,6 +99,32 @@ deploy_infrastructure() {
     echo "1. Copy contract addresses to .env file"
     echo "2. Add contracts to Coinbase Paymaster allowlist"
     echo "3. Deploy creator vaults"
+}
+
+# Deploy v2 bytecode store + deployer + CreatorVaultDeployer
+deploy_infra_v2() {
+    if [ -z "$BASE_RPC_URL" ]; then
+        echo -e "${RED}Error: BASE_RPC_URL environment variable not set${NC}"
+        exit 1
+    fi
+
+    echo -e "${GREEN}Deploying v2 bytecode store + deployer...${NC}"
+    echo ""
+
+    forge script script/DeployBaseMainnetDeployer.s.sol:DeployBaseMainnetDeployer \
+        --rpc-url "$BASE_RPC_URL" \
+        --broadcast \
+        --verify
+
+    echo ""
+    echo -e "${GREEN}✓ v2 infra deployed successfully!${NC}"
+    echo ""
+    echo -e "${YELLOW}Next Steps:${NC}"
+    echo "1. Update frontend defaults with new addresses:"
+    echo "   - frontend/src/config/contracts.defaults.ts"
+    echo "   - universalBytecodeStore"
+    echo "   - universalCreate2DeployerFromStore"
+    echo "   - creatorVaultBatcher"
 }
 
 # Deploy vault for creator coin
@@ -168,6 +197,10 @@ main() {
         "infrastructure"|"infra")
             check_prereqs
             deploy_infrastructure
+            ;;
+        "infra-v2"|"deployer-v2"|"v2")
+            check_prereqs
+            deploy_infra_v2
             ;;
         "vault")
             check_prereqs

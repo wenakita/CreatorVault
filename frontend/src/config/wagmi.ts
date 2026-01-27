@@ -11,7 +11,13 @@ import { coinbaseWallet, walletConnect, injected } from 'wagmi/connectors'
  * 3. Injected (browser extension fallback)
  */
 
-const WALLETCONNECT_PROJECT_ID = import.meta.env.VITE_WALLETCONNECT_PROJECT_ID as string || 'bc3dfd319b4a0ecaa25cdee7e36bd0c4'
+const WALLETCONNECT_PROJECT_ID =
+  (import.meta.env.VITE_WALLETCONNECT_PROJECT_ID as string) || 'bc3dfd319b4a0ecaa25cdee7e36bd0c4'
+
+const BASE_RPC_URL =
+  (import.meta.env.VITE_BASE_RPC as string | undefined)?.trim() ||
+  (import.meta.env.VITE_BASE_READ_RPC_URL as string | undefined)?.trim() ||
+  ''
 
 export const wagmiConfig = createConfig({
   chains: [base],
@@ -35,7 +41,7 @@ export const wagmiConfig = createConfig({
     }),
   ],
   transports: {
-    [base.id]: http(),
+    [base.id]: BASE_RPC_URL ? http(BASE_RPC_URL) : http(),
   },
 })
 

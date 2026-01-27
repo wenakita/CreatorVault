@@ -140,24 +140,33 @@ function extractPrivyWalletAddress(user: any, walletsOverride?: any[]): string |
   const wallets = Array.isArray(walletsOverride) ? walletsOverride : Array.isArray(user?.wallets) ? user.wallets : []
   const primaryWallet = user?.wallet && typeof user.wallet === 'object' ? [user.wallet] : []
   const all = [...primaryWallet, ...wallets]
-  // Prefer Base Account / Coinbase Smart Wallet if present.
+
+  const normalizeType = (w: any) =>
+    String(w?.wallet_client_type || w?.walletClientType || w?.connector_type || w?.connectorType || '').toLowerCase()
+  const isSmartOrEmbedded = (w: any) => {
+    const t = normalizeType(w)
+    return t.includes('smart') || t === 'base_account' || t === 'privy'
+  }
+
+  // Prefer external EOAs for Zora profile lookup.
   for (const w of all) {
     const addr = typeof w?.address === 'string' ? w.address : null
     if (!addr || !isValidEvmAddress(addr)) continue
-    const clientType = String(w?.wallet_client_type || w?.walletClientType || '').toLowerCase()
-    const connectorType = String(w?.connector_type || w?.connectorType || '').toLowerCase()
-    if (clientType.includes('base') || clientType.includes('smart') || connectorType.includes('base')) return addr
+    if (!isSmartOrEmbedded(w)) return addr
   }
-  // Fallback: first EVM wallet.
-  for (const w of all) {
-    const addr = typeof w?.address === 'string' ? w.address : null
-    if (addr && isValidEvmAddress(addr)) return addr
-  }
+
   const linked = Array.isArray(user?.linked_accounts) ? user.linked_accounts : Array.isArray(user?.linkedAccounts) ? user.linkedAccounts : []
   for (const a of linked) {
     const addr = typeof a?.address === 'string' ? a.address : null
     if (addr && isValidEvmAddress(addr)) return addr
   }
+
+  // Fallback: smart/embedded wallet if it's the only option.
+  for (const w of all) {
+    const addr = typeof w?.address === 'string' ? w.address : null
+    if (addr && isValidEvmAddress(addr)) return addr
+  }
+
   return null
 }
 
