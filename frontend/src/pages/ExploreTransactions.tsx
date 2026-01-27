@@ -1,34 +1,22 @@
-import { useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { motion } from 'framer-motion'
 import { ArrowUpRight, ArrowDownLeft, ExternalLink } from 'lucide-react'
-import { useSearchParams } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
+import { useInfiniteQuery } from '@tanstack/react-query'
 
 import { ExploreSubnav } from '@/components/explore/ExploreSubnav'
+import { fetchZoraExplore } from '@/lib/zora/client'
+import type { ZoraCoin } from '@/lib/zora/types'
 
-type Transaction = {
-  id: string
-  type: 'buy' | 'sell' | 'mint' | 'burn' | 'transfer'
-  tokenSymbol: string
-  tokenName: string
-  tokenAddress: string
-  amount: string
-  valueUsd: string
-  from: string
-  to: string
-  timestamp: number
-  txHash: string
-}
-
-// Placeholder transactions - will be replaced with real data
-const MOCK_TRANSACTIONS: Transaction[] = []
-
-function formatAddress(address: string): string {
+function formatAddress(address: string | undefined): string {
   if (!address) return '-'
   return `${address.slice(0, 6)}...${address.slice(-4)}`
 }
 
-function formatTimeAgo(timestamp: number): string {
-  const seconds = Math.floor((Date.now() - timestamp) / 1000)
+function formatTimeAgo(dateStr: string | undefined): string {
+  if (!dateStr) return '-'
+  const date = new Date(dateStr)
+  const seconds = Math.floor((Date.now() - date.getTime()) / 1000)
   if (seconds < 60) return `${seconds}s ago`
   const minutes = Math.floor(seconds / 60)
   if (minutes < 60) return `${minutes}m ago`
@@ -38,12 +26,39 @@ function formatTimeAgo(timestamp: number): string {
   return `${days}d ago`
 }
 
-function TransactionRow({ tx }: { tx: Transaction }) {
-  const isBuy = tx.type === 'buy' || tx.type === 'mint'
+function formatVolume(volume: string | undefined): string {
+  if (!volume) return '$0'
+  const num = parseFloat(volume)
+  if (isNaN(num)) return '$0'
+  if (num >= 1_000_000) return `$${(num / 1_000_000).toFixed(2)}M`
+  if (num >= 1_000) return `$${(num / 1_000).toFixed(2)}K`
+  return `$${num.toFixed(2)}`
+}
+
+function formatChange(delta: string | undefined): { positive: boolean } {
+  if (!delta) return { positive: true }
+  const num = parseFloat(delta)
+  return { positive: num >= 0 }
+}
+
+function ActivityRow({ coin }: { coin: ZoraCoin }) {
+  const change = formatChange(coin.marketCapDelta24h)
+  const isBuy = change.positive // Use price change as proxy for buy/sell indication
+  
+  const avatarUrl = coin.mediaContent?.previewImage?.small || coin.creatorProfile?.avatar?.previewImage?.small
+  const symbol = coin.symbol || '???'
+  const name = coin.name || 'Unknown'
+  const volume = formatVolume(coin.volume24h)
+  const time = formatTimeAgo(coin.createdAt)
+  const address = coin.address || ''
+  const creatorAddress = coin.creatorAddress
 
   return (
-    <div className="grid grid-cols-[100px_minmax(150px,1.5fr)_minmax(100px,1fr)_minmax(100px,1fr)_minmax(80px,0.8fr)_minmax(120px,1fr)_50px] gap-4 items-center px-4 py-4 hover:bg-zinc-900/50 transition-colors border-b border-zinc-800/50">
-      {/* Type */}
+    <Link
+      to={`/explore/creators/base/${address}`}
+      className="grid grid-cols-[80px_minmax(150px,2fr)_minmax(100px,1fr)_minmax(80px,1fr)_minmax(100px,1fr)_50px] gap-4 items-center px-4 py-4 hover:bg-zinc-900/50 transition-colors border-b border-zinc-800/50"
+    >
+      {/* Type indicator */}
       <div className="flex items-center gap-2">
         <div className={`w-6 h-6 rounded-full flex items-center justify-center ${isBuy ? 'bg-green-500/10' : 'bg-red-500/10'}`}>
           {isBuy ? (
@@ -52,35 +67,38 @@ function TransactionRow({ tx }: { tx: Transaction }) {
             <ArrowUpRight className="w-3 h-3 text-red-500" />
           )}
         </div>
-        <span className={`text-sm font-medium capitalize ${isBuy ? 'text-green-500' : 'text-red-500'}`}>
-          {tx.type}
+        <span className={`text-sm font-medium ${isBuy ? 'text-green-500' : 'text-red-500'}`}>
+          {isBuy ? 'Buy' : 'Sell'}
         </span>
       </div>
 
       {/* Token */}
-      <div className="flex items-center gap-2 min-w-0">
-        <div className="w-6 h-6 rounded-full bg-gradient-to-br from-zinc-700 to-zinc-800 flex items-center justify-center flex-shrink-0">
-          <span className="text-[10px] font-medium text-zinc-400">{tx.tokenSymbol.slice(0, 2)}</span>
+      <div className="flex items-center gap-3 min-w-0">
+        {avatarUrl ? (
+          <img src={avatarUrl} alt={name} className="w-8 h-8 rounded-full object-cover flex-shrink-0" />
+        ) : (
+          <div className="w-8 h-8 rounded-full bg-gradient-to-br from-zinc-700 to-zinc-800 flex items-center justify-center flex-shrink-0">
+            <span className="text-xs font-medium text-zinc-400">{symbol.slice(0, 2).toUpperCase()}</span>
+          </div>
+        )}
+        <div className="min-w-0 flex-1">
+          <div className="text-sm font-medium text-white truncate">{name}</div>
+          <div className="text-xs text-zinc-500 truncate">{symbol}</div>
         </div>
-        <span className="text-sm text-white truncate">{tx.tokenName}</span>
-        <span className="text-xs text-zinc-500">{tx.tokenSymbol}</span>
       </div>
 
-      {/* Amount */}
-      <span className="text-sm text-white tabular-nums">{tx.amount}</span>
-
-      {/* Value USD */}
-      <span className="text-sm text-zinc-400 tabular-nums">{tx.valueUsd}</span>
+      {/* Volume */}
+      <span className="text-sm text-white tabular-nums">{volume}</span>
 
       {/* Time */}
-      <span className="text-sm text-zinc-500">{formatTimeAgo(tx.timestamp)}</span>
+      <span className="text-sm text-zinc-500">{time}</span>
 
       {/* Account */}
-      <span className="text-sm text-zinc-400 font-mono">{formatAddress(tx.from)}</span>
+      <span className="text-sm text-zinc-400 font-mono">{formatAddress(creatorAddress)}</span>
 
-      {/* Link */}
+      {/* External link */}
       <a
-        href={`https://basescan.org/tx/${tx.txHash}`}
+        href={`https://basescan.org/address/${address}`}
         target="_blank"
         rel="noopener noreferrer"
         className="text-zinc-500 hover:text-white transition-colors"
@@ -88,50 +106,124 @@ function TransactionRow({ tx }: { tx: Transaction }) {
       >
         <ExternalLink className="w-4 h-4" />
       </a>
-    </div>
+    </Link>
   )
 }
 
-function TransactionTableHeader() {
+function ActivityTableHeader() {
   return (
-    <div className="grid grid-cols-[100px_minmax(150px,1.5fr)_minmax(100px,1fr)_minmax(100px,1fr)_minmax(80px,0.8fr)_minmax(120px,1fr)_50px] gap-4 items-center px-4 py-3 text-xs text-zinc-500 border-b border-zinc-800 bg-zinc-900/30 sticky top-0 z-10">
+    <div className="grid grid-cols-[80px_minmax(150px,2fr)_minmax(100px,1fr)_minmax(80px,1fr)_minmax(100px,1fr)_50px] gap-4 items-center px-4 py-3 text-xs text-zinc-500 border-b border-zinc-800 bg-zinc-900/30 sticky top-0 z-10">
       <span>Type</span>
       <span>Token</span>
-      <span>Amount</span>
-      <span>USD</span>
+      <span>Volume (24h)</span>
       <span>Time</span>
-      <span>Account</span>
+      <span>Creator</span>
       <span></span>
     </div>
   )
 }
 
-function TransactionRowSkeleton() {
+function ActivityRowSkeleton() {
   return (
-    <div className="grid grid-cols-[100px_minmax(150px,1.5fr)_minmax(100px,1fr)_minmax(100px,1fr)_minmax(80px,0.8fr)_minmax(120px,1fr)_50px] gap-4 items-center px-4 py-4 border-b border-zinc-800/50">
+    <div className="grid grid-cols-[80px_minmax(150px,2fr)_minmax(100px,1fr)_minmax(80px,1fr)_minmax(100px,1fr)_50px] gap-4 items-center px-4 py-4 border-b border-zinc-800/50">
       <div className="flex items-center gap-2">
         <div className="w-6 h-6 rounded-full bg-zinc-800 animate-pulse" />
-        <div className="h-4 w-10 bg-zinc-800 rounded animate-pulse" />
+        <div className="h-4 w-8 bg-zinc-800 rounded animate-pulse" />
       </div>
-      <div className="flex items-center gap-2">
-        <div className="w-6 h-6 rounded-full bg-zinc-800 animate-pulse" />
-        <div className="h-4 w-20 bg-zinc-800 rounded animate-pulse" />
+      <div className="flex items-center gap-3">
+        <div className="w-8 h-8 rounded-full bg-zinc-800 animate-pulse" />
+        <div className="space-y-2 flex-1">
+          <div className="h-4 w-24 bg-zinc-800 rounded animate-pulse" />
+          <div className="h-3 w-12 bg-zinc-800 rounded animate-pulse" />
+        </div>
       </div>
       <div className="h-4 w-16 bg-zinc-800 rounded animate-pulse" />
-      <div className="h-4 w-14 bg-zinc-800 rounded animate-pulse" />
       <div className="h-4 w-12 bg-zinc-800 rounded animate-pulse" />
-      <div className="h-4 w-24 bg-zinc-800 rounded animate-pulse" />
+      <div className="h-4 w-20 bg-zinc-800 rounded animate-pulse" />
       <div className="h-4 w-4 bg-zinc-800 rounded animate-pulse" />
     </div>
   )
 }
 
+const PAGE_SIZE = 20
+
 export function ExploreTransactions() {
   const [searchParams, setSearchParams] = useSearchParams()
-  const [, setSearchQuery] = useState('')
+  const [searchQuery, setSearchQuery] = useState('')
 
   const currentTimeFilter = searchParams.get('time') || '1d'
   const currentSort = searchParams.get('sort') || 'volume'
+
+  const {
+    data,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+    isLoading,
+    isError,
+    error,
+  } = useInfiniteQuery({
+    queryKey: ['explore', 'transactions', 'LAST_TRADED'],
+    queryFn: async ({ pageParam }) => {
+      const result = await fetchZoraExplore({
+        list: 'LAST_TRADED',
+        count: PAGE_SIZE,
+        after: pageParam,
+      })
+      return result
+    },
+    initialPageParam: undefined as string | undefined,
+    getNextPageParam: (lastPage) => {
+      if (!lastPage?.pageInfo?.hasNextPage) return undefined
+      return lastPage.pageInfo.endCursor
+    },
+    staleTime: 15_000, // Refresh more frequently for activity
+  })
+
+  // Flatten all pages into a single array
+  const allActivity = useMemo(() => {
+    if (!data?.pages) return []
+    const items: ZoraCoin[] = []
+    for (const page of data.pages) {
+      if (page?.edges) {
+        for (const edge of page.edges) {
+          if (edge?.node) {
+            items.push(edge.node)
+          }
+        }
+      }
+    }
+    return items
+  }, [data])
+
+  // Filter based on search query
+  const filteredActivity = useMemo(() => {
+    if (!searchQuery.trim()) return allActivity
+    const query = searchQuery.toLowerCase()
+    return allActivity.filter((coin) => {
+      const name = (coin.name || '').toLowerCase()
+      const symbol = (coin.symbol || '').toLowerCase()
+      const address = (coin.address || '').toLowerCase()
+      return name.includes(query) || symbol.includes(query) || address.includes(query)
+    })
+  }, [allActivity, searchQuery])
+
+  // Handle infinite scroll
+  const handleScroll = useCallback(() => {
+    if (
+      window.innerHeight + document.documentElement.scrollTop >=
+      document.documentElement.offsetHeight - 500
+    ) {
+      if (hasNextPage && !isFetchingNextPage) {
+        fetchNextPage()
+      }
+    }
+  }, [fetchNextPage, hasNextPage, isFetchingNextPage])
+
+  useEffect(() => {
+    window.addEventListener('scroll', handleScroll)
+    return () => window.removeEventListener('scroll', handleScroll)
+  }, [handleScroll])
 
   const handleTimeFilterChange = (filter: string) => {
     const newParams = new URLSearchParams(searchParams)
@@ -145,10 +237,6 @@ export function ExploreTransactions() {
     setSearchParams(newParams, { replace: true })
   }
 
-  // For now, show empty state since we don't have real transaction data
-  const transactions = MOCK_TRANSACTIONS
-  const isLoading = false
-
   return (
     <div className="relative pb-24 md:pb-0 min-h-screen">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8">
@@ -160,10 +248,10 @@ export function ExploreTransactions() {
           className="mb-8"
         >
           <h1 className="text-3xl sm:text-4xl font-medium text-white mb-2">
-            Recent transactions
+            Recent activity
           </h1>
           <p className="text-zinc-400 text-sm">
-            Global activity across creator coins, content coins, and vault actions.
+            Recently traded coins across the Zora ecosystem.
           </p>
         </motion.div>
 
@@ -175,7 +263,7 @@ export function ExploreTransactions() {
           className="mb-6"
         >
           <ExploreSubnav
-            searchPlaceholder="Filter by address or token"
+            searchPlaceholder="Filter by token"
             onSearch={setSearchQuery}
             onTimeFilterChange={handleTimeFilterChange}
             onSortChange={handleSortChange}
@@ -184,7 +272,7 @@ export function ExploreTransactions() {
           />
         </motion.div>
 
-        {/* Transactions Table */}
+        {/* Activity Table */}
         <motion.div
           initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
@@ -192,31 +280,58 @@ export function ExploreTransactions() {
           className="rounded-2xl border border-zinc-800 bg-zinc-900/50 overflow-hidden"
         >
           {/* Table Header */}
-          <TransactionTableHeader />
+          <ActivityTableHeader />
 
           {/* Table Body */}
           <div className="divide-y divide-zinc-800/50">
             {isLoading ? (
               // Loading skeletons
-              Array.from({ length: 10 }).map((_, i) => <TransactionRowSkeleton key={i} />)
-            ) : transactions.length === 0 ? (
+              Array.from({ length: 10 }).map((_, i) => <ActivityRowSkeleton key={i} />)
+            ) : isError ? (
+              // Error state
+              <div className="px-6 py-12 text-center">
+                <p className="text-zinc-400 mb-4">Failed to load activity</p>
+                <p className="text-xs text-zinc-600">{(error as Error)?.message || 'Unknown error'}</p>
+              </div>
+            ) : filteredActivity.length === 0 ? (
               // Empty state
               <div className="px-6 py-16 text-center">
                 <div className="w-12 h-12 rounded-full bg-zinc-800 flex items-center justify-center mx-auto mb-4">
                   <ArrowUpRight className="w-6 h-6 text-zinc-600" />
                 </div>
-                <p className="text-zinc-400 text-sm mb-2">No transactions yet</p>
-                <p className="text-zinc-600 text-xs">
-                  Transactions will appear here as trading activity occurs.
+                <p className="text-zinc-400 text-sm mb-2">
+                  {searchQuery ? 'No activity found matching your search' : 'No recent activity'}
                 </p>
               </div>
             ) : (
-              // Transaction rows
-              transactions.map((tx) => (
-                <TransactionRow key={tx.id} tx={tx} />
+              // Activity rows
+              filteredActivity.map((coin, index) => (
+                <ActivityRow key={`${coin.address}-${index}`} coin={coin} />
               ))
             )}
+
+            {/* Loading more indicator */}
+            {isFetchingNextPage && (
+              <>
+                <ActivityRowSkeleton />
+                <ActivityRowSkeleton />
+                <ActivityRowSkeleton />
+              </>
+            )}
           </div>
+
+          {/* Load more button (fallback for scroll) */}
+          {hasNextPage && !isFetchingNextPage && (
+            <div className="px-6 py-4 border-t border-zinc-800 flex justify-center">
+              <button
+                type="button"
+                onClick={() => fetchNextPage()}
+                className="px-6 py-2 rounded-full text-sm font-medium text-zinc-400 hover:text-white hover:bg-zinc-800 transition-colors"
+              >
+                Load more
+              </button>
+            </div>
+          )}
         </motion.div>
 
         {/* Info footer */}
@@ -226,7 +341,7 @@ export function ExploreTransactions() {
           transition={{ duration: 0.4, delay: 0.3 }}
           className="mt-4 text-center text-xs text-zinc-600"
         >
-          Transactions are indexed from Zora Protocol on Base
+          Showing {filteredActivity.length} recently traded tokens on Base
         </motion.div>
       </div>
     </div>

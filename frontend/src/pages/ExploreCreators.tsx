@@ -60,10 +60,8 @@ export function ExploreCreators() {
       if (page?.edges) {
         for (const edge of page.edges) {
           if (edge?.node) {
-            // Filter to only CREATOR type coins
-            if (edge.node.coinType === 'CREATOR' || !edge.node.coinType) {
-              coins.push(edge.node)
-            }
+            // Show all coins (Uniswap style - no type filtering)
+            coins.push(edge.node)
           }
         }
       }
