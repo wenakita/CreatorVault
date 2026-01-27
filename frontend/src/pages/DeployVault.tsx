@@ -798,6 +798,31 @@ function DeployVaultBatcher({
     return null
   }, [cdpApiKey])
 
+  const smartWalletAddrForAuth = useMemo(() => {
+    try {
+      return smartWalletClient ? getAddress(String((smartWalletClient as any)?.account?.address ?? '')) : null
+    } catch {
+      return null
+    }
+  }, [smartWalletClient])
+
+  const connectedAddrForAuth = useMemo(() => {
+    return connectedAddress && isAddress(connectedAddress) ? (getAddress(connectedAddress) as Address) : null
+  }, [connectedAddress])
+
+  const canUsePrivySmartWallet = useMemo(() => {
+    return !!smartWalletClient && !!smartWalletAddrForAuth && smartWalletAddrForAuth.toLowerCase() === owner.toLowerCase()
+  }, [owner, smartWalletAddrForAuth, smartWalletClient])
+
+  const canUseExternalOwner = useMemo(() => {
+    return (
+      !canUsePrivySmartWallet &&
+      !!walletClient &&
+      !!connectedAddrForAuth &&
+      connectedAddrForAuth.toLowerCase() !== owner.toLowerCase()
+    )
+  }, [canUsePrivySmartWallet, connectedAddrForAuth, owner, walletClient])
+
   const resolvedTokenDecimals = typeof tokenDecimals === 'number' ? tokenDecimals : 18
   const formatDeposit = (raw?: bigint): string => {
     if (raw === undefined) return '—'
@@ -941,17 +966,37 @@ function DeployVaultBatcher({
     staleTime: 30_000,
     retry: 0,
     queryFn: async () => {
-      const create2Deployer = (await publicClient!.readContract({
-        address: batcherAddress as Address,
-        abi: CREATOR_VAULT_BATCHER_ABI,
-        functionName: 'create2Deployer',
-      })) as Address
+      let create2Deployer: Address | null = null
+      try {
+        create2Deployer = (await publicClient!.readContract({
+          address: batcherAddress as Address,
+          abi: CREATOR_VAULT_BATCHER_ABI,
+          functionName: 'create2Deployer',
+        })) as Address
+      } catch {
+        create2Deployer = null
+      }
+      if (!create2Deployer || !isAddress(String(create2Deployer))) {
+        const fallback = (CONTRACTS.universalCreate2DeployerFromStore ?? null) as Address | null
+        create2Deployer = fallback && isAddress(String(fallback)) ? fallback : null
+      }
+      if (!create2Deployer) throw new Error('Create2 deployer not available')
 
-      const protocolTreasury = (await publicClient!.readContract({
-        address: batcherAddress as Address,
-        abi: CREATOR_VAULT_BATCHER_ABI,
-        functionName: 'protocolTreasury',
-      })) as Address
+      let protocolTreasury: Address | null = null
+      try {
+        protocolTreasury = (await publicClient!.readContract({
+          address: batcherAddress as Address,
+          abi: CREATOR_VAULT_BATCHER_ABI,
+          functionName: 'protocolTreasury',
+        })) as Address
+      } catch {
+        protocolTreasury = null
+      }
+      if (!protocolTreasury || !isAddress(String(protocolTreasury))) {
+        const fallback = (CONTRACTS.protocolTreasury ?? null) as Address | null
+        protocolTreasury = fallback && isAddress(String(fallback)) ? fallback : null
+      }
+      if (!protocolTreasury) throw new Error('Protocol treasury not available')
 
       const tempOwner = batcherAddress as Address
 
@@ -1407,22 +1452,8 @@ function DeployVaultBatcher({
         // Determine deploy method:
         // 1. Privy smart wallet client (user logged in via Privy, embedded wallet signs for smart wallet)
         // 2. External EOA (user connected external wallet that owns the smart wallet)
-        const smartWalletAddr = (() => {
-          try {
-            return smartWalletClient ? getAddress(String((smartWalletClient as any)?.account?.address ?? '')) : null
-          } catch {
-            return null
-          }
-        })()
-        const canUsePrivySmartWallet =
-          !!smartWalletClient && !!smartWalletAddr && smartWalletAddr.toLowerCase() === owner.toLowerCase()
-        
-        const connectedAddr = connectedAddress ? getAddress(String(connectedAddress)) as Address : null
-        const canUseExternalOwner =
-          !canUsePrivySmartWallet &&
-          !!walletClient &&
-          !!connectedAddr &&
-          connectedAddr.toLowerCase() !== owner.toLowerCase()
+        const smartWalletAddr = smartWalletAddrForAuth
+        const connectedAddr = connectedAddrForAuth
 
         const hasMultipleInjectedProviders =
           typeof window !== 'undefined' &&
@@ -1672,14 +1703,25 @@ function DeployVaultBatcher({
     }
   }
 
-  const canAutoUpdatePayoutRecipient = !payoutMismatch
+  const canAutoUpdatePayoutRecipient =
+    !payoutMismatch || canUsePrivySmartWallet || canUseExternalOwner
 
-  const disabled =
-    busy ||
-    expectedQuery.isLoading ||
-    !expected ||
-    !canAutoUpdatePayoutRecipient ||
-    false
+  const expectedError = expectedQuery.isError
+    ? ((expectedQuery.error as any)?.message || 'Failed to compute deployment addresses.')
+    : null
+
+  const disabledReason =
+    busy
+      ? 'Deployment in progress…'
+      : expectedQuery.isLoading
+        ? 'Computing deployment addresses…'
+        : !expected
+          ? expectedError || 'Deployment addresses are not ready.'
+          : !canAutoUpdatePayoutRecipient
+            ? 'Payout recipient must be updated by the identity wallet before deploy.'
+            : null
+
+  const disabled = Boolean(disabledReason)
 
   return (
     <div className="space-y-3">
@@ -1832,6 +1874,10 @@ function DeployVaultBatcher({
       <button type="button" onClick={() => void submit()} disabled={disabled} className="btn-accent w-full rounded-lg">
         {busy ? 'Deploying…' : '1‑Click Deploy (ERC‑4337)'}
       </button>
+
+      {disabledReason && !busy ? (
+        <div className="text-[11px] text-amber-300/80">{disabledReason}</div>
+      ) : null}
 
       {marketFloorText ? <div className="text-[11px] text-zinc-500">Market floor: {marketFloorText}</div> : null}
 
