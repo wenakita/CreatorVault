@@ -371,19 +371,22 @@ async function deployViaAA(
         console.log('✅ Paymaster sponsorship approved!');
     }
     
-    // Sign the UserOperation
+    // Sign the UserOperation (required for paymaster finalization and for submission).
     console.log('✍️ Signing UserOperation...');
-    
-    // The signature depends on your smart account implementation
-    // For SimpleAccount, it's a standard ECDSA signature over the userOpHash
-    const userOpHash = await getUserOpHash(userOp, CONFIG.chain.id, CONFIG.contracts.entryPoint);
-    const signature = await account.signMessage({ message: { raw: userOpHash } });
-    userOp.signature = signature;
-    
-    // If using paymaster, get final paymaster data with signature
+
+    const signUserOp = async () => {
+        // The signature depends on your smart account implementation.
+        // For SimpleAccount, it's a standard ECDSA signature over the userOpHash.
+        const userOpHash = await getUserOpHash(userOp, CONFIG.chain.id, CONFIG.contracts.entryPoint);
+        userOp.signature = await account.signMessage({ message: { raw: userOpHash } });
+    };
+
+    await signUserOp();
+
+    // If using paymaster, get final paymaster data with signature and re-sign after updates.
     if (options.gasless && CONFIG.paymasterUrl && userOp.paymasterAndData !== '0x') {
         console.log('🔐 Finalizing paymaster data...');
-        
+
         const finalResponse = await fetch(CONFIG.paymasterUrl, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -409,10 +412,11 @@ async function deployViaAA(
                 ],
             }),
         });
-        
+
         const finalResult = await finalResponse.json();
         if (finalResult.result?.paymasterAndData) {
             userOp.paymasterAndData = finalResult.result.paymasterAndData;
+            await signUserOp();
         }
     }
     
@@ -604,4 +608,3 @@ main().catch((error) => {
     console.error('');
     process.exit(1);
 });
-
