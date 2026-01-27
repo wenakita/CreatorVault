@@ -1632,8 +1632,9 @@ function DeployVaultBatcher({
           )
         }
         
-        // For external owners, check Rabby compatibility
-        if (canUseExternalOwner && (isRabbyLike || isRabbyInjected)) {
+        // For external owners, check Rabby compatibility.
+        // IMPORTANT: If we have a Privy embedded owner signer available, prefer it and do NOT block on Rabby.
+        if (!canUsePrivyEmbeddedOwner && canUseExternalOwner && (isRabbyLike || isRabbyInjected)) {
           throw new Error(
             'Rabby blocks the eth_sign method required for smart wallet operations. Please sign in with Privy instead.',
           )
