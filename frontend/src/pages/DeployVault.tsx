@@ -2281,36 +2281,22 @@ function DeployVaultMain() {
 
   // Allow injected EOAs (Rabby/MetaMask/etc) to operate a Coinbase Smart Wallet canonical identity
   // when the EOA is an onchain owner of that smart wallet.
+  // Uses server-side API to avoid client-side RPC rate limits.
   const executionCanOperateCanonicalQuery = useQuery({
     queryKey: ['coinbaseSmartWalletOwner', canonicalIdentityAddress, connectedWalletAddress],
-    enabled: !!publicClient && !!canonicalIdentityAddress && !!connectedWalletAddress && !!identity.blockingReason,
+    enabled: !!canonicalIdentityAddress && !!connectedWalletAddress && !!identity.blockingReason,
     staleTime: 60_000,
-    retry: 0,
+    retry: 1,
     queryFn: async () => {
       const canonical = canonicalIdentityAddress as Address
       const execution = connectedWalletAddress as Address
       if (canonical.toLowerCase() === execution.toLowerCase()) return true
 
-      const [canonicalCode, execCode] = await Promise.all([
-        publicClient!.getBytecode({ address: canonical }),
-        publicClient!.getBytecode({ address: execution }),
-      ])
-      const canonicalIsContract = !!canonicalCode && canonicalCode !== '0x'
-      const executionIsContract = !!execCode && execCode !== '0x'
-      if (!canonicalIsContract) return false
-      if (executionIsContract) return false
-
-      try {
-        const isOwner = await isCoinbaseSmartWalletOwner({
-          smartWallet: canonical,
-          ownerAddress: execution,
-        })
-        console.log('[DeployVault] ownership check:', { canonical, execution, isOwner })
-        return isOwner
-      } catch (err) {
-        console.error('[DeployVault] ownership check failed:', err)
-        return false
-      }
+      // Use server-side API to check ownership (avoids client RPC rate limits)
+      return await isCoinbaseSmartWalletOwner({
+        smartWallet: canonical,
+        ownerAddress: execution,
+      })
     },
   })
 
@@ -2351,18 +2337,6 @@ function DeployVaultMain() {
   }, [connectedWalletAddress, creatorCoinOwnersQuery.data])
 
   const creatorCoinOwnershipPending = !!identity.blockingReason && creatorCoinOwnersQuery.isFetching
-
-  // Debug: log ownership check state
-  console.log('[DeployVault] ownership state:', {
-    blockingReason: identity.blockingReason,
-    queryEnabled: !!publicClient && !!canonicalIdentityAddress && !!connectedWalletAddress && !!identity.blockingReason,
-    queryStatus: executionCanOperateCanonicalQuery.status,
-    queryData: executionCanOperateCanonicalQuery.data,
-    executionCanOperateCanonical,
-    isCreatorCoinOwner,
-    canonicalIdentityAddress,
-    connectedWalletAddress,
-  })
 
   const identityBlockingReason = identity.blockingReason
     ? (executionCanOperateCanonical || isCreatorCoinOwner)
