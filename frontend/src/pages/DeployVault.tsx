@@ -841,14 +841,24 @@ function DeployVaultBatcher({
   const formatDeployError = (e: unknown): string => {
     const raw = e instanceof Error ? e.message : String(e ?? '')
     const msg = String(raw || 'Deployment failed')
+    const lower = msg.toLowerCase()
 
-    if (msg.toLowerCase().includes('bundler') || msg.toLowerCase().includes('paymaster')) {
+    if (
+      lower.includes('metamask') &&
+      (lower.includes('not found') ||
+        lower.includes('failed to connect') ||
+        lower.includes('cannot set property ethereum') ||
+        lower.includes('only a getter'))
+    ) {
+      return 'MetaMask failed to initialize because another wallet extension already controls window.ethereum. Disable one extension (MetaMask/Coinbase/Rabby), or use WalletConnect/Privy sign-in.'
+    }
+    if (lower.includes('bundler') || lower.includes('paymaster')) {
       return 'Bundler / paymaster is not configured. Set `VITE_CDP_API_KEY` (recommended) or a valid `VITE_CDP_PAYMASTER_URL` and retry.'
     }
-    if (msg.toLowerCase().includes('market floor price not available')) {
+    if (lower.includes('market floor price not available')) {
       return 'Market floor price is still loading. Wait a moment and try again.'
     }
-    if (msg.toLowerCase().includes('creatorvaultbatcher is not configured')) {
+    if (lower.includes('creatorvaultbatcher is not configured')) {
       return 'Deployment is not configured: missing `VITE_CREATOR_VAULT_BATCHER` / `CONTRACTS.creatorVaultBatcher`.'
     }
     return msg
@@ -1413,8 +1423,18 @@ function DeployVaultBatcher({
           !!walletClient &&
           !!connectedAddr &&
           connectedAddr.toLowerCase() !== owner.toLowerCase()
+
+        const hasMultipleInjectedProviders =
+          typeof window !== 'undefined' &&
+          Array.isArray((window as any)?.ethereum?.providers) &&
+          ((window as any).ethereum.providers as any[]).length > 1
         
         if (!canUsePrivySmartWallet && !canUseExternalOwner) {
+          if (hasMultipleInjectedProviders) {
+            throw new Error(
+              'Multiple wallet extensions detected. Disable one (MetaMask/Coinbase/Rabby) or use email sign-in to continue.',
+            )
+          }
           throw new Error(
             'Sign in with Privy to use your smart wallet, or connect an external wallet that owns the smart wallet.',
           )

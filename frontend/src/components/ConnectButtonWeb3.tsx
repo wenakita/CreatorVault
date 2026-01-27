@@ -1,5 +1,5 @@
 import { useAccount, useConnect, useDisconnect } from 'wagmi'
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { Wallet, ChevronDown } from 'lucide-react'
 
 /**
@@ -13,6 +13,19 @@ export function ConnectButtonWeb3() {
   const { disconnect } = useDisconnect()
   const [showMenu, setShowMenu] = useState(false)
   const [showOptions, setShowOptions] = useState(false)
+
+  const hasMultipleInjectedProviders =
+    typeof window !== 'undefined' &&
+    Array.isArray((window as any)?.ethereum?.providers) &&
+    ((window as any).ethereum.providers as any[]).length > 1
+
+  const filteredConnectors = useMemo(() => {
+    if (!hasMultipleInjectedProviders) return connectors
+    return connectors.filter((connector) => {
+      const id = String((connector as any)?.id ?? '').toLowerCase()
+      return !id.includes('injected')
+    })
+  }, [connectors, hasMultipleInjectedProviders])
 
   const formatAddress = (addr: string) => `${addr.slice(0, 6)}...${addr.slice(-4)}`
 
@@ -81,7 +94,12 @@ export function ConnectButtonWeb3() {
             onClick={() => setShowOptions(false)}
           />
           <div className="absolute right-0 top-full mt-3 w-64 card p-3 z-50 space-y-1">
-            {connectors.map((connector) => (
+            {hasMultipleInjectedProviders ? (
+              <div className="px-4 py-2 text-[11px] text-zinc-500">
+                Multiple wallet extensions detected. Use Coinbase Wallet or WalletConnect.
+              </div>
+            ) : null}
+            {filteredConnectors.map((connector) => (
               <button
                 key={connector.uid}
                 type="button"
