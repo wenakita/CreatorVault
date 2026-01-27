@@ -74,7 +74,7 @@ export const EmailStep = memo(function EmailStep({
           >
             {privyVerifyBusy ? 'Opening…' : 'Sign in'}
           </button>
-          <div className="text-[11px] text-zinc-500 text-center">Email, Farcaster, Google, or X</div>
+          <div className="text-[11px] text-zinc-500 text-center">Email, Google, Farcaster, X, or Apple</div>
           {privyVerifyError ? <div className="text-xs text-red-400 text-center">{privyVerifyError}</div> : null}
           <div className="flex items-center gap-3 my-4">
             <div className="flex-1 h-px bg-white/10" />

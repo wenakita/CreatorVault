@@ -49,8 +49,8 @@ export function PrivyClientProvider({ children }: { children: ReactNode }) {
             solana: { createOnLogin: 'off' },
           },
           loginMethodsAndOrder: {
-            primary: ['email', 'farcaster'],
-            overflow: ['google', 'twitter'],
+            primary: ['email', 'google', 'farcaster', 'twitter', 'apple'],
+            overflow: ['discord', 'github'],
           },
         } as any}
       >
