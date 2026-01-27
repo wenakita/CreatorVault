@@ -156,6 +156,7 @@ export const TokenImage = memo(function TokenImage({
   fallbackColor = 'from-orange-500 to-red-600',
   isWrapped = false,
 }: TokenImageProps) {
+  const sizeClass = sizeClasses[size]
   return (
     <TokenImageInner
       tokenAddress={tokenAddress}

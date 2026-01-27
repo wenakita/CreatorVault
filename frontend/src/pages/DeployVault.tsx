@@ -12,25 +12,21 @@ import {
   formatUnits,
   getAddress,
   getCreate2Address,
-  http,
   isAddress,
   keccak256,
   parseAbiParameters,
   toBytes,
 } from 'viem'
-import { createBundlerClient, waitForUserOperationReceipt } from 'viem/account-abstraction'
 import { useSearchParams } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { coinABI } from '@zoralabs/protocol-deployments'
 import { BarChart3, ChevronDown, Layers, Lock, Rocket, ShieldCheck } from 'lucide-react'
-// OnchainKit removed - using direct env config instead
-import { useLogin, usePrivy, useWallets } from '@privy-io/react-auth'
-import { useSmartWallets } from '@privy-io/react-auth/smart-wallets'
+// Privy removed - using connected wallet directly
+import { ConnectButtonWeb3 } from '@/components/ConnectButtonWeb3'
 import { DerivedTokenIcon } from '@/components/DerivedTokenIcon'
 import { RequestCreatorAccess } from '@/components/RequestCreatorAccess'
 import { CONTRACTS } from '@/config/contracts'
 import { useCreatorAllowlist, useFarcasterAuth, useMiniAppContext } from '@/hooks'
-import { usePrivyClientStatus } from '@/lib/privy/client'
 import { logger } from '@/lib/logger'
 import { useZoraCoin, useZoraProfile } from '@/lib/zora/hooks'
 import { getFarcasterUserByFid } from '@/lib/neynar-api'
@@ -300,35 +296,9 @@ class DeployVaultErrorBoundary extends Component<
 }
 
 export function DeployVault() {
-  const privyClientStatus = usePrivyClientStatus()
-
-  // Deploy requires Privy (auth + smart wallet). If Privy is disabled (missing env / not allowlisted),
-  // render a clear configuration hint instead of crashing by calling Privy hooks without a provider.
-  if (privyClientStatus !== 'ready') {
-    return (
-      <div className="min-h-screen bg-black text-white">
-        <section className="max-w-3xl mx-auto px-6 py-16">
-          <div className="text-[10px] uppercase tracking-[0.24em] text-zinc-500 mb-4">Deploy</div>
-          <div className="card rounded-xl p-8 space-y-3">
-            <div className="text-lg font-medium">Deploy is not configured</div>
-            <div className="text-sm text-zinc-400 leading-relaxed">
-              This page uses Privy smart wallets for 1-click deploy. In this environment, Privy is currently disabled.
-            </div>
-            <div className="text-xs text-zinc-500 leading-relaxed">
-              Set <span className="font-mono text-zinc-300">VITE_PRIVY_ENABLED=true</span> and{' '}
-              <span className="font-mono text-zinc-300">VITE_PRIVY_APP_ID</span> in <span className="font-mono">frontend/.env</span>. In
-              production, also set <span className="font-mono text-zinc-300">VITE_PRIVY_ALLOWED_ORIGINS</span> to include the deployed
-              origin.
-            </div>
-          </div>
-        </section>
-      </div>
-    )
-  }
-
   return (
     <DeployVaultErrorBoundary>
-      <DeployVaultPrivyEnabled />
+      <DeployVaultMain />
     </DeployVaultErrorBoundary>
   )
 }
@@ -796,7 +766,6 @@ function DeployVaultBatcher({
   switchAuthCta?: { label: string; onClick: () => void }
 }) {
   const publicClient = usePublicClient({ chainId: base.id })
-  const { client: smartWalletClient } = useSmartWallets()
   const { address: connectedAddress, connector } = useAccount()
   const { data: walletClient } = useWalletClient({ chainId: base.id })
   const connectorId = String((connector as any)?.id ?? '').toLowerCase()
@@ -829,11 +798,6 @@ function DeployVaultBatcher({
     if (cdpApiKey) return `https://api.developer.coinbase.com/rpc/v1/base/${cdpApiKey}`
     return null
   }, [cdpApiKey])
-
-  const bundlerClient = useMemo(() => {
-    if (!publicClient || !cdpRpcUrl) return null
-    return createBundlerClient({ client: publicClient as any, transport: http(cdpRpcUrl) })
-  }, [cdpRpcUrl, publicClient])
 
   const resolvedTokenDecimals = typeof tokenDecimals === 'number' ? tokenDecimals : 18
   const formatDeposit = (raw?: bigint): string => {
@@ -1431,36 +1395,23 @@ function DeployVaultBatcher({
         if (!publicClient) throw new Error('Public client not ready.')
         if (!cdpRpcUrl) throw new Error('Bundler / paymaster endpoint is not configured.')
 
-        // Determine whether we're sending via:
-        // - Privy smart wallet client (when connected as the smart wallet itself)
-        // - Injected EOA owner (when connected as an EOA that is an onchain owner of `owner` CSW)
-        const smartWalletAddr = (() => {
-          try {
-            return smartWalletClient ? getAddress(String((smartWalletClient as any)?.account?.address ?? '')) : null
-          } catch {
-            return null
-          }
-        })()
-        const canUsePrivySmartWallet =
-          !!smartWalletClient && !!smartWalletAddr && smartWalletAddr.toLowerCase() === owner.toLowerCase()
-        const canUseExternalOwner =
-          !!walletClient && !!connectedAddress && isAddress(String(connectedAddress)) && String(connectedAddress).toLowerCase() !== owner.toLowerCase()
-        if (!canUsePrivySmartWallet && !canUseExternalOwner) {
+        // User connects with their Coinbase Smart Wallet (or EOA that owns it)
+        if (!walletClient || !connectedAddress) {
+          throw new Error('Connect your wallet to deploy.')
+        }
+        
+        // Check if connected wallet is the owner or can operate it
+        const connectedAddr = getAddress(String(connectedAddress)) as Address
+        const isDirectOwner = connectedAddr.toLowerCase() === owner.toLowerCase()
+        
+        // For external owners (EOAs that own the smart wallet), check Rabby compatibility
+        if (!isDirectOwner && (isRabbyLike || isRabbyInjected)) {
           throw new Error(
-            'Connect the Base Account smart wallet (recommended) or connect an owner EOA (Rabby/MetaMask) to operate this smart wallet.',
+            'Rabby blocks the eth_sign method required for smart wallet operations. Please use Coinbase Wallet or another compatible wallet.'
           )
         }
-        if (canUsePrivySmartWallet && !bundlerClient) throw new Error('Bundler / paymaster endpoint is not configured.')
-
-        // Reliability guardrail:
-        // - Rabby commonly blocks `eth_sign`, which is required to sign Coinbase Smart Wallet UserOps.
-        // - Fail fast with a high-signal message instead of letting this surface as a bundler simulation error.
-        if (canUseExternalOwner && (isRabbyLike || isRabbyInjected)) {
-          throw new Error(
-            `Rabby blocks the \`eth_sign\` method required to sign smart-wallet UserOperations. Click “${switchAuthLabel ?? 'Switch sign-in'}” to continue (recommended).`,
-          )
-        }
-        const externalOwnerExec = canUseExternalOwner ? (getAddress(String(connectedAddress)) as Address) : null
+        
+        const externalOwnerExec = !isDirectOwner ? connectedAddr : null
 
         // Enforce custody: the smart wallet sender must already hold the initial deposit.
         const smartWalletBalance = (await publicClient.readContract({
@@ -1546,13 +1497,6 @@ function DeployVaultBatcher({
           },
         ]
 
-        // Privy smart wallet path:
-        // - Privy creates/links the smart wallet (embedded signer)
-        // - Privy smart wallet client sends UserOperations using your dashboard-configured bundler/paymaster
-        // - We wait for receipts via the direct CDP RPC (no /api/paymaster proxy)
-        const toCalls = (calls: Array<{ target: Address; value: bigint; data: Hex }>) =>
-          calls.map((c) => ({ to: c.target, value: c.value, data: c.data }))
-
         // Safety: constrain target addresses to known deploy surfaces (no arbitrary calldata UI).
         const assertSafe = (calls: Array<{ target: Address; value: bigint; data: Hex }>) => {
           const allow = new Set<string>([
@@ -1583,91 +1527,52 @@ function DeployVaultBatcher({
         })
 
         setPhase('phase1')
-        if (canUsePrivySmartWallet) {
-          const h1 = (await smartWalletClient.sendTransaction({
-            calls: toCalls(phase1Calls),
-            uiOptions: { showWalletUIs: false },
-          } as any)) as Hex
-          setPhaseTxs((s) => ({ ...s, userOp1: h1 }))
-          const r1 = await waitForUserOperationReceipt(bundlerClient as any, { hash: h1 as any, timeout: 180_000 })
-          const tx1 = r1.receipt.transactionHash as Hex
-          setTxId(tx1)
-          setPhaseTxs((s) => ({ ...s, tx1 }))
-          logger.warn('[DeployVault] phase1_confirmed', { userOpHash: h1, txHash: tx1 })
-        } else {
-          const r1 = await sendCoinbaseSmartWalletUserOperation({
-            publicClient: publicClient as any,
-            walletClient: walletClient as any,
-            bundlerUrl: cdpRpcUrl,
-            smartWallet: owner,
-            ownerAddress: externalOwnerExec as Address,
-            calls: phase1Calls.map((c) => ({ to: c.target, value: c.value, data: c.data })),
-            version: '1',
-            // Do not silently fall back to `personal_sign` (EIP-191 prefixed) which is often incompatible.
-            // If `eth_sign` is unavailable, fail fast with a clear error so we can route to Base Account.
-            userOpSignMode: 'eth_sign',
-          })
-          setTxId(r1.transactionHash)
-          setPhaseTxs((s) => ({ ...s, userOp1: r1.userOpHash, tx1: r1.transactionHash }))
-          logger.warn('[DeployVault] phase1_confirmed', { userOpHash: r1.userOpHash, txHash: r1.transactionHash })
-        }
+        const r1 = await sendCoinbaseSmartWalletUserOperation({
+          publicClient: publicClient as any,
+          walletClient: walletClient as any,
+          bundlerUrl: cdpRpcUrl,
+          smartWallet: owner,
+          ownerAddress: externalOwnerExec ?? connectedAddr,
+          calls: phase1Calls.map((c) => ({ to: c.target, value: c.value, data: c.data })),
+          version: '1',
+          userOpSignMode: 'eth_sign',
+        })
+        setTxId(r1.transactionHash)
+        setPhaseTxs((s) => ({ ...s, userOp1: r1.userOpHash, tx1: r1.transactionHash }))
+        logger.warn('[DeployVault] phase1_confirmed', { userOpHash: r1.userOpHash, txHash: r1.transactionHash })
+
 
         setPhase('phase2')
-        if (canUsePrivySmartWallet) {
-          const h2 = (await smartWalletClient.sendTransaction({
-            calls: toCalls(phase2Calls),
-            uiOptions: { showWalletUIs: false },
-          } as any)) as Hex
-          setPhaseTxs((s) => ({ ...s, userOp2: h2 }))
-          const r2 = await waitForUserOperationReceipt(bundlerClient as any, { hash: h2 as any, timeout: 180_000 })
-          const tx2 = r2.receipt.transactionHash as Hex
-          setTxId(tx2)
-          setPhaseTxs((s) => ({ ...s, tx2 }))
-          logger.warn('[DeployVault] phase2_confirmed', { userOpHash: h2, txHash: tx2 })
-        } else {
-          const r2 = await sendCoinbaseSmartWalletUserOperation({
-            publicClient: publicClient as any,
-            walletClient: walletClient as any,
-            bundlerUrl: cdpRpcUrl,
-            smartWallet: owner,
-            ownerAddress: externalOwnerExec as Address,
-            calls: phase2Calls.map((c) => ({ to: c.target, value: c.value, data: c.data })),
-            version: '1',
-            userOpSignMode: 'eth_sign',
-          })
-          setTxId(r2.transactionHash)
-          setPhaseTxs((s) => ({ ...s, userOp2: r2.userOpHash, tx2: r2.transactionHash }))
-          logger.warn('[DeployVault] phase2_confirmed', { userOpHash: r2.userOpHash, txHash: r2.transactionHash })
-        }
+        const r2 = await sendCoinbaseSmartWalletUserOperation({
+          publicClient: publicClient as any,
+          walletClient: walletClient as any,
+          bundlerUrl: cdpRpcUrl,
+          smartWallet: owner,
+          ownerAddress: externalOwnerExec ?? connectedAddr,
+          calls: phase2Calls.map((c) => ({ to: c.target, value: c.value, data: c.data })),
+          version: '1',
+          userOpSignMode: 'eth_sign',
+        })
+        setTxId(r2.transactionHash)
+        setPhaseTxs((s) => ({ ...s, userOp2: r2.userOpHash, tx2: r2.transactionHash }))
+        logger.warn('[DeployVault] phase2_confirmed', { userOpHash: r2.userOpHash, txHash: r2.transactionHash })
+
 
         if (phase3Calls.length > 0) {
           setPhase('phase3')
-          if (canUsePrivySmartWallet) {
-            const h3 = (await smartWalletClient.sendTransaction({
-              calls: toCalls(phase3Calls),
-              uiOptions: { showWalletUIs: false },
-            } as any)) as Hex
-            setPhaseTxs((s) => ({ ...s, userOp3: h3 }))
-            const r3 = await waitForUserOperationReceipt(bundlerClient as any, { hash: h3 as any, timeout: 180_000 })
-            const tx3 = r3.receipt.transactionHash as Hex
-            setTxId(tx3)
-            setPhaseTxs((s) => ({ ...s, tx3 }))
-            logger.warn('[DeployVault] phase3_confirmed', { userOpHash: h3, txHash: tx3 })
-          } else {
-            const r3 = await sendCoinbaseSmartWalletUserOperation({
-              publicClient: publicClient as any,
-              walletClient: walletClient as any,
-              bundlerUrl: cdpRpcUrl,
-              smartWallet: owner,
-              ownerAddress: externalOwnerExec as Address,
-              calls: phase3Calls.map((c) => ({ to: c.target, value: c.value, data: c.data })),
-              version: '1',
-              userOpSignMode: 'eth_sign',
-            })
-            setTxId(r3.transactionHash)
-            setPhaseTxs((s) => ({ ...s, userOp3: r3.userOpHash, tx3: r3.transactionHash }))
-            logger.warn('[DeployVault] phase3_confirmed', { userOpHash: r3.userOpHash, txHash: r3.transactionHash })
-          }
+          const r3 = await sendCoinbaseSmartWalletUserOperation({
+            publicClient: publicClient as any,
+            walletClient: walletClient as any,
+            bundlerUrl: cdpRpcUrl,
+            smartWallet: owner,
+            ownerAddress: externalOwnerExec ?? connectedAddr,
+            calls: phase3Calls.map((c) => ({ to: c.target, value: c.value, data: c.data })),
+            version: '1',
+            userOpSignMode: 'eth_sign',
+          })
+          setTxId(r3.transactionHash)
+          setPhaseTxs((s) => ({ ...s, userOp3: r3.userOpHash, tx3: r3.transactionHash }))
+          logger.warn('[DeployVault] phase3_confirmed', { userOpHash: r3.userOpHash, txHash: r3.transactionHash })
         }
 
         setPhase('done')
@@ -1882,21 +1787,18 @@ function DeployVaultBatcher({
   )
 }
 
-function DeployVaultPrivyEnabled() {
-  const { address, isConnected, connector } = useAccount()
-  const { ready: privyReady, authenticated: privyAuthenticated } = usePrivy()
+function DeployVaultMain() {
+  const { address, isConnected } = useAccount()
   const { data: walletClient } = useWalletClient({ chainId: base.id })
-  const { login } = useLogin()
-  const { wallets: privyWallets } = useWallets()
   const [creatorToken, setCreatorToken] = useState('')
   const [showAdvanced, setShowAdvanced] = useState(false)
   const [linkOwnerBusy, setLinkOwnerBusy] = useState(false)
   const [linkOwnerError, setLinkOwnerError] = useState<string | null>(null)
-  const baseAccountWallet = useMemo(() => privyWallets.find((w) => w.walletClientType === 'base_account') ?? null, [privyWallets])
-  const baseAccountAddress = useMemo(() => {
-    const raw = typeof baseAccountWallet?.address === 'string' ? baseAccountWallet.address : ''
-    return isAddress(raw) ? (getAddress(raw) as Address) : null
-  }, [baseAccountWallet?.address])
+  
+  // Connected wallet is the user's Coinbase Smart Wallet
+  const connectedWalletAddress = useMemo(() => {
+    return address && isAddress(address) ? getAddress(address) as Address : null
+  }, [address])
   const deploymentVersion = useMemo(() => {
     const raw = (import.meta.env.VITE_DEPLOYMENT_VERSION as string | undefined) ?? 'v3'
     const v = String(raw).trim()
@@ -1926,25 +1828,12 @@ function DeployVaultPrivyEnabled() {
     setCreatorToken(prefillToken)
   }, [prefillToken, creatorToken.length])
 
-  // Soft “recent auth” marker used for deploy guardrails (no prompts).
-  useEffect(() => {
-    if (!privyAuthenticated) return
-    try {
-      localStorage.setItem('cv:privy:lastAuthAt', String(Date.now()))
-    } catch {
-      // ignore
-    }
-  }, [privyAuthenticated])
 
   // Detect "your" creator coin + smart wallet from your Zora profile and prefill inputs once.
   const myProfileQuery = useZoraProfile(address)
   const myProfile = myProfileQuery.data
   const miniApp = useMiniAppContext()
   const farcasterAuth = useFarcasterAuth()
-  const connectorId = String(connector?.id ?? '').toLowerCase()
-  const connectorName = String(connector?.name ?? '').toLowerCase()
-  const isZoraReadOnly = isConnected && (connectorId === 'privy-zora' || connectorName.includes('zora'))
-
   // `sdk.context.*` is untrusted. Prefer verified Farcaster auth (Quick Auth / SIWF) when available.
   const farcasterFidForLookup = useMemo(() => {
     if (typeof farcasterAuth.fid === 'number' && farcasterAuth.fid > 0) return farcasterAuth.fid
@@ -2111,11 +2000,6 @@ function DeployVaultPrivyEnabled() {
   }, [prefillToken, creatorToken, verifiedFarcasterUsername, detectedCreatorCoinFromFarcaster])
 
   const tokenIsValid = isAddress(creatorToken)
-
-  const connectedWalletAddress = useMemo(() => {
-    const a = address ? String(address) : ''
-    return isAddress(a) ? (a as Address) : null
-  }, [address])
 
   // NOTE: selectedOwnerWallet (smart wallet vs connected wallet) is computed further down once we know
   // payoutRecipient/creatorAddress.
@@ -2303,8 +2187,8 @@ function DeployVaultPrivyEnabled() {
   }, [canonicalIdentityAddress, canonicalIdentityIsContract])
 
   const baseAccountOwnerQuery = useQuery({
-    queryKey: ['coinbaseSmartWalletOwner', canonicalSmartWalletAddress, baseAccountAddress],
-    enabled: !!publicClient && !!canonicalSmartWalletAddress && !!baseAccountAddress,
+    queryKey: ['coinbaseSmartWalletOwner', canonicalSmartWalletAddress, connectedWalletAddress],
+    enabled: !!publicClient && !!canonicalSmartWalletAddress && !!connectedWalletAddress,
     staleTime: 30_000,
     retry: 0,
     queryFn: async () => {
@@ -2312,13 +2196,13 @@ function DeployVaultPrivyEnabled() {
         address: canonicalSmartWalletAddress as Address,
         abi: COINBASE_SMART_WALLET_OWNER_LINK_ABI,
         functionName: 'isOwnerAddress',
-        args: [baseAccountAddress as Address],
+        args: [connectedWalletAddress as Address],
       })) as boolean
     },
   })
 
   const linkBaseAccountOwner = useCallback(async () => {
-    if (!publicClient || !walletClient || !canonicalSmartWalletAddress || !baseAccountAddress) return
+    if (!publicClient || !walletClient || !canonicalSmartWalletAddress || !connectedWalletAddress) return
     setLinkOwnerBusy(true)
     setLinkOwnerError(null)
     try {
@@ -2343,7 +2227,7 @@ function DeployVaultPrivyEnabled() {
         address: canonicalSmartWalletAddress as Address,
         abi: COINBASE_SMART_WALLET_OWNER_LINK_ABI,
         functionName: 'addOwnerAddress',
-        args: [baseAccountAddress as Address],
+        args: [connectedWalletAddress as Address],
       })
       await (publicClient as any).waitForTransactionReceipt({ hash })
       await baseAccountOwnerQuery.refetch()
@@ -2352,7 +2236,7 @@ function DeployVaultPrivyEnabled() {
     } finally {
       setLinkOwnerBusy(false)
     }
-  }, [baseAccountAddress, baseAccountOwnerQuery, canonicalSmartWalletAddress, connectedWalletAddress, publicClient, walletClient])
+  }, [connectedWalletAddress, baseAccountOwnerQuery, canonicalSmartWalletAddress, connectedWalletAddress, publicClient, walletClient])
 
   // Allow injected EOAs (Rabby/MetaMask/etc) to operate a Coinbase Smart Wallet canonical identity
   // when the EOA is an onchain owner of that smart wallet.
@@ -2403,12 +2287,12 @@ function DeployVaultPrivyEnabled() {
   // via the Privy smart-wallet bridge.
   const isAuthorizedDeployer = !identityBlockingReason
   const baseAccountIsOwner = baseAccountOwnerQuery.data === true
+  // Show link option when connected wallet differs from canonical identity
   const showBaseAccountLink =
-    privyAuthenticated &&
     isConnected &&
     !!canonicalSmartWalletAddress &&
-    !!baseAccountAddress &&
-    baseAccountAddress.toLowerCase() !== canonicalSmartWalletAddress.toLowerCase()
+    !!connectedWalletAddress &&
+    connectedWalletAddress.toLowerCase() !== canonicalSmartWalletAddress.toLowerCase()
 
   const { data: deploySenderTokenBalance } = useReadContract({
     address: tokenIsValid ? (creatorToken as `0x${string}`) : undefined,
@@ -3210,7 +3094,7 @@ function DeployVaultPrivyEnabled() {
                   </div>
                   <div className="flex items-center justify-between text-[11px] text-zinc-600">
                     <span>Base Account</span>
-                    <span className="font-mono text-zinc-300">{shortAddress(String(baseAccountAddress))}</span>
+                    <span className="font-mono text-zinc-300">{shortAddress(String(connectedWalletAddress))}</span>
                   </div>
                   <div className="flex items-center justify-between text-[11px] text-zinc-600">
                     <span>Creator smart wallet</span>
@@ -3234,99 +3118,13 @@ function DeployVaultPrivyEnabled() {
                 </div>
               ) : null}
 
-              {!privyReady ? (
-                <button
-                  disabled
-                  className="w-full py-4 bg-black/30 border border-zinc-900/60 rounded-lg text-zinc-600 text-sm cursor-not-allowed"
-                >
-                  Loading…
-                </button>
-              ) : !privyAuthenticated ? (
-                <div className="space-y-2">
-                  {miniApp.isBaseApp ? (
-                    <>
-                      <button
-                        type="button"
-                        className="btn-accent w-full"
-                        onClick={() =>
-                          void Promise.resolve(
-                            login({
-                              // Inside Base app, default to Base Account.
-                              loginMethods: ['wallet'],
-                            } as any),
-                          )
-                        }
-                      >
-                        Continue with Base Account
-                      </button>
-                      <button
-                        type="button"
-                        className="btn-primary w-full"
-                        onClick={() =>
-                          void Promise.resolve(
-                            login({
-                              loginMethods: ['email'],
-                            } as any),
-                          )
-                        }
-                      >
-                        Use email instead
-                      </button>
-                      <div className="text-[11px] text-zinc-600">Base Account is fastest inside Base app.</div>
-                    </>
-                  ) : (
-                    <>
-                      <button
-                        type="button"
-                        className="btn-accent w-full"
-                        onClick={() =>
-                          void Promise.resolve(
-                            login({
-                              loginMethods: ['email'],
-                            } as any),
-                          )
-                        }
-                      >
-                        Continue with email
-                      </button>
-                      <button
-                        type="button"
-                        className="btn-primary w-full"
-                        onClick={() =>
-                          void Promise.resolve(
-                            login({
-                              // Outside Base app, default to the embedded signer (recovery password).
-                              loginMethods: ['wallet'],
-                            } as any),
-                          )
-                        }
-                      >
-                        Use Base Account / wallet instead (advanced)
-                      </button>
-                      <div className="text-[11px] text-zinc-600">
-                        Email uses your recovery password on a new device (no seed phrase).
-                      </div>
-                      <div className="text-[11px] text-zinc-600">
-                        Some extensions block required signing methods for smart wallets—email is the most reliable path.
-                      </div>
-                    </>
-                  )}
+              {!isConnected ? (
+                <div className="space-y-3">
+                  <ConnectButtonWeb3 />
                   <div className="text-[11px] text-zinc-600">
-                    Sign in to set up your smart wallet. Deploy runs from your Privy smart wallet on Base.
+                    Connect your Coinbase Smart Wallet to deploy.
                   </div>
-                  {isZoraReadOnly ? (
-                    <div className="text-[11px] text-amber-300/80">
-                      Zora wallet is read-only in CreatorVault - connect a signing wallet to deploy.
-                    </div>
-                  ) : null}
                 </div>
-              ) : !isConnected ? (
-                <button
-                  disabled
-                  className="w-full py-4 bg-black/30 border border-zinc-900/60 rounded-lg text-zinc-600 text-sm cursor-not-allowed"
-                >
-                  Setting up wallet…
-                </button>
               ) : !tokenIsValid && creatorAllowlistQuery.isLoading ? (
                 <button
                   disabled
@@ -3427,15 +3225,6 @@ function DeployVaultPrivyEnabled() {
                     marketFloorTwapDurationSec={marketFloorQuery.data?.creatorZora.durationSec ?? null}
                     marketFloorDiscountBps={marketFloorQuery.data?.zoraEth.discountBps ?? null}
                     onSuccess={() => {}}
-                    switchAuthCta={{
-                      label: miniApp.isBaseApp ? 'Switch to Base Account' : 'Switch to email (recommended)',
-                      onClick: () =>
-                        void Promise.resolve(
-                          login({
-                            loginMethods: [miniApp.isBaseApp ? 'wallet' : 'email'],
-                          } as any),
-                        ),
-                    }}
                   />
                 </>
               ) : (
