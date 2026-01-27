@@ -25,7 +25,7 @@ import {
     type Hex
 } from 'viem';
 import { base } from 'viem/chains';
-import { privateKeyToAccount } from 'viem/accounts';
+import { privateKeyToAccount, sign } from 'viem/accounts';
 
 // =================================
 // CONFIG
@@ -371,19 +371,27 @@ async function deployViaAA(
         console.log('✅ Paymaster sponsorship approved!');
     }
     
-    // Sign the UserOperation
+    // Sign the UserOperation (required for paymaster finalization and for submission).
     console.log('✍️ Signing UserOperation...');
-    
-    // The signature depends on your smart account implementation
-    // For SimpleAccount, it's a standard ECDSA signature over the userOpHash
-    const userOpHash = await getUserOpHash(userOp, CONFIG.chain.id, CONFIG.contracts.entryPoint);
-    const signature = await account.signMessage({ message: { raw: userOpHash } });
-    userOp.signature = signature;
-    
-    // If using paymaster, get final paymaster data with signature
+
+    const signUserOp = async () => {
+        // The signature depends on your smart account implementation.
+        // For SimpleAccount, it's a standard ECDSA signature over the raw userOpHash (no EIP-191 prefix).
+        const userOpHash = await getUserOpHash(userOp, CONFIG.chain.id, CONFIG.contracts.entryPoint);
+        const signMode = (process.env.USEROP_SIGN_MODE || 'raw').toLowerCase();
+        if (signMode === 'eip191' || signMode === 'personal_sign') {
+            userOp.signature = await account.signMessage({ message: { raw: userOpHash } });
+            return;
+        }
+        userOp.signature = await sign({ hash: userOpHash, privateKey: CONFIG.privateKey, to: 'hex' });
+    };
+
+    await signUserOp();
+
+    // If using paymaster, get final paymaster data with signature and re-sign after updates.
     if (options.gasless && CONFIG.paymasterUrl && userOp.paymasterAndData !== '0x') {
         console.log('🔐 Finalizing paymaster data...');
-        
+
         const finalResponse = await fetch(CONFIG.paymasterUrl, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -409,10 +417,11 @@ async function deployViaAA(
                 ],
             }),
         });
-        
+
         const finalResult = await finalResponse.json();
         if (finalResult.result?.paymasterAndData) {
             userOp.paymasterAndData = finalResult.result.paymasterAndData;
+            await signUserOp();
         }
     }
     
@@ -564,6 +573,7 @@ async function main() {
 ║    SMART_ACCOUNT      - Your ERC-4337 Smart Account address                ║
 ║    PRIVATE_KEY        - Private key (owner of smart account)               ║
 ║    CREATOR_FACTORY    - CreatorOVaultFactory address                       ║
+║    USEROP_SIGN_MODE   - raw (default) or eip191 for signature mode         ║
 ║                                                                            ║
 ║  Optional (defaults to Coinbase):                                          ║
 ║    BASE_RPC_URL       - Base RPC (default: mainnet.base.org)               ║
@@ -604,4 +614,3 @@ main().catch((error) => {
     console.error('');
     process.exit(1);
 });
-
