@@ -41,15 +41,5 @@ export function isPrivyClientEnabled(): boolean {
   // Explicit enable flag (so Privy can't break production unexpectedly).
   if (!isTruthyEnv(import.meta.env.VITE_PRIVY_ENABLED)) return false
   if (!getPrivyAppId()) return false
-
-  // Local dev is allowed by default.
-  if (import.meta.env.DEV) return true
-
-  // Production safety: only allow on explicitly allowlisted origins.
-  if (typeof window === 'undefined') return false
-  // Admin access gate should not be blocked by Privy session failures.
-  if (window.location.pathname.startsWith('/admin/creator-access')) return false
-  const allowed = getAllowedOriginsFromEnv()
-  if (allowed.size === 0) return false
-  return allowed.has(window.location.origin)
+  return true
 }
