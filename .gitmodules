@@ -1,18 +1,24 @@
 [submodule "lib/forge-std"]
 	path = lib/forge-std
 	url = https://github.com/foundry-rs/forge-std
+	shallow = true
 [submodule "lib/v3-core"]
 	path = lib/v3-core
 	url = https://github.com/Uniswap/v3-core
+	shallow = true
 [submodule "lib/v3-periphery"]
 	path = lib/v3-periphery
 	url = https://github.com/Uniswap/v3-periphery
+	shallow = true
 [submodule "lib/solidity-lib"]
 	path = lib/solidity-lib
 	url = https://github.com/Uniswap/solidity-lib
+	shallow = true
 [submodule "lib/liquidity-launcher"]
 	path = lib/liquidity-launcher
 	url = https://github.com/Uniswap/liquidity-launcher
+	shallow = true
 [submodule "lib/continuous-clearing-auction"]
 	path = lib/continuous-clearing-auction
 	url = https://github.com/Uniswap/continuous-clearing-auction
+	shallow = true
