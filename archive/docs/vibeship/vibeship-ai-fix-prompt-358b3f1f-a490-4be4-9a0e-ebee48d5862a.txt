@@ -1,6 +1,0 @@
-ARCHIVED (legacy reference)
-
-This file referenced legacy paths and is archived to keep active docs clean.
-
-Full content is available in git history prior to archival (2026-01-19).
-
