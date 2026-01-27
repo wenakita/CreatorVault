@@ -24,7 +24,6 @@ import type {
   VerificationState,
   WaitlistState,
 } from './waitlistTypes'
-import { PersonaStep } from './steps/PersonaStep'
 import { VerifyStep } from './steps/VerifyStep'
 import { EmailStep } from './steps/EmailStep'
 import { DoneStep } from './steps/DoneStep'
@@ -52,9 +51,9 @@ const EMPTY_ACTION_STATE: Record<ActionKey, boolean> = {
 }
 
 const initialFlowState: FlowState = {
-  persona: null,
-  step: 'persona',
-  contactPreference: 'wallet',
+  persona: 'creator', // Default to creator - simplified flow
+  step: 'email', // Start with email input
+  contactPreference: 'email',
   email: '',
   busy: false,
   error: null,
@@ -228,31 +227,21 @@ function flowReducer(state: FlowState, action: FlowAction): FlowState {
     case 'reset':
       return initialFlowState
     case 'select_persona': {
-      if (state.step !== 'persona') return state
-      const isUser = action.persona === 'user'
-      return {
-        ...state,
-        persona: action.persona,
-        step: isUser ? 'email' : 'verify',
-        contactPreference: 'email',
-      }
+      // Simplified flow - persona is pre-set to 'creator'
+      return state
     }
     case 'back': {
-      if (state.step === 'verify') return { ...state, step: 'persona' }
-      if (state.step === 'email') {
-        if (state.persona === 'creator') return { ...state, step: 'verify' }
-        if (state.persona === 'user') return { ...state, step: 'persona' }
-        return { ...state, step: 'persona' }
-      }
+      // Simplified flow: email → verify → done
+      if (state.step === 'verify') return { ...state, step: 'email' }
       return state
     }
     case 'verified':
+      // After verification, go to done (submit happens during verification)
       if (state.step !== 'verify') return state
-      if (!state.persona) return state
-      return { ...state, step: 'email' }
+      return state
     case 'advance_email':
-      if (!state.persona) return state
-      return { ...state, step: 'email' }
+      // From email step, advance to verify step
+      return { ...state, step: 'verify' }
     case 'submit_success':
       if (state.step === 'done') return state
       return { ...state, step: 'done', doneEmail: action.doneEmail }
@@ -359,26 +348,12 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
     dispatchWaitlist({ type: 'patch', patch })
   }, [])
 
-  const selectPersona = useCallback((persona: Persona) => dispatchFlow({ type: 'select_persona', persona }), [])
   const goBackFlow = useCallback(() => dispatchFlow({ type: 'back' }), [])
-  const advanceAfterVerify = useCallback(() => dispatchFlow({ type: 'verified' }), [])
   const advanceToEmail = useCallback(() => dispatchFlow({ type: 'advance_email' }), [])
   const submitSuccess = useCallback((doneEmail: string | null) => dispatchFlow({ type: 'submit_success', doneEmail }), [])
   const setEmail = useCallback((email: string) => dispatchFlow({ type: 'set_email', email }), [])
   const setBusy = useCallback((busy: boolean) => dispatchFlow({ type: 'set_busy', busy }), [])
   const setError = useCallback((error: string | null) => dispatchFlow({ type: 'set_error', error }), [])
-  const setContactPreference = useCallback(
-    (contactPreference: ContactPreference) => dispatchFlow({ type: 'set_contact_preference', contactPreference }),
-    [],
-  )
-  const handleSelectCreator = useCallback(() => {
-    selectPersona('creator')
-    setError(null)
-  }, [selectPersona, setError])
-  const handleSelectUser = useCallback(() => {
-    selectPersona('user')
-    setError(null)
-  }, [selectPersona, setError])
   const handleInvalidEmail = useCallback(() => {
     setError('Enter a valid email address.')
   }, [setError])
@@ -404,7 +379,6 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
     (error: string) => dispatchVerification({ type: 'base_sub_error', error }),
     [],
   )
-
   const setActionsDone = useCallback(
     (actionsDone: Record<ActionKey, boolean>) => dispatchWaitlist({ type: 'setActions', actions: actionsDone }),
     [],
@@ -419,14 +393,11 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
     privyVerifyError,
     baseSubAccount,
     baseSubAccountBusy,
-    baseSubAccountError,
   } = verification
   const {
     creatorCoin,
     creatorCoinBusy,
     claimCoinBusy,
-    claimCoinError,
-    referralCodeTaken,
     claimReferralCode,
     inviteToast,
     inviteTemplateIdx,
@@ -595,15 +566,8 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
 
   const emailTrimmed = useMemo(() => normalizeEmail(email), [email])
   const isEmailValid = useMemo(() => isValidEmail(emailTrimmed), [emailTrimmed])
-  const hasVerification = useMemo(() => Boolean(verifiedWallet || verifiedSolana), [verifiedWallet, verifiedSolana])
-  const wantsEmail = contactPreference === 'email'
-  const canUseWallet = hasVerification
-  const canSubmit =
-    persona === 'creator'
-      ? hasVerification && isEmailValid
-      : persona === 'user'
-        ? isEmailValid
-        : false
+  // Simplified flow: can submit when email is valid and creator coin is found
+  const canSubmit = isEmailValid && !!creatorCoin?.address
   const flowBusy = busy || siwe.busy
   const connectedAddress = useMemo(
     () =>
@@ -623,33 +587,15 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
   }, [])
   const isBypassAdmin = !!connectedAddress && adminBypassSet.has(connectedAddress)
 
-  const forcedPersona = useMemo(() => {
-    const q = new URLSearchParams(location.search)
-    const raw = (q.get('persona') ?? '').trim().toLowerCase()
-    return raw === 'creator' ? ('creator' as const) : raw === 'user' ? ('user' as const) : null
-  }, [location.search])
-  const forcedPersonaAppliedRef = useRef(false)
-
-  useEffect(() => {
-    if (!forcedPersona) return
-    if (forcedPersonaAppliedRef.current) return
-    if (step !== 'persona') return
-    forcedPersonaAppliedRef.current = true
-    selectPersona(forcedPersona)
-  }, [forcedPersona, selectPersona, step])
-
-  const totalSteps = useMemo(() => {
-    if (persona === 'creator') return 4
-    if (persona === 'user') return 3
-    return 0
-  }, [persona])
+  // Simplified flow: email → verify → done (3 steps)
+  const totalSteps = 3
 
   const stepIndex = useMemo(() => {
-    if (step === 'persona') return 1
+    if (step === 'email') return 1
     if (step === 'verify') return 2
-    if (step === 'email') return persona === 'user' ? 2 : 3
-    return totalSteps
-  }, [persona, step, totalSteps])
+    if (step === 'done') return 3
+    return 1
+  }, [step])
 
   const progressPct = useMemo(() => {
     if (!totalSteps) return 0
@@ -657,10 +603,10 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
   }, [stepIndex, totalSteps])
 
   useEffect(() => {
-    if (step === 'email' && (persona === 'creator' || wantsEmail)) {
+    if (step === 'email') {
       requestAnimationFrame(() => emailInputRef.current?.focus())
     }
-  }, [persona, step, wantsEmail])
+  }, [step])
 
   const refreshPosition = useCallback(
     async (emailForSync: string) => {
@@ -790,12 +736,6 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
   }, [miniApp.isBaseApp, miniApp.isMiniApp])
   const displayEmail = doneEmail ?? null
 
-  const handleClaimReferralCodeChange = useCallback(
-    (value: string) => {
-      patchWaitlist({ claimReferralCode: value })
-    },
-    [patchWaitlist],
-  )
   const handleFollow = useCallback(() => {
     markAction('follow')
   }, [markAction])
@@ -1123,15 +1063,7 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
     markAction('saveApp')
   }, [markAction, miniApp.added])
 
-  // UX: once verified, immediately advance to contact (no extra "Continue" click).
-  useEffect(() => {
-    if (step !== 'verify') return
-    if (!hasVerification) return
-    const timer = window.setTimeout(() => {
-      advanceAfterVerify()
-    }, 800)
-    return () => window.clearTimeout(timer)
-  }, [advanceAfterVerify, hasVerification, step])
+  // Simplified flow: no auto-advance - user clicks "Join Waitlist" to submit
 
   useEffect(() => {
     if (!miniApp.isMiniApp) {
@@ -1264,21 +1196,6 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
     goBackFlow()
   }, [goBackFlow, setError])
 
-  const compactNumber = useMemo(
-    () => new Intl.NumberFormat('en-US', { notation: 'compact', maximumFractionDigits: 1 }),
-    [],
-  )
-
-  function formatUsd(value: number | null): string {
-    if (typeof value !== 'number' || !Number.isFinite(value)) return '—'
-    return `$${compactNumber.format(value)}`
-  }
-
-  function formatCount(value: number | null): string {
-    if (typeof value !== 'number' || !Number.isFinite(value)) return '—'
-    return compactNumber.format(value)
-  }
-
   return (
     <section id={variant === 'embedded' ? sectionId : undefined} className={containerClass}>
       <div className={innerWrapClass}>
@@ -1304,9 +1221,10 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
         )}
 
         <div className={cardWrapClass}>
-          {step !== 'persona' ? (
+          {/* Show back button on verify step, reset on done step */}
+          {step === 'verify' || step === 'done' ? (
             <div className="flex items-center justify-between mb-4">
-              {step !== 'done' ? (
+              {step === 'verify' ? (
                 <button
                   type="button"
                   className="inline-flex items-center gap-2 text-[11px] text-zinc-500 hover:text-zinc-300 transition-colors"
@@ -1343,54 +1261,35 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
           </div>
 
           <AnimatePresence mode="wait">
-            {step === 'persona' ? (
-              <PersonaStep onSelectCreator={handleSelectCreator} onSelectUser={handleSelectUser} />
-            ) : null}
-
             {step === 'verify' ? (
               <VerifyStep
                 verifiedWallet={verifiedWallet}
-                verifiedSolana={verifiedSolana}
                 showPrivy={showPrivy}
                 showPrivyReady={showPrivyReady}
                 privyReady={privyReady}
                 privyVerifyBusy={privyVerifyBusy}
                 privyVerifyError={privyVerifyError}
-                privyAuthed={privyAuthed}
-                baseSubAccountBusy={baseSubAccountBusy}
-                baseSubAccount={baseSubAccount}
-                baseSubAccountError={baseSubAccountError}
+                creatorCoin={creatorCoin}
+                creatorCoinBusy={creatorCoinBusy}
+                busy={busy}
+                canSubmit={canSubmit}
                 onSignOutWallet={signOutWallet}
                 onPrivyContinue={handlePrivyContinue}
+                onSubmit={submitWaitlist}
               />
             ) : null}
 
             {step === 'email' ? (
               <EmailStep
-                persona={persona}
-                verifiedWallet={verifiedWallet}
-                creatorCoin={creatorCoin}
-                claimCoinError={claimCoinError}
-                referralCodeTaken={referralCodeTaken}
-                claimReferralCode={claimReferralCode}
-                wantsEmail={wantsEmail}
-                canUseWallet={canUseWallet}
-                contactPreference={contactPreference}
-                onContactPreferenceChange={setContactPreference}
                 email={email}
                 emailTrimmed={emailTrimmed}
                 emailInputRef={emailInputRef}
                 onEmailChange={setEmail}
                 error={error}
                 busy={busy}
-                canSubmit={canSubmit}
                 isEmailValid={isEmailValid}
-                onSubmit={submitWaitlist}
+                onContinue={advanceToEmail}
                 onInvalidEmail={handleInvalidEmail}
-                onClaimReferralCodeChange={handleClaimReferralCodeChange}
-                appUrl={appUrl}
-                formatUsd={formatUsd}
-                formatCount={formatCount}
               />
             ) : null}
 

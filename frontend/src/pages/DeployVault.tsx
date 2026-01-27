@@ -115,6 +115,11 @@ const COINBASE_SMART_WALLET_OWNER_LINK_ABI = [
   },
 ] as const
 
+const CREATOR_COIN_OWNERS_ABI = [
+  { type: 'function', name: 'totalOwners', inputs: [], outputs: [{ type: 'uint256' }], stateMutability: 'view' },
+  { type: 'function', name: 'ownerAt', inputs: [{ type: 'uint256' }], outputs: [{ type: 'address' }], stateMutability: 'view' },
+] as const
+
 function asCoinbaseSmartWalletOwnerBytes(owner: Address): Hex {
   // Coinbase Smart Wallet stores EOA owners as 32-byte left-padded address bytes.
   return encodeAbiParameters([{ type: 'address' }], [owner]) as Hex
@@ -2353,10 +2358,45 @@ function DeployVaultMain() {
   const executionCanOperateCanonical = executionCanOperateCanonicalQuery.data === true
   const executionCanOperateCanonicalPending = !!identity.blockingReason && executionCanOperateCanonicalQuery.isFetching
 
+  // Check if connected EOA is an owner of the Creator Coin itself (via ownerAt)
+  const creatorCoinOwnersQuery = useQuery({
+    queryKey: ['creatorCoinOwners', creatorToken],
+    enabled: !!publicClient && tokenIsValid && !!connectedWalletAddress && !!identity.blockingReason,
+    staleTime: 60_000,
+    retry: 0,
+    queryFn: async () => {
+      const totalOwners = await publicClient!.readContract({
+        address: creatorToken as Address,
+        abi: CREATOR_COIN_OWNERS_ABI,
+        functionName: 'totalOwners',
+      }) as bigint
+      const owners: Address[] = []
+      for (let i = 0n; i < totalOwners && i < 64n; i++) {
+        const owner = await publicClient!.readContract({
+          address: creatorToken as Address,
+          abi: CREATOR_COIN_OWNERS_ABI,
+          functionName: 'ownerAt',
+          args: [i],
+        }) as Address
+        owners.push(owner)
+      }
+      return owners
+    },
+  })
+
+  const isCreatorCoinOwner = useMemo(() => {
+    if (!connectedWalletAddress || !creatorCoinOwnersQuery.data) return false
+    return creatorCoinOwnersQuery.data.some(
+      (owner) => owner.toLowerCase() === connectedWalletAddress.toLowerCase()
+    )
+  }, [connectedWalletAddress, creatorCoinOwnersQuery.data])
+
+  const creatorCoinOwnershipPending = !!identity.blockingReason && creatorCoinOwnersQuery.isFetching
+
   const identityBlockingReason = identity.blockingReason
-    ? executionCanOperateCanonical
+    ? (executionCanOperateCanonical || isCreatorCoinOwner)
       ? null
-      : executionCanOperateCanonicalPending
+      : (executionCanOperateCanonicalPending || creatorCoinOwnershipPending)
         ? 'Checking whether your connected wallet is an owner…'
         : identity.blockingReason
     : null
