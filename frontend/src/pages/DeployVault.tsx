@@ -2320,11 +2320,66 @@ function DeployVaultPrivyEnabled() {
 
   const executionCanOperateCanonical = executionCanOperateCanonicalQuery.data === true
   const executionCanOperateCanonicalPending = !!identity.blockingReason && executionCanOperateCanonicalQuery.isFetching
+
+  // Check if connected EOA is in Creator Coin's owner list using Wagmi hooks (React-safe)
+  const { data: coinTotalOwners } = useReadContract({
+    address: tokenIsValid ? (creatorToken as Address) : undefined,
+    abi: [{ type: 'function', name: 'totalOwners', stateMutability: 'view', inputs: [], outputs: [{ type: 'uint256' }] }] as const,
+    functionName: 'totalOwners',
+    query: { enabled: tokenIsValid && !!identity.blockingReason },
+  })
+  const { data: coinOwner0 } = useReadContract({
+    address: tokenIsValid ? (creatorToken as Address) : undefined,
+    abi: [{ type: 'function', name: 'ownerAt', stateMutability: 'view', inputs: [{ type: 'uint256' }], outputs: [{ type: 'address' }] }] as const,
+    functionName: 'ownerAt',
+    args: [0n],
+    query: { enabled: tokenIsValid && !!coinTotalOwners && Number(coinTotalOwners) > 0 },
+  })
+  const { data: coinOwner1 } = useReadContract({
+    address: tokenIsValid ? (creatorToken as Address) : undefined,
+    abi: [{ type: 'function', name: 'ownerAt', stateMutability: 'view', inputs: [{ type: 'uint256' }], outputs: [{ type: 'address' }] }] as const,
+    functionName: 'ownerAt',
+    args: [1n],
+    query: { enabled: tokenIsValid && !!coinTotalOwners && Number(coinTotalOwners) > 1 },
+  })
+  const { data: coinOwner2 } = useReadContract({
+    address: tokenIsValid ? (creatorToken as Address) : undefined,
+    abi: [{ type: 'function', name: 'ownerAt', stateMutability: 'view', inputs: [{ type: 'uint256' }], outputs: [{ type: 'address' }] }] as const,
+    functionName: 'ownerAt',
+    args: [2n],
+    query: { enabled: tokenIsValid && !!coinTotalOwners && Number(coinTotalOwners) > 2 },
+  })
+  const { data: coinOwner3 } = useReadContract({
+    address: tokenIsValid ? (creatorToken as Address) : undefined,
+    abi: [{ type: 'function', name: 'ownerAt', stateMutability: 'view', inputs: [{ type: 'uint256' }], outputs: [{ type: 'address' }] }] as const,
+    functionName: 'ownerAt',
+    args: [3n],
+    query: { enabled: tokenIsValid && !!coinTotalOwners && Number(coinTotalOwners) > 3 },
+  })
+  const { data: coinOwner4 } = useReadContract({
+    address: tokenIsValid ? (creatorToken as Address) : undefined,
+    abi: [{ type: 'function', name: 'ownerAt', stateMutability: 'view', inputs: [{ type: 'uint256' }], outputs: [{ type: 'address' }] }] as const,
+    functionName: 'ownerAt',
+    args: [4n],
+    query: { enabled: tokenIsValid && !!coinTotalOwners && Number(coinTotalOwners) > 4 },
+  })
+
+  // Check if connected wallet is in the coin's owner list
+  const isCreatorCoinOwner = useMemo(() => {
+    if (!connectedWalletAddress) return false
+    const wallet = connectedWalletAddress.toLowerCase()
+    const owners = [coinOwner0, coinOwner1, coinOwner2, coinOwner3, coinOwner4]
+    return owners.some((o) => o && String(o).toLowerCase() === wallet)
+  }, [connectedWalletAddress, coinOwner0, coinOwner1, coinOwner2, coinOwner3, coinOwner4])
+
+  // Combine checks: Smart Wallet ownership OR Creator Coin ownership
+  const canOperateAsOwner = executionCanOperateCanonical || isCreatorCoinOwner
+
   const identityBlockingReason = identity.blockingReason
-    ? executionCanOperateCanonical
+    ? canOperateAsOwner
       ? null
       : executionCanOperateCanonicalPending
-        ? 'Checking whether your connected wallet is an owner of the creator smart wallet…'
+        ? 'Checking whether your connected wallet is an owner…'
         : identity.blockingReason
     : null
 
