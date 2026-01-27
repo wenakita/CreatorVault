@@ -1,11 +1,10 @@
-import type { ReactNode } from 'react'
+import { useState, useEffect, useRef, type ReactNode } from 'react'
 // Use the browser-safe Buffer shim (Vite can externalize Node built-ins like `buffer`).
 import { Buffer } from 'buffer/'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { OnchainKitProvider } from '@coinbase/onchainkit'
 import { WagmiProvider } from 'wagmi'
 import { base } from 'wagmi/chains'
-import { useEffect, useRef } from 'react'
 import { useAccount, useConnect } from 'wagmi'
 
 import { wagmiConfig } from '@/config/wagmi'
@@ -24,6 +23,9 @@ const queryClient = new QueryClient({
     queries: {
       staleTime: 1000 * 60 * 5, // 5 minutes
       retry: 2,
+      // Prevent synchronous state updates during render
+      refetchOnMount: false,
+      refetchOnWindowFocus: false,
     },
   },
 })
@@ -85,6 +87,24 @@ export function Web3Providers({ children }: { children: ReactNode }) {
   if (import.meta.env.DEV && cdpApiKey && cdpPaymasterUrl && !cdpPaymasterUrl.includes(cdpApiKey)) {
     logger.warn(
       '[Web3Providers] VITE_CDP_PAYMASTER_URL does not include VITE_CDP_API_KEY. This may indicate a mismatched CDP key vs paymaster URL.',
+    )
+  }
+
+  // TEMPORARY: Skip OnchainKitProvider to debug React #426 crash.
+  // If the crash stops, OnchainKit is the culprit.
+  const skipOnchainKit = new URLSearchParams(
+    typeof window !== 'undefined' ? window.location.search : ''
+  ).has('skipOnchainKit')
+
+  if (skipOnchainKit) {
+    return (
+      <WagmiProvider config={wagmiConfig}>
+        <QueryClientProvider client={queryClient}>
+          <MiniAppAutoConnect />
+          {import.meta.env.DEV ? <WalletDebugPanel /> : null}
+          {children}
+        </QueryClientProvider>
+      </WagmiProvider>
     )
   }
 
