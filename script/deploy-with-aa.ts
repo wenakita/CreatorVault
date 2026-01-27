@@ -376,14 +376,9 @@ async function deployViaAA(
 
     const signUserOp = async () => {
         // The signature depends on your smart account implementation.
-        // For SimpleAccount, it's a standard ECDSA signature over the raw userOpHash (no EIP-191 prefix).
+        // For SimpleAccount, it's a standard ECDSA signature over the userOpHash.
         const userOpHash = await getUserOpHash(userOp, CONFIG.chain.id, CONFIG.contracts.entryPoint);
-        const signMode = (process.env.USEROP_SIGN_MODE || 'raw').toLowerCase();
-        if (signMode === 'eip191' || signMode === 'personal_sign') {
-            userOp.signature = await account.signMessage({ message: { raw: userOpHash } });
-            return;
-        }
-        userOp.signature = await sign({ hash: userOpHash, privateKey: CONFIG.privateKey, to: 'hex' });
+        userOp.signature = await account.signMessage({ message: { raw: userOpHash } });
     };
 
     await signUserOp();

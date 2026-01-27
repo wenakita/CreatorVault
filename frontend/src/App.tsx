@@ -151,15 +151,16 @@ function AppAllowlistGatePrivyEnabled() {
   const allowed = allowQuery.data?.allowed === true
   const isPublicWaitlistRoute = location.pathname === '/waitlist' || location.pathname === '/leaderboard'
   const isAdminRoute = location.pathname === '/admin' || location.pathname.startsWith('/admin/')
+  const marketingUrl = getMarketingBaseUrl()
 
   const allowlistMode = allowlistModeQuery.data?.mode
   const allowlistEnforced = allowlistMode === 'enforced'
 
   if (isPublicWaitlistRoute) {
-    return <Outlet />
+    return <ExternalRedirect to={marketingUrl} />
   }
 
-  if (allowlistModeQuery.isError) return <WaitlistLanding />
+  if (allowlistModeQuery.isError) return <ExternalRedirect to={marketingUrl} />
 
   // If allowlist is not enforced (e.g. local dev / no DB / no env allowlist), don't gate.
   if (!allowlistEnforced) return <Outlet />
@@ -176,16 +177,16 @@ function AppAllowlistGatePrivyEnabled() {
     return <Outlet />
   }
 
-  if (!connectedAddress) {
-    return <WaitlistLanding />
+  if (!effectiveAddress) {
+    return <AppAccessGate variant="signin" marketingUrl={marketingUrl} debugAddress={debugAddress} />
   }
 
   if (allowQuery.isLoading) {
-    return <AppAccessGate variant="signin" marketingUrl={getMarketingBaseUrl()} debugAddress={debugAddress} />
+    return <AppAccessGate variant="signin" marketingUrl={marketingUrl} debugAddress={debugAddress} />
   }
 
   if (!allowed && !isBypassAdmin) {
-    return <WaitlistLanding />
+    return <ExternalRedirect to={marketingUrl} />
   }
 
   return <Outlet />
