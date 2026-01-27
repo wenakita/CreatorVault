@@ -1146,8 +1146,12 @@ function DeployVaultBatcher({
       try {
         const now = Date.now()
         const last = Number(localStorage.getItem('cv:deploy:lastAttemptAt') ?? '0')
-        if (Number.isFinite(last) && last > 0 && now - last < 8000) {
-          setError('Please wait a moment before retrying deploy.')
+        const retryWindowMs = 2000
+        if (Number.isFinite(last) && last > 0 && now - last < retryWindowMs) {
+          const remainingMs = retryWindowMs - (now - last)
+          const remainingSec = Math.max(1, Math.ceil(remainingMs / 1000))
+          setError(`Please wait ${remainingSec}s before retrying deploy.`)
+          window.setTimeout(() => setError(null), retryWindowMs)
           return
         }
         localStorage.setItem('cv:deploy:lastAttemptAt', String(now))
@@ -1877,7 +1881,7 @@ function DeployVaultBatcher({
       {error ? (
         <div className="space-y-2">
           <div className="text-[11px] text-red-400/90">{error}</div>
-          {switchAuthCta && /eth_sign|base account|email/i.test(error) ? (
+          {switchAuthCta && /eth_sign|base account|email|privy|smart wallet/i.test(error) ? (
             <button type="button" className="btn-primary w-full" onClick={switchAuthCta.onClick}>
               {switchAuthCta.label}
             </button>
@@ -1926,6 +1930,14 @@ function DeployVaultMain() {
     const v = String(raw).trim()
     return v.length > 0 ? v : 'v3'
   }, [])
+
+  const switchAuthCta = useMemo(() => {
+    if (!privyReady) return undefined
+    return {
+      label: privyAuthenticated ? 'Switch sign-in' : 'Sign in with Privy',
+      onClick: () => void login({ loginMethods: ['wallet', 'email'] }),
+    }
+  }, [login, privyAuthenticated, privyReady])
 
   const [searchParams] = useSearchParams()
   const prefillToken = useMemo(() => searchParams.get('token') ?? '', [searchParams])
@@ -3381,6 +3393,7 @@ function DeployVaultMain() {
                     marketFloorTwapDurationSec={marketFloorQuery.data?.creatorZora.durationSec ?? null}
                     marketFloorDiscountBps={marketFloorQuery.data?.zoraEth.discountBps ?? null}
                     onSuccess={() => {}}
+                    switchAuthCta={switchAuthCta}
                     smartWalletClient={smartWalletClient}
                   />
                 </>
