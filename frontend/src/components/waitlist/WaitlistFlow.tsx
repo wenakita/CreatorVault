@@ -9,7 +9,7 @@ import { usePrivyClientStatus } from '@/lib/privy/client'
 import { toViemAccount, useBaseAccountSdk, useConnectWallet, usePrivy, useWallets } from '@privy-io/react-auth'
 import { base } from 'wagmi/chains'
 import { ArrowLeft } from 'lucide-react'
-import { useMiniAppContext } from '@/hooks'
+import { useMiniAppContext, useLinkedSmartWallet } from '@/hooks'
 import { apiAliasPath } from '@/lib/apiBase'
 import { fetchZoraCoin, fetchZoraProfile } from '@/lib/zora/client'
 import { Logo } from '@/components/brand/Logo'
@@ -610,6 +610,9 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
       typeof connectedAddressRaw === 'string' && connectedAddressRaw.startsWith('0x') ? connectedAddressRaw.toLowerCase() : null,
     [connectedAddressRaw],
   )
+
+  // Resolve linked Smart Wallet for admin bypass check
+  // This handles the case where user connects with Smart Wallet but their EOA is the admin
   const adminBypassSet = useMemo(() => {
     // Keep this in sync with `frontend/src/App.tsx` so admins can always escape the waitlist UI.
     const seed: string[] = ['0xb05cf01231cf2ff99499682e64d3780d57c80fdd']
@@ -620,7 +623,24 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
       .filter((s) => isValidEvmAddress(s))
     return new Set<string>([...seed, ...fromEnv].map((a) => a.toLowerCase()))
   }, [])
-  const isBypassAdmin = !!connectedAddress && adminBypassSet.has(connectedAddress)
+
+  // Use the linked Smart Wallet hook to resolve EOA ↔ Smart Wallet relationship
+  const { eoa: resolvedEoa, smartWallet: resolvedSmartWallet } = useLinkedSmartWallet(
+    connectedAddress ?? undefined,
+    Array.from(adminBypassSet), // Pass admin addresses as candidates for onchain lookup
+  )
+
+  // Check if connected address, resolved EOA, or resolved Smart Wallet is an admin
+  const isBypassAdmin = useMemo(() => {
+    if (!connectedAddress) return false
+    // Direct match
+    if (adminBypassSet.has(connectedAddress)) return true
+    // Check if resolved EOA is admin (user connected with Smart Wallet)
+    if (resolvedEoa && adminBypassSet.has(resolvedEoa.toLowerCase())) return true
+    // Check if resolved Smart Wallet is admin (user connected with EOA)
+    if (resolvedSmartWallet && adminBypassSet.has(resolvedSmartWallet.toLowerCase())) return true
+    return false
+  }, [connectedAddress, adminBypassSet, resolvedEoa, resolvedSmartWallet])
 
   const forcedPersona = useMemo(() => {
     const q = new URLSearchParams(location.search)
@@ -772,9 +792,9 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
     locationSearch: location.search,
     shareBaseUrl: appUrl.replace(/\/+$/, ''),
     inviteTemplateIdx,
-    miniAppIsMiniApp: miniApp.isMiniApp,
+    miniAppIsMiniApp: miniApp.isMiniApp === true,
     referralCode,
-    markAction,
+    markAction: (action) => markAction(action as any),
     setInviteTemplateIdx: (next) => patchWaitlist({ inviteTemplateIdx: next }),
     setInviteToast: (toast) => patchWaitlist({ inviteToast: toast }),
     apiFetch,
@@ -1407,7 +1427,7 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
                 shareToast={shareToast}
                 shareBusy={shareBusy}
                 actionsDone={actionsDone}
-                miniAppIsMiniApp={miniApp.isMiniApp}
+                miniAppIsMiniApp={miniApp.isMiniApp === true}
                 miniAppAdded={miniApp.added === true}
                 miniAppAddSupported={miniAppAddSupported}
                 miniAppHostLabel={miniAppHostLabel}

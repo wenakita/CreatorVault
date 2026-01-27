@@ -2,7 +2,7 @@ import { lazy, useMemo } from 'react'
 import { Routes, Route, Navigate, Outlet, useLocation } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { useAccount, useConnect } from 'wagmi'
-import { useCreatorAllowlist } from '@/hooks'
+import { useCreatorAllowlist, useLinkedSmartWallet } from '@/hooks'
 import { useSiweAuth } from '@/hooks/useSiweAuth'
 import { apiFetch } from '@/lib/apiBase'
 import { Layout } from './components/Layout'
@@ -144,9 +144,27 @@ function AppAllowlistGatePrivyEnabled() {
     return isValidEvmAddress(raw) ? raw.toLowerCase() : null
   }, [siwe.authAddress])
   const effectiveAddress = connectedAddress ?? siweAuthAddress
+
+  // Resolve linked Smart Wallet for admin bypass check
+  // This handles the case where user connects with Smart Wallet but their EOA is the admin
+  const adminAddresses = useMemo(() => Array.from(ADMIN_BYPASS_ADDRESSES), [])
+  const { eoa: resolvedEoa, smartWallet: resolvedSmartWallet } = useLinkedSmartWallet(
+    effectiveAddress ?? undefined,
+    adminAddresses,
+  )
+
   // Allow specific operator addresses to access the full app even while allowlist is enforced.
-  // (Not just /admin/* routes.)
-  const isBypassAdmin = effectiveAddress ? ADMIN_BYPASS_ADDRESSES.has(effectiveAddress) : false
+  // Check connected address, resolved EOA, or resolved Smart Wallet against admin list.
+  const isBypassAdmin = useMemo(() => {
+    if (!effectiveAddress) return false
+    // Direct match
+    if (ADMIN_BYPASS_ADDRESSES.has(effectiveAddress)) return true
+    // Check if resolved EOA is admin (user connected with Smart Wallet)
+    if (resolvedEoa && ADMIN_BYPASS_ADDRESSES.has(resolvedEoa.toLowerCase())) return true
+    // Check if resolved Smart Wallet is admin (user connected with EOA)
+    if (resolvedSmartWallet && ADMIN_BYPASS_ADDRESSES.has(resolvedSmartWallet.toLowerCase())) return true
+    return false
+  }, [effectiveAddress, resolvedEoa, resolvedSmartWallet])
   const allowQuery = useCreatorAllowlist(isBypassAdmin ? null : effectiveAddress)
   const allowed = allowQuery.data?.allowed === true
   const isPublicWaitlistRoute = location.pathname === '/waitlist' || location.pathname === '/leaderboard'
