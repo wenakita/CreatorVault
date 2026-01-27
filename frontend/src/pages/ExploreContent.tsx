@@ -124,7 +124,7 @@ export function ExploreContent() {
           className="mb-8"
         >
           <h1 className="text-3xl sm:text-4xl font-medium text-white mb-2">
-            Explore top pools on Base
+            Top content on Base
           </h1>
           <p className="text-zinc-400 text-sm">
             Content Coins ranked by volume, market cap, and more.
@@ -139,7 +139,7 @@ export function ExploreContent() {
           className="mb-6"
         >
           <ExploreSubnav
-            searchPlaceholder="Search pools"
+            searchPlaceholder="Search content"
             onSearch={setSearchQuery}
             onTimeFilterChange={handleTimeFilterChange}
             onSortChange={handleSortChange}
@@ -166,14 +166,14 @@ export function ExploreContent() {
             ) : isError ? (
               // Error state
               <div className="px-6 py-12 text-center">
-                <p className="text-zinc-400 mb-4">Failed to load pools</p>
+                <p className="text-zinc-400 mb-4">Failed to load content</p>
                 <p className="text-xs text-zinc-600">{(error as Error)?.message || 'Unknown error'}</p>
               </div>
             ) : filteredCoins.length === 0 ? (
               // Empty state
               <div className="px-6 py-12 text-center">
                 <p className="text-zinc-400">
-                  {searchQuery ? 'No pools found matching your search' : 'No content pools available'}
+                  {searchQuery ? 'No content found matching your search' : 'No content available'}
                 </p>
               </div>
             ) : (
@@ -219,7 +219,7 @@ export function ExploreContent() {
             transition={{ duration: 0.4, delay: 0.3 }}
             className="mt-4 text-center text-xs text-zinc-600"
           >
-            Showing {filteredCoins.length} pools
+            Showing {filteredCoins.length} content coins
           </motion.div>
         )}
       </div>

@@ -7,8 +7,8 @@ type Tab = {
 }
 
 const TABS: Tab[] = [
-  { label: 'Tokens', to: '/explore/creators' },
-  { label: 'Pools', to: '/explore/content' },
+  { label: 'Creators', to: '/explore/creators' },
+  { label: 'Content', to: '/explore/content' },
   { label: 'Transactions', to: '/explore/transactions' },
 ]
 

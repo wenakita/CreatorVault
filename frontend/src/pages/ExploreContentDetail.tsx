@@ -150,7 +150,7 @@ export function ExploreContentDetail() {
             className="inline-flex items-center gap-2 text-sm text-zinc-400 hover:text-white transition-colors"
           >
             <ArrowLeft className="w-4 h-4" />
-            Back to pools
+            Back to content
           </Link>
         </motion.div>
 

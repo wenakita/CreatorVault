@@ -121,7 +121,7 @@ export function ExploreCreators() {
           className="mb-8"
         >
           <h1 className="text-3xl sm:text-4xl font-medium text-white mb-2">
-            Explore top tokens on Base
+            Top creators on Base
           </h1>
           <p className="text-zinc-400 text-sm">
             Creator Coins ranked by volume, market cap, and more.
@@ -136,7 +136,7 @@ export function ExploreCreators() {
           className="mb-6"
         >
           <ExploreSubnav
-            searchPlaceholder="Search tokens"
+            searchPlaceholder="Search creators"
             onSearch={setSearchQuery}
             onTimeFilterChange={handleTimeFilterChange}
             onSortChange={handleSortChange}
@@ -163,14 +163,14 @@ export function ExploreCreators() {
             ) : isError ? (
               // Error state
               <div className="px-6 py-12 text-center">
-                <p className="text-zinc-400 mb-4">Failed to load tokens</p>
+                <p className="text-zinc-400 mb-4">Failed to load creators</p>
                 <p className="text-xs text-zinc-600">{(error as Error)?.message || 'Unknown error'}</p>
               </div>
             ) : filteredCoins.length === 0 ? (
               // Empty state
               <div className="px-6 py-12 text-center">
                 <p className="text-zinc-400">
-                  {searchQuery ? 'No tokens found matching your search' : 'No tokens available'}
+                  {searchQuery ? 'No creators found matching your search' : 'No creators available'}
                 </p>
               </div>
             ) : (
@@ -217,7 +217,7 @@ export function ExploreCreators() {
             transition={{ duration: 0.4, delay: 0.3 }}
             className="mt-4 text-center text-xs text-zinc-600"
           >
-            Showing {filteredCoins.length} tokens
+            Showing {filteredCoins.length} creators
           </motion.div>
         )}
       </div>

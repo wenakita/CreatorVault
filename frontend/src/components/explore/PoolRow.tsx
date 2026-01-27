@@ -122,7 +122,7 @@ export function PoolTableHeader() {
   return (
     <div className="grid grid-cols-[40px_minmax(180px,2fr)_minmax(80px,1fr)_minmax(80px,1fr)_minmax(80px,1fr)_minmax(80px,1fr)_minmax(100px,1fr)] gap-4 items-center px-4 py-3 text-xs text-zinc-500 border-b border-zinc-800 bg-zinc-900/30 sticky top-0 z-10">
       <span>#</span>
-      <span>Pool</span>
+      <span>Content</span>
       <span>TVL</span>
       <span>24h</span>
       <span>1D volume</span>
