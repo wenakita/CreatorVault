@@ -104,19 +104,22 @@ const CREATOR_COIN_OWNERS_ABI = [
 ] as const
 
 async function isCoinbaseSmartWalletOwner(params: {
-  publicClient: { readContract: (args: any) => Promise<any> }
   smartWallet: Address
   ownerAddress: Address
 }): Promise<boolean> {
-  const { publicClient, smartWallet, ownerAddress } = params
-  // Use isOwnerAddress directly - simpler and more reliable than iterating ownerAtIndex
-  const isOwner = (await publicClient.readContract({
-    address: smartWallet,
-    abi: COINBASE_SMART_WALLET_OWNER_LINK_ABI,
-    functionName: 'isOwnerAddress',
-    args: [ownerAddress],
-  })) as boolean
-  return isOwner === true
+  const { smartWallet, ownerAddress } = params
+  // Use server-side API to avoid client-side RPC rate limits
+  try {
+    const res = await fetch('/api/deploy/smartWalletOwner', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ smartWallet, ownerAddress }),
+    })
+    const json = await res.json()
+    return json?.success === true && json?.data?.isOwner === true
+  } catch {
+    return false
+  }
 }
 
 const shortAddress = (addr: string) => `${addr.slice(0, 6)}…${addr.slice(-4)}`
@@ -2299,7 +2302,6 @@ function DeployVaultMain() {
 
       try {
         const isOwner = await isCoinbaseSmartWalletOwner({
-          publicClient: publicClient as any,
           smartWallet: canonical,
           ownerAddress: execution,
         })

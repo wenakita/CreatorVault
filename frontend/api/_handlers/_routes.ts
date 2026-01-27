@@ -40,6 +40,7 @@ export const apiRouteLoaders: Record<string, () => Promise<ApiHandlerModule>> = 
   'deploy/session/continue': () => import('./deploy/session/_continue.js'),
   'deploy/session/create': () => import('./deploy/session/_create.js'),
   'deploy/session/status': () => import('./deploy/session/_status.js'),
+  'deploy/smartWalletOwner': () => import('./deploy/_smartWalletOwner.js'),
 
   'farcaster/me': () => import('./farcaster/_me.js'),
   'farcaster/nonce': () => import('./farcaster/_nonce.js'),

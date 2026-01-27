@@ -139,6 +139,7 @@ function localApiRoutesPlugin(): Plugin {
         '/api/auth/me': () => import('./api/_handlers/auth/_me'),
         '/api/auth/logout': () => import('./api/_handlers/auth/_logout'),
         '/api/creator-wallets/claim': () => import('./api/_handlers/_creator-wallets-claim'),
+        '/api/deploy/smartWalletOwner': () => import('./api/_handlers/deploy/_smartWalletOwner'),
 
         // Keepr (local dev)
         '/api/keepr/nonce': () => import('./api/_handlers/keepr/_nonce'),
