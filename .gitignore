@@ -129,7 +129,11 @@ vanity-generator/
 # Local notes / scratch (keep out of repo)
 farcasterllm.txt
 docs/integrations/notes.md
-docs/takopi/
+docs/keepr/
+
+# XMTP local dev files
+frontend/.xmtp/
+frontend/xmtp-dev-*.db3*
 
 # Test and development files (keep local)
 bsc-production-ready.json

@@ -1,8 +1,9 @@
 import { Suspense } from 'react'
 import { Outlet, Link, useLocation } from 'react-router-dom'
-import { Home, LayoutDashboard, HelpCircle, Mail } from 'lucide-react'
+import { Home, LayoutDashboard, HelpCircle, Mail, ShieldCheck } from 'lucide-react'
 import { VaultNavBar } from './brand/VaultNavBar'
 import { isPublicSiteMode } from '@/lib/flags'
+import { useAdminStatus } from '@/hooks/useAdminStatus'
 
 type MobileNavItem = {
   label: string
@@ -24,6 +25,8 @@ const navItemsPublic: MobileNavItem[] = [
   { path: '/#waitlist', icon: Mail, label: 'Waitlist', activePrefixes: ['/#waitlist', '/waitlist'] },
 ]
 
+const adminNavItem: MobileNavItem = { path: '/admin/waitlist', icon: ShieldCheck, label: 'Admin', activePrefixes: ['/admin'] }
+
 function isActiveLink(location: { pathname: string; hash?: string }, item: MobileNavItem): boolean {
   const pathname = location.pathname
   const hash = location.hash ?? ''
@@ -44,7 +47,9 @@ function isActiveLink(location: { pathname: string; hash?: string }, item: Mobil
 export function Layout() {
   const location = useLocation()
   const publicMode = isPublicSiteMode()
-  const items = publicMode ? navItemsPublic : navItems
+  const { isAdmin } = useAdminStatus()
+  const baseItems = publicMode ? navItemsPublic : navItems
+  const items = isAdmin ? [...baseItems, adminNavItem] : baseItems
 
   return (
     <div className="min-h-screen flex flex-col bg-vault-bg">

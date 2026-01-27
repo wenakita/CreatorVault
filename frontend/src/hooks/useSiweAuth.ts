@@ -9,6 +9,8 @@ type MeResponse = { address: string } | null
 
 const SESSION_TOKEN_KEY = 'cv_siwe_session_token'
 
+type PrivySessionResponse = { address: string; sessionToken: string; privyUserId?: string } | null
+
 function coerceErrorMessage(e: unknown, fallback: string): string {
   if (typeof e === 'string' && e.trim().length > 0) return e
   if (e instanceof Error && typeof e.message === 'string' && e.message.trim().length > 0) return e.message
@@ -160,6 +162,41 @@ export function useSiweAuth() {
     }
   }, [])
 
-  return { authAddress, isSignedIn, busy, error, signIn, signOut, refresh }
+  const signInWithPrivyToken = useCallback(
+    async (privyAccessToken: string | null): Promise<string | null> => {
+      const token = typeof privyAccessToken === 'string' ? privyAccessToken.trim() : ''
+      if (!token) return null
+
+      setBusy(true)
+      setError(null)
+      try {
+        const res = await apiFetch('/api/auth/privy', {
+          method: 'POST',
+          headers: { Accept: 'application/json', Authorization: `Bearer ${token}` },
+        })
+        const json = (await res.json().catch(() => null)) as ApiEnvelope<PrivySessionResponse> | null
+        if (!res.ok || !json?.success) {
+          const apiErr = coerceErrorMessage((json as any)?.error, '')
+          throw new Error(apiErr || 'Privy sign-in failed')
+        }
+
+        const sessionToken = json?.data && typeof (json.data as any)?.sessionToken === 'string' ? String((json.data as any).sessionToken) : ''
+        const address = json?.data && typeof (json.data as any)?.address === 'string' ? String((json.data as any).address) : ''
+        if (!sessionToken || !address) throw new Error('Privy sign-in failed')
+
+        setStoredSessionToken(sessionToken)
+        setAuthAddress(address)
+        return address
+      } catch (e: unknown) {
+        setError(coerceErrorMessage(e, 'Privy sign-in failed'))
+        return null
+      } finally {
+        setBusy(false)
+      }
+    },
+    [],
+  )
+
+  return { authAddress, isSignedIn, busy, error, signIn, signInWithPrivyToken, signOut, refresh }
 }
 

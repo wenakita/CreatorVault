@@ -15,10 +15,16 @@ export const apiRouteLoaders: Record<string, () => Promise<ApiHandlerModule>> = 
   'analytics': () => import('./_analytics.js'),
   'agent/invokeSkill': () => import('./agent/_invokeSkill.js'),
 
+  'keepr/join': () => import('./keepr/_join.js'),
+  'keepr/joinStatus': () => import('./keepr/_joinStatus.js'),
+  'keepr/nonce': () => import('./keepr/_nonce.js'),
+  'keepr/vault/upsert': () => import('./keepr/vault/_upsert.js'),
+
   'auth/admin': () => import('./auth/_admin.js'),
   'auth/logout': () => import('./auth/_logout.js'),
   'auth/me': () => import('./auth/_me.js'),
   'auth/nonce': () => import('./auth/_nonce.js'),
+  'auth/privy': () => import('./auth/_privy.js'),
   'auth/verify': () => import('./auth/_verify.js'),
 
   'creator-allowlist': () => import('./_creator-allowlist.js'),
@@ -82,6 +88,8 @@ export const apiRouteLoaders: Record<string, () => Promise<ApiHandlerModule>> = 
   'admin/creator-access/note': () => import('./admin/creator-access/_note.js'),
   'admin/creator-access/restore': () => import('./admin/creator-access/_restore.js'),
   'admin/creator-access/revoke': () => import('./admin/creator-access/_revoke.js'),
+  'admin/waitlist/detail': () => import('./admin/waitlist/_detail.js'),
+  'admin/waitlist/list': () => import('./admin/waitlist/_list.js'),
 }
 
 export async function getApiHandler(subpath: string): Promise<ApiHandler | null> {

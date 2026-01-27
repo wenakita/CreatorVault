@@ -78,6 +78,39 @@ function localApiRoutesPlugin(): Plugin {
       loadDotEnvFile(path.resolve(__dirname, '../.env'))
       loadDotEnvFile(path.resolve(__dirname, './.env'))
 
+      // Local dev note:
+      // Our API handlers use `server/_lib/postgres.ts`, which treats `POSTGRES_URL*` as Vercel Postgres.
+      // In local dev we typically want to use `DATABASE_URL` (e.g. Supabase) via `pg`.
+      // Clear Vercel-specific envs so local API routing doesn't accidentally use @vercel/postgres.
+      try {
+        delete (process.env as any).POSTGRES_URL
+        delete (process.env as any).POSTGRES_URL_NON_POOLING
+      } catch {
+        // ignore
+      }
+
+      // Local dev DB TLS compatibility:
+      // Some environments (and some Supabase pooler endpoints) can present cert chains that fail Node verification.
+      // Force `sslmode=no-verify` for local dev so API routes can connect.
+      try {
+        const raw = (process.env.DATABASE_URL ?? '').trim()
+        if (raw) {
+          const u = new URL(raw)
+          // Supabase pooler hostnames can vary (aws-0 vs aws-1) depending on the dashboard-provided string.
+          // Prefer the dashboard value if we detect the older host.
+          if (u.hostname === 'aws-0-us-east-2.pooler.supabase.com') {
+            u.hostname = 'aws-1-us-east-2.pooler.supabase.com'
+          }
+          const cur = (u.searchParams.get('sslmode') ?? '').toLowerCase()
+          if (!cur || cur === 'require' || cur === 'verify-full' || cur === 'verify-ca' || cur === 'prefer') {
+            u.searchParams.set('sslmode', 'no-verify')
+            process.env.DATABASE_URL = u.toString()
+          }
+        }
+      } catch {
+        // ignore invalid URLs
+      }
+
       // Keep this loosely typed: API handlers often return `VercelResponse`, and we don't want
       // Vite's config TS project to type-check every function signature.
       const routes: Record<string, () => Promise<{ default: (req: any, res: any) => any }>> = {
@@ -96,9 +129,16 @@ function localApiRoutesPlugin(): Plugin {
         '/api/status/protocolReport': () => import('./api/_handlers/status/_protocolReport'),
         '/api/status/vaultReport': () => import('./api/_handlers/status/_vaultReport'),
         '/api/auth/nonce': () => import('./api/_handlers/auth/_nonce'),
+        '/api/auth/privy': () => import('./api/_handlers/auth/_privy'),
         '/api/auth/verify': () => import('./api/_handlers/auth/_verify'),
         '/api/auth/me': () => import('./api/_handlers/auth/_me'),
         '/api/auth/logout': () => import('./api/_handlers/auth/_logout'),
+
+        // Keepr (local dev)
+        '/api/keepr/nonce': () => import('./api/_handlers/keepr/_nonce'),
+        '/api/keepr/join': () => import('./api/_handlers/keepr/_join'),
+        '/api/keepr/vault/upsert': () => import('./api/_handlers/keepr/vault/_upsert'),
+
         '/api/farcaster/me': () => import('./api/_handlers/farcaster/_me'),
         '/api/farcaster/nonce': () => import('./api/_handlers/farcaster/_nonce'),
         '/api/farcaster/verify': () => import('./api/_handlers/farcaster/_verify'),

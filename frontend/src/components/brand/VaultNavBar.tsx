@@ -4,6 +4,7 @@ import { Menu } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 
 import { ConnectButton } from '@/components/ConnectButton'
+import { useAdminStatus } from '@/hooks/useAdminStatus'
 import { isPublicSiteMode } from '@/lib/flags'
 import { Logo } from './Logo'
 
@@ -23,6 +24,8 @@ const NAV_ITEMS: NavItem[] = [
 const NAV_ITEMS_PUBLIC: NavItem[] = [
   { label: 'HOME', to: '/', activePrefixes: ['/'] },
 ]
+
+const ADMIN_ITEM: NavItem = { label: 'ADMIN', to: '/admin/waitlist', activePrefixes: ['/admin'] }
 
 function isActiveLink(location: { pathname: string; hash?: string }, item: NavItem): boolean {
   const pathname = location.pathname
@@ -48,7 +51,9 @@ export function VaultNavBar() {
   const location = useLocation()
   const [isHovered, setIsHovered] = useState<number | null>(null)
   const publicMode = isPublicSiteMode()
-  const items = publicMode ? NAV_ITEMS_PUBLIC : NAV_ITEMS
+  const { isAdmin } = useAdminStatus()
+  const baseItems = publicMode ? NAV_ITEMS_PUBLIC : NAV_ITEMS
+  const items = isAdmin ? [...baseItems, ADMIN_ITEM] : baseItems
 
   return (
     <header className="sticky top-0 left-0 right-0 z-50 transition-all duration-500">
@@ -128,4 +133,3 @@ export function VaultNavBar() {
     </header>
   )
 }
-
