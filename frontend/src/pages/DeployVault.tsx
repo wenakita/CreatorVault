@@ -2962,9 +2962,13 @@ function DeployVaultPrivyEnabled() {
                             <div>payoutRecipient: {payoutRecipient ?? 'null'}</div>
                             <div>canonicalIdentity: {canonicalIdentityAddress ?? 'null'}</div>
                             <div>connectedWallet: {connectedWalletAddress ?? 'null'}</div>
+                            <div>creatorToken: {creatorToken ?? 'null'}</div>
+                            <div>identity.blockingReason: {identity.blockingReason ?? 'null'}</div>
                             <div>identityBlockingReason: {identityBlockingReason ?? 'null'}</div>
                             <div>executionCanOperate: {String(executionCanOperateCanonicalQuery.data)}</div>
                             <div>executionCanOperateLoading: {String(executionCanOperateCanonicalQuery.isLoading)}</div>
+                            <div>executionCanOperateFetching: {String(executionCanOperateCanonicalQuery.isFetching)}</div>
+                            <div>executionCanOperateError: {String(executionCanOperateCanonicalQuery.error?.message ?? 'none')}</div>
                             <div>isAuthorizedDeployer: {String(isAuthorizedDeployer)}</div>
                           </div>
                         )}
