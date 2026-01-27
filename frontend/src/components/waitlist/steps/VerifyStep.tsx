@@ -12,11 +12,13 @@ type VerifyStepProps = {
   privyVerifyError: string | null
   // Auto-fetched Creator Coin
   creatorCoin: WaitlistState['creatorCoin']
+  creatorCoinDeclaredMissing: boolean
   creatorCoinBusy: boolean
   // Submission
   busy: boolean
   canSubmit: boolean
   onSignOutWallet: () => void | Promise<void>
+  onNoCreatorCoin: () => void
   onPrivyContinue: () => void
   onSubmit: () => void | Promise<void>
 }
@@ -29,15 +31,17 @@ export const VerifyStep = memo(function VerifyStep({
   privyVerifyBusy,
   privyVerifyError,
   creatorCoin,
+  creatorCoinDeclaredMissing,
   creatorCoinBusy,
   busy,
   canSubmit,
   onSignOutWallet,
+  onNoCreatorCoin,
   onPrivyContinue,
   onSubmit,
 }: VerifyStepProps) {
   const hasCreatorCoin = !!creatorCoin?.address
-  const showSubmitButton = verifiedWallet && hasCreatorCoin
+  const showSubmitButton = verifiedWallet && (hasCreatorCoin || creatorCoinDeclaredMissing)
 
   return (
     <motion.div
@@ -121,28 +125,39 @@ export const VerifyStep = memo(function VerifyStep({
       {verifiedWallet && !creatorCoinBusy && !hasCreatorCoin ? (
         <div className="rounded-xl border border-amber-500/20 bg-amber-500/5 px-4 py-3 space-y-3">
           <div>
-            <div className="text-sm text-amber-300/90">No Creator Coin found</div>
+            <div className="text-sm text-amber-300/90">No Creator Coin yet</div>
             <div className="text-xs text-zinc-500 mt-1">
-              This account doesn't have a Creator Coin on Zora yet.
+              We could not find a Creator Coin for this wallet on Zora. Create one, try a different wallet, or continue without a coin.
             </div>
           </div>
-          <div className="flex flex-col sm:flex-row gap-2">
+          <div className="flex flex-col gap-2">
             <a
               href="https://zora.co/create"
               target="_blank"
               rel="noopener noreferrer"
               className="flex-1 text-center text-sm font-medium px-4 py-2 rounded-lg bg-brand-primary/20 border border-brand-primary/30 text-zinc-100 hover:bg-brand-primary/30 transition-colors"
             >
-              Create a Coin on Zora
+              Create a Creator Coin on Zora
             </a>
             <button
               type="button"
               className="flex-1 text-sm font-medium px-4 py-2 rounded-lg bg-white/5 border border-white/10 text-zinc-400 hover:text-zinc-200 hover:bg-white/10 transition-colors"
               onClick={onSignOutWallet}
             >
-              Try different wallet
+              Try a different wallet
+            </button>
+            <button
+              type="button"
+              className="flex-1 text-sm font-medium px-4 py-2 rounded-lg bg-white/5 border border-white/10 text-zinc-400 hover:text-zinc-200 hover:bg-white/10 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              onClick={onNoCreatorCoin}
+              disabled={creatorCoinDeclaredMissing}
+            >
+              I do not have a Creator Coin
             </button>
           </div>
+          {creatorCoinDeclaredMissing ? (
+            <div className="text-xs text-emerald-400">Got it. You can still join the waitlist.</div>
+          ) : null}
         </div>
       ) : null}
 

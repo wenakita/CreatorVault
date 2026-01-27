@@ -73,6 +73,7 @@ const initialVerificationState: VerificationState = {
 
 const initialWaitlistState: WaitlistState = {
   creatorCoin: null,
+  creatorCoinDeclaredMissing: false,
   creatorCoinBusy: false,
   claimCoinBusy: false,
   claimCoinError: null,
@@ -389,6 +390,10 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
     (actionsDone: Record<ActionKey, boolean>) => dispatchWaitlist({ type: 'setActions', actions: actionsDone }),
     [],
   )
+  const markNoCreatorCoin = useCallback(
+    () => patchWaitlist({ creatorCoinDeclaredMissing: true }),
+    [patchWaitlist],
+  )
 
   const { persona, step, contactPreference, email, busy, error, doneEmail } = flow
   const {
@@ -402,6 +407,7 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
   } = verification
   const {
     creatorCoin,
+    creatorCoinDeclaredMissing,
     creatorCoinBusy,
     claimCoinBusy,
     claimReferralCode,
@@ -582,8 +588,8 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
 
   const emailTrimmed = useMemo(() => normalizeEmail(email), [email])
   const isEmailValid = useMemo(() => isValidEmail(emailTrimmed), [emailTrimmed])
-  // Simplified flow: can submit when email is valid and creator coin is found
-  const canSubmit = isEmailValid && !!creatorCoin?.address
+  // Simplified flow: can submit when email is valid and coin status is known.
+  const canSubmit = isEmailValid && (Boolean(creatorCoin?.address) || creatorCoinDeclaredMissing)
   const flowBusy = busy || siwe.busy
   const connectedAddress = useMemo(
     () =>
@@ -842,6 +848,7 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
                 holders: typeof fetched?.uniqueHolders === 'number' ? fetched.uniqueHolders : null,
                 priceUsd: asNumber(fetched?.tokenPrice?.priceInUsdc),
               },
+              creatorCoinDeclaredMissing: false,
             })
           }
         } catch {
@@ -899,7 +906,7 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
           verifications,
           intent: {
             persona,
-            hasCreatorCoin: creatorCoinBusy ? null : Boolean(creatorCoin?.address),
+            hasCreatorCoin: creatorCoinBusy ? null : creatorCoinDeclaredMissing ? false : Boolean(creatorCoin?.address),
           },
         }),
       })
@@ -971,6 +978,7 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
       patchWaitlist({
         creatorCoin: null,
         creatorCoinBusy: false,
+        creatorCoinDeclaredMissing: false,
         claimCoinBusy: false,
         claimCoinError: null,
       })
@@ -993,7 +1001,7 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
   useEffect(() => {
     const w = typeof verifiedWallet === 'string' && isValidEvmAddress(verifiedWallet) ? verifiedWallet : null
     if (!w) {
-      patchWaitlist({ creatorCoin: null, creatorCoinBusy: false })
+      patchWaitlist({ creatorCoin: null, creatorCoinBusy: false, creatorCoinDeclaredMissing: false })
       creatorCoinForWalletRef.current = null
       return
     }
@@ -1042,6 +1050,7 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
         if (!cancelled) {
           patchWaitlist({
             creatorCoin: { address: coinAddr, symbol, coinType, imageUrl, marketCapUsd, volume24hUsd, holders, priceUsd },
+            creatorCoinDeclaredMissing: false,
           })
         }
       } catch {
@@ -1301,10 +1310,12 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
                 privyVerifyBusy={privyVerifyBusy}
                 privyVerifyError={privyVerifyError}
                 creatorCoin={creatorCoin}
+                creatorCoinDeclaredMissing={creatorCoinDeclaredMissing}
                 creatorCoinBusy={creatorCoinBusy}
                 busy={busy}
                 canSubmit={canSubmit}
                 onSignOutWallet={signOutWallet}
+                onNoCreatorCoin={markNoCreatorCoin}
                 onPrivyContinue={() => {
                   startPrivyVerify()
                   privyLogin({ loginMethods: ['wallet', 'email'] })

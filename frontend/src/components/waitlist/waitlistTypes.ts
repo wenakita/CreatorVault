@@ -37,6 +37,7 @@ export type WaitlistState = {
     holders: number | null
     priceUsd: number | null
   } | null
+  creatorCoinDeclaredMissing: boolean
   creatorCoinBusy: boolean
   claimCoinBusy: boolean
   claimCoinError: string | null
