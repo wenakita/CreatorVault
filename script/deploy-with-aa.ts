@@ -25,7 +25,7 @@ import {
     type Hex
 } from 'viem';
 import { base } from 'viem/chains';
-import { privateKeyToAccount } from 'viem/accounts';
+import { privateKeyToAccount, sign } from 'viem/accounts';
 
 // =================================
 // CONFIG
@@ -568,6 +568,7 @@ async function main() {
 ║    SMART_ACCOUNT      - Your ERC-4337 Smart Account address                ║
 ║    PRIVATE_KEY        - Private key (owner of smart account)               ║
 ║    CREATOR_FACTORY    - CreatorOVaultFactory address                       ║
+║    USEROP_SIGN_MODE   - raw (default) or eip191 for signature mode         ║
 ║                                                                            ║
 ║  Optional (defaults to Coinbase):                                          ║
 ║    BASE_RPC_URL       - Base RPC (default: mainnet.base.org)               ║
