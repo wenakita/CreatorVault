@@ -16,11 +16,13 @@ export function usePrivyClientStatus(): PrivyClientStatus {
  *
  * Privy handles:
  * - Authentication (email, Farcaster, etc.)
- * - Embedded wallet creation (the signer for the user's Coinbase Smart Wallet)
+ * - Global Wallet access (shared with Zora via Privy's global wallet feature)
  * - Smart wallet operations via useSmartWallets hook
  *
- * The embedded wallet is the key that signs for the Coinbase Smart Wallet.
- * Users don't have direct access to smart wallet keys - they access it through Privy.
+ * With Zora Global Wallet enabled:
+ * - Users who created their coin on Zora can access the SAME Coinbase Smart Wallet
+ * - The embedded wallet from Zora is shared with CreatorVaults
+ * - No new wallet is created - they use their existing Zora wallet
  */
 export function PrivyClientProvider({ children }: { children: ReactNode }) {
   const enabled = isPrivyClientEnabled()
