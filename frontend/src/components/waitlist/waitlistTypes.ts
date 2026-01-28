@@ -10,6 +10,7 @@ export type FlowState = {
   step: 'persona' | 'verify' | 'email' | 'done'
   contactPreference: ContactPreference
   email: string
+  emailOptOut: boolean
   busy: boolean
   error: string | null
   doneEmail: string | null

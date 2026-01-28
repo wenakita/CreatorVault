@@ -74,6 +74,7 @@ export const apiRouteLoaders: Record<string, () => Promise<ApiHandlerModule>> = 
   'waitlist/position': () => import('./waitlist/_position.js'),
   'waitlist/profile-complete': () => import('./waitlist/_profile-complete.js'),
   'waitlist/task-claim': () => import('./waitlist/_task-claim.js'),
+  'waitlist/update-email': () => import('./waitlist/_update-email.js'),
   'webhook': () => import('./_webhook.js'),
 
   'zora/coin': () => import('./zora/_coin.js'),

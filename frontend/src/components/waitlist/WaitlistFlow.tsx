@@ -8,7 +8,6 @@ import { isPrivyClientEnabled } from '@/lib/flags'
 import { usePrivyClientStatus } from '@/lib/privy/client'
 import { toViemAccount, useBaseAccountSdk, useConnectWallet, useLogin, usePrivy, useWallets } from '@privy-io/react-auth'
 import { base } from 'wagmi/chains'
-import { ArrowLeft } from 'lucide-react'
 import { encodeAbiParameters, getAddress, isAddress } from 'viem'
 import { useMiniAppContext } from '@/hooks'
 import { apiAliasPath } from '@/lib/apiBase'
@@ -26,7 +25,6 @@ import type {
   WaitlistState,
 } from './waitlistTypes'
 import { VerifyStep } from './steps/VerifyStep'
-import { EmailStep } from './steps/EmailStep'
 import { DoneStep } from './steps/DoneStep'
 import { useWaitlistApi } from './useWaitlistApi'
 import { useWaitlistVerification } from './useWaitlistVerification'
@@ -92,9 +90,10 @@ const EMPTY_ACTION_STATE: Record<ActionKey, boolean> = {
 
 const initialFlowState: FlowState = {
   persona: 'creator', // Default to creator - simplified flow
-  step: 'email', // Start with email input
+  step: 'verify', // Start with verification
   contactPreference: 'email',
   email: '',
+  emailOptOut: true,
   busy: false,
   error: null,
   doneEmail: null,
@@ -160,6 +159,23 @@ function isValidSolanaAddress(v: string): boolean {
   // Base58-ish, 32–44 chars (covers most standard pubkeys)
   if (s.length < 32 || s.length > 44) return false
   return SOL_RE.test(s)
+}
+
+function isSyntheticEmail(v: string): boolean {
+  return v.endsWith('@noemail.4626.fun')
+}
+
+function buildSyntheticEmail(seed?: string | null): string {
+  const domain = 'noemail.4626.fun'
+  const safeSeed = typeof seed === 'string' ? seed.replace(/[^a-zA-Z0-9]/g, '').slice(0, 8) : ''
+  let token = ''
+  if (typeof crypto !== 'undefined' && typeof (crypto as any).randomUUID === 'function') {
+    token = String((crypto as any).randomUUID()).replace(/[^a-zA-Z0-9]/g, '')
+  } else {
+    token = `${Math.random().toString(36).slice(2)}${Date.now().toString(36)}`
+  }
+  const prefix = safeSeed.length > 0 ? safeSeed.toLowerCase() : 'anon'
+  return `${prefix}+${token.slice(0, 12)}@${domain}`
 }
 
 function formatPrivyConnectError(code: string): string {
@@ -263,11 +279,10 @@ function getPrivyWalletMissingMessage(user: any, walletsOverride?: any[]): strin
 type FlowAction =
   | { type: 'reset' }
   | { type: 'select_persona'; persona: Persona }
-  | { type: 'back' }
-  | { type: 'verified' }
-  | { type: 'advance_email' }
   | { type: 'submit_success'; doneEmail: string | null }
   | { type: 'set_email'; email: string }
+  | { type: 'set_email_opt_out'; emailOptOut: boolean }
+  | { type: 'set_done_email'; doneEmail: string | null }
   | { type: 'set_busy'; busy: boolean }
   | { type: 'set_error'; error: string | null }
   | { type: 'set_contact_preference'; contactPreference: ContactPreference }
@@ -280,23 +295,15 @@ function flowReducer(state: FlowState, action: FlowAction): FlowState {
       // Simplified flow - persona is pre-set to 'creator'
       return state
     }
-    case 'back': {
-      // Simplified flow: email → verify → done
-      if (state.step === 'verify') return { ...state, step: 'email' }
-      return state
-    }
-    case 'verified':
-      // After verification, go to done (submit happens during verification)
-      if (state.step !== 'verify') return state
-      return state
-    case 'advance_email':
-      // From email step, advance to verify step
-      return { ...state, step: 'verify' }
     case 'submit_success':
       if (state.step === 'done') return state
       return { ...state, step: 'done', doneEmail: action.doneEmail }
     case 'set_email':
       return { ...state, email: action.email }
+    case 'set_email_opt_out':
+      return { ...state, emailOptOut: action.emailOptOut }
+    case 'set_done_email':
+      return { ...state, doneEmail: action.doneEmail }
     case 'set_busy':
       return { ...state, busy: action.busy }
     case 'set_error':
@@ -384,7 +391,6 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
   const creatorCoinForWalletRef = useRef<string | null>(null)
   const claimCoinForWalletRef = useRef<string | null>(null)
 
-  const emailInputRef = useRef<HTMLInputElement | null>(null)
   const refreshPositionInFlightRef = useRef<Promise<void> | null>(null)
   const refreshPositionAbortRef = useRef<AbortController | null>(null)
 
@@ -400,12 +406,20 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
     dispatchWaitlist({ type: 'patch', patch })
   }, [])
 
-  const goBackFlow = useCallback(() => dispatchFlow({ type: 'back' }), [])
-  const advanceToEmail = useCallback(() => dispatchFlow({ type: 'advance_email' }), [])
   const submitSuccess = useCallback((doneEmail: string | null) => dispatchFlow({ type: 'submit_success', doneEmail }), [])
   const setEmail = useCallback((email: string) => dispatchFlow({ type: 'set_email', email }), [])
+  const setEmailOptOut = useCallback(
+    (emailOptOutNext: boolean) => dispatchFlow({ type: 'set_email_opt_out', emailOptOut: emailOptOutNext }),
+    [],
+  )
+  const setDoneEmail = useCallback((value: string | null) => dispatchFlow({ type: 'set_done_email', doneEmail: value }), [])
   const setBusy = useCallback((busy: boolean) => dispatchFlow({ type: 'set_busy', busy }), [])
   const setError = useCallback((error: string | null) => dispatchFlow({ type: 'set_error', error }), [])
+  const setContactPreference = useCallback(
+    (contactPreferenceNext: ContactPreference) =>
+      dispatchFlow({ type: 'set_contact_preference', contactPreference: contactPreferenceNext }),
+    [],
+  )
 
   const verifyWallet = useCallback(
     (address: string, method: VerificationMethod | null) => dispatchVerification({ type: 'verify_wallet', address, method }),
@@ -437,7 +451,7 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
     [patchWaitlist],
   )
 
-  const { persona, step, contactPreference, email, busy, error, doneEmail } = flow
+  const { persona, step, contactPreference, email, emailOptOut, busy, error, doneEmail } = flow
   const {
     verifiedWallet,
     verifiedWalletMethod,
@@ -627,13 +641,48 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
     getPrivyWalletMissingMessage,
     ensureBaseSubAccount,
   })
-  void handlePrivyContinue
+
+  const openPrivyLogin = useCallback(async () => {
+    if (!privyReady || privyVerifyBusy) return
+    if (privyAuthed && !embeddedWalletAddress) {
+      startPrivyVerify()
+      if (typeof window !== 'undefined') {
+        window.setTimeout(() => finishPrivyVerify(), 12_000)
+      }
+      try {
+        if (typeof privyLogout === 'function') {
+          try {
+            await privyLogout()
+          } catch {
+            // ignore
+          }
+        }
+        await privyLogin({ loginMethods: ['wallet', 'email'] })
+      } catch (e: any) {
+        const msg = formatPrivyConnectError(e?.message ? String(e.message) : String(e ?? ''))
+        setPrivyVerifyError(msg)
+        finishPrivyVerify()
+      }
+      return
+    }
+    handlePrivyContinue()
+  }, [
+    embeddedWalletAddress,
+    finishPrivyVerify,
+    formatPrivyConnectError,
+    handlePrivyContinue,
+    privyAuthed,
+    privyLogin,
+    privyLogout,
+    privyReady,
+    privyVerifyBusy,
+    setPrivyVerifyError,
+    startPrivyVerify,
+  ])
 
   const emailTrimmed = useMemo(() => normalizeEmail(email), [email])
   const isEmailValid = useMemo(() => isValidEmail(emailTrimmed), [emailTrimmed])
-  // Simplified flow: can submit when email is valid and coin status is known.
-  const canSubmit = isEmailValid && (Boolean(creatorCoin?.address) || creatorCoinDeclaredMissing)
-  const flowBusy = busy || siwe.busy
+  const canSubmit = (isEmailValid || emailOptOut) && (Boolean(creatorCoin?.address) || creatorCoinDeclaredMissing)
   const connectedAddress = useMemo(
     () =>
       typeof connectedAddressRaw === 'string' && connectedAddressRaw.startsWith('0x') ? connectedAddressRaw.toLowerCase() : null,
@@ -773,13 +822,12 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
   }, [])
   const isBypassAdmin = !!connectedAddress && adminBypassSet.has(connectedAddress)
 
-  // Simplified flow: email → verify → done (3 steps)
-  const totalSteps = 3
+  // Simplified flow: verify → done (2 steps)
+  const totalSteps = 2
 
   const stepIndex = useMemo(() => {
-    if (step === 'email') return 1
-    if (step === 'verify') return 2
-    if (step === 'done') return 3
+    if (step === 'verify') return 1
+    if (step === 'done') return 2
     return 1
   }, [step])
 
@@ -788,26 +836,24 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
     return Math.max(0, Math.min(100, Math.round((stepIndex / totalSteps) * 100)))
   }, [stepIndex, totalSteps])
 
-  useEffect(() => {
-    if (step === 'email') {
-      requestAnimationFrame(() => emailInputRef.current?.focus())
-    }
-  }, [step])
-
-  // Auto-fill email from Privy user and advance to verify step when authenticated
+  // Auto-fill email from Privy user when authenticated
   useEffect(() => {
     if (!privyAuthed || !privyUser) return
-    if (step !== 'email') return
+    if (step !== 'verify') return
 
     // Extract email from Privy user
     const privyEmail = privyUser.email?.address || null
     if (privyEmail && isValidEmail(privyEmail)) {
       setEmail(privyEmail)
+      setEmailOptOut(false)
+      setContactPreference('email')
+    } else {
+      setEmail('')
+      setEmailOptOut(true)
+      setContactPreference('wallet')
     }
 
-    // Auto-advance to verify step after Privy login
-    advanceToEmail()
-  }, [privyAuthed, privyUser, step, setEmail, advanceToEmail])
+  }, [privyAuthed, privyUser, step, setEmail, setEmailOptOut, setContactPreference])
 
   const refreshPosition = useCallback(
     async (emailForSync: string) => {
@@ -935,11 +981,57 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
     if (!miniApp.isMiniApp) return null
     return miniApp.isBaseApp ? 'Base app' : 'Farcaster'
   }, [miniApp.isBaseApp, miniApp.isMiniApp])
-  const displayEmail = doneEmail ?? null
+  const displayEmail = doneEmail && !isSyntheticEmail(doneEmail) ? doneEmail : null
+  const showEmailCapture = Boolean(doneEmail && isSyntheticEmail(doneEmail))
+  const [emailCapture, setEmailCapture] = useState('')
+  const [emailCaptureBusy, setEmailCaptureBusy] = useState(false)
+  const [emailCaptureError, setEmailCaptureError] = useState<string | null>(null)
+  const [emailCaptureSuccess, setEmailCaptureSuccess] = useState<string | null>(null)
 
   const handleFollow = useCallback(() => {
     markAction('follow')
   }, [markAction])
+
+  const handleEmailCaptureSubmit = useCallback(async () => {
+    if (!doneEmail || !isSyntheticEmail(doneEmail)) return
+    const nextEmail = normalizeEmail(emailCapture)
+    if (!isValidEmail(nextEmail)) {
+      setEmailCaptureError('Enter a valid email address.')
+      setEmailCaptureSuccess(null)
+      return
+    }
+    setEmailCaptureBusy(true)
+    setEmailCaptureError(null)
+    setEmailCaptureSuccess(null)
+    try {
+      const res = await apiFetch('/api/waitlist/update-email', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+        body: JSON.stringify({ currentEmail: doneEmail, newEmail: nextEmail }),
+      })
+      const text = await res.text().catch(() => '')
+      const json = safeJsonParse<any>(text)
+      if (!res.ok || !json || json.success !== true) {
+        const msg =
+          json && typeof json.error === 'string'
+            ? json.error
+            : res.ok
+              ? 'Email update failed.'
+              : `Email update failed (HTTP ${res.status})`
+        throw new Error(msg)
+      }
+      const updatedEmail = String(json?.data?.email || nextEmail)
+      setDoneEmail(updatedEmail)
+      setContactPreference('email')
+      setEmailOptOut(false)
+      setEmailCapture('')
+      setEmailCaptureSuccess('Email saved.')
+    } catch (e: any) {
+      setEmailCaptureError(e?.message ? String(e.message) : 'Email update failed.')
+    } finally {
+      setEmailCaptureBusy(false)
+    }
+  }, [apiFetch, doneEmail, emailCapture, setContactPreference, setDoneEmail, setEmailOptOut])
 
   function primaryWalletForSubmit(): string | null {
     const pw = typeof verifiedWallet === 'string' && isValidEvmAddress(verifiedWallet) ? verifiedWallet : null
@@ -1020,7 +1112,6 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
         }
       }
 
-      advanceToEmail()
     } catch (e: any) {
       patchWaitlist({ claimCoinError: e?.message ? String(e.message) : 'Claim failed' })
     } finally {
@@ -1041,11 +1132,14 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
       if (persona !== 'creator' && persona !== 'user') {
         throw new Error('Select Creator or User first.')
       }
-      if (!isEmailValid) {
+      if (emailTrimmed.length > 0 && !isEmailValid && !emailOptOut) {
         throw new Error('Enter a valid email address.')
       }
+      if (emailTrimmed.length === 0 && !emailOptOut) {
+        throw new Error('Add an email or skip for now.')
+      }
 
-      const emailForSubmit = emailTrimmed
+      const emailForSubmit = isEmailValid ? emailTrimmed : buildSyntheticEmail(primaryWalletForSubmit())
       const storedRef = getStoredReferralCode()
       const claim =
         persona === 'creator'
@@ -1066,7 +1160,7 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
           baseSubAccount: baseSubAccountForSubmit(),
           referralCode: storedRef,
           claimReferralCode: claim.length > 0 ? claim : null,
-          contactPreference,
+          contactPreference: isEmailValid ? contactPreference : 'wallet',
           verifications,
           intent: {
             persona,
@@ -1474,81 +1568,62 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
 
   const containerClass =
     variant === 'page'
-      ? 'min-h-[100svh] flex items-center justify-center px-4 sm:px-6 py-10 sm:py-14'
+      ? 'min-h-[100svh] flex items-center justify-center px-4 sm:px-6 py-12 sm:py-16 bg-[#020202]'
       : 'cinematic-section'
 
-  const innerWrapClass = variant === 'page' ? 'w-full max-w-lg' : 'max-w-3xl mx-auto px-6 py-14'
+  const innerWrapClass = variant === 'page' ? 'w-full max-w-[440px]' : 'max-w-3xl mx-auto px-6 py-14'
 
   const cardWrapClass =
     variant === 'page'
-      ? 'rounded-2xl bg-black/30 backdrop-blur-sm p-4 sm:p-6 shadow-void'
-      : 'rounded-2xl border border-zinc-900/70 bg-black/30 backdrop-blur-sm p-5 sm:p-6'
-
-  const goBack = useCallback(() => {
-    setError(null)
-    goBackFlow()
-  }, [goBackFlow, setError])
+      ? 'rounded-3xl bg-zinc-950/80 border border-zinc-800/50 backdrop-blur-xl p-5 sm:p-7'
+      : 'rounded-3xl border border-zinc-800/50 bg-zinc-950/80 backdrop-blur-xl p-5 sm:p-7'
 
   return (
     <section id={variant === 'embedded' ? sectionId : undefined} className={containerClass}>
       <div className={innerWrapClass}>
         {variant === 'page' ? (
-          <div className="flex items-center justify-between mb-5 sm:mb-7">
+          <div className="flex items-center justify-between mb-6 sm:mb-8">
             <div className="flex items-center gap-3">
-              <Logo width={36} height={36} showText={false} />
+              <Logo width={32} height={32} showText={false} />
               <div>
-                <div className="text-[11px] text-zinc-200">Creator Vaults</div>
-                <div className="text-[10px] text-zinc-600">Waitlist</div>
+                <div className="text-[13px] text-white font-medium">Creator Vaults</div>
+                <div className="text-[11px] text-zinc-500">Waitlist</div>
               </div>
             </div>
-            <div className="rounded-full border border-white/10 bg-black/30 px-3 py-1 text-[10px] text-zinc-500">
-              Step {stepIndex} / {totalSteps}
+            <div className="rounded-full border border-zinc-800 bg-zinc-900/50 px-3 py-1.5 text-[11px] text-zinc-400 tabular-nums">
+              {stepIndex}/{totalSteps}
             </div>
           </div>
         ) : (
           <div className="space-y-4 mb-6">
-            <span className="label">Waitlist</span>
-            <div className="headline text-4xl sm:text-5xl leading-tight">Early access</div>
-            <div className="text-sm text-zinc-600 font-light">Creators verify · email required.</div>
+            <span className="text-[11px] uppercase tracking-[0.15em] text-zinc-600 font-medium">Waitlist</span>
+            <div className="text-[40px] sm:text-[48px] font-light tracking-tight text-white leading-tight">Early access</div>
+            <div className="text-[15px] text-zinc-500 font-light">Verify your wallet to join.</div>
           </div>
         )}
 
         <div className={cardWrapClass}>
-          {/* Show back button on verify step, reset on done step */}
-          {step === 'verify' || step === 'done' ? (
-            <div className="flex items-center justify-between mb-4">
-              {step === 'verify' ? (
-                <button
-                  type="button"
-                  className="inline-flex items-center gap-2 text-[11px] text-zinc-500 hover:text-zinc-300 transition-colors"
-                  disabled={flowBusy}
-                  onClick={() => {
-                    if (flowBusy) return
-                    goBack()
-                  }}
-                >
-                  <ArrowLeft className="w-3 h-3" />
-                  Back
-                </button>
-              ) : (
-                <button
-                  type="button"
-                  className="inline-flex items-center gap-2 text-[11px] text-zinc-500 hover:text-zinc-300 transition-colors"
-                  onClick={resetFlow}
-                >
-                  Reset
-                </button>
-              )}
+          {/* Show reset on done step */}
+          {step === 'done' ? (
+            <div className="flex items-center justify-between mb-5">
+              <button
+                type="button"
+                className="text-[12px] text-zinc-500 hover:text-zinc-300 transition-colors duration-200"
+                onClick={resetFlow}
+              >
+                Start over
+              </button>
               <div className="w-8" />
             </div>
           ) : null}
-          <div className="mb-5 sm:mb-6">
-            <div className="h-1 rounded-full bg-white/5 overflow-hidden">
+          {/* Progress bar - Base blue */}
+          <div className="mb-6">
+            <div className="h-1 rounded-full bg-zinc-800 overflow-hidden">
               <motion.div
-                className="h-full bg-gradient-to-r from-brand-primary/20 via-brand-primary/50 to-brand-primary/20"
+                className="h-full bg-[#0052FF]"
                 initial={false}
                 animate={{ width: `${progressPct}%` }}
-                transition={{ duration: 0.25, ease: 'easeOut' }}
+                transition={{ duration: 0.24, ease: [0.4, 0, 0.2, 1] }}
               />
             </div>
           </div>
@@ -1579,27 +1654,8 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
                 canSubmit={canSubmit}
                 onSignOutWallet={signOutWallet}
                 onNoCreatorCoin={markNoCreatorCoin}
-                onPrivyContinue={() => {
-                  startPrivyVerify()
-                  privyLogin({ loginMethods: ['wallet', 'email'] })
-                }}
+                onPrivyContinue={openPrivyLogin}
                 onSubmit={submitWaitlist}
-              />
-            ) : null}
-
-            {step === 'email' ? (
-              <EmailStep
-                error={error}
-                busy={busy}
-                showPrivy={showPrivy}
-                privyReady={privyReady}
-                privyAuthenticated={privyAuthed}
-                privyVerifyBusy={privyVerifyBusy}
-                privyVerifyError={privyVerifyError}
-                onPrivyLogin={() => {
-                  startPrivyVerify()
-                  privyLogin({ loginMethods: ['wallet', 'email'] })
-                }}
               />
             ) : null}
 
@@ -1621,6 +1677,13 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
                 miniAppAdded={miniApp.added === true}
                 miniAppAddSupported={miniAppAddSupported}
                 miniAppHostLabel={miniAppHostLabel}
+                showEmailCapture={showEmailCapture}
+                emailCaptureValue={emailCapture}
+                emailCaptureBusy={emailCaptureBusy}
+                emailCaptureError={emailCaptureError}
+                emailCaptureSuccess={emailCaptureSuccess}
+                onEmailCaptureChange={setEmailCapture}
+                onEmailCaptureSubmit={handleEmailCaptureSubmit}
                 onShareX={handleShareX}
                 onCopyReferral={handleCopyReferral}
                 onNextInviteTemplate={handleNextInviteTemplate}

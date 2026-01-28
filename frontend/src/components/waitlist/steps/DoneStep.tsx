@@ -1,9 +1,26 @@
 import { memo } from 'react'
 import { motion } from 'framer-motion'
-import { Check, CheckCircle2 } from 'lucide-react'
+import { Check, CheckCircle2, Copy, ExternalLink } from 'lucide-react'
 import { INVITE_COPY, REFERRAL_TWEET_TEMPLATES } from '@/components/waitlist/referralsCopy'
 import { ACTION_POINTS, SIGNUP_POINTS } from '../waitlistConstants'
 import type { ActionKey, WaitlistState } from '../waitlistTypes'
+
+// Base brand motion: cubic-bezier(0.4, 0, 0.2, 1), 120-240ms for snappy UI
+const baseEase = [0.4, 0, 0.2, 1] as const
+const fadeUp = {
+  initial: { opacity: 0, y: 12 },
+  animate: { opacity: 1, y: 0 },
+  exit: { opacity: 0, y: -8 },
+  transition: { duration: 0.2, ease: baseEase },
+}
+const scaleIn = {
+  initial: { opacity: 0, scale: 0.96 },
+  animate: { opacity: 1, scale: 1 },
+  transition: { duration: 0.18, ease: baseEase },
+}
+const stagger = {
+  animate: { transition: { staggerChildren: 0.05 } },
+}
 
 type DoneStepProps = {
   displayEmail: string | null
@@ -22,6 +39,13 @@ type DoneStepProps = {
   miniAppAdded: boolean
   miniAppAddSupported: boolean | null
   miniAppHostLabel: string | null
+  showEmailCapture: boolean
+  emailCaptureValue: string
+  emailCaptureBusy: boolean
+  emailCaptureError: string | null
+  emailCaptureSuccess: string | null
+  onEmailCaptureChange: (value: string) => void
+  onEmailCaptureSubmit: () => void
   onShareX: () => void
   onCopyReferral: () => void
   onNextInviteTemplate: () => void
@@ -47,6 +71,13 @@ export const DoneStep = memo(function DoneStep({
   miniAppAdded,
   miniAppAddSupported,
   miniAppHostLabel,
+  showEmailCapture,
+  emailCaptureValue,
+  emailCaptureBusy,
+  emailCaptureError,
+  emailCaptureSuccess,
+  onEmailCaptureChange,
+  onEmailCaptureSubmit,
   onShareX,
   onCopyReferral,
   onNextInviteTemplate,
@@ -59,11 +90,13 @@ export const DoneStep = memo(function DoneStep({
     const points = ACTION_POINTS[action]
     return (
       <span
-        className={`ml-auto rounded-full border px-2 py-0.5 text-[10px] ${
-          done ? 'border-emerald-500/20 bg-emerald-500/5 text-emerald-200' : 'border-white/5 bg-black/20 text-zinc-600'
+        className={`ml-auto rounded-full px-2.5 py-1 text-[11px] font-medium tabular-nums transition-colors duration-200 ${
+          done
+            ? 'bg-emerald-500/10 text-emerald-400'
+            : 'bg-zinc-800/50 text-zinc-500'
         }`}
       >
-        {done ? `✓${points}` : `•${points}`}
+        {done ? `✓ ${points}` : `+${points}`}
       </span>
     )
   }
@@ -71,219 +104,307 @@ export const DoneStep = memo(function DoneStep({
   return (
     <motion.div
       key="done"
-      initial={{ opacity: 0, y: 10 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, y: -10 }}
-      transition={{ duration: 0.18 }}
+      {...fadeUp}
       className="space-y-5"
     >
-      <motion.div
-        initial={{ scale: 0.95, opacity: 0 }}
-        animate={{ scale: 1, opacity: 1 }}
-        transition={{ duration: 0.25, ease: 'easeOut' }}
-        className="flex items-center gap-3"
-      >
-        <div className="relative w-9 h-9 rounded-full border border-brand-primary/20 bg-brand-primary/10 inline-flex items-center justify-center">
-          <div className="absolute inset-0 rounded-full border border-brand-primary/20 animate-pulse-ring" />
-          <CheckCircle2 className="w-5 h-5 text-brand-accent" />
+      {/* Success header */}
+      <motion.div {...scaleIn} className="flex items-center gap-4">
+        <div className="relative">
+          <div className="w-12 h-12 rounded-2xl bg-[#0052FF]/10 border border-[#0052FF]/20 flex items-center justify-center">
+            <CheckCircle2 className="w-6 h-6 text-[#0052FF]" />
+          </div>
+          <motion.div
+            className="absolute inset-0 rounded-2xl border border-[#0052FF]/30"
+            initial={{ scale: 1, opacity: 0.5 }}
+            animate={{ scale: 1.4, opacity: 0 }}
+            transition={{ duration: 1.2, repeat: Infinity, ease: 'easeOut' }}
+          />
         </div>
-        <div className="headline text-2xl sm:text-3xl leading-tight">You’re in!</div>
+        <div>
+          <h1 className="text-[28px] sm:text-[32px] font-light tracking-tight text-white leading-tight">
+            You're in
+          </h1>
+          {displayEmail ? (
+            <p className="text-[14px] text-zinc-500 font-mono">{displayEmail}</p>
+          ) : null}
+        </div>
       </motion.div>
 
-      <div className="text-sm text-zinc-600 font-light">
-        {displayEmail ? (
-          <>
-            You’re in as <span className="font-mono text-zinc-300">{displayEmail}</span>. Share to move up.
-          </>
-        ) : (
-          <>You’re in. Share to move up.</>
-        )}
-      </div>
+      <motion.p {...fadeUp} className="text-[15px] text-zinc-400 leading-relaxed">
+        Share your link to move up the waitlist.
+      </motion.p>
 
-      {isBypassAdmin ? (
-        <div className="rounded-xl border border-white/10 bg-black/30 px-4 py-3 space-y-2">
-          <div className="text-[10px] uppercase tracking-[0.24em] text-zinc-600">Admin</div>
-          <a className="btn-primary w-full inline-flex justify-center" href={`${appUrl.replace(/\/+$/, '')}/deploy`}>
-            Continue to deploy
-          </a>
-          <a className="btn-accent w-full inline-flex justify-center" href={`${appUrl.replace(/\/+$/, '')}/admin/creator-access`}>
-            Creator access
-          </a>
-        </div>
+      {/* Email capture */}
+      {showEmailCapture ? (
+        <motion.div {...fadeUp} className="rounded-2xl border border-zinc-800 bg-zinc-900/30 p-4 space-y-3">
+          <div>
+            <div className="text-[11px] uppercase tracking-[0.15em] text-zinc-600 font-medium">Get notified</div>
+            <p className="text-[13px] text-zinc-500 mt-1">Add email for updates.</p>
+          </div>
+          <div className="flex flex-col sm:flex-row gap-2">
+            <input
+              type="email"
+              className="flex-1 rounded-xl border border-zinc-800 bg-black/40 px-4 py-3 text-[14px] text-white placeholder:text-zinc-600 focus:outline-none focus:border-[#0052FF]/50 transition-colors duration-200"
+              placeholder="you@email.com"
+              value={emailCaptureValue}
+              onChange={(event) => onEmailCaptureChange(event.target.value)}
+            />
+            <button
+              type="button"
+              className="px-5 py-3 rounded-xl bg-[#0052FF] text-white text-[14px] font-medium hover:bg-[#0047E1] transition-all duration-200 ease-[cubic-bezier(0.4,0,0.2,1)] active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
+              disabled={emailCaptureBusy || emailCaptureValue.trim().length === 0}
+              onClick={onEmailCaptureSubmit}
+            >
+              {emailCaptureBusy ? 'Saving…' : 'Save'}
+            </button>
+          </div>
+          {emailCaptureError ? <div className="text-[12px] text-red-400">{emailCaptureError}</div> : null}
+          {emailCaptureSuccess ? <div className="text-[12px] text-emerald-400">{emailCaptureSuccess}</div> : null}
+        </motion.div>
       ) : null}
 
-      <div className="rounded-xl border border-white/10 bg-black/30 px-4 py-3 space-y-2">
-        <div className="flex items-start justify-between gap-3">
+      {/* Admin shortcuts */}
+      {isBypassAdmin ? (
+        <motion.div {...fadeUp} className="flex gap-2">
+          <a
+            className="flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-[#0052FF] text-white text-[14px] font-medium hover:bg-[#0047E1] transition-all duration-200 ease-[cubic-bezier(0.4,0,0.2,1)]"
+            href={`${appUrl.replace(/\/+$/, '')}/deploy`}
+          >
+            Deploy
+          </a>
+          <a
+            className="flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-xl border border-zinc-800 text-zinc-300 text-[14px] font-medium hover:text-white hover:border-zinc-700 hover:bg-zinc-800/50 transition-all duration-200 ease-[cubic-bezier(0.4,0,0.2,1)]"
+            href={`${appUrl.replace(/\/+$/, '')}/admin/creator-access`}
+          >
+            Admin
+          </a>
+        </motion.div>
+      ) : null}
+
+      {/* Points card */}
+      <motion.div {...fadeUp} className="rounded-2xl border border-zinc-800 bg-zinc-900/30 p-4">
+        <div className="flex items-start justify-between gap-3 mb-4">
           <div>
-            <div className="text-[10px] uppercase tracking-[0.24em] text-zinc-600 mb-1">{INVITE_COPY.counterLabel}</div>
-            <div className="text-2xl text-zinc-200">{waitlistPosition ? waitlistPosition.points.total.toLocaleString() : '—'}</div>
-            <div className="text-[11px] text-zinc-700">
+            <div className="text-[11px] uppercase tracking-[0.15em] text-zinc-600 font-medium mb-1">
+              {INVITE_COPY.counterLabel}
+            </div>
+            <div className="text-[32px] font-light text-white tabular-nums tracking-tight">
+              {waitlistPosition ? waitlistPosition.points.total.toLocaleString() : '—'}
+            </div>
+            <div className="text-[13px] text-zinc-500">
               {waitlistPosition
                 ? `#${waitlistPosition.rank.invite ?? '—'} · Top ${waitlistPosition.percentileInvite ?? '—'}%`
                 : 'Loading…'}
             </div>
           </div>
-          <a className="text-[11px] text-zinc-600 hover:text-zinc-400 transition-colors pt-1" href="/leaderboard">
+          <a
+            className="text-[13px] text-[#0052FF] hover:text-[#3373FF] transition-colors duration-200 flex items-center gap-1"
+            href="/leaderboard"
+          >
             Leaderboard
+            <ExternalLink className="w-3.5 h-3.5" />
           </a>
         </div>
 
-        <div className="pt-2">
-          {(() => {
-            const actionPointsLocal = (Object.keys(ACTION_POINTS) as ActionKey[]).reduce((sum, k) => {
-              return sum + (actionsDone[k] ? ACTION_POINTS[k] : 0)
-            }, 0)
-            const totalPoints = waitlistPosition?.points?.total ?? SIGNUP_POINTS + actionPointsLocal
-            const taskPoints = waitlistPosition?.points?.tasks ?? actionPointsLocal
-            const signupPoints = waitlistPosition?.points?.signup ?? SIGNUP_POINTS
-            const invitePoints = waitlistPosition?.points?.invite ?? 0
-            return (
-              <div className="rounded-lg border border-white/10 bg-black/30 px-3 py-2">
-                <div className="flex items-center justify-between gap-3">
-                  <div className="text-[10px] uppercase tracking-[0.24em] text-zinc-600">Points</div>
-                  <div className="text-sm text-zinc-200 font-medium tabular-nums">{totalPoints}</div>
-                </div>
-                <div className="mt-2 space-y-1 text-[11px] text-zinc-600">
-                  <div className="flex items-center justify-between gap-3">
-                    <span>Joined waitlist</span>
-                    <span className="tabular-nums">+{signupPoints}</span>
-                  </div>
-                  <div className="flex items-center justify-between gap-3">
-                    <span>Qualified referrals</span>
-                    <span className="tabular-nums">+{invitePoints}</span>
-                  </div>
-                  <div className="flex items-center justify-between gap-3">
-                    <span>Actions completed</span>
-                    <span className="tabular-nums">+{taskPoints}</span>
-                  </div>
-                </div>
-                <div className="mt-2 text-[10px] text-zinc-700">
-                  Points are recorded server-side; actions are best-effort and duplicates are ignored.
-                </div>
-                {referralCode && pointsBreakdownUrl ? (
-                  <a
-                    className="mt-2 inline-flex text-[10px] text-zinc-600 hover:text-zinc-400 transition-colors"
-                    href={pointsBreakdownUrl}
-                    target="_blank"
-                    rel="noreferrer"
-                  >
-                    View points breakdown
-                  </a>
-                ) : null}
+        {(() => {
+          const actionPointsLocal = (Object.keys(ACTION_POINTS) as ActionKey[]).reduce((sum, k) => {
+            return sum + (actionsDone[k] ? ACTION_POINTS[k] : 0)
+          }, 0)
+          const totalPoints = waitlistPosition?.points?.total ?? SIGNUP_POINTS + actionPointsLocal
+          const taskPoints = waitlistPosition?.points?.tasks ?? actionPointsLocal
+          const signupPoints = waitlistPosition?.points?.signup ?? SIGNUP_POINTS
+          const invitePoints = waitlistPosition?.points?.invite ?? 0
+          void totalPoints
+          return (
+            <div className="space-y-2 text-[13px]">
+              <div className="flex items-center justify-between text-zinc-500">
+                <span>Signup</span>
+                <span className="tabular-nums text-zinc-300">+{signupPoints}</span>
               </div>
-            )
-          })()}
-        </div>
-      </div>
+              <div className="flex items-center justify-between text-zinc-500">
+                <span>Referrals</span>
+                <span className="tabular-nums text-zinc-300">+{invitePoints}</span>
+              </div>
+              <div className="flex items-center justify-between text-zinc-500">
+                <span>Actions</span>
+                <span className="tabular-nums text-zinc-300">+{taskPoints}</span>
+              </div>
+            </div>
+          )
+        })()}
 
+        {referralCode && pointsBreakdownUrl ? (
+          <a
+            className="mt-3 inline-flex items-center gap-1 text-[12px] text-zinc-600 hover:text-zinc-400 transition-colors duration-200"
+            href={pointsBreakdownUrl}
+            target="_blank"
+            rel="noreferrer"
+          >
+            View breakdown
+            <ExternalLink className="w-3 h-3" />
+          </a>
+        ) : null}
+      </motion.div>
+
+      {/* Referral link */}
       {referralCode ? (
-        <div className="rounded-xl border border-white/10 bg-black/30 px-4 py-3 space-y-3">
+        <motion.div {...fadeUp} className="rounded-2xl border border-zinc-800 bg-zinc-900/30 p-4 space-y-4">
           <div>
-            <div className="text-[10px] uppercase tracking-[0.24em] text-zinc-600 mb-1">{INVITE_COPY.linkLabel}</div>
-            <div className="rounded-lg border border-white/10 bg-black/40 px-3 py-2 font-mono text-[12px] text-zinc-300 break-all">
-              {referralLink}
+            <div className="text-[11px] uppercase tracking-[0.15em] text-zinc-600 font-medium mb-2">
+              {INVITE_COPY.linkLabel}
+            </div>
+            <div className="flex items-center gap-2 rounded-xl border border-zinc-800 bg-black/40 px-3 py-2.5">
+              <span className="flex-1 font-mono text-[13px] text-zinc-300 truncate">
+                {referralLink}
+              </span>
+              <button
+                type="button"
+                className="p-1.5 rounded-lg hover:bg-zinc-800 transition-colors duration-200"
+                onClick={onCopyReferral}
+                title="Copy link"
+              >
+                <Copy className="w-4 h-4 text-zinc-500" />
+              </button>
             </div>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-            <button type="button" className="btn-primary w-full flex items-center justify-between gap-2" onClick={onShareX}>
-              <span>{INVITE_COPY.shareButton}</span>
+          <div className="grid grid-cols-2 gap-2">
+            <button
+              type="button"
+              className="flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-[#0052FF] text-white text-[14px] font-medium hover:bg-[#0047E1] transition-all duration-200 ease-[cubic-bezier(0.4,0,0.2,1)] active:scale-[0.98]"
+              onClick={onShareX}
+            >
+              {INVITE_COPY.shareButton}
               {renderActionBadge('shareX')}
             </button>
-            <button type="button" className="btn-accent w-full flex items-center justify-between gap-2" onClick={onCopyReferral}>
-              <span>{INVITE_COPY.copyButton}</span>
+            <button
+              type="button"
+              className="flex items-center justify-center gap-2 px-4 py-3 rounded-xl border border-zinc-800 text-zinc-300 text-[14px] font-medium hover:text-white hover:border-zinc-700 hover:bg-zinc-800/50 transition-all duration-200 ease-[cubic-bezier(0.4,0,0.2,1)] active:scale-[0.98]"
+              onClick={onCopyReferral}
+            >
+              {INVITE_COPY.copyButton}
               {renderActionBadge('copyLink')}
             </button>
           </div>
 
-          <div className="flex items-center justify-between gap-3">
-            <button type="button" className="text-[11px] text-zinc-600 hover:text-zinc-400 transition-colors" onClick={onNextInviteTemplate}>
-              New copy ({(inviteTemplateIdx % REFERRAL_TWEET_TEMPLATES.length) + 1}/{REFERRAL_TWEET_TEMPLATES.length})
+          <div className="flex items-center justify-between">
+            <button
+              type="button"
+              className="text-[12px] text-zinc-600 hover:text-zinc-400 transition-colors duration-200"
+              onClick={onNextInviteTemplate}
+            >
+              Try different copy ({(inviteTemplateIdx % REFERRAL_TWEET_TEMPLATES.length) + 1}/{REFERRAL_TWEET_TEMPLATES.length})
             </button>
-            {inviteToast ? <div className="text-[11px] text-zinc-600">{inviteToast}</div> : null}
+            {inviteToast ? (
+              <motion.span {...fadeUp} className="text-[12px] text-emerald-400">
+                {inviteToast}
+              </motion.span>
+            ) : null}
           </div>
-        </div>
+        </motion.div>
       ) : null}
 
-      <div className="space-y-2 pt-1">
-        {shareToast ? <div className="text-[11px] text-zinc-600">{shareToast}</div> : null}
+      {/* Actions */}
+      <motion.div {...stagger} className="space-y-2">
+        {shareToast ? (
+          <motion.div {...fadeUp} className="text-[12px] text-zinc-500">{shareToast}</motion.div>
+        ) : null}
 
-        <div className="rounded-xl border border-white/10 bg-black/30 divide-y divide-white/10">
-          <div className="px-4 py-3 flex items-center justify-between gap-3">
+        <motion.div {...fadeUp} className="rounded-2xl border border-zinc-800 bg-zinc-900/30 overflow-hidden divide-y divide-zinc-800/50">
+          {/* Follow action */}
+          <div className="px-4 py-3.5 flex items-center justify-between gap-3">
             <div className="flex items-center gap-3 min-w-0">
               <div
-                className={`w-5 h-5 rounded-full border flex items-center justify-center ${
-                  actionsDone.follow ? 'border-emerald-500/30 bg-emerald-500/10' : 'border-white/10 bg-black/20'
+                className={`w-6 h-6 rounded-lg flex items-center justify-center transition-colors duration-200 ${
+                  actionsDone.follow
+                    ? 'bg-emerald-500/10 border border-emerald-500/20'
+                    : 'bg-zinc-800/50 border border-zinc-700'
                 }`}
-                aria-hidden="true"
               >
                 {actionsDone.follow ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : null}
               </div>
               <div className="min-w-0">
-                <div className="text-sm text-zinc-200">Follow @4626fun</div>
-                <div className="text-[11px] text-zinc-600">+{ACTION_POINTS.follow} points</div>
+                <div className="text-[14px] text-white">Follow @4626fun</div>
               </div>
             </div>
-            <a className="btn-primary px-3 py-2 text-sm" href="https://x.com/4626fun" target="_blank" rel="noreferrer" onClick={onFollow}>
-              {actionsDone.follow ? 'Done' : 'Follow'}
+            <a
+              className={`px-4 py-2 rounded-xl text-[13px] font-medium transition-all duration-200 ease-[cubic-bezier(0.4,0,0.2,1)] ${
+                actionsDone.follow
+                  ? 'bg-zinc-800/50 text-zinc-500'
+                  : 'bg-[#0052FF] text-white hover:bg-[#0047E1] active:scale-[0.98]'
+              }`}
+              href="https://x.com/4626fun"
+              target="_blank"
+              rel="noreferrer"
+              onClick={onFollow}
+            >
+              {actionsDone.follow ? 'Done' : `Follow +${ACTION_POINTS.follow}`}
             </a>
           </div>
 
-          <div className="px-4 py-3 flex items-center justify-between gap-3">
+          {/* Share action */}
+          <div className="px-4 py-3.5 flex items-center justify-between gap-3">
             <div className="flex items-center gap-3 min-w-0">
               <div
-                className={`w-5 h-5 rounded-full border flex items-center justify-center ${
-                  actionsDone.share ? 'border-emerald-500/30 bg-emerald-500/10' : 'border-white/10 bg-black/20'
+                className={`w-6 h-6 rounded-lg flex items-center justify-center transition-colors duration-200 ${
+                  actionsDone.share
+                    ? 'bg-emerald-500/10 border border-emerald-500/20'
+                    : 'bg-zinc-800/50 border border-zinc-700'
                 }`}
-                aria-hidden="true"
               >
                 {actionsDone.share ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : null}
               </div>
               <div className="min-w-0">
-                <div className="text-sm text-zinc-200">Share</div>
-                <div className="text-[11px] text-zinc-600">+{ACTION_POINTS.share} points</div>
+                <div className="text-[14px] text-white">Share</div>
               </div>
             </div>
-            <button type="button" className="btn-accent px-3 py-2 text-sm disabled:opacity-60" disabled={shareBusy} onClick={onShare}>
-              {shareBusy ? 'Working…' : actionsDone.share ? 'Done' : 'Share'}
+            <button
+              type="button"
+              className={`px-4 py-2 rounded-xl text-[13px] font-medium transition-all duration-200 ease-[cubic-bezier(0.4,0,0.2,1)] disabled:opacity-50 ${
+                actionsDone.share
+                  ? 'bg-zinc-800/50 text-zinc-500'
+                  : 'border border-zinc-800 text-zinc-300 hover:text-white hover:border-zinc-700 hover:bg-zinc-800/50 active:scale-[0.98]'
+              }`}
+              disabled={shareBusy}
+              onClick={onShare}
+            >
+              {shareBusy ? 'Sharing…' : actionsDone.share ? 'Done' : `Share +${ACTION_POINTS.share}`}
             </button>
           </div>
 
+          {/* Save app action */}
           {miniAppIsMiniApp && miniAppAddSupported !== false ? (
-            <div className="px-4 py-3 flex items-center justify-between gap-3">
+            <div className="px-4 py-3.5 flex items-center justify-between gap-3">
               <div className="flex items-center gap-3 min-w-0">
                 <div
-                  className={`w-5 h-5 rounded-full border flex items-center justify-center ${
-                    actionsDone.saveApp ? 'border-emerald-500/30 bg-emerald-500/10' : 'border-white/10 bg-black/20'
+                  className={`w-6 h-6 rounded-lg flex items-center justify-center transition-colors duration-200 ${
+                    actionsDone.saveApp
+                      ? 'bg-emerald-500/10 border border-emerald-500/20'
+                      : 'bg-zinc-800/50 border border-zinc-700'
                   }`}
-                  aria-hidden="true"
                 >
                   {actionsDone.saveApp ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : null}
                 </div>
                 <div className="min-w-0">
-                  <div className="text-sm text-zinc-200">Save Mini App</div>
-                  <div className="text-[11px] text-zinc-600">+{ACTION_POINTS.saveApp} points</div>
+                  <div className="text-[14px] text-white">Save app</div>
                 </div>
               </div>
               <button
                 type="button"
-                className="btn-primary px-3 py-2 text-sm disabled:opacity-60"
+                className={`px-4 py-2 rounded-xl text-[13px] font-medium transition-all duration-200 ease-[cubic-bezier(0.4,0,0.2,1)] disabled:opacity-50 ${
+                  actionsDone.saveApp || miniAppAdded
+                    ? 'bg-zinc-800/50 text-zinc-500'
+                    : 'bg-[#0052FF] text-white hover:bg-[#0047E1] active:scale-[0.98]'
+                }`}
                 disabled={shareBusy || miniAppAddSupported === null || miniAppAdded === true}
                 onClick={onAddMiniApp}
-                title={
-                  miniAppAddSupported === null
-                    ? 'Checking host capabilities…'
-                    : miniAppAdded === true
-                      ? `Already saved in ${miniAppHostLabel ?? 'Mini Apps'}`
-                      : `Save this Mini App in ${miniAppHostLabel ?? 'Mini Apps'}`
-                }
               >
-                {miniAppAddSupported === null ? 'Checking…' : miniAppAdded === true ? 'Saved' : 'Save'}
+                {miniAppAddSupported === null ? 'Checking…' : miniAppAdded ? 'Saved' : `Save +${ACTION_POINTS.saveApp}`}
               </button>
             </div>
           ) : null}
-        </div>
-      </div>
+        </motion.div>
+      </motion.div>
     </motion.div>
   )
 })
