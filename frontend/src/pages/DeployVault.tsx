@@ -904,6 +904,9 @@ function DeployVaultBatcher({
     ) {
       return 'Bundler / paymaster is not configured. Set `VITE_CDP_API_KEY` (recommended) or `VITE_CDP_PAYMASTER_URL=/api/paymaster` (and configure `CDP_PAYMASTER_URL` server-side) and retry.'
     }
+    if (lower.includes('signature check failed') || lower.includes('invalid userop signature')) {
+      return 'UserOp signature failed. Ensure the signer wallet is an onchain owner of the creator smart wallet and supports `eth_sign` (raw hash). If you linked a Privy embedded EOA, sign in with Privy so it can sign the UserOp.'
+    }
     if (lower.includes('failed to fetch')) {
       return 'Paymaster request failed to reach the endpoint (network/CORS). Prefer `VITE_CDP_PAYMASTER_URL=/api/paymaster` and ensure the server env `CDP_PAYMASTER_URL` is set.'
     }
@@ -1809,7 +1812,7 @@ function DeployVaultBatcher({
             ownerAddress: ownerExec as Address,
             calls: toCalls(phase1Calls),
             version: '1',
-            userOpSignMode: 'auto',
+            userOpSignMode: 'eth_sign',
           })
           setTxId(r1.transactionHash)
           setPhaseTxs((s) => ({ ...s, userOp1: r1.userOpHash, tx1: r1.transactionHash }))
@@ -1834,7 +1837,7 @@ function DeployVaultBatcher({
             ownerAddress: ownerExec as Address,
             calls: toCalls(phase2Calls),
             version: '1',
-            userOpSignMode: 'auto',
+            userOpSignMode: 'eth_sign',
           })
           setTxId(r2.transactionHash)
           setPhaseTxs((s) => ({ ...s, userOp2: r2.userOpHash, tx2: r2.transactionHash }))
@@ -1860,7 +1863,7 @@ function DeployVaultBatcher({
               ownerAddress: ownerExec as Address,
               calls: toCalls(phase3Calls),
               version: '1',
-              userOpSignMode: 'auto',
+              userOpSignMode: 'eth_sign',
             })
             setTxId(r3.transactionHash)
             setPhaseTxs((s) => ({ ...s, userOp3: r3.userOpHash, tx3: r3.transactionHash }))
