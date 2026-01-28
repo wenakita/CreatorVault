@@ -156,7 +156,7 @@ export function ExploreContent() {
           className="rounded-2xl border border-zinc-800 bg-zinc-900/50 overflow-hidden"
         >
           {/* Table Header */}
-          <PoolTableHeader />
+          <PoolTableHeader timeframe={currentTimeFilter} />
 
           {/* Table Body */}
           <div className="divide-y divide-zinc-800/50">
@@ -183,6 +183,7 @@ export function ExploreContent() {
                   key={coin.address || index}
                   rank={index + 1}
                   coin={coin}
+                  timeframe={currentTimeFilter}
                 />
               ))
             )}

@@ -152,7 +152,7 @@ export function ExploreCreators() {
           className="rounded-2xl border border-zinc-800 bg-zinc-900/50 overflow-hidden"
         >
           {/* Table Header */}
-          <TokenTableHeader />
+          <TokenTableHeader timeframe={currentTimeFilter} />
 
           {/* Table Body */}
           <div className="divide-y divide-zinc-800/50">
@@ -180,6 +180,7 @@ export function ExploreCreators() {
                   rank={index + 1}
                   coin={coin}
                   linkPrefix="/explore/creators"
+                  timeframe={currentTimeFilter}
                 />
               ))
             )}

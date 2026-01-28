@@ -102,9 +102,9 @@ function createWalletBackedLocalAccount(params: {
       // Coinbase Smart Wallet UserOps are signed over the 32-byte UserOp hash.
       //
       // - Prefer `eth_sign` when available (no EIP-191 prefix).
-      // - Some wallets (notably Rabby) block `eth_sign`. In that case, try `personal_sign` via `signMessage({ raw })`
-      //   which produces an EIP-191 signature. If the account implementation does not accept that, the bundler
-      //   simulation will reject the UserOp (no onchain tx), and callers can fall back to other paths.
+      // - Many wallets (notably Rabby and some injected providers) block `eth_sign` entirely.
+      //   In those cases, `personal_sign` / EIP-191 is NOT a reliable fallback for UserOp hashes; the account will
+      //   typically reject it during simulation. Prefer switching to a Privy embedded signer or another compatible wallet.
       const tryEthSign = async () => {
         const sig = await (walletClient as any).request({ method: 'eth_sign', params: [address, hash] })
         return sig as Hex
@@ -122,8 +122,23 @@ function createWalletBackedLocalAccount(params: {
 
       try {
         return await tryEthSign()
-      } catch {
-        return await tryPersonalSign()
+      } catch (e: unknown) {
+        const msg = e instanceof Error ? e.message : String(e ?? '')
+        const lc = msg.toLowerCase()
+        const code = (e as any)?.code
+        const looksBlocked =
+          lc.includes('eth_sign') ||
+          code === -32601 ||
+          lc.includes('-32601') ||
+          (lc.includes('method not found') && lc.includes('sign')) ||
+          lc.includes('unsupported method') ||
+          lc.includes('not supported')
+        if (looksBlocked) {
+          throw new Error(
+            "Your signer blocked the raw signature method (`eth_sign`). This wallet can’t sign UserOp hashes required for smart wallet operations. Switch to a Privy embedded signer (recommended) or use a different wallet.",
+          )
+        }
+        throw e
       }
     },
     signMessage: async ({ message }) => {

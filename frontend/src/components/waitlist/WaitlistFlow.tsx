@@ -36,12 +36,13 @@ const SOL_RE = /^[1-9A-HJ-NP-Za-km-z]+$/
 const SHARE_MESSAGE = 'Creator vaults on Base — join the waitlist.'
 const BASE_SQUARE_BLUE = '/base/1_Base%20Brand%20Assets/The%20Square/Base_square_blue.svg'
 const BASE_EASE = [0.4, 0, 0.2, 1] as const
+const BASE_MOTION_MS = 0.2
 
 const STEP_WIPE = {
   initial: { opacity: 0, scaleX: 0.2 },
   animate: { opacity: 1, scaleX: 1 },
   exit: { opacity: 0, scaleX: 0.2 },
-  transition: { duration: 0.22, ease: BASE_EASE },
+  transition: { duration: BASE_MOTION_MS, ease: BASE_EASE },
 } as const
 
 const COINBASE_SMART_WALLET_OWNER_LINK_ABI = [
@@ -201,7 +202,7 @@ function formatPrivyConnectError(code: string): string {
   if (c.includes('user_exited') || c.includes('user_rejected')) return 'Connection cancelled.'
   if (c.includes('client_request_timeout') || c.includes('timeout')) return 'Wallet connection timed out. Try again.'
   if (c.includes('disallowed_login_method')) {
-    return 'Wallet login is not enabled for this app. Enable wallet login in Privy and try again.'
+    return 'Wallet sign-in isn’t available for this app. If you control this Privy app, enable Wallet login in the Privy dashboard.'
   }
   if (c.includes('unsupported_chain_id')) return 'Unsupported network. Switch to Base and try again.'
   if (c.includes('generic_connect_wallet_error') || c.includes('unknown_connect_wallet_error')) {
@@ -288,9 +289,9 @@ function getPrivyWalletMissingMessage(user: any, walletsOverride?: any[]): strin
   })
   if (hasWallet) return 'Connect Base Account to verify.'
   if (hasNonWalletAccount) {
-    return 'Wallet login is not enabled for this app or no Base Account is linked. Enable wallet login in Privy and try again.'
+    return 'Wallet sign-in isn’t available right now (or no Base Account is linked). If you control this Privy app, enable Wallet login in the Privy dashboard. Otherwise, use the Coinbase Wallet fallback below.'
   }
-  return 'Wallet login is not enabled for this app. Enable wallet login in Privy and try again.'
+  return 'Wallet sign-in isn’t available for this app. If you control this Privy app, enable Wallet login in the Privy dashboard. Otherwise, use the Coinbase Wallet fallback below.'
 }
 
 type FlowAction =
@@ -464,7 +465,7 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
     [],
   )
 
-  const { persona, step, contactPreference, email, emailOptOut, busy, error, doneEmail } = flow
+  const { persona, step, contactPreference, email, emailOptOut, busy, doneEmail } = flow
   const {
     verifiedWallet,
     verifiedWalletMethod,
@@ -716,6 +717,51 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
     startPrivyVerify,
   ])
 
+  // Email-only fallback: lets users at least authenticate with Privy even if wallet login is disabled.
+  // (They will still need wallet sign-in enabled to link Base Account for deploy/verification.)
+  const openPrivyEmailLogin = useCallback(async () => {
+    if (!privyReady || privyVerifyBusy) return
+    if (typeof window !== 'undefined') window.setTimeout(() => finishPrivyVerify(), 12_000)
+    startPrivyVerify()
+    try {
+      if (privyAuthed && typeof privyLogout === 'function') {
+        try {
+          await privyLogout()
+        } catch {
+          // ignore
+        }
+      }
+      await privyLogin({ loginMethods: ['email'] })
+    } catch (e: any) {
+      const msg = formatPrivyConnectError(e?.message ? String(e.message) : String(e ?? ''))
+      setPrivyVerifyError(msg)
+      finishPrivyVerify()
+    }
+  }, [finishPrivyVerify, formatPrivyConnectError, privyAuthed, privyLogin, privyLogout, privyReady, privyVerifyBusy, setPrivyVerifyError, startPrivyVerify])
+
+  // If wallet sign-in is disabled (Privy dashboard config), auto-fall back to email login once
+  // so users aren’t stuck staring at an error.
+  const autoEmailFallbackRef = useRef(false)
+  useEffect(() => {
+    if (step !== 'verify') return
+    if (!showPrivyReady) return
+    if (privyAuthed) return
+    if (autoEmailFallbackRef.current) return
+    const msg = typeof privyVerifyError === 'string' ? privyVerifyError : ''
+    if (!/wallet sign-in isn’t available|wallet login is not enabled|disallowed_login_method/i.test(msg)) return
+    autoEmailFallbackRef.current = true
+    void openPrivyEmailLogin()
+  }, [openPrivyEmailLogin, privyAuthed, privyVerifyError, showPrivyReady, step])
+
+  const fallbackSignIn = useCallback(async () => {
+    try {
+      // This will prefer Privy session-bridge when possible; otherwise it falls back to SIWE.
+      await siwe.signIn()
+    } catch {
+      // errors are handled in the auth hook UI; no-op here
+    }
+  }, [siwe])
+
   const emailTrimmed = useMemo(() => normalizeEmail(email), [email])
   const isEmailValid = useMemo(() => isValidEmail(emailTrimmed), [emailTrimmed])
   const canSubmit = (isEmailValid || emailOptOut) && (Boolean(creatorCoin?.address) || creatorCoinDeclaredMissing)
@@ -878,6 +924,43 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
     return new Set<string>([...seed, ...fromEnv].map((a) => a.toLowerCase()))
   }, [])
   const isBypassAdmin = !!connectedAddress && adminBypassSet.has(connectedAddress)
+
+  // Smooth handoff: check allowlist on the app host so marketing → app works.
+  // Keep the CTA slot stable (checking → ready/waitlist) to avoid jarring layout jumps.
+  const [deployAccessState, setDeployAccessState] = useState<'checking' | 'ready' | 'waitlist'>('checking')
+  useEffect(() => {
+    let cancelled = false
+    const run = async () => {
+      if (step !== 'done') return
+      const addr = typeof verifiedWallet === 'string' && isValidEvmAddress(verifiedWallet) ? verifiedWallet.toLowerCase() : null
+      if (!addr) return
+      try {
+        if (!cancelled) setDeployAccessState('checking')
+        const res = await apiFetch(`/api/creator-allowlist?address=${encodeURIComponent(addr)}`, { method: 'GET' })
+        const json = (await res.json().catch(() => null)) as any
+        const data = json?.success ? json?.data : null
+        const mode = typeof data?.mode === 'string' ? String(data.mode) : null
+        const allowed = data?.allowed === true
+        const ok = isBypassAdmin || mode === 'disabled' || allowed
+        if (!cancelled) setDeployAccessState(ok ? 'ready' : 'waitlist')
+      } catch {
+        if (!cancelled) setDeployAccessState('waitlist')
+      }
+    }
+    void run()
+    return () => {
+      cancelled = true
+    }
+  }, [apiFetch, isBypassAdmin, step, verifiedWallet])
+  const deployHref = useMemo(() => {
+    const baseUrl = appUrl.replace(/\/+$/, '')
+    // autologin=1 prompts Privy sign-in on app host; from=waitlist helps tailor UX.
+    return `${baseUrl}/deploy?from=waitlist&autologin=1`
+  }, [appUrl])
+  const primaryCta = useMemo(() => {
+    if (deployAccessState !== 'ready') return null
+    return { label: 'Continue to Deploy', href: deployHref }
+  }, [deployAccessState, deployHref])
 
   // Simplified flow: verify → done (2 steps)
   const totalSteps = 2
@@ -1286,32 +1369,6 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
     claimCoinForWalletRef.current = null
   }
 
-  async function signOutWallet() {
-    try {
-      if (showPrivy && privyAuthed) {
-        await privyLogout()
-      }
-      const maybe = siwe as any
-      if (typeof maybe?.signOut === 'function') {
-        await maybe.signOut()
-      }
-    } catch {
-      // ignore
-    } finally {
-      clearWalletVerifications()
-      finishPrivyVerify()
-      patchWaitlist({
-        creatorCoin: null,
-        creatorCoinBusy: false,
-        creatorCoinDeclaredMissing: false,
-        claimCoinBusy: false,
-        claimCoinError: null,
-      })
-      creatorCoinForWalletRef.current = null
-      claimCoinForWalletRef.current = null
-    }
-  }
-
   useEffect(() => {
     if (step !== 'done') return
     if (!doneEmail) return
@@ -1689,7 +1746,7 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
                   className="h-full bg-[#0052FF]"
                   initial={false}
                   animate={{ width: `${progressPct}%` }}
-                  transition={{ duration: 0.22, ease: BASE_EASE }}
+                  transition={{ duration: BASE_MOTION_MS, ease: BASE_EASE }}
                 />
               </div>
               <motion.img
@@ -1698,7 +1755,7 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
                 className="absolute top-1/2 w-2.5 h-2.5"
                 initial={false}
                 animate={{ left: `${progressPct}%` }}
-                transition={{ duration: 0.22, ease: BASE_EASE }}
+                transition={{ duration: BASE_MOTION_MS, ease: BASE_EASE }}
                 style={{ transform: 'translate(-50%, -50%)' }}
                 aria-hidden="true"
               />
@@ -1725,7 +1782,7 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -8 }}
-                  transition={{ duration: 0.22, ease: BASE_EASE }}
+                  transition={{ duration: BASE_MOTION_MS, ease: BASE_EASE }}
                 >
                   <VerifyStep
                     verifiedWallet={verifiedWallet}
@@ -1744,13 +1801,14 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
                     embeddedEoaIsOwner={embeddedEoaIsOwner}
                     connectedOwnerIsOwner={connectedOwnerIsOwner}
                     onLinkEmbeddedEoaAsOwner={linkEmbeddedEoaAsOwner}
-                    zoraProfileExists={zoraProfileExists}
                     creatorCoin={creatorCoin}
                     creatorCoinDeclaredMissing={creatorCoinDeclaredMissing}
                     creatorCoinBusy={creatorCoinBusy}
                     busy={busy}
                     canSubmit={canSubmit}
                     onPrivyContinue={openPrivyLogin}
+                    onPrivyEmailContinue={openPrivyEmailLogin}
+                    onFallbackSignIn={fallbackSignIn}
                     onSubmit={submitWaitlist}
                   />
                 </motion.div>
@@ -1763,12 +1821,14 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -8 }}
-                  transition={{ duration: 0.22, ease: BASE_EASE }}
+                  transition={{ duration: BASE_MOTION_MS, ease: BASE_EASE }}
                 >
                   <DoneStep
                     displayEmail={displayEmail}
                     isBypassAdmin={isBypassAdmin}
                     appUrl={appUrl}
+                    primaryCta={primaryCta}
+                    deployAccessState={deployAccessState}
                     waitlistPosition={waitlistPosition}
                     referralCode={referralCode}
                     referralLink={referralLink}

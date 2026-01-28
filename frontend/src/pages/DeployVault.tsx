@@ -931,7 +931,7 @@ function DeployVaultBatcher({
       return 'Bundler / paymaster is not configured. Set `VITE_CDP_API_KEY` (recommended) or `VITE_CDP_PAYMASTER_URL=/api/paymaster` (and configure `CDP_PAYMASTER_URL` server-side) and retry.'
     }
     if (lower.includes('no_session') || lower.includes('not authenticated') || lower.includes('request denied - no_session')) {
-      return 'Gas sponsorship requires a session. Click “Switch sign-in” and retry (or set `VITE_CDP_API_KEY` to bypass the proxy).'
+      return `Gas sponsorship requires a session. Click “${switchAuthLabel ?? 'Sign in with Privy'}” and retry.`
     }
     if (lower.includes('signature check failed') || lower.includes('invalid userop signature')) {
       return "UserOp signature failed. Ensure the signer wallet is an onchain owner of the creator smart wallet and can sign the UserOp hash (some wallets block `eth_sign`). If you linked a Privy embedded EOA, switch to a Privy embedded session and retry."
@@ -1922,9 +1922,12 @@ function DeployVaultBatcher({
         (lc.includes('method not found') && lc.includes('sign'))
       const userRejected = lc.includes('user rejected') || lc.includes('userrejected')
       if (looksLikeEthSignBlocked && !userRejected) {
-        pretty = `Your signer blocked the raw signature method (\`eth_sign\`). We will try a compatible fallback, but if it still fails, click “${
-          switchAuthLabel ?? 'Switch sign-in'
-        }” to continue (recommended).`
+        // Avoid overriding a clearer error message (e.g. from our AA signer wrapper).
+        if (!/blocked the raw signature method/i.test(pretty)) {
+          pretty = `Your signer blocked the raw signature method (\`eth_sign\`). Click “${
+            switchAuthLabel ?? 'Sign in with Privy'
+          }” to continue (recommended).`
+        }
       }
       logger.warn('[DeployVault] deploy_failed', { error: pretty })
       setError(pretty)
@@ -2125,10 +2128,15 @@ function DeployVaultBatcher({
 function DeployVaultMain() {
   const { address, isConnected } = useAccount()
   const { data: walletClient } = useWalletClient({ chainId: base.id })
-  const { ready: privyReady, authenticated: privyAuthenticated, logout } = usePrivy()
+  const { ready: privyReady, authenticated: privyAuthenticated, logout, getAccessToken } = usePrivy() as any
   const { login } = useLogin()
   const { wallets } = useWallets()
   const { client: smartWalletClient } = useSmartWallets()
+  const siwe = useSiweAuth()
+  const autoLoginAttemptRef = useRef(false)
+  const autoBridgeAttemptRef = useRef(false)
+  const [handoffState, setHandoffState] = useState<'idle' | 'signingIn' | 'bridging' | 'ready' | 'error'>('idle')
+  const [handoffError, setHandoffError] = useState<string | null>(null)
   
   // Get smart wallet address - simplified approach
   // The connected wallet (from wagmi) is the EOA, the canonical identity might be a smart wallet
@@ -2195,6 +2203,15 @@ function DeployVaultMain() {
 
   const [searchParams] = useSearchParams()
   const prefillToken = useMemo(() => searchParams.get('token') ?? '', [searchParams])
+  const autoLogin = useMemo(() => {
+    const raw = (searchParams.get('autologin') ?? '').trim().toLowerCase()
+    return raw === '1' || raw === 'true' || raw === 'yes'
+  }, [searchParams])
+  const fromWaitlist = useMemo(() => {
+    const raw = (searchParams.get('from') ?? '').trim().toLowerCase()
+    return raw === 'waitlist'
+  }, [searchParams])
+  const baseEase = useMemo(() => [0.4, 0, 0.2, 1] as const, [])
   const cdpApiKey = import.meta.env.VITE_CDP_API_KEY as string | undefined
   const cdpPaymasterUrl = import.meta.env.VITE_CDP_PAYMASTER_URL as string | undefined
   const paymasterStatus = useMemo(() => {
@@ -2209,6 +2226,73 @@ function DeployVaultMain() {
       return { ok: true, hint: 'configured' }
     }
   }, [cdpApiKey, cdpPaymasterUrl])
+
+  // Smooth waitlist → deploy:
+  // If we arrived with `autologin=1`, prompt Privy login on the app host and bridge into a CreatorVault session.
+  useEffect(() => {
+    if (!autoLogin) return
+    if (!privyReady) return
+    if (handoffState === 'idle') setHandoffState('signingIn')
+
+    if (!privyAuthenticated) {
+      if (autoLoginAttemptRef.current) return
+      autoLoginAttemptRef.current = true
+      void (async () => {
+        try {
+          setHandoffError(null)
+          setHandoffState('signingIn')
+          await login({ loginMethods: ['wallet', 'email'] })
+        } catch {
+          setHandoffState('error')
+          setHandoffError('Sign-in cancelled. Click “Sign in with Privy” to continue.')
+        }
+      })()
+      return
+    }
+
+    if (autoBridgeAttemptRef.current) return
+    autoBridgeAttemptRef.current = true
+
+    if (typeof getAccessToken !== 'function') return
+    void (async () => {
+      try {
+        setHandoffError(null)
+        setHandoffState('bridging')
+        const token = await getAccessToken()
+        if (token) {
+          const addr = await siwe.signInWithPrivyToken(token)
+          if (!addr) {
+            setHandoffState('error')
+            setHandoffError('Could not establish a session. Click “Sign in with Privy” and retry.')
+          }
+        }
+      } catch {
+        setHandoffState('error')
+        setHandoffError('Could not establish a session. Click “Sign in with Privy” and retry.')
+      }
+    })()
+  }, [autoLogin, getAccessToken, handoffState, login, privyAuthenticated, privyReady, siwe])
+
+  // Mark handoff ready once we have an app session.
+  useEffect(() => {
+    if (!autoLogin || !fromWaitlist) return
+    if (handoffState === 'ready') return
+    if (typeof siwe.authAddress === 'string' && siwe.authAddress.length > 0) {
+      setHandoffState('ready')
+      setHandoffError(null)
+    }
+  }, [autoLogin, fromWaitlist, handoffState, siwe.authAddress])
+
+  // Safety timeout so users aren't stuck without feedback.
+  useEffect(() => {
+    if (!autoLogin || !fromWaitlist) return
+    if (handoffState !== 'signingIn' && handoffState !== 'bridging') return
+    const t = window.setTimeout(() => {
+      setHandoffState('error')
+      setHandoffError('This is taking longer than expected. Click “Sign in with Privy” to continue.')
+    }, 25_000)
+    return () => window.clearTimeout(t)
+  }, [autoLogin, fromWaitlist, handoffState])
 
   useEffect(() => {
     if (!prefillToken) return
@@ -3109,6 +3193,36 @@ function DeployVaultMain() {
                 <p className="text-zinc-600 text-sm font-light">
                   Deploy a vault for your Creator Coin on Base. Only the creator or current payout recipient can deploy.
                 </p>
+                {fromWaitlist ? (
+                  <motion.div
+                    initial={{ opacity: 0, y: 8 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.18, ease: baseEase }}
+                    className="mt-3 rounded-xl border border-zinc-900/70 bg-black/30 px-4 py-3 text-[12px] text-zinc-400"
+                  >
+                    <div className="text-zinc-200">From the waitlist</div>
+                    <div className="mt-1">
+                      {!autoLogin
+                        ? 'If you get blocked by wallet signing, use “Sign in with Privy”.'
+                        : handoffState === 'signingIn'
+                          ? 'Signing you in…'
+                          : handoffState === 'bridging'
+                            ? 'Finalizing session…'
+                            : handoffState === 'ready'
+                              ? 'Signed in. You can deploy when ready.'
+                              : handoffState === 'error'
+                                ? handoffError || 'Sign-in failed. Click “Sign in with Privy” to continue.'
+                                : 'We’ll prompt sign-in, then continue.'}
+                    </div>
+                    {autoLogin && handoffState === 'error' && switchAuthCta ? (
+                      <div className="mt-3">
+                        <button type="button" className="btn-primary" onClick={switchAuthCta.onClick}>
+                          {switchAuthCta.label}
+                        </button>
+                      </div>
+                    ) : null}
+                  </motion.div>
+                ) : null}
               </div>
               <div className="inline-flex items-center gap-2 rounded-full border border-zinc-900/70 bg-black/40 px-3 py-1 text-[10px] text-zinc-400">
                 <img src="/protocols/base.png" alt="" aria-hidden="true" loading="lazy" className="w-3.5 h-3.5 opacity-90" />

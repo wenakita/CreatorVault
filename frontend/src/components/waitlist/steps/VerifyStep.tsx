@@ -1,6 +1,6 @@
-import { memo } from 'react'
-import { motion } from 'framer-motion'
-import { CheckCircle2, Loader2 } from 'lucide-react'
+import { memo, useMemo, useState } from 'react'
+import { AnimatePresence, motion } from 'framer-motion'
+import { CheckCircle2, ChevronRight, Mail, ShieldCheck, Wallet, X } from 'lucide-react'
 import type { WaitlistState } from '../waitlistTypes'
 import { ConnectButtonWeb3 } from '@/components/ConnectButtonWeb3'
 
@@ -46,6 +46,8 @@ type VerifyStepProps = {
   busy: boolean
   canSubmit: boolean
   onPrivyContinue: () => void
+  onPrivyEmailContinue?: () => void
+  onFallbackSignIn?: () => void | Promise<void>
   onSubmit: () => void | Promise<void>
 }
 
@@ -72,6 +74,8 @@ export const VerifyStep = memo(function VerifyStep({
   busy,
   canSubmit,
   onPrivyContinue,
+  onPrivyEmailContinue,
+  onFallbackSignIn,
   onSubmit,
 }: VerifyStepProps) {
   const hasCreatorCoin = !!creatorCoin?.address
@@ -79,7 +83,24 @@ export const VerifyStep = memo(function VerifyStep({
   const short = (v: string) => `${v.slice(0, 6)}…${v.slice(-4)}`
   const privyCtaLabel = privyAuthed ? 'Switch sign-in' : 'Connect Wallet'
   const privyEmbeddedCtaLabel = privyAuthed ? 'Switch sign-in' : 'Sign in with Privy'
-  const creatorGreeting = (creatorCoin?.symbol || creatorCoin?.name || '').trim()
+  const creatorGreeting = (creatorCoin?.symbol || '').trim()
+  const headerTitle = !verifiedWallet ? 'Connect wallet' : showSubmitButton ? 'Join the waitlist' : 'Checking your wallet'
+  const headerSubtitle = !verifiedWallet
+    ? 'Use a wallet connected to your creator coin. We’ll look it up automatically.'
+    : showSubmitButton
+      ? 'We found what we need. Submit to get early access updates.'
+      : 'One moment…'
+  const looksLikeWalletLoginDisabled =
+    typeof privyVerifyError === 'string' && /wallet (login|sign-in) is not enabled|wallet sign-in isn’t available/i.test(privyVerifyError)
+  const [showTrouble, setShowTrouble] = useState(false)
+  const canContinue = showPrivyReady && privyReady && !privyVerifyBusy && !busy
+
+  const helperText = useMemo(() => {
+    if (privyVerifyBusy) return 'Opening…'
+    if (!showPrivyReady) return 'Privy is not ready.'
+    if (!privyReady) return 'Loading…'
+    return 'No gas. Takes ~10 seconds.'
+  }, [privyReady, privyVerifyBusy, showPrivyReady])
 
   return (
     <motion.div
@@ -88,31 +109,148 @@ export const VerifyStep = memo(function VerifyStep({
       className="space-y-4"
     >
       {/* Header */}
-      <motion.div {...scaleIn} className="space-y-1">
-        <h1 className="text-[28px] sm:text-[32px] font-light tracking-tight text-white leading-tight">
-          Connect wallet
-        </h1>
+      <motion.div {...scaleIn} className="space-y-2">
+        <div className="flex items-center justify-between">
+          <h1 className="text-[28px] sm:text-[32px] font-light tracking-tight text-white leading-tight">
+            {headerTitle}
+          </h1>
+          <div className="inline-flex items-center gap-2 rounded-full border border-zinc-900/70 bg-black/30 px-3 py-1 text-[11px] text-zinc-400">
+            <ShieldCheck className="w-3.5 h-3.5 text-[#0052FF]" />
+            No gas
+          </div>
+        </div>
+        <div className="text-[13px] text-zinc-500 leading-relaxed">{headerSubtitle}</div>
+        {verifiedWallet ? <div className="text-[11px] text-zinc-600 font-mono">connected: {short(verifiedWallet)}</div> : null}
       </motion.div>
 
-      {/* Connect wallet button */}
-      {showPrivyReady && !verifiedWallet ? (
+      {/* Single primary CTA + progressive disclosure */}
+      {!verifiedWallet ? (
         <motion.div {...scaleIn} className="space-y-3">
           <button
             type="button"
-            className="group w-full flex items-center justify-center gap-3 min-h-[56px] rounded-2xl bg-[#0052FF] text-white font-medium text-[15px] px-6 py-4 transition-all duration-200 ease-[cubic-bezier(0.4,0,0.2,1)] hover:bg-[#0047E1] active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed disabled:active:scale-100"
-            disabled={!privyReady || privyVerifyBusy || busy}
-            onClick={onPrivyContinue}
+            className="group w-full flex items-center justify-between gap-3 min-h-[56px] rounded-2xl bg-[#0052FF] text-white font-medium text-[15px] px-5 py-4 transition-all duration-200 ease-[cubic-bezier(0.4,0,0.2,1)] hover:bg-[#0047E1] active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed disabled:active:scale-100"
+            disabled={!canContinue}
+            onClick={() => {
+              if (looksLikeWalletLoginDisabled && typeof onPrivyEmailContinue === 'function') {
+                onPrivyEmailContinue()
+              } else {
+                onPrivyContinue()
+              }
+            }}
           >
-            <img src={BASE_SQUARE_WHITE} alt="" className="w-3.5 h-3.5" aria-hidden="true" />
-            {privyVerifyBusy ? 'Opening…' : privyCtaLabel}
+            <span className="flex items-center gap-3">
+              <img src={BASE_SQUARE_WHITE} alt="" className="w-3.5 h-3.5" aria-hidden="true" />
+              Continue
+            </span>
+            <ChevronRight className="w-4 h-4 opacity-90" />
           </button>
+
+          <div className="flex items-center justify-between">
+            <div className="text-[12px] text-zinc-500">{helperText}</div>
+            <button
+              type="button"
+              className="text-[12px] text-zinc-400 hover:text-zinc-200 transition-colors"
+              onClick={() => setShowTrouble(true)}
+            >
+              Having trouble?
+            </button>
+          </div>
+
           {privyVerifyError ? (
-            <motion.div {...fadeUp} className="text-[13px] text-red-400 text-center">
+            <motion.div {...fadeUp} className="text-[12px] text-red-400">
               {privyVerifyError}
             </motion.div>
           ) : null}
         </motion.div>
       ) : null}
+
+      {/* Trouble sheet */}
+      <AnimatePresence>
+        {showTrouble ? (
+          <>
+            <motion.div
+              className="fixed inset-0 z-40 bg-black/60"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.18, ease: baseEase }}
+              onClick={() => setShowTrouble(false)}
+            />
+            <motion.div
+              className="fixed left-0 right-0 bottom-0 z-50"
+              initial={{ y: 24, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              exit={{ y: 24, opacity: 0 }}
+              transition={{ duration: 0.2, ease: baseEase }}
+            >
+              <div className="mx-auto w-full max-w-[440px] px-4 pb-4">
+                <div className="rounded-3xl border border-zinc-800/70 bg-zinc-950/90 backdrop-blur-xl p-4">
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <div className="text-[12px] text-zinc-500">Having trouble?</div>
+                      <div className="text-[16px] text-white mt-1">Try another option</div>
+                    </div>
+                    <button
+                      type="button"
+                      className="rounded-xl border border-zinc-800 bg-black/30 p-2 text-zinc-400 hover:text-zinc-200 transition-colors"
+                      onClick={() => setShowTrouble(false)}
+                      aria-label="Close"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+
+                  {looksLikeWalletLoginDisabled ? (
+                    <div className="mt-3 rounded-2xl border border-amber-500/20 bg-amber-500/5 px-4 py-3 text-[12px] text-amber-200/90">
+                      Wallet sign-in is disabled for this Privy app. Enable Wallet login in Privy to link Base Account.
+                    </div>
+                  ) : null}
+
+                  <div className="mt-4 grid gap-2">
+                    <div className="rounded-2xl border border-zinc-800/70 bg-black/20 px-4 py-3">
+                      <div className="flex items-center gap-2 text-[12px] text-zinc-300">
+                        <Wallet className="w-4 h-4 text-zinc-500" />
+                        Use Coinbase Wallet / WalletConnect
+                      </div>
+                      <div className="mt-3">
+                        <ConnectButtonWeb3 />
+                      </div>
+                      {onFallbackSignIn ? (
+                        <button
+                          type="button"
+                          className="mt-3 w-full rounded-xl border border-zinc-800 bg-black/30 px-4 py-3 text-[13px] text-zinc-200 hover:text-white hover:border-zinc-700 hover:bg-zinc-800/40 transition-all duration-200 ease-[cubic-bezier(0.4,0,0.2,1)] disabled:opacity-50"
+                          disabled={busy}
+                          onClick={() => void onFallbackSignIn()}
+                        >
+                          Sign in (no transaction)
+                        </button>
+                      ) : null}
+                    </div>
+
+                    <div className="rounded-2xl border border-zinc-800/70 bg-black/20 px-4 py-3">
+                      <div className="flex items-center gap-2 text-[12px] text-zinc-300">
+                        <Mail className="w-4 h-4 text-zinc-500" />
+                        Continue with email
+                      </div>
+                      <div className="text-[11px] text-zinc-600 mt-1">
+                        Useful if wallet popups are blocked. Deploy still requires Wallet login enabled in Privy.
+                      </div>
+                      <button
+                        type="button"
+                        className="mt-3 w-full rounded-xl bg-white/5 border border-white/10 px-4 py-3 text-[13px] text-zinc-200 hover:text-white hover:border-white/20 transition-all duration-200 ease-[cubic-bezier(0.4,0,0.2,1)] disabled:opacity-50"
+                        disabled={busy || privyVerifyBusy || typeof onPrivyEmailContinue !== 'function'}
+                        onClick={() => void onPrivyEmailContinue?.()}
+                      >
+                        Continue with email
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </motion.div>
+          </>
+        ) : null}
+      </AnimatePresence>
 
       {/* Loading Creator Coin */}
       {verifiedWallet && creatorCoinBusy ? (
@@ -162,7 +300,7 @@ export const VerifyStep = memo(function VerifyStep({
               <img src={BASE_SQUARE_BLUE} alt="" className="w-2.5 h-2.5" aria-hidden="true" />
             </motion.div>
             <div className="min-w-0 text-[13px] text-zinc-400 leading-relaxed">
-              <span className="text-white/90">Hey {creatorGreeting || 'creator'}.</span> You’re verified — ready to deploy vaults on Base.
+              <span className="text-white/90">Hey {creatorGreeting || 'creator'}.</span> We found your creator coin. Join the waitlist to get early access updates.
             </div>
           </motion.div>
         </motion.div>

@@ -1,5 +1,6 @@
 import { memo } from 'react'
 import { motion } from 'framer-motion'
+import { AnimatePresence } from 'framer-motion'
 import { Check, CheckCircle2, Copy, ExternalLink } from 'lucide-react'
 import { INVITE_COPY, REFERRAL_TWEET_TEMPLATES } from '@/components/waitlist/referralsCopy'
 import { ACTION_POINTS, SIGNUP_POINTS } from '../waitlistConstants'
@@ -26,6 +27,8 @@ type DoneStepProps = {
   displayEmail: string | null
   isBypassAdmin: boolean
   appUrl: string
+  primaryCta?: { label: string; href: string } | null
+  deployAccessState: 'checking' | 'ready' | 'waitlist'
   waitlistPosition: WaitlistState['waitlistPosition']
   referralCode: string | null
   referralLink: string
@@ -58,6 +61,8 @@ export const DoneStep = memo(function DoneStep({
   displayEmail,
   isBypassAdmin,
   appUrl,
+  primaryCta,
+  deployAccessState,
   waitlistPosition,
   referralCode,
   referralLink,
@@ -70,7 +75,6 @@ export const DoneStep = memo(function DoneStep({
   miniAppIsMiniApp,
   miniAppAdded,
   miniAppAddSupported,
-  miniAppHostLabel,
   showEmailCapture,
   emailCaptureValue,
   emailCaptureBusy,
@@ -85,6 +89,20 @@ export const DoneStep = memo(function DoneStep({
   onShare,
   onAddMiniApp,
 }: DoneStepProps) {
+  const headline =
+    deployAccessState === 'ready'
+      ? "You're ready"
+      : deployAccessState === 'checking'
+        ? 'Finalizing…'
+        : "You're on the waitlist"
+
+  const subcopy =
+    deployAccessState === 'ready'
+      ? 'You can deploy now. Continue when you’re ready.'
+      : deployAccessState === 'checking'
+        ? 'Checking deploy access…'
+        : 'Share your link to move up the waitlist.'
+
   function renderActionBadge(action: ActionKey) {
     const done = actionsDone[action]
     const points = ACTION_POINTS[action]
@@ -121,18 +139,68 @@ export const DoneStep = memo(function DoneStep({
           />
         </div>
         <div>
-          <h1 className="text-[28px] sm:text-[32px] font-light tracking-tight text-white leading-tight">
-            You're in
-          </h1>
+          <AnimatePresence mode="wait" initial={false}>
+            <motion.h1
+              key={`headline:${deployAccessState}`}
+              className="text-[28px] sm:text-[32px] font-light tracking-tight text-white leading-tight"
+              initial={{ opacity: 0, y: 6 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -6 }}
+              transition={{ duration: 0.18, ease: baseEase }}
+            >
+              {headline}
+            </motion.h1>
+          </AnimatePresence>
           {displayEmail ? (
             <p className="text-[14px] text-zinc-500 font-mono">{displayEmail}</p>
           ) : null}
         </div>
       </motion.div>
 
-      <motion.p {...fadeUp} className="text-[15px] text-zinc-400 leading-relaxed">
-        Share your link to move up the waitlist.
-      </motion.p>
+      <AnimatePresence mode="wait" initial={false}>
+        <motion.p
+          key={`subcopy:${deployAccessState}`}
+          className="text-[15px] text-zinc-400 leading-relaxed"
+          initial={{ opacity: 0, y: 6 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -6 }}
+          transition={{ duration: 0.18, ease: baseEase }}
+        >
+          {subcopy}
+        </motion.p>
+      </AnimatePresence>
+
+      {/* Primary CTA (e.g. Continue to deploy) */}
+      <motion.div {...fadeUp} className="flex" layout>
+        <AnimatePresence mode="wait" initial={false}>
+          {deployAccessState === 'checking' ? (
+            <motion.button
+              key="cta:checking"
+              type="button"
+              disabled
+              className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl border border-zinc-800 bg-zinc-900/30 text-zinc-500 text-[14px] font-medium"
+              initial={{ opacity: 0, y: 6 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -6 }}
+              transition={{ duration: 0.18, ease: baseEase }}
+            >
+              Checking access…
+            </motion.button>
+          ) : primaryCta ? (
+            <motion.a
+              key="cta:ready"
+              className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-[#0052FF] text-white text-[14px] font-medium hover:bg-[#0047E1] transition-all duration-200 ease-[cubic-bezier(0.4,0,0.2,1)]"
+              href={primaryCta.href}
+              initial={{ opacity: 0, y: 6 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -6 }}
+              transition={{ duration: 0.18, ease: baseEase }}
+            >
+              {primaryCta.label}
+            </motion.a>
+          ) : null}
+        </AnimatePresence>
+      </motion.div>
 
       {/* Email capture */}
       {showEmailCapture ? (

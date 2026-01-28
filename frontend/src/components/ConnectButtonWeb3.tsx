@@ -1,6 +1,7 @@
 import { useAccount, useConnect, useDisconnect } from 'wagmi'
 import { useMemo, useState } from 'react'
 import { Wallet, ChevronDown } from 'lucide-react'
+import { useSiweAuth } from '@/hooks/useSiweAuth'
 
 /**
  * Simple Connect Button
@@ -11,6 +12,7 @@ export function ConnectButtonWeb3() {
   const { address, isConnected } = useAccount()
   const { connect, connectors, isPending } = useConnect()
   const { disconnect } = useDisconnect()
+  const auth = useSiweAuth()
   const [showMenu, setShowMenu] = useState(false)
   const [showOptions, setShowOptions] = useState(false)
 
@@ -57,6 +59,40 @@ export function ConnectButtonWeb3() {
               >
                 <span className="label block">View on Basescan</span>
               </a>
+              <div className="h-px bg-zinc-900 my-2" />
+              {!auth.isSignedIn ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    void auth.signIn()
+                    setShowMenu(false)
+                  }}
+                  disabled={auth.busy}
+                  className="w-full text-left py-3 px-4 hover:bg-zinc-950 transition-colors disabled:opacity-60"
+                >
+                  <span className="label block">{auth.busy ? 'Signing in…' : 'Sign in'}</span>
+                  <span className="text-[11px] text-zinc-600 block mt-1">No transaction.</span>
+                </button>
+              ) : (
+                <div className="px-4 py-3">
+                  <div className="label text-emerald-200">Signed in</div>
+                  <div className="text-[11px] text-zinc-600 mt-1">Session matches connected wallet.</div>
+                </div>
+              )}
+              {auth.isSignedIn ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    void auth.signOut()
+                    setShowMenu(false)
+                  }}
+                  disabled={auth.busy}
+                  className="w-full text-left py-3 px-4 hover:bg-zinc-950 transition-colors disabled:opacity-60"
+                >
+                  <span className="label block text-zinc-300">{auth.busy ? 'Signing out…' : 'Sign out'}</span>
+                </button>
+              ) : null}
+              {auth.error ? <div className="px-4 text-[11px] text-red-400/90">{auth.error}</div> : null}
               <div className="h-px bg-zinc-900 my-2" />
               <button
                 onClick={() => {
