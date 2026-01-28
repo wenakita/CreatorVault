@@ -518,11 +518,33 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
   const { wallets: privyWallets } = useWallets()
   const { baseAccountSdk } = useBaseAccountSdk()
 
-  const embeddedWallet = useMemo(() => privyWallets.find((w) => w.walletClientType === 'privy') ?? null, [privyWallets])
-  const baseAccountWallet = useMemo(
-    () => privyWallets.find((w) => w.walletClientType === 'base_account') ?? null,
-    [privyWallets],
-  )
+  // Wallet type detection can vary across Privy SDK versions/contexts.
+  // Mirror deploy hardening: look across multiple fields and use substring matches.
+  const walletClientTypeOf = useCallback((w: any): string => {
+    return String(
+      w?.wallet_client_type ??
+        w?.walletClientType ??
+        w?.connector_type ??
+        w?.connectorType ??
+        w?.type ??
+        '',
+    )
+      .trim()
+      .toLowerCase()
+  }, [])
+  const embeddedWallet = useMemo(() => {
+    const ws = Array.isArray(privyWallets) ? (privyWallets as any[]) : []
+    return (
+      ws.find((w) => {
+        const t = walletClientTypeOf(w)
+        return t === 'privy' || t.includes('privy') || t.includes('embedded')
+      }) ?? null
+    )
+  }, [privyWallets, walletClientTypeOf])
+  const baseAccountWallet = useMemo(() => {
+    const ws = Array.isArray(privyWallets) ? (privyWallets as any[]) : []
+    return ws.find((w) => walletClientTypeOf(w) === 'base_account') ?? null
+  }, [privyWallets, walletClientTypeOf])
   const embeddedWalletAddress = useMemo(() => {
     const raw = typeof embeddedWallet?.address === 'string' ? embeddedWallet.address : ''
     return isValidEvmAddress(raw) ? raw : null
@@ -652,11 +674,12 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
 
   const openPrivyLogin = useCallback(async () => {
     if (!privyReady || privyVerifyBusy) return
+    // Guardrail: never leave the UI stuck in a busy state (Privy can no-op in some edge cases).
+    if (typeof window !== 'undefined') {
+      window.setTimeout(() => finishPrivyVerify(), 12_000)
+    }
     if (privyAuthed && !embeddedWalletAddress) {
       startPrivyVerify()
-      if (typeof window !== 'undefined') {
-        window.setTimeout(() => finishPrivyVerify(), 12_000)
-      }
       try {
         if (typeof privyLogout === 'function') {
           try {
@@ -779,6 +802,27 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
       if (!cswAddress) throw new Error('Creator smart wallet is not configured.')
       if (!embeddedEoaAddressForLink) throw new Error('Sign in with Privy to create your embedded wallet.')
       if (!connectedOwnerAddressForLink) throw new Error('Connect a wallet that already owns the creator smart wallet.')
+
+      const hasMultipleInjectedProviders =
+        typeof window !== 'undefined' &&
+        Array.isArray((window as any)?.ethereum?.providers) &&
+        ((window as any).ethereum.providers as any[]).length > 1
+      if (hasMultipleInjectedProviders) {
+        throw new Error('Multiple wallet extensions detected. Disable one (MetaMask/Coinbase/Rabby) and retry.')
+      }
+
+      // Ensure Base chain for the owner wallet.
+      const wc: any = walletClient as any
+      const currentChainId = typeof wc?.chain?.id === 'number' ? wc.chain.id : null
+      if (currentChainId !== base.id) {
+        try {
+          if (typeof wc?.switchChain === 'function') {
+            await wc.switchChain({ id: base.id })
+          }
+        } catch {
+          // ignore
+        }
+      }
 
       if (connectedOwnerAddressForLink.toLowerCase() !== cswAddress.toLowerCase()) {
         const isOwner = (await (publicClient as any).readContract({
@@ -1643,6 +1687,7 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
                 showPrivy={showPrivy}
                 showPrivyReady={showPrivyReady}
                 privyReady={privyReady}
+                privyAuthed={privyAuthed}
                 privyVerifyBusy={privyVerifyBusy}
                 privyVerifyError={privyVerifyError}
                 showDeployOwnerLink={Boolean(showPrivyReady && privyAuthed && cswAddress)}

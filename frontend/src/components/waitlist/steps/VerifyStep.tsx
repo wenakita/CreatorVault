@@ -23,6 +23,7 @@ type VerifyStepProps = {
   showPrivy: boolean
   showPrivyReady: boolean
   privyReady: boolean
+  privyAuthed: boolean
   privyVerifyBusy: boolean
   privyVerifyError: string | null
   // Optional: enable 1-click deploy by linking Privy embedded EOA as an owner of a Coinbase Smart Wallet
@@ -54,6 +55,7 @@ export const VerifyStep = memo(function VerifyStep({
   showPrivy,
   showPrivyReady,
   privyReady,
+  privyAuthed,
   privyVerifyBusy,
   privyVerifyError,
   showDeployOwnerLink,
@@ -79,6 +81,8 @@ export const VerifyStep = memo(function VerifyStep({
   const hasCreatorCoin = !!creatorCoin?.address
   const showSubmitButton = verifiedWallet && (hasCreatorCoin || creatorCoinDeclaredMissing)
   const short = (v: string) => `${v.slice(0, 6)}…${v.slice(-4)}`
+  const privyCtaLabel = privyAuthed ? 'Switch sign-in' : 'Connect Wallet'
+  const privyEmbeddedCtaLabel = privyAuthed ? 'Switch sign-in' : 'Sign in with Privy'
 
   return (
     <motion.div
@@ -124,7 +128,7 @@ export const VerifyStep = memo(function VerifyStep({
             onClick={onPrivyContinue}
           >
             <Wallet className="w-5 h-5 transition-transform duration-200 group-hover:scale-110" />
-            {privyVerifyBusy ? 'Opening…' : 'Connect Wallet'}
+            {privyVerifyBusy ? 'Opening…' : privyCtaLabel}
           </button>
           {privyVerifyError ? (
             <motion.div {...fadeUp} className="text-[13px] text-red-400 text-center">
@@ -252,7 +256,7 @@ export const VerifyStep = memo(function VerifyStep({
                   disabled={!showPrivyReady || privyVerifyBusy || busy}
                   onClick={() => void onPrivyContinue()}
                 >
-                  {privyVerifyBusy ? 'Opening…' : 'Sign in with Privy'}
+                  {privyVerifyBusy ? 'Opening…' : privyEmbeddedCtaLabel}
                 </button>
               ) : (
                 <>
