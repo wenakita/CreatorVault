@@ -535,7 +535,7 @@ export default async function handler(req: any, res: any) {
           WHERE id = ${signupId} AND referred_by_signup_id IS NULL;
         `
         // Insert conversion (one per invitee). If it already exists, ignore.
-        await db.sql`
+        const conversionResult = await db.sql`
           INSERT INTO referral_conversions (
             referral_code,
             referrer_signup_id,
@@ -562,8 +562,19 @@ export default async function handler(req: any, res: any) {
             'signed_up',
             NOW()
           )
-          ON CONFLICT (invitee_signup_id) DO NOTHING;
+          ON CONFLICT (invitee_signup_id) DO NOTHING
+          RETURNING id;
         `
+        // Award referrer signup points (only if this was a new conversion)
+        if (conversionResult?.rows?.[0]?.id) {
+          await awardWaitlistPoints({
+            db,
+            signupId: referrerId,
+            source: 'referral_signup',
+            sourceId: `invitee:${signupId}`,
+            amount: WAITLIST_POINTS.referralSignup,
+          })
+        }
       }
     }
 

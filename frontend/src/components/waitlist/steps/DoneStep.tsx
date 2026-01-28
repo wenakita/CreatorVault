@@ -1,9 +1,16 @@
 import { memo } from 'react'
 import { motion } from 'framer-motion'
 import { AnimatePresence } from 'framer-motion'
-import { Check, CheckCircle2, Copy, ExternalLink } from 'lucide-react'
+import { Check, CheckCircle2, Copy, ExternalLink, Wallet } from 'lucide-react'
 import { INVITE_COPY, REFERRAL_TWEET_TEMPLATES } from '@/components/waitlist/referralsCopy'
-import { ACTION_POINTS, SIGNUP_POINTS } from '../waitlistConstants'
+import { 
+  ACTION_POINTS, 
+  SIGNUP_POINTS, 
+  LINK_CSW_POINTS,
+  SOCIAL_POINTS,
+  BONUS_POINTS,
+  SOCIAL_LINKS,
+} from '../waitlistConstants'
 import type { ActionKey, WaitlistState } from '../waitlistTypes'
 
 // Base brand motion: cubic-bezier(0.4, 0, 0.2, 1), 120-240ms for snappy UI
@@ -47,6 +54,12 @@ type DoneStepProps = {
   emailCaptureBusy: boolean
   emailCaptureError: string | null
   emailCaptureSuccess: string | null
+  // CSW linking
+  cswLinked: boolean
+  cswLinkBusy: boolean
+  cswLinkError: string | null
+  onLinkCsw: () => void | Promise<void>
+  // Action handlers
   onEmailCaptureChange: (value: string) => void
   onEmailCaptureSubmit: () => void
   onShareX: () => void
@@ -55,6 +68,7 @@ type DoneStepProps = {
   onFollow: () => void
   onShare: () => void | Promise<void>
   onAddMiniApp: () => void | Promise<void>
+  onSocialAction: (action: ActionKey, url: string) => void
 }
 
 export const DoneStep = memo(function DoneStep({
@@ -80,6 +94,10 @@ export const DoneStep = memo(function DoneStep({
   emailCaptureBusy,
   emailCaptureError,
   emailCaptureSuccess,
+  cswLinked,
+  cswLinkBusy,
+  cswLinkError,
+  onLinkCsw,
   onEmailCaptureChange,
   onEmailCaptureSubmit,
   onShareX,
@@ -88,6 +106,7 @@ export const DoneStep = memo(function DoneStep({
   onFollow,
   onShare,
   onAddMiniApp,
+  onSocialAction,
 }: DoneStepProps) {
   const headline =
     deployAccessState === 'ready'
@@ -123,16 +142,16 @@ export const DoneStep = memo(function DoneStep({
     <motion.div
       key="done"
       {...fadeUp}
-      className="space-y-5"
+      className="space-y-6"
     >
       {/* Success header */}
       <motion.div {...scaleIn} className="flex items-center gap-4">
         <div className="relative">
-          <div className="w-12 h-12 rounded-2xl bg-[#0052FF]/10 border border-[#0052FF]/20 flex items-center justify-center">
+          <div className="w-12 h-12 rounded-2xl bg-white/[0.03] border border-white/10 flex items-center justify-center">
             <CheckCircle2 className="w-6 h-6 text-[#0052FF]" />
           </div>
           <motion.div
-            className="absolute inset-0 rounded-2xl border border-[#0052FF]/30"
+            className="absolute inset-0 rounded-2xl border border-[#0052FF]/25"
             initial={{ scale: 1, opacity: 0.5 }}
             animate={{ scale: 1.4, opacity: 0 }}
             transition={{ duration: 1.2, repeat: Infinity, ease: 'easeOut' }}
@@ -142,7 +161,7 @@ export const DoneStep = memo(function DoneStep({
           <AnimatePresence mode="wait" initial={false}>
             <motion.h1
               key={`headline:${deployAccessState}`}
-              className="text-[28px] sm:text-[32px] font-light tracking-tight text-white leading-tight"
+              className="text-[30px] sm:text-[34px] font-light tracking-tight text-white leading-[1.08]"
               initial={{ opacity: 0, y: 6 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -6 }}
@@ -189,7 +208,7 @@ export const DoneStep = memo(function DoneStep({
           ) : primaryCta ? (
             <motion.a
               key="cta:ready"
-              className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-[#0052FF] text-white text-[14px] font-medium hover:bg-[#0047E1] transition-all duration-200 ease-[cubic-bezier(0.4,0,0.2,1)]"
+              className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-[#0052FF] text-white text-[14px] font-medium shadow-[0_10px_30px_-16px_rgba(0,82,255,0.8)] hover:bg-[#0047E1] transition-all duration-200 ease-[cubic-bezier(0.4,0,0.2,1)]"
               href={primaryCta.href}
               initial={{ opacity: 0, y: 6 }}
               animate={{ opacity: 1, y: 0 }}
@@ -261,7 +280,7 @@ export const DoneStep = memo(function DoneStep({
             </div>
             <div className="text-[13px] text-zinc-500">
               {waitlistPosition
-                ? `#${waitlistPosition.rank.invite ?? '—'} · Top ${waitlistPosition.percentileInvite ?? '—'}%`
+                ? `#${waitlistPosition.rank.total ?? '—'} · Top ${waitlistPosition.percentileInvite ?? '—'}%`
                 : 'Loading…'}
             </div>
           </div>
@@ -275,27 +294,34 @@ export const DoneStep = memo(function DoneStep({
         </div>
 
         {(() => {
-          const actionPointsLocal = (Object.keys(ACTION_POINTS) as ActionKey[]).reduce((sum, k) => {
-            return sum + (actionsDone[k] ? ACTION_POINTS[k] : 0)
-          }, 0)
-          const totalPoints = waitlistPosition?.points?.total ?? SIGNUP_POINTS + actionPointsLocal
-          const taskPoints = waitlistPosition?.points?.tasks ?? actionPointsLocal
           const signupPoints = waitlistPosition?.points?.signup ?? SIGNUP_POINTS
+          const cswPoints = waitlistPosition?.points?.csw ?? (cswLinked ? LINK_CSW_POINTS : 0)
           const invitePoints = waitlistPosition?.points?.invite ?? 0
-          void totalPoints
+          const socialPoints = waitlistPosition?.points?.social ?? 0
+          const bonusPoints = waitlistPosition?.points?.bonus ?? 0
           return (
             <div className="space-y-2 text-[13px]">
               <div className="flex items-center justify-between text-zinc-500">
                 <span>Signup</span>
-                <span className="tabular-nums text-zinc-300">+{signupPoints}</span>
+                <span className="tabular-nums text-emerald-400">+{signupPoints}</span>
+              </div>
+              <div className="flex items-center justify-between text-zinc-500">
+                <span>Link CSW</span>
+                <span className={`tabular-nums ${cswLinked ? 'text-emerald-400' : 'text-zinc-500'}`}>
+                  {cswLinked ? `+${cswPoints}` : `+${LINK_CSW_POINTS}`}
+                </span>
               </div>
               <div className="flex items-center justify-between text-zinc-500">
                 <span>Referrals</span>
                 <span className="tabular-nums text-zinc-300">+{invitePoints}</span>
               </div>
               <div className="flex items-center justify-between text-zinc-500">
-                <span>Actions</span>
-                <span className="tabular-nums text-zinc-300">+{taskPoints}</span>
+                <span>Social</span>
+                <span className="tabular-nums text-zinc-300">+{socialPoints}</span>
+              </div>
+              <div className="flex items-center justify-between text-zinc-500">
+                <span>Bonus</span>
+                <span className="tabular-nums text-zinc-300">+{bonusPoints}</span>
               </div>
             </div>
           )
@@ -313,6 +339,45 @@ export const DoneStep = memo(function DoneStep({
           </a>
         ) : null}
       </motion.div>
+
+      {/* CSW Linking - High Priority */}
+      {!cswLinked ? (
+        <motion.div {...fadeUp} className="rounded-2xl border-2 border-[#0052FF]/30 bg-[#0052FF]/5 p-4 space-y-3">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-[#0052FF]/10 flex items-center justify-center">
+              <Wallet className="w-5 h-5 text-[#0052FF]" />
+            </div>
+            <div className="flex-1">
+              <div className="text-[14px] text-white font-medium">Link Coinbase Smart Wallet</div>
+              <div className="text-[12px] text-zinc-500">Biggest points boost available</div>
+            </div>
+            <span className="px-3 py-1.5 rounded-full bg-[#0052FF]/10 text-[#0052FF] text-[13px] font-medium">
+              +{LINK_CSW_POINTS}
+            </span>
+          </div>
+          <button
+            type="button"
+            className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-[#0052FF] text-white text-[14px] font-medium hover:bg-[#0047E1] transition-all duration-200 ease-[cubic-bezier(0.4,0,0.2,1)] active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
+            disabled={cswLinkBusy}
+            onClick={onLinkCsw}
+          >
+            {cswLinkBusy ? 'Linking…' : 'Link Wallet'}
+          </button>
+          {cswLinkError ? <div className="text-[12px] text-red-400">{cswLinkError}</div> : null}
+        </motion.div>
+      ) : (
+        <motion.div {...fadeUp} className="rounded-2xl border border-emerald-500/20 bg-emerald-500/5 p-4">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-emerald-500/10 flex items-center justify-center">
+              <CheckCircle2 className="w-5 h-5 text-emerald-400" />
+            </div>
+            <div className="flex-1">
+              <div className="text-[14px] text-white font-medium">Wallet Linked</div>
+              <div className="text-[12px] text-zinc-500">You earned +{LINK_CSW_POINTS} points</div>
+            </div>
+          </div>
+        </motion.div>
+      )}
 
       {/* Referral link */}
       {referralCode ? (
@@ -372,44 +437,120 @@ export const DoneStep = memo(function DoneStep({
         </motion.div>
       ) : null}
 
-      {/* Actions */}
+      {/* Social Actions - Verified */}
+      <motion.div {...fadeUp} className="space-y-3">
+        <div className="text-[11px] uppercase tracking-[0.15em] text-zinc-600 font-medium">
+          Social (Verified)
+        </div>
+        <div className="rounded-2xl border border-zinc-800 bg-zinc-900/30 overflow-hidden divide-y divide-zinc-800/50">
+          {/* Farcaster */}
+          <SocialActionRow
+            label="Follow on Farcaster"
+            handle="@4626"
+            points={SOCIAL_POINTS.farcaster}
+            done={actionsDone.farcaster}
+            url={SOCIAL_LINKS.farcaster}
+            onAction={() => onSocialAction('farcaster', SOCIAL_LINKS.farcaster)}
+          />
+          {/* Base App */}
+          <SocialActionRow
+            label="Follow on Base App"
+            handle="@4626"
+            points={SOCIAL_POINTS.baseApp}
+            done={actionsDone.baseApp}
+            url={SOCIAL_LINKS.baseApp}
+            onAction={() => onSocialAction('baseApp', SOCIAL_LINKS.baseApp)}
+          />
+          {/* Zora */}
+          <SocialActionRow
+            label="Follow on Zora"
+            handle="@4626"
+            points={SOCIAL_POINTS.zora}
+            done={actionsDone.zora}
+            url={SOCIAL_LINKS.zora}
+            onAction={() => onSocialAction('zora', SOCIAL_LINKS.zora)}
+          />
+          {/* X/Twitter */}
+          <SocialActionRow
+            label="Follow on X"
+            handle="@4626fun"
+            points={SOCIAL_POINTS.x}
+            done={actionsDone.x || actionsDone.follow}
+            url={SOCIAL_LINKS.x}
+            onAction={() => {
+              onFollow()
+              onSocialAction('x', SOCIAL_LINKS.x)
+            }}
+          />
+          {/* Discord */}
+          <SocialActionRow
+            label="Join Discord"
+            handle="4626"
+            points={SOCIAL_POINTS.discord}
+            done={actionsDone.discord}
+            url={SOCIAL_LINKS.discord}
+            onAction={() => onSocialAction('discord', SOCIAL_LINKS.discord)}
+          />
+          {/* Telegram */}
+          <SocialActionRow
+            label="Join Telegram"
+            handle="@fun4626"
+            points={SOCIAL_POINTS.telegram}
+            done={actionsDone.telegram}
+            url={SOCIAL_LINKS.telegram}
+            onAction={() => onSocialAction('telegram', SOCIAL_LINKS.telegram)}
+          />
+        </div>
+      </motion.div>
+
+      {/* Bonus Actions - Honor System */}
+      <motion.div {...fadeUp} className="space-y-3">
+        <div className="text-[11px] uppercase tracking-[0.15em] text-zinc-600 font-medium">
+          Bonus
+        </div>
+        <div className="rounded-2xl border border-zinc-800 bg-zinc-900/30 overflow-hidden divide-y divide-zinc-800/50">
+          <SocialActionRow
+            label="Star on GitHub"
+            handle="4626fun"
+            points={BONUS_POINTS.github}
+            done={actionsDone.github}
+            url={SOCIAL_LINKS.github}
+            onAction={() => onSocialAction('github', SOCIAL_LINKS.github)}
+          />
+          <SocialActionRow
+            label="Follow on TikTok"
+            handle="@4626fun"
+            points={BONUS_POINTS.tiktok}
+            done={actionsDone.tiktok}
+            url={SOCIAL_LINKS.tiktok}
+            onAction={() => onSocialAction('tiktok', SOCIAL_LINKS.tiktok)}
+          />
+          <SocialActionRow
+            label="Follow on Instagram"
+            handle="@4626fun"
+            points={BONUS_POINTS.instagram}
+            done={actionsDone.instagram}
+            url={SOCIAL_LINKS.instagram}
+            onAction={() => onSocialAction('instagram', SOCIAL_LINKS.instagram)}
+          />
+          <SocialActionRow
+            label="Join Reddit"
+            handle="r/4626"
+            points={BONUS_POINTS.reddit}
+            done={actionsDone.reddit}
+            url={SOCIAL_LINKS.reddit}
+            onAction={() => onSocialAction('reddit', SOCIAL_LINKS.reddit)}
+          />
+        </div>
+      </motion.div>
+
+      {/* Share/Misc Actions */}
       <motion.div {...stagger} className="space-y-2">
         {shareToast ? (
           <motion.div {...fadeUp} className="text-[12px] text-zinc-500">{shareToast}</motion.div>
         ) : null}
 
         <motion.div {...fadeUp} className="rounded-2xl border border-zinc-800 bg-zinc-900/30 overflow-hidden divide-y divide-zinc-800/50">
-          {/* Follow action */}
-          <div className="px-4 py-3.5 flex items-center justify-between gap-3">
-            <div className="flex items-center gap-3 min-w-0">
-              <div
-                className={`w-6 h-6 rounded-lg flex items-center justify-center transition-colors duration-200 ${
-                  actionsDone.follow
-                    ? 'bg-emerald-500/10 border border-emerald-500/20'
-                    : 'bg-zinc-800/50 border border-zinc-700'
-                }`}
-              >
-                {actionsDone.follow ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : null}
-              </div>
-              <div className="min-w-0">
-                <div className="text-[14px] text-white">Follow @4626fun</div>
-              </div>
-            </div>
-            <a
-              className={`px-4 py-2 rounded-xl text-[13px] font-medium transition-all duration-200 ease-[cubic-bezier(0.4,0,0.2,1)] ${
-                actionsDone.follow
-                  ? 'bg-zinc-800/50 text-zinc-500'
-                  : 'bg-[#0052FF] text-white hover:bg-[#0047E1] active:scale-[0.98]'
-              }`}
-              href="https://x.com/4626fun"
-              target="_blank"
-              rel="noreferrer"
-              onClick={onFollow}
-            >
-              {actionsDone.follow ? 'Done' : `Follow +${ACTION_POINTS.follow}`}
-            </a>
-          </div>
-
           {/* Share action */}
           <div className="px-4 py-3.5 flex items-center justify-between gap-3">
             <div className="flex items-center gap-3 min-w-0">
@@ -476,3 +617,57 @@ export const DoneStep = memo(function DoneStep({
     </motion.div>
   )
 })
+
+// Reusable social action row component
+function SocialActionRow({
+  label,
+  handle,
+  points,
+  done,
+  url,
+  onAction,
+}: {
+  label: string
+  handle: string
+  points: number
+  done: boolean
+  url: string
+  onAction: () => void
+}) {
+  return (
+    <div className="px-4 py-3.5 flex items-center justify-between gap-3">
+      <div className="flex items-center gap-3 min-w-0">
+        <div
+          className={`w-6 h-6 rounded-lg flex items-center justify-center transition-colors duration-200 ${
+            done
+              ? 'bg-emerald-500/10 border border-emerald-500/20'
+              : 'bg-zinc-800/50 border border-zinc-700'
+          }`}
+        >
+          {done ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : null}
+        </div>
+        <div className="min-w-0">
+          <div className="text-[14px] text-white">{label}</div>
+          <div className="text-[12px] text-zinc-500">{handle}</div>
+        </div>
+      </div>
+      <a
+        className={`px-4 py-2 rounded-xl text-[13px] font-medium transition-all duration-200 ease-[cubic-bezier(0.4,0,0.2,1)] ${
+          done
+            ? 'bg-zinc-800/50 text-zinc-500 cursor-default'
+            : 'bg-[#0052FF] text-white hover:bg-[#0047E1] active:scale-[0.98]'
+        }`}
+        href={url}
+        target="_blank"
+        rel="noreferrer"
+        onClick={() => {
+          if (!done) {
+            onAction()
+          }
+        }}
+      >
+        {done ? '✓ Done' : `+${points}`}
+      </a>
+    </div>
+  )
+}

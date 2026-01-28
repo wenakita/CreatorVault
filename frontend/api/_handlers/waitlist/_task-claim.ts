@@ -1,16 +1,57 @@
 import { type ApiEnvelope, handleOptions, readJsonBody, setCors, setNoStore } from '../../../server/auth/_shared.js'
 import { getDb } from '../../../server/_lib/postgres.js'
 import { ensureWaitlistSchema } from '../../../server/_lib/waitlistSchema.js'
-import { awardWaitlistPoints } from '../../../server/_lib/waitlistPoints.js'
+import { awardWaitlistPoints, WAITLIST_POINTS } from '../../../server/_lib/waitlistPoints.js'
 
-type TaskKey = 'shareX' | 'copyLink' | 'share' | 'follow' | 'saveApp'
+// Legacy tasks
+type LegacyTaskKey = 'shareX' | 'copyLink' | 'share' | 'follow' | 'saveApp'
+
+// Social tasks (verified or honor system)
+type SocialTaskKey = 'farcaster' | 'baseApp' | 'zora' | 'x' | 'discord' | 'telegram'
+
+// Bonus tasks (honor system)
+type BonusTaskKey = 'github' | 'tiktok' | 'instagram' | 'reddit'
+
+type TaskKey = LegacyTaskKey | SocialTaskKey | BonusTaskKey
 
 const TASK_POINTS: Record<TaskKey, number> = {
+  // Legacy
   shareX: 10,
   copyLink: 5,
   share: 7,
-  follow: 4,
+  follow: WAITLIST_POINTS.x,
   saveApp: 6,
+  // Social (verified)
+  farcaster: WAITLIST_POINTS.farcaster,
+  baseApp: WAITLIST_POINTS.baseApp,
+  zora: WAITLIST_POINTS.zora,
+  x: WAITLIST_POINTS.x,
+  discord: WAITLIST_POINTS.discord,
+  telegram: WAITLIST_POINTS.telegram,
+  // Bonus (honor system)
+  github: WAITLIST_POINTS.github,
+  tiktok: WAITLIST_POINTS.tiktok,
+  instagram: WAITLIST_POINTS.instagram,
+  reddit: WAITLIST_POINTS.reddit,
+}
+
+// Map task keys to point sources for ledger tracking
+const TASK_SOURCE_MAP: Record<TaskKey, string> = {
+  shareX: 'task',
+  copyLink: 'task',
+  share: 'task',
+  follow: 'social_x',
+  saveApp: 'task',
+  farcaster: 'social_farcaster',
+  baseApp: 'social_base_app',
+  zora: 'social_zora',
+  x: 'social_x',
+  discord: 'social_discord',
+  telegram: 'social_telegram',
+  github: 'bonus_github',
+  tiktok: 'bonus_tiktok',
+  instagram: 'bonus_instagram',
+  reddit: 'bonus_reddit',
 }
 
 type Body = { email?: string; taskKey?: string }
@@ -65,7 +106,7 @@ export default async function handler(req: any, res: any) {
   await awardWaitlistPoints({
     db,
     signupId,
-    source: 'task',
+    source: TASK_SOURCE_MAP[taskKey] || 'task',
     sourceId: taskKey,
     amount: TASK_POINTS[taskKey],
   })

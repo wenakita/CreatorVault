@@ -14,6 +14,9 @@ type WaitlistPositionResponse = {
     invite: number
     signup: number
     tasks: number
+    csw: number       // Points from CSW linking
+    social: number    // Points from verified social actions
+    bonus: number     // Points from honor system actions
   }
 
   rank: {
@@ -26,8 +29,8 @@ type WaitlistPositionResponse = {
   percentileInvite: number | null
 
   referrals: {
-    qualifiedCount: number
-    pendingCount: number
+    qualifiedCount: number   // Referrals who linked CSW
+    pendingCount: number     // Referrals who only signed up
     pendingCountCapped: number
     pendingCap: number
   }
@@ -83,9 +86,12 @@ export default async function handler(req: any, res: any) {
   const pointsAgg = await db.sql`
     SELECT
       COALESCE(SUM(amount), 0)::int AS total,
-      COALESCE(SUM(CASE WHEN source = 'referral_qualified' THEN amount ELSE 0 END), 0)::int AS invite,
+      COALESCE(SUM(CASE WHEN source IN ('referral_qualified', 'referral_signup', 'referral_csw_link') THEN amount ELSE 0 END), 0)::int AS invite,
       COALESCE(SUM(CASE WHEN source = 'waitlist_signup' THEN amount ELSE 0 END), 0)::int AS signup,
-      COALESCE(SUM(CASE WHEN source = 'task' THEN amount ELSE 0 END), 0)::int AS tasks
+      COALESCE(SUM(CASE WHEN source = 'task' THEN amount ELSE 0 END), 0)::int AS tasks,
+      COALESCE(SUM(CASE WHEN source = 'csw_link' THEN amount ELSE 0 END), 0)::int AS csw,
+      COALESCE(SUM(CASE WHEN source LIKE 'social_%' THEN amount ELSE 0 END), 0)::int AS social,
+      COALESCE(SUM(CASE WHEN source LIKE 'bonus_%' THEN amount ELSE 0 END), 0)::int AS bonus
     FROM waitlist_points_ledger
     WHERE signup_id = ${signupId};
   `
@@ -95,24 +101,29 @@ export default async function handler(req: any, res: any) {
     invite: safeInt(p.invite),
     signup: safeInt(p.signup),
     tasks: safeInt(p.tasks),
+    csw: safeInt(p.csw),
+    social: safeInt(p.social),
+    bonus: safeInt(p.bonus),
   }
 
   // Referral breakdown (pending vs qualified).
+  // Qualified = referrals who linked CSW
   const qualifiedQ = await db.sql`
     SELECT COUNT(*)::int AS c
     FROM referral_conversions
     WHERE referrer_signup_id = ${signupId}
       AND is_valid = TRUE
-      AND (status = 'qualified' OR qualified_at IS NOT NULL);
+      AND (status = 'csw_linked' OR status = 'qualified' OR qualified_at IS NOT NULL);
   `
   const qualifiedCount = safeInt(qualifiedQ?.rows?.[0]?.c)
 
+  // Pending = referrals who only signed up (haven't linked CSW yet)
   const pendingQ = await db.sql`
     SELECT COUNT(*)::int AS c
     FROM referral_conversions
     WHERE referrer_signup_id = ${signupId}
       AND is_valid = TRUE
-      AND NOT (status = 'qualified' OR qualified_at IS NOT NULL);
+      AND NOT (status = 'csw_linked' OR status = 'qualified' OR qualified_at IS NOT NULL);
   `
   const pendingCount = safeInt(pendingQ?.rows?.[0]?.c)
   const pendingCap = 10

@@ -34,7 +34,6 @@ const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 const EVM_RE = /^0x[a-fA-F0-9]{40}$/
 const SOL_RE = /^[1-9A-HJ-NP-Za-km-z]+$/
 const SHARE_MESSAGE = 'Creator vaults on Base — join the waitlist.'
-const BASE_SQUARE_BLUE = '/base/1_Base%20Brand%20Assets/The%20Square/Base_square_blue.svg'
 const BASE_EASE = [0.4, 0, 0.2, 1] as const
 const BASE_MOTION_MS = 0.2
 
@@ -91,11 +90,24 @@ type WaitlistAction =
   | { type: 'markAction'; key: ActionKey }
 
 const EMPTY_ACTION_STATE: Record<ActionKey, boolean> = {
+  // Legacy actions
   shareX: false,
   copyLink: false,
   share: false,
   follow: false,
   saveApp: false,
+  // Social actions (verified)
+  farcaster: false,
+  baseApp: false,
+  zora: false,
+  x: false,
+  discord: false,
+  telegram: false,
+  // Bonus actions (honor system)
+  github: false,
+  tiktok: false,
+  instagram: false,
+  reddit: false,
 }
 
 const initialFlowState: FlowState = {
@@ -135,6 +147,10 @@ const initialWaitlistState: WaitlistState = {
   shareToast: null,
   actionsDone: { ...EMPTY_ACTION_STATE },
   miniAppAddSupported: null,
+  // CSW linking status
+  cswLinked: false,
+  cswLinkBusy: false,
+  cswLinkError: null,
   waitlistPosition: null,
 }
 
@@ -963,18 +979,6 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
   }, [deployAccessState, deployHref])
 
   // Simplified flow: verify → done (2 steps)
-  const totalSteps = 2
-
-  const stepIndex = useMemo(() => {
-    if (step === 'verify') return 1
-    if (step === 'done') return 2
-    return 1
-  }, [step])
-
-  const progressPct = useMemo(() => {
-    if (!totalSteps) return 0
-    return Math.max(0, Math.min(100, Math.round((stepIndex / totalSteps) * 100)))
-  }, [stepIndex, totalSteps])
 
   // Minimal flow: if Creator Coin lookup completes with no match, auto-allow joining.
   useEffect(() => {
@@ -1029,6 +1033,9 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
                   invite: typeof data?.points?.invite === 'number' ? data.points.invite : 0,
                   signup: typeof data?.points?.signup === 'number' ? data.points.signup : 0,
                   tasks: typeof data?.points?.tasks === 'number' ? data.points.tasks : 0,
+                  csw: typeof data?.points?.csw === 'number' ? data.points.csw : 0,
+                  social: typeof data?.points?.social === 'number' ? data.points.social : 0,
+                  bonus: typeof data?.points?.bonus === 'number' ? data.points.bonus : 0,
                 },
                 rank: {
                   invite: typeof data?.rank?.invite === 'number' ? data.rank.invite : null,
@@ -1140,7 +1147,72 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
 
   const handleFollow = useCallback(() => {
     markAction('follow')
+    markAction('x')
   }, [markAction])
+
+  const handleLinkCsw = useCallback(async () => {
+    if (waitlist.cswLinkBusy || waitlist.cswLinked) return
+    patchWaitlist({ cswLinkBusy: true, cswLinkError: null })
+    
+    try {
+      // If user has a verified wallet with a CSW, mark as linked
+      if (verifiedWallet && cswAddress) {
+        // Award points for linking CSW
+        if (doneEmail) {
+          await apiFetch('/api/waitlist/csw-link', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+            body: JSON.stringify({ 
+              email: doneEmail, 
+              cswAddress: cswAddress,
+              primaryWallet: verifiedWallet,
+            }),
+          })
+          await refreshPosition(doneEmail)
+        }
+        patchWaitlist({ cswLinked: true, cswLinkBusy: false })
+      } else {
+        // Open Privy to link wallet
+        await openPrivyLogin()
+        patchWaitlist({ cswLinkBusy: false })
+      }
+    } catch (e: any) {
+      patchWaitlist({ 
+        cswLinkBusy: false, 
+        cswLinkError: e?.message || 'Failed to link wallet' 
+      })
+    }
+  }, [
+    apiFetch,
+    cswAddress,
+    doneEmail,
+    openPrivyLogin,
+    patchWaitlist,
+    refreshPosition,
+    verifiedWallet,
+    waitlist.cswLinkBusy,
+    waitlist.cswLinked,
+  ])
+
+  const handleSocialAction = useCallback((action: ActionKey, _url: string) => {
+    markAction(action)
+    
+    // Sync to server for verified actions
+    if (doneEmail) {
+      void (async () => {
+        try {
+          await apiFetch('/api/waitlist/task-claim', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+            body: JSON.stringify({ email: doneEmail, taskKey: action }),
+          })
+          await refreshPosition(doneEmail)
+        } catch {
+          // ignore - best effort
+        }
+      })()
+    }
+  }, [apiFetch, doneEmail, markAction, refreshPosition])
 
   const handleEmailCaptureSubmit = useCallback(async () => {
     if (!doneEmail || !isSyntheticEmail(doneEmail)) return
@@ -1738,42 +1810,29 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
               <div className="w-8" />
             </div>
           ) : null}
-          {/* Progress bar - Base blue, square-led choreography */}
-          <div className="mb-6">
-            <div className="relative h-2">
-              <div className="absolute inset-x-0 top-1/2 -translate-y-1/2 h-1 rounded-full bg-zinc-800 overflow-hidden">
-                <motion.div
-                  className="h-full bg-[#0052FF]"
-                  initial={false}
-                  animate={{ width: `${progressPct}%` }}
-                  transition={{ duration: BASE_MOTION_MS, ease: BASE_EASE }}
-                />
-              </div>
-              <motion.img
-                src={BASE_SQUARE_BLUE}
-                alt=""
-                className="absolute top-1/2 w-2.5 h-2.5"
+          {/* Step indicator (no bars/lines) */}
+          <div className="mb-6 flex items-center justify-between">
+            <div className="text-[11px] uppercase tracking-[0.18em] text-zinc-600">
+              {step === 'verify' ? 'Verify' : 'Complete'}
+            </div>
+            <div className="flex items-center gap-2">
+              <motion.div
+                layoutId="waitlistStepDot"
+                className="h-2 w-2 rounded-[3px] bg-[#0052FF] shadow-[0_0_0_4px_rgba(0,82,255,0.08)]"
                 initial={false}
-                animate={{ left: `${progressPct}%` }}
+                animate={{ x: step === 'verify' ? 0 : 12 }}
                 transition={{ duration: BASE_MOTION_MS, ease: BASE_EASE }}
-                style={{ transform: 'translate(-50%, -50%)' }}
                 aria-hidden="true"
               />
+              <div className="flex items-center gap-2">
+                <div className={`h-2 w-2 rounded-[3px] ${step === 'verify' ? 'bg-white/10' : 'bg-white/20'}`} />
+                <div className={`h-2 w-2 rounded-[3px] ${step === 'verify' ? 'bg-white/20' : 'bg-white/10'}`} />
+              </div>
             </div>
           </div>
 
-          {/* Step transition: square-led wipe + smooth layout */}
+          {/* Step transition: smooth layout */}
           <div className="relative">
-            <AnimatePresence mode="wait">
-              <motion.div
-                key={`wipe:${step}`}
-                className="pointer-events-none absolute inset-x-0 -top-2 h-0.5 origin-left"
-                {...STEP_WIPE}
-              >
-                <div className="h-full bg-[#0052FF]" />
-              </motion.div>
-            </AnimatePresence>
-
             <AnimatePresence mode="wait">
               {step === 'verify' ? (
                 <motion.div
@@ -1847,6 +1906,10 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
                     emailCaptureBusy={emailCaptureBusy}
                     emailCaptureError={emailCaptureError}
                     emailCaptureSuccess={emailCaptureSuccess}
+                    cswLinked={waitlist.cswLinked}
+                    cswLinkBusy={waitlist.cswLinkBusy}
+                    cswLinkError={waitlist.cswLinkError}
+                    onLinkCsw={handleLinkCsw}
                     onEmailCaptureChange={setEmailCapture}
                     onEmailCaptureSubmit={handleEmailCaptureSubmit}
                     onShareX={handleShareX}
@@ -1855,6 +1918,7 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
                     onFollow={handleFollow}
                     onShare={shareOrCompose}
                     onAddMiniApp={addMiniApp}
+                    onSocialAction={handleSocialAction}
                   />
                 </motion.div>
               ) : null}
