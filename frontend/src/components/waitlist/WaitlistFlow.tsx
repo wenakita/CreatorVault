@@ -1168,9 +1168,9 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
     markAction('x')
   }, [markAction])
 
-  // Effective CSW address - prioritize Privy-connected wallet over Zora profile
-  // This way the wallet they actively connect during signup takes precedence
-  const effectiveCswAddress = coinbaseSmartWalletAddress || cswAddress
+  // Effective CSW address - prioritize Zora profile CSW (where assets/activity live)
+  // Fall back to Privy-connected wallet for new users without a Zora profile
+  const effectiveCswAddress = cswAddress || coinbaseSmartWalletAddress
 
   const handleLinkCsw = useCallback(async () => {
     if (waitlist.cswLinkBusy || waitlist.cswLinked) return
