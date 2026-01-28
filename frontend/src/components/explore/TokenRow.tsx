@@ -1,5 +1,4 @@
 import { Link } from 'react-router-dom'
-import { TokenSparkline } from './TokenSparkline'
 import type { ZoraCoin } from '@/lib/zora/types'
 
 type TokenRowProps = {
@@ -13,142 +12,116 @@ type TokenTableHeaderProps = {
   timeframe?: string
 }
 
-function formatPrice(price: string | number | undefined): string {
-  if (!price) return '$0.00'
-  const num = typeof price === 'string' ? parseFloat(price) : price
-  if (isNaN(num)) return '$0.00'
-  if (num < 0.0001) return `$${num.toExponential(2)}`
-  if (num < 0.01) return `$${num.toFixed(6)}`
-  if (num < 1) return `$${num.toFixed(4)}`
-  if (num < 1000) return `$${num.toFixed(2)}`
-  return `$${num.toLocaleString(undefined, { maximumFractionDigits: 2 })}`
+// Zora V4 Fee Structure (1% total fee)
+const FEE_RATES = {
+  total: 0.01,        // 1% total trading fee
+  creator: 0.50,      // 50% of fees → Creator/payoutRecipient
+  platform: 0.20,     // 20% of fees → Platform Referral
+  lpRewards: 0.20,    // 20% of fees → Locked LP (not distributed)
+  protocol: 0.05,     // 5% of fees → Zora Protocol
+  tradeRef: 0.04,     // 4% of fees → Trade Referral
+  doppler: 0.01,      // 1% of fees → Doppler (LP hook)
 }
 
 function formatCompactNumber(value: string | number | undefined): string {
   if (!value) return '-'
   const num = typeof value === 'string' ? parseFloat(value) : value
-  if (isNaN(num)) return '-'
+  if (isNaN(num) || num === 0) return '-'
   if (num >= 1_000_000_000) return `$${(num / 1_000_000_000).toFixed(2)}B`
   if (num >= 1_000_000) return `$${(num / 1_000_000).toFixed(2)}M`
   if (num >= 1_000) return `$${(num / 1_000).toFixed(2)}K`
-  return `$${num.toFixed(2)}`
+  if (num >= 1) return `$${num.toFixed(2)}`
+  if (num >= 0.01) return `$${num.toFixed(2)}`
+  return `$${num.toFixed(4)}`
 }
 
-function formatChange(delta: string | undefined): { value: string; positive: boolean; neutral: boolean } {
-  if (!delta) return { value: '-', positive: true, neutral: true }
-  const num = parseFloat(delta)
-  if (isNaN(num)) return { value: '-', positive: true, neutral: true }
-  if (num === 0) return { value: '0.00%', positive: true, neutral: true }
-  const positive = num >= 0
-  const absNum = Math.abs(num)
-  const formatted = absNum >= 1000 ? `${(absNum / 100).toFixed(0)}x` : `${absNum.toFixed(2)}%`
-  return { value: positive ? `+${formatted}` : `-${formatted}`, positive, neutral: false }
+function formatFeeAmount(volume: string | undefined, feeRate: number): string {
+  if (!volume) return '-'
+  const vol = parseFloat(volume)
+  if (isNaN(vol) || vol === 0) return '-'
+  const fee = vol * FEE_RATES.total * feeRate
+  return formatCompactNumber(fee)
 }
 
-// Generate mock sparkline data based on price change
-function generateSparklineData(delta: string | undefined): number[] {
-  const change = parseFloat(delta || '0') / 100
-  const positive = change >= 0
-  const baseValue = 100
-  const points = 24
-
-  return Array.from({ length: points }, (_, i) => {
-    const progress = i / (points - 1)
-    const noise = (Math.random() - 0.5) * 10
-    const trend = positive
-      ? baseValue + progress * Math.abs(change) * baseValue + noise
-      : baseValue - progress * Math.abs(change) * baseValue + noise
-    return Math.max(0, trend)
-  })
+function shortAddress(addr: string | undefined): string {
+  if (!addr) return '-'
+  if (addr.length <= 10) return addr
+  return `${addr.slice(0, 6)}…${addr.slice(-4)}`
 }
 
 // Get volume label based on timeframe
 function getVolumeLabel(timeframe: string): string {
   const labels: Record<string, string> = {
-    '1h': '1H volume',
-    '1d': '1D volume',
-    '1w': '1W volume',
-    '1m': '1M volume',
-    '1y': '1Y volume',
+    '1h': '1H Vol',
+    '1d': '24H Vol',
+    '1w': '7D Vol',
+    '1m': '30D Vol',
+    '1y': '1Y Vol',
   }
-  return labels[timeframe] || '1D volume'
-}
-
-// Get chart label based on timeframe
-function getChartLabel(timeframe: string): string {
-  const labels: Record<string, string> = {
-    '1h': '1H',
-    '1d': '1D',
-    '1w': '1W',
-    '1m': '1M',
-    '1y': '1Y',
-  }
-  return labels[timeframe] || '1D'
+  return labels[timeframe] || '24H Vol'
 }
 
 export function TokenRow({ rank, coin, linkPrefix = '/explore/creators', timeframe = '1d' }: TokenRowProps) {
-  const price = formatPrice(coin.tokenPrice?.priceInUsdc)
-  // TODO: Use timeframe-specific data when API supports it
-  const change1h = formatChange(timeframe === '1h' ? coin.marketCapDelta24h : undefined) // API doesn't provide 1h data yet
-  const change1d = formatChange(coin.marketCapDelta24h)
-  const volume = formatCompactNumber(coin.volume24h)
-  const fdv = formatCompactNumber(coin.marketCap) // Using market cap as FDV proxy
-  const sparklineData = generateSparklineData(coin.marketCapDelta24h)
-
+  // Use timeframe for future API support
+  const volume = timeframe === '1d' ? coin.volume24h : coin.volume24h // TODO: support other timeframes
+  
   const avatarUrl = coin.mediaContent?.previewImage?.small || coin.creatorProfile?.avatar?.previewImage?.small
   const name = coin.name || coin.symbol || 'Unknown'
   const symbol = coin.symbol || ''
   const chain = coin.chainId === 8453 ? 'base' : 'base'
   const address = coin.address || ''
+  const payoutTo = coin.payoutRecipientAddress
 
   const detailPath = `${linkPrefix}/${chain}/${address}`
 
   return (
     <Link
       to={detailPath}
-      className="grid grid-cols-[32px_minmax(140px,2fr)_minmax(70px,1fr)_minmax(65px,1fr)_minmax(65px,1fr)_minmax(70px,1fr)_minmax(70px,1fr)_minmax(80px,1fr)] gap-3 items-center px-4 py-3 hover:bg-zinc-800/30 transition-colors cursor-pointer"
+      className="grid grid-cols-[32px_minmax(120px,1.5fr)_60px_minmax(70px,1fr)_minmax(60px,1fr)_minmax(60px,1fr)_minmax(60px,1fr)_minmax(50px,1fr)_minmax(50px,1fr)_minmax(80px,1fr)] gap-2 items-center px-3 py-3 hover:bg-zinc-800/30 transition-colors cursor-pointer text-xs"
     >
       {/* Rank */}
-      <span className="text-sm text-zinc-500 tabular-nums">{rank}</span>
+      <span className="text-zinc-500 tabular-nums">{rank}</span>
 
       {/* Token Name */}
-      <div className="flex items-center gap-2.5 min-w-0">
+      <div className="flex items-center gap-2 min-w-0">
         {avatarUrl ? (
-          <img src={avatarUrl} alt={name} className="w-8 h-8 rounded-full object-cover flex-shrink-0" />
+          <img src={avatarUrl} alt={name} className="w-7 h-7 rounded-full object-cover flex-shrink-0" />
         ) : (
-          <div className="w-8 h-8 rounded-full bg-gradient-to-br from-zinc-700 to-zinc-800 flex items-center justify-center flex-shrink-0">
-            <span className="text-xs font-medium text-zinc-400">{name.slice(0, 2).toUpperCase()}</span>
+          <div className="w-7 h-7 rounded-full bg-gradient-to-br from-zinc-700 to-zinc-800 flex items-center justify-center flex-shrink-0">
+            <span className="text-[10px] font-medium text-zinc-400">{name.slice(0, 2).toUpperCase()}</span>
           </div>
         )}
         <div className="min-w-0">
           <div className="text-sm font-medium text-white truncate">{name}</div>
-          {symbol && <div className="text-xs text-zinc-500 truncate">{symbol}</div>}
+          {symbol && <div className="text-[10px] text-zinc-500 truncate">{symbol}</div>}
         </div>
       </div>
 
-      {/* Price */}
-      <span className="text-sm text-white tabular-nums">{price}</span>
-
-      {/* 1H Change */}
-      <span className={`text-sm tabular-nums ${change1h.neutral ? 'text-zinc-500' : change1h.positive ? 'text-green-500' : 'text-red-500'}`}>
-        {change1h.value}
-      </span>
-
-      {/* 1D Change */}
-      <span className={`text-sm tabular-nums ${change1d.neutral ? 'text-zinc-500' : change1d.positive ? 'text-green-500' : 'text-red-500'}`}>
-        {change1d.value}
-      </span>
-
-      {/* FDV */}
-      <span className="text-sm text-white tabular-nums">{fdv}</span>
+      {/* Holders */}
+      <span className="text-white tabular-nums">{coin.uniqueHolders?.toLocaleString() || '-'}</span>
 
       {/* Volume */}
-      <span className="text-sm text-white tabular-nums">{volume}</span>
+      <span className="text-white tabular-nums">{formatCompactNumber(volume)}</span>
 
-      {/* Sparkline Chart */}
-      <div className="flex justify-end">
-        <TokenSparkline data={sparklineData} positive={change1d.positive} width={80} height={28} />
-      </div>
+      {/* Creator Fee (50%) */}
+      <span className="text-green-400 tabular-nums">{formatFeeAmount(volume, FEE_RATES.creator)}</span>
+
+      {/* Platform Fee (20%) */}
+      <span className="text-blue-400 tabular-nums">{formatFeeAmount(volume, FEE_RATES.platform)}</span>
+
+      {/* LP Locked (20%) */}
+      <span className="text-purple-400 tabular-nums">{formatFeeAmount(volume, FEE_RATES.lpRewards)}</span>
+
+      {/* Zora (5%) */}
+      <span className="text-zinc-400 tabular-nums">{formatFeeAmount(volume, FEE_RATES.protocol)}</span>
+
+      {/* Doppler (1%) */}
+      <span className="text-zinc-500 tabular-nums">{formatFeeAmount(volume, FEE_RATES.doppler)}</span>
+
+      {/* Payout To */}
+      <span className="text-zinc-400 font-mono text-[10px] truncate" title={payoutTo || undefined}>
+        {shortAddress(payoutTo)}
+      </span>
     </Link>
   )
 }
@@ -156,15 +129,17 @@ export function TokenRow({ rank, coin, linkPrefix = '/explore/creators', timefra
 // Table Header Component
 export function TokenTableHeader({ timeframe = '1d' }: TokenTableHeaderProps) {
   return (
-    <div className="grid grid-cols-[32px_minmax(140px,2fr)_minmax(70px,1fr)_minmax(65px,1fr)_minmax(65px,1fr)_minmax(70px,1fr)_minmax(70px,1fr)_minmax(80px,1fr)] gap-3 items-center px-4 py-3 text-xs text-zinc-500 uppercase tracking-wider border-b border-zinc-800 bg-zinc-900/50 sticky top-0 z-10">
+    <div className="grid grid-cols-[32px_minmax(120px,1.5fr)_60px_minmax(70px,1fr)_minmax(60px,1fr)_minmax(60px,1fr)_minmax(60px,1fr)_minmax(50px,1fr)_minmax(50px,1fr)_minmax(80px,1fr)] gap-2 items-center px-3 py-2 text-[10px] text-zinc-500 uppercase tracking-wider border-b border-zinc-800 bg-zinc-900/50 sticky top-0 z-10">
       <span>#</span>
-      <span>Token name</span>
-      <span>Price</span>
-      <span>1H</span>
-      <span>1D</span>
-      <span>FDV</span>
+      <span>Token</span>
+      <span>Holders</span>
       <span>{getVolumeLabel(timeframe)}</span>
-      <span className="text-right">{getChartLabel(timeframe)}</span>
+      <span className="text-green-400/70" title="50% of 1% fee → Creator/Payout Recipient">Creator</span>
+      <span className="text-blue-400/70" title="20% of 1% fee → Platform that deployed coin">Platform</span>
+      <span className="text-purple-400/70" title="20% of 1% fee → Locked as permanent LP">LP Lock</span>
+      <span className="text-zinc-400/70" title="5% of 1% fee → Zora Protocol">Zora</span>
+      <span className="text-zinc-500/70" title="1% of 1% fee → Doppler (LP hook)">Doppler</span>
+      <span>Payout To</span>
     </div>
   )
 }
@@ -172,21 +147,23 @@ export function TokenTableHeader({ timeframe = '1d' }: TokenTableHeaderProps) {
 // Loading skeleton row
 export function TokenRowSkeleton() {
   return (
-    <div className="grid grid-cols-[32px_minmax(140px,2fr)_minmax(70px,1fr)_minmax(65px,1fr)_minmax(65px,1fr)_minmax(70px,1fr)_minmax(70px,1fr)_minmax(80px,1fr)] gap-3 items-center px-4 py-3">
-      <div className="h-4 w-5 bg-zinc-800 rounded animate-pulse" />
-      <div className="flex items-center gap-2.5">
-        <div className="w-8 h-8 rounded-full bg-zinc-800 animate-pulse" />
-        <div className="space-y-1.5">
-          <div className="h-4 w-20 bg-zinc-800 rounded animate-pulse" />
-          <div className="h-3 w-12 bg-zinc-800 rounded animate-pulse" />
+    <div className="grid grid-cols-[32px_minmax(120px,1.5fr)_60px_minmax(70px,1fr)_minmax(60px,1fr)_minmax(60px,1fr)_minmax(60px,1fr)_minmax(50px,1fr)_minmax(50px,1fr)_minmax(80px,1fr)] gap-2 items-center px-3 py-3">
+      <div className="h-3 w-4 bg-zinc-800 rounded animate-pulse" />
+      <div className="flex items-center gap-2">
+        <div className="w-7 h-7 rounded-full bg-zinc-800 animate-pulse" />
+        <div className="space-y-1">
+          <div className="h-3 w-16 bg-zinc-800 rounded animate-pulse" />
+          <div className="h-2 w-10 bg-zinc-800 rounded animate-pulse" />
         </div>
       </div>
-      <div className="h-4 w-14 bg-zinc-800 rounded animate-pulse" />
-      <div className="h-4 w-12 bg-zinc-800 rounded animate-pulse" />
-      <div className="h-4 w-12 bg-zinc-800 rounded animate-pulse" />
-      <div className="h-4 w-14 bg-zinc-800 rounded animate-pulse" />
-      <div className="h-4 w-14 bg-zinc-800 rounded animate-pulse" />
-      <div className="h-7 w-20 bg-zinc-800 rounded animate-pulse ml-auto" />
+      <div className="h-3 w-10 bg-zinc-800 rounded animate-pulse" />
+      <div className="h-3 w-12 bg-zinc-800 rounded animate-pulse" />
+      <div className="h-3 w-10 bg-zinc-800 rounded animate-pulse" />
+      <div className="h-3 w-10 bg-zinc-800 rounded animate-pulse" />
+      <div className="h-3 w-10 bg-zinc-800 rounded animate-pulse" />
+      <div className="h-3 w-8 bg-zinc-800 rounded animate-pulse" />
+      <div className="h-3 w-8 bg-zinc-800 rounded animate-pulse" />
+      <div className="h-3 w-14 bg-zinc-800 rounded animate-pulse" />
     </div>
   )
 }
