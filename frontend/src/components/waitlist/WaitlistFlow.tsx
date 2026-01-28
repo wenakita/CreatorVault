@@ -1,4 +1,4 @@
-import { AnimatePresence, motion } from 'framer-motion'
+import { AnimatePresence, LayoutGroup, motion } from 'framer-motion'
 import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from 'react'
 import { useLocation } from 'react-router-dom'
 import { getAppBaseUrl } from '@/lib/host'
@@ -35,6 +35,14 @@ const EVM_RE = /^0x[a-fA-F0-9]{40}$/
 const SOL_RE = /^[1-9A-HJ-NP-Za-km-z]+$/
 const SHARE_MESSAGE = 'Creator vaults on Base — join the waitlist.'
 const BASE_SQUARE_BLUE = '/base/1_Base%20Brand%20Assets/The%20Square/Base_square_blue.svg'
+const BASE_EASE = [0.4, 0, 0.2, 1] as const
+
+const STEP_WIPE = {
+  initial: { opacity: 0, scaleX: 0.2 },
+  animate: { opacity: 1, scaleX: 1 },
+  exit: { opacity: 0, scaleX: 0.2 },
+  transition: { duration: 0.22, ease: BASE_EASE },
+} as const
 
 const COINBASE_SMART_WALLET_OWNER_LINK_ABI = [
   {
@@ -1658,7 +1666,8 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
           </div>
         )}
 
-        <div className={cardWrapClass}>
+        <LayoutGroup>
+        <motion.div layout className={cardWrapClass}>
           {/* Show reset on done step */}
           {step === 'done' ? (
             <div className="flex items-center justify-between mb-5">
@@ -1680,7 +1689,7 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
                   className="h-full bg-[#0052FF]"
                   initial={false}
                   animate={{ width: `${progressPct}%` }}
-                  transition={{ duration: 0.24, ease: [0.4, 0, 0.2, 1] }}
+                  transition={{ duration: 0.22, ease: BASE_EASE }}
                 />
               </div>
               <motion.img
@@ -1689,78 +1698,110 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
                 className="absolute top-1/2 w-2.5 h-2.5"
                 initial={false}
                 animate={{ left: `${progressPct}%` }}
-                transition={{ duration: 0.2, ease: [0.4, 0, 0.2, 1] }}
+                transition={{ duration: 0.22, ease: BASE_EASE }}
                 style={{ transform: 'translate(-50%, -50%)' }}
                 aria-hidden="true"
               />
             </div>
           </div>
 
-          <AnimatePresence mode="wait">
-            {step === 'verify' ? (
-              <VerifyStep
-                verifiedWallet={verifiedWallet}
-                showPrivy={showPrivy}
-                showPrivyReady={showPrivyReady}
-                privyReady={privyReady}
-                privyAuthed={privyAuthed}
-                privyVerifyBusy={privyVerifyBusy}
-                privyVerifyError={privyVerifyError}
-                showDeployOwnerLink={Boolean(showPrivyReady && privyAuthed && cswAddress)}
-                deployOwnerLinkBusy={deployOwnerLinkBusy}
-                deployOwnerLinkError={deployOwnerLinkError}
-                cswAddress={cswAddress}
-                embeddedEoaAddress={embeddedEoaAddressForLink}
-                connectedOwnerAddress={connectedOwnerAddressForLink}
-                embeddedEoaIsOwner={embeddedEoaIsOwner}
-                connectedOwnerIsOwner={connectedOwnerIsOwner}
-                onLinkEmbeddedEoaAsOwner={linkEmbeddedEoaAsOwner}
-                zoraProfileExists={zoraProfileExists}
-                creatorCoin={creatorCoin}
-                creatorCoinDeclaredMissing={creatorCoinDeclaredMissing}
-                creatorCoinBusy={creatorCoinBusy}
-                busy={busy}
-                canSubmit={canSubmit}
-                onPrivyContinue={openPrivyLogin}
-                onSubmit={submitWaitlist}
-              />
-            ) : null}
+          {/* Step transition: square-led wipe + smooth layout */}
+          <div className="relative">
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={`wipe:${step}`}
+                className="pointer-events-none absolute inset-x-0 -top-2 h-0.5 origin-left"
+                {...STEP_WIPE}
+              >
+                <div className="h-full bg-[#0052FF]" />
+              </motion.div>
+            </AnimatePresence>
 
-            {step === 'done' ? (
-              <DoneStep
-                displayEmail={displayEmail}
-                isBypassAdmin={isBypassAdmin}
-                appUrl={appUrl}
-                waitlistPosition={waitlistPosition}
-                referralCode={referralCode}
-                referralLink={referralLink}
-                pointsBreakdownUrl={pointsBreakdownUrl}
-                inviteTemplateIdx={inviteTemplateIdx}
-                inviteToast={inviteToast}
-                shareToast={shareToast}
-                shareBusy={shareBusy}
-                actionsDone={actionsDone}
-                miniAppIsMiniApp={miniApp.isMiniApp === true}
-                miniAppAdded={miniApp.added === true}
-                miniAppAddSupported={miniAppAddSupported}
-                miniAppHostLabel={miniAppHostLabel}
-                showEmailCapture={showEmailCapture}
-                emailCaptureValue={emailCapture}
-                emailCaptureBusy={emailCaptureBusy}
-                emailCaptureError={emailCaptureError}
-                emailCaptureSuccess={emailCaptureSuccess}
-                onEmailCaptureChange={setEmailCapture}
-                onEmailCaptureSubmit={handleEmailCaptureSubmit}
-                onShareX={handleShareX}
-                onCopyReferral={handleCopyReferral}
-                onNextInviteTemplate={handleNextInviteTemplate}
-                onFollow={handleFollow}
-                onShare={shareOrCompose}
-                onAddMiniApp={addMiniApp}
-              />
-            ) : null}
-          </AnimatePresence>
-        </div>
+            <AnimatePresence mode="wait">
+              {step === 'verify' ? (
+                <motion.div
+                  key="step:verify"
+                  layout
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -8 }}
+                  transition={{ duration: 0.22, ease: BASE_EASE }}
+                >
+                  <VerifyStep
+                    verifiedWallet={verifiedWallet}
+                    showPrivy={showPrivy}
+                    showPrivyReady={showPrivyReady}
+                    privyReady={privyReady}
+                    privyAuthed={privyAuthed}
+                    privyVerifyBusy={privyVerifyBusy}
+                    privyVerifyError={privyVerifyError}
+                    showDeployOwnerLink={Boolean(showPrivyReady && privyAuthed && cswAddress)}
+                    deployOwnerLinkBusy={deployOwnerLinkBusy}
+                    deployOwnerLinkError={deployOwnerLinkError}
+                    cswAddress={cswAddress}
+                    embeddedEoaAddress={embeddedEoaAddressForLink}
+                    connectedOwnerAddress={connectedOwnerAddressForLink}
+                    embeddedEoaIsOwner={embeddedEoaIsOwner}
+                    connectedOwnerIsOwner={connectedOwnerIsOwner}
+                    onLinkEmbeddedEoaAsOwner={linkEmbeddedEoaAsOwner}
+                    zoraProfileExists={zoraProfileExists}
+                    creatorCoin={creatorCoin}
+                    creatorCoinDeclaredMissing={creatorCoinDeclaredMissing}
+                    creatorCoinBusy={creatorCoinBusy}
+                    busy={busy}
+                    canSubmit={canSubmit}
+                    onPrivyContinue={openPrivyLogin}
+                    onSubmit={submitWaitlist}
+                  />
+                </motion.div>
+              ) : null}
+
+              {step === 'done' ? (
+                <motion.div
+                  key="step:done"
+                  layout
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -8 }}
+                  transition={{ duration: 0.22, ease: BASE_EASE }}
+                >
+                  <DoneStep
+                    displayEmail={displayEmail}
+                    isBypassAdmin={isBypassAdmin}
+                    appUrl={appUrl}
+                    waitlistPosition={waitlistPosition}
+                    referralCode={referralCode}
+                    referralLink={referralLink}
+                    pointsBreakdownUrl={pointsBreakdownUrl}
+                    inviteTemplateIdx={inviteTemplateIdx}
+                    inviteToast={inviteToast}
+                    shareToast={shareToast}
+                    shareBusy={shareBusy}
+                    actionsDone={actionsDone}
+                    miniAppIsMiniApp={miniApp.isMiniApp === true}
+                    miniAppAdded={miniApp.added === true}
+                    miniAppAddSupported={miniAppAddSupported}
+                    miniAppHostLabel={miniAppHostLabel}
+                    showEmailCapture={showEmailCapture}
+                    emailCaptureValue={emailCapture}
+                    emailCaptureBusy={emailCaptureBusy}
+                    emailCaptureError={emailCaptureError}
+                    emailCaptureSuccess={emailCaptureSuccess}
+                    onEmailCaptureChange={setEmailCapture}
+                    onEmailCaptureSubmit={handleEmailCaptureSubmit}
+                    onShareX={handleShareX}
+                    onCopyReferral={handleCopyReferral}
+                    onNextInviteTemplate={handleNextInviteTemplate}
+                    onFollow={handleFollow}
+                    onShare={shareOrCompose}
+                    onAddMiniApp={addMiniApp}
+                  />
+                </motion.div>
+              ) : null}
+            </AnimatePresence>
+          </div>
+        </motion.div>
+        </LayoutGroup>
       </div>
     </section>
   )
