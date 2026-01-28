@@ -6,6 +6,7 @@ import { useInfiniteQuery } from '@tanstack/react-query'
 import { ExploreSubnav } from '@/components/explore/ExploreSubnav'
 import { PoolRow, PoolTableHeader, PoolRowSkeleton } from '@/components/explore/PoolRow'
 import { fetchZoraExplore } from '@/lib/zora/client'
+import { useMigratedCoins } from '@/hooks/useMigratedCoins'
 import type { ZoraCoin, ZoraExploreListType } from '@/lib/zora/types'
 
 const SORT_TO_LIST_TYPE: Record<string, ZoraExploreListType> = {
@@ -25,6 +26,9 @@ export function ExploreContent() {
   const currentSort = searchParams.get('sort') || 'volume'
 
   const listType = SORT_TO_LIST_TYPE[currentSort] || 'TOP_VOLUME_24H'
+  
+  // Fetch migrated coins for accurate fee detection
+  const { migratedCoins } = useMigratedCoins()
 
   const {
     data,
@@ -184,6 +188,7 @@ export function ExploreContent() {
                   rank={index + 1}
                   coin={coin}
                   timeframe={currentTimeFilter}
+                  migratedCoins={migratedCoins ?? undefined}
                 />
               ))
             )}

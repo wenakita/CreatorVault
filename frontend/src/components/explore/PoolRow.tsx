@@ -5,6 +5,8 @@ type PoolRowProps = {
   rank: number
   coin: ZoraCoin
   timeframe?: string
+  /** Set of migrated coin addresses (lowercase) for accurate fee detection */
+  migratedCoins?: Set<string>
 }
 
 type PoolTableHeaderProps = {
@@ -14,7 +16,7 @@ type PoolTableHeaderProps = {
 // V4 cutoff: June 6, 2025 (Zora V4 mainnet launch)
 const V4_CUTOFF_DATE = new Date('2025-06-06T00:00:00Z')
 
-// Zora V4 Fee Structure (1% total fee) - coins created after June 6, 2025
+// Zora V4 Fee Structure (1% total fee) - coins created after June 2025 OR migrated
 const FEE_RATES_V4 = {
   total: 0.01,        // 1% total trading fee
   creator: 0.50,      // 50% of fees → Creator/payoutRecipient
@@ -25,7 +27,7 @@ const FEE_RATES_V4 = {
   doppler: 0.01,      // 1% of fees → Doppler (LP hook)
 }
 
-// Legacy Fee Structure (3% total fee) - coins created before June 6, 2025
+// Legacy Fee Structure (3% total fee) - coins created before June 2025 that haven't migrated
 const FEE_RATES_LEGACY = {
   total: 0.03,        // 3% total trading fee
   creator: 0.50,      // 50% of fees → Creator/payoutRecipient
@@ -36,15 +38,33 @@ const FEE_RATES_LEGACY = {
   doppler: 0.00,      // No Doppler in legacy
 }
 
-// Determine if coin uses V4 fee structure based on creation date
-function isV4Coin(createdAt: string | undefined): boolean {
-  if (!createdAt) return true // Default to V4 if unknown
-  const created = new Date(createdAt)
-  return created >= V4_CUTOFF_DATE
+type FeeStatus = {
+  isV4: boolean
+  isMigrated: boolean
+  feeRates: typeof FEE_RATES_V4
 }
 
-function getFeeRates(createdAt: string | undefined) {
-  return isV4Coin(createdAt) ? FEE_RATES_V4 : FEE_RATES_LEGACY
+/**
+ * Determine fee status for a coin
+ * Priority: 1) Check if migrated, 2) Check creation date
+ */
+function getCoinFeeStatus(
+  address: string | undefined,
+  createdAt: string | undefined,
+  migratedCoins?: Set<string>
+): FeeStatus {
+  // Check if coin has migrated to V4
+  if (address && migratedCoins?.has(address.toLowerCase())) {
+    return { isV4: true, isMigrated: true, feeRates: FEE_RATES_V4 }
+  }
+  
+  // Fall back to creation date check
+  const isV4ByDate = !createdAt || new Date(createdAt) >= V4_CUTOFF_DATE
+  return {
+    isV4: isV4ByDate,
+    isMigrated: false,
+    feeRates: isV4ByDate ? FEE_RATES_V4 : FEE_RATES_LEGACY
+  }
 }
 
 function formatCompactNumber(value: string | number | undefined): string {
@@ -85,7 +105,7 @@ function getVolumeLabel(timeframe: string): string {
   return labels[timeframe] || '24H Vol'
 }
 
-export function PoolRow({ rank, coin, timeframe = '1d' }: PoolRowProps) {
+export function PoolRow({ rank, coin, timeframe = '1d', migratedCoins }: PoolRowProps) {
   // Use timeframe for future API support
   const volume = timeframe === '1d' ? coin.volume24h : coin.volume24h // TODO: support other timeframes
   
@@ -96,11 +116,17 @@ export function PoolRow({ rank, coin, timeframe = '1d' }: PoolRowProps) {
   const address = coin.address || ''
   const payoutTo = coin.payoutRecipientAddress
 
-  // Determine fee structure based on creation date
-  const isV4 = isV4Coin(coin.createdAt)
-  const feeRates = getFeeRates(coin.createdAt)
+  // Determine fee structure (checks migration status first, then creation date)
+  const { isV4, isMigrated, feeRates } = getCoinFeeStatus(coin.address, coin.createdAt, migratedCoins)
 
   const detailPath = `/explore/content/${chain}/${address}`
+
+  // Fee badge tooltip
+  const feeTooltip = isMigrated
+    ? '1% fee (Migrated to V4)'
+    : isV4
+      ? '1% fee (V4 - after June 2025)'
+      : '3% fee (Legacy - before June 2025)'
 
   return (
     <Link
@@ -129,12 +155,14 @@ export function PoolRow({ rank, coin, timeframe = '1d' }: PoolRowProps) {
       <span 
         className={`text-[9px] font-medium px-1.5 py-0.5 rounded ${
           isV4 
-            ? 'bg-green-500/20 text-green-400' 
-            : 'bg-amber-500/20 text-amber-400'
+            ? isMigrated
+              ? 'bg-blue-500/20 text-blue-400'  // Migrated coins get blue badge
+              : 'bg-green-500/20 text-green-400' // Native V4 coins get green
+            : 'bg-amber-500/20 text-amber-400'   // Legacy 3% coins get amber
         }`}
-        title={isV4 ? '1% fee (V4 - after June 2025)' : '3% fee (Legacy - before June 2025)'}
+        title={feeTooltip}
       >
-        {isV4 ? '1%' : '3%'}
+        {isV4 ? '1%' : '3%'}{isMigrated && '*'}
       </span>
 
       {/* Holders */}
