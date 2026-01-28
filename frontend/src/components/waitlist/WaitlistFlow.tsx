@@ -1,4 +1,4 @@
-import { AnimatePresence, LayoutGroup, motion } from 'framer-motion'
+import { AnimatePresence, motion } from 'framer-motion'
 import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from 'react'
 import { useLocation } from 'react-router-dom'
 import { getAppBaseUrl } from '@/lib/host'
@@ -1795,8 +1795,7 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
           </div>
         )}
 
-        <LayoutGroup>
-        <motion.div layout className={cardWrapClass}>
+        <motion.div className={cardWrapClass}>
           {/* Show reset on done step */}
           {step === 'done' ? (
             <div className="flex items-center justify-between mb-5">
@@ -1810,24 +1809,15 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
               <div className="w-8" />
             </div>
           ) : null}
-          {/* Step indicator (no bars/lines) */}
+          {/* Step indicator (stable, no layout/slide jitter) */}
           <div className="mb-6 flex items-center justify-between">
             <div className="text-[11px] uppercase tracking-[0.18em] text-zinc-600">
               {step === 'verify' ? 'Verify' : 'Complete'}
             </div>
             <div className="flex items-center gap-2">
-              <motion.div
-                layoutId="waitlistStepDot"
-                className="h-2 w-2 rounded-[3px] bg-[#0052FF] shadow-[0_0_0_4px_rgba(0,82,255,0.08)]"
-                initial={false}
-                animate={{ x: step === 'verify' ? 0 : 12 }}
-                transition={{ duration: BASE_MOTION_MS, ease: BASE_EASE }}
-                aria-hidden="true"
-              />
-              <div className="flex items-center gap-2">
-                <div className={`h-2 w-2 rounded-[3px] ${step === 'verify' ? 'bg-white/10' : 'bg-white/20'}`} />
-                <div className={`h-2 w-2 rounded-[3px] ${step === 'verify' ? 'bg-white/20' : 'bg-white/10'}`} />
-              </div>
+              <div className={`h-2 w-2 rounded-[3px] ${step === 'verify' ? 'bg-white/20' : 'bg-white/10'}`} />
+              <div className={`h-2 w-2 rounded-[3px] ${step === 'verify' ? 'bg-white/10' : 'bg-white/20'}`} />
+              <div className="ml-1 text-[11px] text-zinc-600 tabular-nums">{step === 'verify' ? '1' : '2'}/2</div>
             </div>
           </div>
 
@@ -1837,7 +1827,6 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
               {step === 'verify' ? (
                 <motion.div
                   key="step:verify"
-                  layout
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -8 }}
@@ -1876,7 +1865,6 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
               {step === 'done' ? (
                 <motion.div
                   key="step:done"
-                  layout
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -8 }}
@@ -1886,46 +1874,17 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
                     displayEmail={displayEmail}
                     isBypassAdmin={isBypassAdmin}
                     appUrl={appUrl}
-                    primaryCta={primaryCta}
-                    deployAccessState={deployAccessState}
                     waitlistPosition={waitlistPosition}
                     referralCode={referralCode}
                     referralLink={referralLink}
-                    pointsBreakdownUrl={pointsBreakdownUrl}
-                    inviteTemplateIdx={inviteTemplateIdx}
-                    inviteToast={inviteToast}
-                    shareToast={shareToast}
-                    shareBusy={shareBusy}
-                    actionsDone={actionsDone}
-                    miniAppIsMiniApp={miniApp.isMiniApp === true}
-                    miniAppAdded={miniApp.added === true}
-                    miniAppAddSupported={miniAppAddSupported}
-                    miniAppHostLabel={miniAppHostLabel}
-                    showEmailCapture={showEmailCapture}
-                    emailCaptureValue={emailCapture}
-                    emailCaptureBusy={emailCaptureBusy}
-                    emailCaptureError={emailCaptureError}
-                    emailCaptureSuccess={emailCaptureSuccess}
-                    cswLinked={waitlist.cswLinked}
-                    cswLinkBusy={waitlist.cswLinkBusy}
-                    cswLinkError={waitlist.cswLinkError}
-                    onLinkCsw={handleLinkCsw}
-                    onEmailCaptureChange={setEmailCapture}
-                    onEmailCaptureSubmit={handleEmailCaptureSubmit}
-                    onShareX={handleShareX}
                     onCopyReferral={handleCopyReferral}
-                    onNextInviteTemplate={handleNextInviteTemplate}
-                    onFollow={handleFollow}
-                    onShare={shareOrCompose}
-                    onAddMiniApp={addMiniApp}
-                    onSocialAction={handleSocialAction}
+                    copyToast={inviteToast}
                   />
                 </motion.div>
               ) : null}
             </AnimatePresence>
           </div>
         </motion.div>
-        </LayoutGroup>
       </div>
     </section>
   )

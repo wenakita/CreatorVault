@@ -152,11 +152,20 @@ function AppAllowlistGatePrivyEnabled() {
   const isPublicWaitlistRoute = location.pathname === '/waitlist' || location.pathname === '/leaderboard'
   const isAdminRoute = location.pathname === '/admin' || location.pathname.startsWith('/admin/')
   const marketingUrl = getMarketingBaseUrl()
+  const isLocalDev =
+    typeof window !== 'undefined' &&
+    (window.location.hostname === 'localhost' ||
+      window.location.hostname === '127.0.0.1' ||
+      window.location.hostname === '0.0.0.0') &&
+    import.meta.env.DEV
 
   const allowlistMode = allowlistModeQuery.data?.mode
   const allowlistEnforced = allowlistMode === 'enforced'
 
   if (isPublicWaitlistRoute) {
+    // In production, the marketing domain owns the waitlist/leaderboard.
+    // In local dev, keep these routes in-app so you can iterate on the UI.
+    if (isLocalDev) return <Outlet />
     return <ExternalRedirect to={marketingUrl} />
   }
 
@@ -225,6 +234,11 @@ const WaitlistLanding = lazy(async () => {
 const Leaderboard = lazy(async () => {
   const m = await import('./pages/Leaderboard')
   return { default: m.Leaderboard }
+})
+
+const WaitlistProfile = lazy(async () => {
+  const m = await import('./pages/WaitlistProfile')
+  return { default: m.WaitlistProfile }
 })
 
 const CoinManage = lazy(async () => {
@@ -365,6 +379,7 @@ function App() {
             <Route path="/" element={<WaitlistLanding />} />
             {/* Back-compat */}
             <Route path="/waitlist" element={<Navigate to="/" replace />} />
+            <Route path="/profile" element={<WaitlistProfile />} />
             <Route path="/leaderboard" element={<Leaderboard />} />
 
             {/* If someone hits an app route on the marketing domain, push them to app.* */}
