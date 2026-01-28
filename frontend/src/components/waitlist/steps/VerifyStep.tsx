@@ -153,8 +153,8 @@ export const VerifyStep = memo(function VerifyStep({
             </div>
             <div className="text-xs text-zinc-500 mt-1">
               {zoraProfileExists === false
-                ? 'Create a Zora account so we can set up your creator smart wallet.'
-                : 'No creator coin yet. You can continue and we’ll link your embedded wallet to your smart wallet.'}
+                ? 'Create a Zora account to set up your creator smart wallet. We will link your embedded wallet as an owner after you sign in.'
+                : 'No creator coin was found for this wallet yet. You can continue and we will link your embedded wallet to your Zora smart wallet.'}
             </div>
           </div>
           <div className="flex flex-col gap-2">

@@ -1232,8 +1232,7 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
           }
         }
         const profile = await fetchZoraProfile(w)
-        const profileExists = Boolean(profile)
-        if (!cancelled) setZoraProfileExists(profileExists)
+        if (!cancelled) setZoraProfileExists(Boolean(profile))
         const coinAddrRaw = profile?.creatorCoin?.address ? String(profile.creatorCoin.address) : ''
         const coinAddr = isValidEvmAddress(coinAddrRaw) ? coinAddrRaw : null
         let smartWallet: string | null = null
@@ -1282,10 +1281,6 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
         // (Best-effort; schema can vary by API source.)
         if (!smartWallet && linkedWalletCandidates.length > 0) {
           smartWallet = linkedWalletCandidates[0] ?? null
-        }
-
-        if (!smartWallet && fallbackSmartWallet && profileExists) {
-          smartWallet = fallbackSmartWallet
         }
 
         // Ensure this looks like a smart wallet (contract) when possible.
