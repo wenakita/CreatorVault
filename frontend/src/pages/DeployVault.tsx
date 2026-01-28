@@ -905,7 +905,7 @@ function DeployVaultBatcher({
       return 'Bundler / paymaster is not configured. Set `VITE_CDP_API_KEY` (recommended) or `VITE_CDP_PAYMASTER_URL=/api/paymaster` (and configure `CDP_PAYMASTER_URL` server-side) and retry.'
     }
     if (lower.includes('signature check failed') || lower.includes('invalid userop signature')) {
-      return 'UserOp signature failed. Ensure the signer wallet is an onchain owner of the creator smart wallet and supports `eth_sign` (raw hash). If you linked a Privy embedded EOA, sign in with Privy so it can sign the UserOp.'
+      return "UserOp signature failed. Ensure the signer wallet is an onchain owner of the creator smart wallet and can sign the UserOp hash (some wallets block `eth_sign`). If you linked a Privy embedded EOA, switch to a Privy embedded session and retry."
     }
     if (lower.includes('failed to fetch')) {
       return 'Paymaster request failed to reach the endpoint (network/CORS). Prefer `VITE_CDP_PAYMASTER_URL=/api/paymaster` and ensure the server env `CDP_PAYMASTER_URL` is set.'
@@ -1804,7 +1804,7 @@ function DeployVaultBatcher({
         } else {
           if (!ownerExec) throw new Error('Missing owner signer for smart wallet execution.')
           // Use external EOA owner
-          const r1 = await sendCoinbaseSmartWalletUserOperation({
+            const r1 = await sendCoinbaseSmartWalletUserOperation({
             publicClient: publicClient as any,
             walletClient: ownerWalletClient as any,
             bundlerUrl: cdpRpcUrl,
@@ -1812,7 +1812,7 @@ function DeployVaultBatcher({
             ownerAddress: ownerExec as Address,
             calls: toCalls(phase1Calls),
             version: '1',
-            userOpSignMode: 'eth_sign',
+              userOpSignMode: 'auto',
           })
           setTxId(r1.transactionHash)
           setPhaseTxs((s) => ({ ...s, userOp1: r1.userOpHash, tx1: r1.transactionHash }))
@@ -1837,7 +1837,7 @@ function DeployVaultBatcher({
             ownerAddress: ownerExec as Address,
             calls: toCalls(phase2Calls),
             version: '1',
-            userOpSignMode: 'eth_sign',
+            userOpSignMode: 'auto',
           })
           setTxId(r2.transactionHash)
           setPhaseTxs((s) => ({ ...s, userOp2: r2.userOpHash, tx2: r2.transactionHash }))
@@ -1863,7 +1863,7 @@ function DeployVaultBatcher({
               ownerAddress: ownerExec as Address,
               calls: toCalls(phase3Calls),
               version: '1',
-              userOpSignMode: 'eth_sign',
+              userOpSignMode: 'auto',
             })
             setTxId(r3.transactionHash)
             setPhaseTxs((s) => ({ ...s, userOp3: r3.userOpHash, tx3: r3.transactionHash }))
@@ -1890,7 +1890,7 @@ function DeployVaultBatcher({
         (lc.includes('method not found') && lc.includes('sign'))
       const userRejected = lc.includes('user rejected') || lc.includes('userrejected')
       if (looksLikeEthSignBlocked && !userRejected) {
-        pretty = `Your connected wallet blocked the raw signature (\`eth_sign\`) required for smart wallet UserOps. Click “${
+        pretty = `Your signer blocked the raw signature method (\`eth_sign\`). We will try a compatible fallback, but if it still fails, click “${
           switchAuthLabel ?? 'Switch sign-in'
         }” to continue (recommended).`
       }
