@@ -56,7 +56,7 @@ function ActivityRow({ coin }: { coin: ZoraCoin }) {
   return (
     <Link
       to={`/explore/creators/base/${address}`}
-      className="grid grid-cols-[80px_minmax(150px,2fr)_minmax(100px,1fr)_minmax(80px,1fr)_minmax(100px,1fr)_50px] gap-4 items-center px-4 py-4 hover:bg-zinc-900/50 transition-colors border-b border-zinc-800/50"
+      className="grid grid-cols-[80px_minmax(150px,2fr)_minmax(100px,1fr)_minmax(80px,1fr)_minmax(100px,1fr)_50px] gap-4 items-center px-4 py-3 hover:bg-zinc-800/30 transition-colors text-sm"
     >
       {/* Type indicator */}
       <div className="flex items-center gap-2">
@@ -112,7 +112,7 @@ function ActivityRow({ coin }: { coin: ZoraCoin }) {
 
 function ActivityTableHeader() {
   return (
-    <div className="grid grid-cols-[80px_minmax(150px,2fr)_minmax(100px,1fr)_minmax(80px,1fr)_minmax(100px,1fr)_50px] gap-4 items-center px-4 py-3 text-xs text-zinc-500 border-b border-zinc-800 bg-zinc-900/30 sticky top-0 z-10">
+    <div className="grid grid-cols-[80px_minmax(150px,2fr)_minmax(100px,1fr)_minmax(80px,1fr)_minmax(100px,1fr)_50px] gap-4 items-center px-4 py-3 text-[10px] text-zinc-500 uppercase tracking-wider border-b border-zinc-800 bg-zinc-900/50">
       <span>Type</span>
       <span>Token</span>
       <span>Volume (24h)</span>
@@ -125,7 +125,7 @@ function ActivityTableHeader() {
 
 function ActivityRowSkeleton() {
   return (
-    <div className="grid grid-cols-[80px_minmax(150px,2fr)_minmax(100px,1fr)_minmax(80px,1fr)_minmax(100px,1fr)_50px] gap-4 items-center px-4 py-4 border-b border-zinc-800/50">
+    <div className="grid grid-cols-[80px_minmax(150px,2fr)_minmax(100px,1fr)_minmax(80px,1fr)_minmax(100px,1fr)_50px] gap-4 items-center px-4 py-3">
       <div className="flex items-center gap-2">
         <div className="w-6 h-6 rounded-full bg-zinc-800 animate-pulse" />
         <div className="h-4 w-8 bg-zinc-800 rounded animate-pulse" />
@@ -277,10 +277,12 @@ export function ExploreTransactions() {
           initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.4, delay: 0.2 }}
-          className="rounded-2xl border border-zinc-800 bg-zinc-900/50 overflow-hidden"
+          className="rounded-2xl border border-zinc-800 bg-zinc-900/50"
         >
-          {/* Table Header */}
-          <ActivityTableHeader />
+          {/* Sticky header (align with Explore tables) */}
+          <div className="sticky top-24 z-20 border-b border-zinc-800 bg-zinc-900/70 backdrop-blur">
+            <ActivityTableHeader />
+          </div>
 
           {/* Table Body */}
           <div className="divide-y divide-zinc-800/50">

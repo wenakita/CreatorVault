@@ -69,7 +69,7 @@ export function ExploreSubnav({
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-3">
       {/* Main navigation row */}
       <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
         {/* Tabs */}
@@ -101,7 +101,7 @@ export function ExploreSubnav({
             <input
               type="text"
               placeholder={searchPlaceholder}
-              className="w-full sm:w-[280px] h-10 pl-10 pr-4 bg-zinc-900 border border-zinc-800 rounded-full text-sm text-white placeholder:text-zinc-500 focus:outline-none focus:border-zinc-700 transition-colors"
+              className="w-full sm:w-[260px] h-10 pl-10 pr-4 bg-zinc-900 border border-zinc-800 rounded-full text-sm text-white placeholder:text-zinc-500 focus:outline-none focus:border-zinc-700 transition-colors"
               aria-label="Search"
               onChange={(e) => onSearch?.(e.target.value)}
             />
@@ -131,8 +131,8 @@ export function ExploreSubnav({
       </div>
 
       {/* Sort options row */}
-      <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-hide">
-        <span className="text-xs text-zinc-500 flex-shrink-0">Sort by:</span>
+      <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-hide lg:hidden">
+        <span className="text-xs text-zinc-500 flex-shrink-0">Sort:</span>
         {SORT_OPTIONS.map((option) => {
           const active = currentSort === option.value
           return (

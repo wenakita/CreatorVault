@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom'
 import type { ZoraCoin } from '@/lib/zora/types'
+import { EXPLORE_TABLE_GROUPS, getExploreColumns, getGridTemplateColumns, getStickyLeftMap } from './tableColumns'
 
 type TokenRowProps = {
   rank: number
@@ -12,6 +13,8 @@ type TokenRowProps = {
 
 type TokenTableHeaderProps = {
   timeframe?: string
+  currentSort?: string
+  onSortChange?: (sort: string) => void
 }
 
 // V4 cutoff: June 6, 2025 (Zora V4 mainnet launch)
@@ -94,16 +97,33 @@ function shortAddress(addr: string | undefined): string {
   return `${addr.slice(0, 6)}…${addr.slice(-4)}`
 }
 
-// Get volume label based on timeframe
-function getVolumeLabel(timeframe: string): string {
-  const labels: Record<string, string> = {
-    '1h': '1H Vol',
-    '1d': '24H Vol',
-    '1w': '7D Vol',
-    '1m': '30D Vol',
-    '1y': '1Y Vol',
+function formatDeltaPercent(delta: string | undefined): { text: string; positive: boolean } {
+  if (!delta) return { text: '-', positive: true }
+  const num = parseFloat(delta)
+  if (!Number.isFinite(num)) return { text: '-', positive: true }
+  const positive = num >= 0
+  const abs = Math.abs(num)
+  return { text: `${positive ? '+' : '-'}${abs.toFixed(2)}%`, positive }
+}
+
+function buildGroupSpans(columns: ReturnType<typeof getExploreColumns>) {
+  // Columns are returned in group-order, so we can span contiguously.
+  const out: Array<{ id: string; label: string; start: number; end: number }> = []
+  let start = 0
+  for (const g of EXPLORE_TABLE_GROUPS) {
+    const firstIdx = columns.findIndex((c) => c.group === g.id)
+    if (firstIdx === -1) continue
+    const lastIdx = (() => {
+      let i = firstIdx
+      for (; i < columns.length; i++) {
+        if (columns[i].group !== g.id) break
+      }
+      return i - 1
+    })()
+    start = firstIdx
+    out.push({ id: g.id, label: g.label, start, end: lastIdx })
   }
-  return labels[timeframe] || '24H Vol'
+  return out
 }
 
 export function TokenRow({ rank, coin, linkPrefix = '/explore/creators', timeframe = '1d', migratedCoins }: TokenRowProps) {
@@ -116,6 +136,8 @@ export function TokenRow({ rank, coin, linkPrefix = '/explore/creators', timefra
   const chain = coin.chainId === 8453 ? 'base' : 'base'
   const address = coin.address || ''
   const payoutTo = coin.payoutRecipientAddress
+  const marketCap = coin.marketCap
+  const change = formatDeltaPercent(coin.marketCapDelta24h)
   
   // Determine fee structure (checks migration status first, then creation date)
   const { isV4, isMigrated, feeRates } = getCoinFeeStatus(coin.address, coin.createdAt, migratedCoins)
@@ -129,31 +151,49 @@ export function TokenRow({ rank, coin, linkPrefix = '/explore/creators', timefra
       ? '1% fee (V4 - after June 2025)'
       : '3% fee (Legacy - before June 2025)'
 
+  const columns = getExploreColumns({ variant: 'creators', timeframe })
+  const gridTemplateColumns = getGridTemplateColumns(columns)
+  const stickyLeft = getStickyLeftMap(columns)
+
+  const stickyCellClass =
+    'sticky z-20 bg-zinc-900/70 backdrop-blur-sm group-hover:bg-zinc-800/30'
+
   return (
     <Link
       to={detailPath}
-      className="grid grid-cols-[32px_minmax(120px,1.5fr)_40px_60px_minmax(70px,1fr)_minmax(60px,1fr)_minmax(60px,1fr)_minmax(60px,1fr)_minmax(50px,1fr)_minmax(50px,1fr)_minmax(80px,1fr)] gap-2 items-center px-3 py-3 hover:bg-zinc-800/30 transition-colors cursor-pointer text-xs"
+      className="group grid items-center text-xs hover:bg-zinc-800/30 transition-colors cursor-pointer min-w-max"
+      style={{ gridTemplateColumns }}
     >
       {/* Rank */}
-      <span className="text-zinc-500 tabular-nums">{rank}</span>
+      <span
+        className={`${stickyCellClass} text-zinc-500 tabular-nums px-3 py-2 text-right`}
+        style={{ left: stickyLeft.rank }}
+      >
+        {rank}
+      </span>
 
       {/* Token Name */}
-      <div className="flex items-center gap-2 min-w-0">
-        {avatarUrl ? (
-          <img src={avatarUrl} alt={name} className="w-7 h-7 rounded-full object-cover flex-shrink-0" />
-        ) : (
-          <div className="w-7 h-7 rounded-full bg-gradient-to-br from-zinc-700 to-zinc-800 flex items-center justify-center flex-shrink-0">
-            <span className="text-[10px] font-medium text-zinc-400">{name.slice(0, 2).toUpperCase()}</span>
+      <div
+        className={`${stickyCellClass} px-3 py-2 shadow-[6px_0_16px_-12px_rgba(0,0,0,0.9)]`}
+        style={{ left: stickyLeft.name }}
+      >
+        <div className="flex items-center gap-2 min-w-0">
+          {avatarUrl ? (
+            <img src={avatarUrl} alt={name} className="w-7 h-7 rounded-full object-cover flex-shrink-0" />
+          ) : (
+            <div className="w-7 h-7 rounded-full bg-gradient-to-br from-zinc-700 to-zinc-800 flex items-center justify-center flex-shrink-0">
+              <span className="text-[10px] font-medium text-zinc-400">{name.slice(0, 2).toUpperCase()}</span>
+            </div>
+          )}
+          <div className="min-w-0">
+            <div className="text-sm font-medium text-white truncate">{name}</div>
+            {symbol && <div className="text-[10px] text-zinc-500 truncate">{symbol}</div>}
           </div>
-        )}
-        <div className="min-w-0">
-          <div className="text-sm font-medium text-white truncate">{name}</div>
-          {symbol && <div className="text-[10px] text-zinc-500 truncate">{symbol}</div>}
         </div>
       </div>
 
       {/* Fee Version Badge */}
-      <span 
+      <span
         className={`text-[9px] font-medium px-1.5 py-0.5 rounded ${
           isV4 
             ? isMigrated
@@ -167,32 +207,40 @@ export function TokenRow({ rank, coin, linkPrefix = '/explore/creators', timefra
       </span>
 
       {/* Holders */}
-      <span className="text-white tabular-nums">{coin.uniqueHolders?.toLocaleString() || '-'}</span>
+      <span className="text-white tabular-nums px-3 py-2 text-right">{coin.uniqueHolders?.toLocaleString() || '-'}</span>
+
+      {/* Market cap */}
+      <span className="text-white tabular-nums px-3 py-2 text-right">{formatCompactNumber(marketCap)}</span>
 
       {/* Volume */}
-      <span className="text-white tabular-nums">{formatCompactNumber(volume)}</span>
+      <span className="text-white tabular-nums px-3 py-2 text-right">{formatCompactNumber(volume)}</span>
+
+      {/* Δ 24H */}
+      <span className={`tabular-nums px-3 py-2 text-right ${change.positive ? 'text-emerald-400' : 'text-rose-400'}`}>
+        {change.text}
+      </span>
 
       {/* Creator Fee (50%) */}
-      <span className="text-green-400 tabular-nums">{formatFeeAmount(volume, feeRates.total, feeRates.creator)}</span>
+      <span className="text-green-400 tabular-nums px-3 py-2 text-right">{formatFeeAmount(volume, feeRates.total, feeRates.creator)}</span>
 
       {/* Platform Fee */}
-      <span className="text-blue-400 tabular-nums">{formatFeeAmount(volume, feeRates.total, feeRates.platform)}</span>
+      <span className="text-blue-400 tabular-nums px-3 py-2 text-right">{formatFeeAmount(volume, feeRates.total, feeRates.platform)}</span>
 
       {/* LP Locked (V4 only) */}
-      <span className="text-purple-400 tabular-nums">
+      <span className="text-purple-400 tabular-nums px-3 py-2 text-right">
         {feeRates.lpRewards > 0 ? formatFeeAmount(volume, feeRates.total, feeRates.lpRewards) : '-'}
       </span>
 
       {/* Zora Protocol */}
-      <span className="text-zinc-400 tabular-nums">{formatFeeAmount(volume, feeRates.total, feeRates.protocol)}</span>
+      <span className="text-zinc-400 tabular-nums px-3 py-2 text-right">{formatFeeAmount(volume, feeRates.total, feeRates.protocol)}</span>
 
       {/* Doppler (V4 only) */}
-      <span className="text-zinc-500 tabular-nums">
+      <span className="text-zinc-500 tabular-nums px-3 py-2 text-right">
         {feeRates.doppler > 0 ? formatFeeAmount(volume, feeRates.total, feeRates.doppler) : '-'}
       </span>
 
       {/* Payout To */}
-      <span className="text-zinc-400 font-mono text-[10px] truncate" title={payoutTo || undefined}>
+      <span className="text-zinc-400 font-mono text-[10px] truncate px-3 py-2" title={payoutTo || undefined}>
         {shortAddress(payoutTo)}
       </span>
     </Link>
@@ -200,45 +248,128 @@ export function TokenRow({ rank, coin, linkPrefix = '/explore/creators', timefra
 }
 
 // Table Header Component
-export function TokenTableHeader({ timeframe = '1d' }: TokenTableHeaderProps) {
+export function TokenTableHeader({ timeframe = '1d', currentSort, onSortChange }: TokenTableHeaderProps) {
+  const columns = getExploreColumns({ variant: 'creators', timeframe })
+  const gridTemplateColumns = getGridTemplateColumns(columns)
+  const stickyLeft = getStickyLeftMap(columns)
+  const groupSpans = buildGroupSpans(columns)
+
+  const stickyHeaderCellClass = 'sticky z-40 bg-zinc-900/80 backdrop-blur-sm'
+
   return (
-    <div className="grid grid-cols-[32px_minmax(120px,1.5fr)_40px_60px_minmax(70px,1fr)_minmax(60px,1fr)_minmax(60px,1fr)_minmax(60px,1fr)_minmax(50px,1fr)_minmax(50px,1fr)_minmax(80px,1fr)] gap-2 items-center px-3 py-2 text-[10px] text-zinc-500 uppercase tracking-wider border-b border-zinc-800 bg-zinc-900/50 sticky top-0 z-10">
-      <span>#</span>
-      <span>Token</span>
-      <span title="Fee version: 1% (V4, after June 2025) or 3% (Legacy)">Fee</span>
-      <span>Holders</span>
-      <span>{getVolumeLabel(timeframe)}</span>
-      <span className="text-green-400/70" title="50% of fees → Creator/Payout Recipient">Creator</span>
-      <span className="text-blue-400/70" title="20-25% of fees → Platform that deployed coin">Platform</span>
-      <span className="text-purple-400/70" title="20% of fees → Locked as permanent LP (V4 only)">LP Lock</span>
-      <span className="text-zinc-400/70" title="5-25% of fees → Zora Protocol">Zora</span>
-      <span className="text-zinc-500/70" title="1% of fees → Doppler LP hook (V4 only)">Doppler</span>
-      <span>Payout To</span>
+    <div className="bg-zinc-900/80 backdrop-blur border-b border-zinc-800">
+      {/* Group labels */}
+      <div className="grid" style={{ gridTemplateColumns }}>
+        {groupSpans.map((g) => (
+          <div
+            key={g.id}
+            className="px-3 py-2 text-[10px] uppercase tracking-[0.18em] text-zinc-600 border-b border-zinc-800/60"
+            style={{ gridColumn: `${g.start + 1} / ${g.end + 2}` }}
+          >
+            {g.label}
+          </div>
+        ))}
+      </div>
+
+      {/* Column labels */}
+      <div className="grid text-[10px] text-zinc-500 uppercase tracking-wider" style={{ gridTemplateColumns }}>
+        {columns.map((c) => {
+          const isSticky = Boolean(c.sticky)
+          const left = isSticky ? stickyLeft[c.id] : undefined
+          const base = 'px-3 py-2 border-b-0'
+          const align = c.align === 'right' ? 'text-right' : c.align === 'center' ? 'text-center' : 'text-left'
+
+          const labelNode =
+            c.id === 'feeBadge' ? (
+              <span title="Fee version: 1% (V4, after June 2025) or 3% (Legacy)">{c.label}</span>
+            ) : c.id === 'creatorFee' ? (
+              <span className="text-green-400/70" title="50% of fees → Creator/Payout Recipient">
+                {c.label}
+              </span>
+            ) : c.id === 'platformFee' ? (
+              <span className="text-blue-400/70" title="20-25% of fees → Platform that deployed coin">
+                {c.label}
+              </span>
+            ) : c.id === 'lpLock' ? (
+              <span className="text-purple-400/70" title="20% of fees → Locked as permanent LP (V4 only)">
+                {c.label}
+              </span>
+            ) : c.id === 'zoraFee' ? (
+              <span className="text-zinc-400/70" title="5-25% of fees → Zora Protocol">
+                {c.label}
+              </span>
+            ) : c.id === 'dopplerFee' ? (
+              <span className="text-zinc-500/70" title="1% of fees → Doppler LP hook (V4 only)">
+                {c.label}
+              </span>
+            ) : (
+              <span>{c.label}</span>
+            )
+
+          const sortable = Boolean(c.sortKey)
+          const active = sortable && typeof currentSort === 'string' && currentSort === c.sortKey
+
+          const label =
+            sortable && typeof onSortChange === 'function' ? (
+              <button
+                type="button"
+                onClick={() => onSortChange(c.sortKey!)}
+                className={`group inline-flex items-center gap-1 ${active ? 'text-white' : 'text-zinc-500 hover:text-white'}`}
+                title={`Sort by ${c.label}`}
+              >
+                {labelNode}
+                <span className={`text-[9px] ${active ? 'text-zinc-300' : 'text-zinc-700 group-hover:text-zinc-400'}`}>
+                  {active ? '▼' : '↕'}
+                </span>
+              </button>
+            ) : (
+              labelNode
+            )
+
+          return (
+            <div
+              key={c.id}
+              className={`${base} ${align} ${isSticky ? stickyHeaderCellClass : ''} ${c.id === 'name' ? 'shadow-[6px_0_16px_-12px_rgba(0,0,0,0.9)]' : ''}`}
+              style={isSticky ? { left } : undefined}
+            >
+              {label}
+            </div>
+          )
+        })}
+      </div>
     </div>
   )
 }
 
 // Loading skeleton row
 export function TokenRowSkeleton() {
+  const columns = getExploreColumns({ variant: 'creators', timeframe: '1d' })
+  const gridTemplateColumns = getGridTemplateColumns(columns)
+  const stickyLeft = getStickyLeftMap(columns)
+  const stickyCellClass = 'sticky z-10 bg-zinc-900/70 backdrop-blur-sm'
+
   return (
-    <div className="grid grid-cols-[32px_minmax(120px,1.5fr)_40px_60px_minmax(70px,1fr)_minmax(60px,1fr)_minmax(60px,1fr)_minmax(60px,1fr)_minmax(50px,1fr)_minmax(50px,1fr)_minmax(80px,1fr)] gap-2 items-center px-3 py-3">
-      <div className="h-3 w-4 bg-zinc-800 rounded animate-pulse" />
-      <div className="flex items-center gap-2">
-        <div className="w-7 h-7 rounded-full bg-zinc-800 animate-pulse" />
-        <div className="space-y-1">
-          <div className="h-3 w-16 bg-zinc-800 rounded animate-pulse" />
-          <div className="h-2 w-10 bg-zinc-800 rounded animate-pulse" />
+    <div className="grid items-center min-w-max" style={{ gridTemplateColumns }}>
+      <div className={`${stickyCellClass} px-3 py-2`} style={{ left: stickyLeft.rank }}>
+        <div className="h-3 w-6 bg-zinc-800 rounded animate-pulse ml-auto" />
+      </div>
+      <div className={`${stickyCellClass} px-3 py-2 shadow-[6px_0_16px_-12px_rgba(0,0,0,0.9)]`} style={{ left: stickyLeft.name }}>
+        <div className="flex items-center gap-2">
+          <div className="w-7 h-7 rounded-full bg-zinc-800 animate-pulse" />
+          <div className="space-y-1">
+            <div className="h-3 w-24 bg-zinc-800 rounded animate-pulse" />
+            <div className="h-2 w-12 bg-zinc-800 rounded animate-pulse" />
+          </div>
         </div>
       </div>
-      <div className="h-4 w-6 bg-zinc-800 rounded animate-pulse" />
-      <div className="h-3 w-10 bg-zinc-800 rounded animate-pulse" />
-      <div className="h-3 w-12 bg-zinc-800 rounded animate-pulse" />
-      <div className="h-3 w-10 bg-zinc-800 rounded animate-pulse" />
-      <div className="h-3 w-10 bg-zinc-800 rounded animate-pulse" />
-      <div className="h-3 w-10 bg-zinc-800 rounded animate-pulse" />
-      <div className="h-3 w-8 bg-zinc-800 rounded animate-pulse" />
-      <div className="h-3 w-8 bg-zinc-800 rounded animate-pulse" />
-      <div className="h-3 w-14 bg-zinc-800 rounded animate-pulse" />
+
+      {columns
+        .filter((c) => c.id !== 'rank' && c.id !== 'name')
+        .map((c) => (
+          <div key={c.id} className="px-3 py-2">
+            <div className={`h-3 bg-zinc-800 rounded animate-pulse ${c.align === 'right' ? 'ml-auto' : ''}`} style={{ width: c.widthPx > 100 ? 56 : 40 }} />
+          </div>
+        ))}
     </div>
   )
 }
