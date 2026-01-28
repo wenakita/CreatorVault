@@ -9,10 +9,10 @@ import { fetchZoraExplore } from '@/lib/zora/client'
 import type { ZoraCoin, ZoraExploreListType } from '@/lib/zora/types'
 
 const SORT_TO_LIST_TYPE: Record<string, ZoraExploreListType> = {
-  volume: 'TOP_VOLUME_24H',
-  marketCap: 'MOST_VALUABLE',
+  volume: 'TOP_VOLUME_CREATORS_24H',
+  marketCap: 'MOST_VALUABLE_CREATORS',
   priceChange: 'TOP_GAINERS',
-  new: 'NEW',
+  new: 'NEW_CREATORS',
 }
 
 const PAGE_SIZE = 20

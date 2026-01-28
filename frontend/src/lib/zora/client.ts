@@ -118,22 +118,24 @@ export async function fetchZoraExplore(params: {
     'NEW': () => sdk.getCoinsNew(options),
     'LAST_TRADED': () => sdk.getCoinsLastTraded(options),
     'LAST_TRADED_UNIQUE': () => sdk.getCoinsLastTradedUnique(options),
-    // Creator-specific
-    'NEW_CREATORS': () => (sdk as any).getCreatorCoins?.(options) ?? sdk.getCoinsNew(options),
-    'MOST_VALUABLE_CREATORS': () => (sdk as any).getMostValuableCreatorCoins?.(options) ?? sdk.getCoinsMostValuable(options),
-    'TOP_VOLUME_CREATORS_24H': () => (sdk as any).getExploreTopVolumeCreators24h?.(options) ?? sdk.getCoinsTopVolume24h(options),
-    'FEATURED_CREATORS': () => (sdk as any).getExploreFeaturedCreators?.(options) ?? sdk.getCoinsMostValuable(options),
+    // Creator-specific (these return creator coins, not profiles)
+    'NEW_CREATORS': () => sdk.getCreatorCoins(options),
+    'MOST_VALUABLE_CREATORS': () => sdk.getMostValuableCreatorCoins(options),
+    'TOP_VOLUME_CREATORS_24H': () => sdk.getExploreTopVolumeCreators24h(options),
+    'FEATURED_CREATORS': () => sdk.getExploreFeaturedCreators(options),
     // Content-specific
-    'FEATURED_VIDEOS': () => (sdk as any).getExploreFeaturedVideos?.(options) ?? sdk.getCoinsNew(options),
+    'FEATURED_VIDEOS': () => sdk.getCoinsNew(options), // fallback, no specific endpoint
     // Combined
-    'TOP_VOLUME_ALL_24H': () => (sdk as any).getExploreTopVolumeAll24h?.(options) ?? sdk.getCoinsTopVolume24h(options),
-    'NEW_ALL': () => (sdk as any).getExploreNewAll?.(options) ?? sdk.getCoinsNew(options),
+    'TOP_VOLUME_ALL_24H': () => sdk.getCoinsTopVolume24h(options), // fallback
+    'NEW_ALL': () => sdk.getCoinsNew(options), // fallback
   }
 
   const fn = sdkFunctions[list] || (() => sdk.getCoinsLastTradedUnique(options))
   const response = await fn()
 
-  return (response.data?.exploreList as any) ?? null
+  // Handle different response structures
+  const data = response.data
+  return (data?.exploreList ?? data?.creatorCoins ?? data?.coins) as ZoraExploreList | null
 }
 
 export async function fetchZoraTopCreators(params?: { count?: number; after?: string }): Promise<ZoraExploreList | null> {
