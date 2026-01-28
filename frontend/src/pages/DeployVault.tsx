@@ -29,6 +29,7 @@ import { DerivedTokenIcon } from '@/components/DerivedTokenIcon'
 import { RequestCreatorAccess } from '@/components/RequestCreatorAccess'
 import { CONTRACTS } from '@/config/contracts'
 import { useCreatorAllowlist, useFarcasterAuth, useMiniAppContext } from '@/hooks'
+import { useSiweAuth } from '@/hooks/useSiweAuth'
 import { logger } from '@/lib/logger'
 import { useZoraCoin, useZoraProfile } from '@/lib/zora/hooks'
 import { getFarcasterUserByFid } from '@/lib/neynar-api'
@@ -767,6 +768,8 @@ function DeployVaultBatcher({
   embeddedPrivyWallet?: any
 }) {
   const publicClient = usePublicClient({ chainId: base.id })
+  const siwe = useSiweAuth()
+  const privyAny = usePrivy() as any
   const { address: connectedAddress, connector } = useAccount()
   const { data: walletClient } = useWalletClient({ chainId: base.id })
   const connectorId = String((connector as any)?.id ?? '').toLowerCase()
@@ -807,6 +810,29 @@ function DeployVaultBatcher({
     if (cdpApiKey) return `https://api.developer.coinbase.com/rpc/v1/base/${cdpApiKey}`
     return null
   }, [cdpApiKey])
+
+  const ensurePaymasterSession = useCallback(async (): Promise<void> => {
+    const url = cdpRpcUrl ? String(cdpRpcUrl) : ''
+    if (!url.includes('/api/paymaster')) return
+    if (siwe.isSignedIn) return
+
+    // Prefer Privy-backed SIWE when available (no extra wallet prompt).
+    try {
+      const privyToken =
+        typeof privyAny?.getAccessToken === 'function' ? await privyAny.getAccessToken() : null
+      if (privyToken) {
+        const addr = await siwe.signInWithPrivyToken(privyToken)
+        if (addr) return
+      }
+    } catch {
+      // ignore; fall back to wallet SIWE prompt below
+    }
+
+    const addr = await siwe.signIn()
+    if (!addr) {
+      throw new Error('Sign in required to sponsor gas (no session).')
+    }
+  }, [cdpRpcUrl, privyAny, siwe])
 
   const smartWalletAddrForAuth = useMemo(() => {
     try {
@@ -903,6 +929,9 @@ function DeployVaultBatcher({
       lower.includes('missing paymaster')
     ) {
       return 'Bundler / paymaster is not configured. Set `VITE_CDP_API_KEY` (recommended) or `VITE_CDP_PAYMASTER_URL=/api/paymaster` (and configure `CDP_PAYMASTER_URL` server-side) and retry.'
+    }
+    if (lower.includes('no_session') || lower.includes('not authenticated') || lower.includes('request denied - no_session')) {
+      return 'Gas sponsorship requires a session. Click “Switch sign-in” and retry (or set `VITE_CDP_API_KEY` to bypass the proxy).'
     }
     if (lower.includes('signature check failed') || lower.includes('invalid userop signature')) {
       return "UserOp signature failed. Ensure the signer wallet is an onchain owner of the creator smart wallet and can sign the UserOp hash (some wallets block `eth_sign`). If you linked a Privy embedded EOA, switch to a Privy embedded session and retry."
@@ -1484,6 +1513,9 @@ function DeployVaultBatcher({
         // Bundler/paymaster is only required for UserOp flows.
         // Privy smart wallet client submissions don't require our CDP endpoint.
         if (!canUsePrivySmartWallet && !cdpRpcUrl) throw new Error('Bundler / paymaster endpoint is not configured.')
+        if (!canUsePrivySmartWallet) {
+          await ensurePaymasterSession()
+        }
 
         // Determine deploy method:
         // 1. Privy smart wallet client (user logged in via Privy, embedded wallet signs for smart wallet)
