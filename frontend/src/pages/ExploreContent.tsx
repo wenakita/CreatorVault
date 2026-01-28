@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { motion } from 'framer-motion'
 import { useSearchParams } from 'react-router-dom'
 import { useInfiniteQuery } from '@tanstack/react-query'
@@ -21,9 +21,6 @@ const PAGE_SIZE = 20
 export function ExploreContent() {
   const [searchParams, setSearchParams] = useSearchParams()
   const [searchQuery, setSearchQuery] = useState('')
-  const headerScrollRef = useRef<HTMLDivElement | null>(null)
-  const bodyScrollRef = useRef<HTMLDivElement | null>(null)
-  const syncingScrollRef = useRef(false)
 
   const currentTimeFilter = searchParams.get('time') || '1d'
   const currentSort = searchParams.get('sort') || 'volume'
@@ -120,23 +117,6 @@ export function ExploreContent() {
     setSearchParams(newParams, { replace: true })
   }
 
-  const syncScroll = useCallback((source: 'header' | 'body') => {
-    if (syncingScrollRef.current) return
-    const header = headerScrollRef.current
-    const body = bodyScrollRef.current
-    if (!header || !body) return
-
-    syncingScrollRef.current = true
-    try {
-      if (source === 'body') header.scrollLeft = body.scrollLeft
-      else body.scrollLeft = header.scrollLeft
-    } finally {
-      queueMicrotask(() => {
-        syncingScrollRef.current = false
-      })
-    }
-  }, [])
-
   return (
     <div className="relative pb-24 md:pb-0 min-h-screen">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8">
@@ -179,66 +159,65 @@ export function ExploreContent() {
           transition={{ duration: 0.4, delay: 0.2 }}
           className="rounded-2xl border border-zinc-800 bg-zinc-900/50"
         >
-          {/* Sticky header (DeFiLlama-style) */}
-          <div className="sticky top-24 z-20 border-b border-zinc-800 bg-zinc-900/70 backdrop-blur">
-            <div ref={headerScrollRef} className="overflow-x-auto" onScroll={() => syncScroll('header')}>
-              <div className="min-w-max">
+          {/* Single horizontal scroll container (no double scrollbars) */}
+          <div className="overflow-x-auto scrollbar-hide">
+            <div className="min-w-max">
+              <div className="sticky top-24 z-20 border-b border-zinc-800 bg-zinc-900/70 backdrop-blur">
                 <PoolTableHeader timeframe={currentTimeFilter} currentSort={currentSort} onSortChange={handleSortChange} />
               </div>
-            </div>
-          </div>
 
-          {/* Body (horizontal scroll synced to header) */}
-          <div ref={bodyScrollRef} className="overflow-x-auto" onScroll={() => syncScroll('body')}>
-            <div className="min-w-max divide-y divide-zinc-800/50">
-              {isLoading ? (
-                // Loading skeletons
-                Array.from({ length: 10 }).map((_, i) => <PoolRowSkeleton key={i} />)
-              ) : isError ? (
-                // Error state
-                <div className="px-6 py-12 text-center">
-                  <p className="text-zinc-400 mb-4">Failed to load content</p>
-                  <p className="text-xs text-zinc-600">{(error as Error)?.message || 'Unknown error'}</p>
-                </div>
-              ) : filteredCoins.length === 0 ? (
-                // Empty state
-                <div className="px-6 py-12 text-center">
-                  <p className="text-zinc-400">{searchQuery ? 'No content found matching your search' : 'No content available'}</p>
-                </div>
-              ) : (
-                // Pool rows
-                filteredCoins.map((coin, index) => (
-                  <PoolRow
-                    key={coin.address || index}
-                    rank={index + 1}
-                    coin={coin}
-                    timeframe={currentTimeFilter}
-                    migratedCoins={migratedCoins ?? undefined}
-                  />
-                ))
-              )}
+              <div className="divide-y divide-zinc-800/50">
+                {isLoading ? (
+                  // Loading skeletons
+                  Array.from({ length: 10 }).map((_, i) => <PoolRowSkeleton key={i} />)
+                ) : isError ? (
+                  // Error state
+                  <div className="px-6 py-12 text-center">
+                    <p className="text-zinc-400 mb-4">Failed to load content</p>
+                    <p className="text-xs text-zinc-600">{(error as Error)?.message || 'Unknown error'}</p>
+                  </div>
+                ) : filteredCoins.length === 0 ? (
+                  // Empty state
+                  <div className="px-6 py-12 text-center">
+                    <p className="text-zinc-400">
+                      {searchQuery ? 'No content found matching your search' : 'No content available'}
+                    </p>
+                  </div>
+                ) : (
+                  // Pool rows
+                  filteredCoins.map((coin, index) => (
+                    <PoolRow
+                      key={coin.address || index}
+                      rank={index + 1}
+                      coin={coin}
+                      timeframe={currentTimeFilter}
+                      migratedCoins={migratedCoins ?? undefined}
+                    />
+                  ))
+                )}
 
-              {/* Loading more indicator */}
-              {isFetchingNextPage && (
-                <>
-                  <PoolRowSkeleton />
-                  <PoolRowSkeleton />
-                  <PoolRowSkeleton />
-                </>
-              )}
+                {/* Loading more indicator */}
+                {isFetchingNextPage && (
+                  <>
+                    <PoolRowSkeleton />
+                    <PoolRowSkeleton />
+                    <PoolRowSkeleton />
+                  </>
+                )}
 
-              {/* Load more button (fallback for scroll) */}
-              {hasNextPage && !isFetchingNextPage && (
-                <div className="px-6 py-4 border-t border-zinc-800 flex justify-center">
-                  <button
-                    type="button"
-                    onClick={() => fetchNextPage()}
-                    className="px-6 py-2 rounded-full text-sm font-medium text-zinc-400 hover:text-white hover:bg-zinc-800 transition-colors"
-                  >
-                    Load more
-                  </button>
-                </div>
-              )}
+                {/* Load more button (fallback for scroll) */}
+                {hasNextPage && !isFetchingNextPage && (
+                  <div className="px-6 py-4 border-t border-zinc-800 flex justify-center">
+                    <button
+                      type="button"
+                      onClick={() => fetchNextPage()}
+                      className="px-6 py-2 rounded-full text-sm font-medium text-zinc-400 hover:text-white hover:bg-zinc-800 transition-colors"
+                    >
+                      Load more
+                    </button>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         </motion.div>

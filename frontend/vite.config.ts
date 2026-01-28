@@ -126,6 +126,7 @@ function localApiRoutesPlugin(): Plugin {
         '/api/onchain/coinTradeRewardsBatch': () => import('./api/_handlers/onchain/_coinTradeRewardsBatch'),
         '/api/zora/coin': () => import('./api/_handlers/zora/_coin'),
         '/api/zora/explore': () => import('./api/_handlers/zora/_explore'),
+        '/api/zora/metrics': () => import('./api/_handlers/zora/_metrics'),
         '/api/zora/profile': () => import('./api/_handlers/zora/_profile'),
         '/api/zora/profileCoins': () => import('./api/_handlers/zora/_profileCoins'),
         '/api/zora/topCreators': () => import('./api/_handlers/zora/_topCreators'),

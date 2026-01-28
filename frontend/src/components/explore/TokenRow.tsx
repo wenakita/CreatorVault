@@ -192,19 +192,16 @@ export function TokenRow({ rank, coin, linkPrefix = '/explore/creators', timefra
         </div>
       </div>
 
-      {/* Fee Version Badge */}
-      <span
-        className={`text-[9px] font-medium px-1.5 py-0.5 rounded ${
-          isV4 
-            ? isMigrated
-              ? 'bg-blue-500/20 text-blue-400'  // Migrated coins get blue badge
-              : 'bg-green-500/20 text-green-400' // Native V4 coins get green
-            : 'bg-amber-500/20 text-amber-400'   // Legacy 3% coins get amber
-        }`}
-        title={feeTooltip}
-      >
-        {isV4 ? '1%' : '3%'}{isMigrated && '*'}
-      </span>
+      {/* Fee Version */}
+      <div className="px-3 py-2 text-center">
+        <span
+          className="inline-flex items-center rounded-md border border-white/10 bg-white/[0.03] px-2 py-0.5 text-[10px] font-medium text-zinc-300"
+          title={feeTooltip}
+        >
+          {isV4 ? '1%' : '3%'}
+          {isMigrated ? <span className="ml-0.5 text-zinc-500">*</span> : null}
+        </span>
+      </div>
 
       {/* Holders */}
       <span className="text-white tabular-nums px-3 py-2 text-right">{coin.uniqueHolders?.toLocaleString() || '-'}</span>
@@ -216,26 +213,26 @@ export function TokenRow({ rank, coin, linkPrefix = '/explore/creators', timefra
       <span className="text-white tabular-nums px-3 py-2 text-right">{formatCompactNumber(volume)}</span>
 
       {/* Δ 24H */}
-      <span className={`tabular-nums px-3 py-2 text-right ${change.positive ? 'text-emerald-400' : 'text-rose-400'}`}>
+      <span className={`tabular-nums px-3 py-2 text-right ${change.positive ? 'text-emerald-300' : 'text-rose-300'}`}>
         {change.text}
       </span>
 
       {/* Creator Fee (50%) */}
-      <span className="text-green-400 tabular-nums px-3 py-2 text-right">{formatFeeAmount(volume, feeRates.total, feeRates.creator)}</span>
+      <span className="text-zinc-200 tabular-nums px-3 py-2 text-right">{formatFeeAmount(volume, feeRates.total, feeRates.creator)}</span>
 
       {/* Platform Fee */}
-      <span className="text-blue-400 tabular-nums px-3 py-2 text-right">{formatFeeAmount(volume, feeRates.total, feeRates.platform)}</span>
+      <span className="text-zinc-200 tabular-nums px-3 py-2 text-right">{formatFeeAmount(volume, feeRates.total, feeRates.platform)}</span>
 
       {/* LP Locked (V4 only) */}
-      <span className="text-purple-400 tabular-nums px-3 py-2 text-right">
+      <span className="text-zinc-200 tabular-nums px-3 py-2 text-right">
         {feeRates.lpRewards > 0 ? formatFeeAmount(volume, feeRates.total, feeRates.lpRewards) : '-'}
       </span>
 
       {/* Zora Protocol */}
-      <span className="text-zinc-400 tabular-nums px-3 py-2 text-right">{formatFeeAmount(volume, feeRates.total, feeRates.protocol)}</span>
+      <span className="text-zinc-300 tabular-nums px-3 py-2 text-right">{formatFeeAmount(volume, feeRates.total, feeRates.protocol)}</span>
 
       {/* Doppler (V4 only) */}
-      <span className="text-zinc-500 tabular-nums px-3 py-2 text-right">
+      <span className="text-zinc-300 tabular-nums px-3 py-2 text-right">
         {feeRates.doppler > 0 ? formatFeeAmount(volume, feeRates.total, feeRates.doppler) : '-'}
       </span>
 
@@ -263,7 +260,7 @@ export function TokenTableHeader({ timeframe = '1d', currentSort, onSortChange }
         {groupSpans.map((g) => (
           <div
             key={g.id}
-            className="px-3 py-2 text-[10px] uppercase tracking-[0.18em] text-zinc-600 border-b border-zinc-800/60"
+            className="px-3 py-2 text-[10px] uppercase tracking-[0.18em] text-zinc-600 border-b border-zinc-800/60 text-center"
             style={{ gridColumn: `${g.start + 1} / ${g.end + 2}` }}
           >
             {g.label}
@@ -283,25 +280,15 @@ export function TokenTableHeader({ timeframe = '1d', currentSort, onSortChange }
             c.id === 'feeBadge' ? (
               <span title="Fee version: 1% (V4, after June 2025) or 3% (Legacy)">{c.label}</span>
             ) : c.id === 'creatorFee' ? (
-              <span className="text-green-400/70" title="50% of fees → Creator/Payout Recipient">
-                {c.label}
-              </span>
+              <span title="50% of fees → Creator/Payout Recipient">{c.label}</span>
             ) : c.id === 'platformFee' ? (
-              <span className="text-blue-400/70" title="20-25% of fees → Platform that deployed coin">
-                {c.label}
-              </span>
+              <span title="20-25% of fees → Platform that deployed coin">{c.label}</span>
             ) : c.id === 'lpLock' ? (
-              <span className="text-purple-400/70" title="20% of fees → Locked as permanent LP (V4 only)">
-                {c.label}
-              </span>
+              <span title="20% of fees → Locked as permanent LP (V4 only)">{c.label}</span>
             ) : c.id === 'zoraFee' ? (
-              <span className="text-zinc-400/70" title="5-25% of fees → Zora Protocol">
-                {c.label}
-              </span>
+              <span title="5-25% of fees → Zora Protocol">{c.label}</span>
             ) : c.id === 'dopplerFee' ? (
-              <span className="text-zinc-500/70" title="1% of fees → Doppler LP hook (V4 only)">
-                {c.label}
-              </span>
+              <span title="1% of fees → Doppler LP hook (V4 only)">{c.label}</span>
             ) : (
               <span>{c.label}</span>
             )

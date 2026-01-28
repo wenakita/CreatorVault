@@ -134,9 +134,15 @@ function createWalletBackedLocalAccount(params: {
           lc.includes('unsupported method') ||
           lc.includes('not supported')
         if (looksBlocked) {
-          throw new Error(
-            "Your signer blocked the raw signature method (`eth_sign`). This wallet can’t sign UserOp hashes required for smart wallet operations. Switch to a Privy embedded signer (recommended) or use a different wallet.",
-          )
+          // Many wallets block `eth_sign`, but *can* still produce a valid signature for smart accounts via
+          // `personal_sign` / `signMessage` (EIP-191). Try it as a fallback in auto mode.
+          try {
+            return await tryPersonalSign()
+          } catch {
+            throw new Error(
+              "Your signer blocked the raw signature method (`eth_sign`) and couldn’t sign via `personal_sign`. Switch to a Privy embedded signer (recommended) or use a different wallet.",
+            )
+          }
         }
         throw e
       }

@@ -81,6 +81,7 @@ export const apiRouteLoaders: Record<string, () => Promise<ApiHandlerModule>> = 
 
   'zora/coin': () => import('./zora/_coin.js'),
   'zora/explore': () => import('./zora/_explore.js'),
+  'zora/metrics': () => import('./zora/_metrics.js'),
   'zora/profile': () => import('./zora/_profile.js'),
   'zora/profileCoins': () => import('./zora/_profileCoins.js'),
   'zora/topCreators': () => import('./zora/_topCreators.js'),

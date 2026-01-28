@@ -88,7 +88,7 @@ export const VerifyStep = memo(function VerifyStep({
   const headerSubtitle = !verifiedWallet
     ? 'Use a wallet connected to your creator coin. We’ll look it up automatically.'
     : showSubmitButton
-      ? 'We found what we need. Submit to get early access updates.'
+      ? 'Welcome — you’re all set. Join the waitlist for early access updates.'
       : 'One moment…'
   const looksLikeWalletLoginDisabled =
     typeof privyVerifyError === 'string' && /wallet (login|sign-in) is not enabled|wallet sign-in isn’t available/i.test(privyVerifyError)
@@ -106,16 +106,16 @@ export const VerifyStep = memo(function VerifyStep({
     <motion.div
       key="verify"
       {...fadeUp}
-      className="space-y-4"
+      className="space-y-5"
     >
       {/* Header */}
-      <motion.div {...scaleIn} className="space-y-2">
+      <motion.div {...scaleIn} className="space-y-2.5">
         <div className="flex items-center justify-between">
-          <h1 className="text-[28px] sm:text-[32px] font-light tracking-tight text-white leading-tight">
+          <h1 className="text-[30px] sm:text-[34px] font-light tracking-tight text-white leading-[1.08]">
             {headerTitle}
           </h1>
-          <div className="inline-flex items-center gap-2 rounded-full border border-zinc-900/70 bg-black/30 px-3 py-1 text-[11px] text-zinc-400">
-            <ShieldCheck className="w-3.5 h-3.5 text-[#0052FF]" />
+          <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-3 py-1 text-[11px] text-zinc-400">
+            <ShieldCheck className="w-3.5 h-3.5 text-zinc-500" />
             No gas
           </div>
         </div>
@@ -125,10 +125,10 @@ export const VerifyStep = memo(function VerifyStep({
 
       {/* Single primary CTA + progressive disclosure */}
       {!verifiedWallet ? (
-        <motion.div {...scaleIn} className="space-y-3">
+        <motion.div {...scaleIn} className="space-y-3.5">
           <button
             type="button"
-            className="group w-full flex items-center justify-between gap-3 min-h-[56px] rounded-2xl bg-[#0052FF] text-white font-medium text-[15px] px-5 py-4 transition-all duration-200 ease-[cubic-bezier(0.4,0,0.2,1)] hover:bg-[#0047E1] active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed disabled:active:scale-100"
+            className="group w-full flex items-center justify-between gap-3 min-h-[58px] rounded-2xl bg-[#0052FF] text-white font-medium text-[15px] px-5 py-4 shadow-[0_10px_30px_-16px_rgba(0,82,255,0.8)] transition-all duration-200 ease-[cubic-bezier(0.4,0,0.2,1)] hover:bg-[#0047E1] active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed disabled:active:scale-100"
             disabled={!canContinue}
             onClick={() => {
               if (looksLikeWalletLoginDisabled && typeof onPrivyEmailContinue === 'function') {
@@ -157,7 +157,10 @@ export const VerifyStep = memo(function VerifyStep({
           </div>
 
           {privyVerifyError ? (
-            <motion.div {...fadeUp} className="text-[12px] text-red-400">
+            <motion.div
+              {...fadeUp}
+              className="rounded-2xl border border-red-500/20 bg-red-500/5 px-4 py-3 text-[12px] text-red-200/90"
+            >
               {privyVerifyError}
             </motion.div>
           ) : null}
@@ -260,49 +263,60 @@ export const VerifyStep = memo(function VerifyStep({
         </motion.div>
       ) : null}
 
-      {/* Creator Coin found */}
-      {verifiedWallet && hasCreatorCoin ? (
-        <motion.div
-          {...scaleIn}
-          className="rounded-2xl border border-zinc-800 bg-zinc-900/30 p-4"
-        >
-          <div className="flex items-center gap-3">
-            {creatorCoin.imageUrl ? (
-              <img
-                src={creatorCoin.imageUrl}
-                alt={creatorCoin.symbol || 'Creator Coin'}
-                className="w-12 h-12 rounded-xl border border-white/10 object-cover"
-                loading="lazy"
-              />
-            ) : (
-              <div className="w-12 h-12 rounded-xl border border-white/10 bg-black/40 flex items-center justify-center text-[13px] text-zinc-500 font-medium">
-                {creatorCoin.symbol?.slice(0, 2) || 'CC'}
-              </div>
-            )}
-            <div className="min-w-0 flex-1">
-              <div className="text-[15px] text-white font-medium">{creatorCoin.symbol || 'Creator Coin'}</div>
+      {/* Verified summary (fills the empty state) */}
+      {verifiedWallet && (hasCreatorCoin || creatorCoinDeclaredMissing) ? (
+        <motion.div {...scaleIn} className="rounded-3xl border border-white/10 bg-white/[0.03] p-4 sm:p-5">
+          <div className="flex items-center justify-between gap-3">
+            <div className="min-w-0">
+              <div className="text-[11px] uppercase tracking-[0.16em] text-zinc-500">Ready</div>
+              <div className="text-[16px] text-white mt-1">Review & join</div>
             </div>
-            <CheckCircle2 className="w-5 h-5 text-[#0052FF] shrink-0" />
+            <div className="flex items-center gap-2 rounded-full border border-white/10 bg-black/20 px-3 py-1 text-[11px] text-zinc-400">
+              <ShieldCheck className="w-3.5 h-3.5 text-zinc-500" />
+              No gas
+            </div>
           </div>
-          <motion.div
-            initial={{ opacity: 0, y: 6 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.2, ease: baseEase }}
-            className="mt-3 flex items-start gap-3"
-          >
-            <motion.div
-              initial={{ x: -6, opacity: 0 }}
-              animate={{ x: 0, opacity: 1 }}
-              transition={{ duration: 0.18, ease: baseEase }}
-              className="mt-[5px]"
-              aria-hidden="true"
-            >
-              <img src={BASE_SQUARE_BLUE} alt="" className="w-2.5 h-2.5" aria-hidden="true" />
-            </motion.div>
-            <div className="min-w-0 text-[13px] text-zinc-400 leading-relaxed">
-              <span className="text-white/90">Hey {creatorGreeting || 'creator'}.</span> We found your creator coin. Join the waitlist to get early access updates.
+
+          <div className="mt-4 grid gap-3">
+            <div className="flex items-center gap-3">
+              {creatorCoin?.imageUrl ? (
+                <img
+                  src={creatorCoin.imageUrl}
+                  alt={creatorCoin.symbol || 'Creator Coin'}
+                  className="w-12 h-12 rounded-2xl border border-white/10 object-cover"
+                  loading="lazy"
+                />
+              ) : (
+                <div className="w-12 h-12 rounded-2xl border border-white/10 bg-black/40 flex items-center justify-center text-[13px] text-zinc-500 font-medium">
+                  {(creatorCoin?.symbol || 'CC').slice(0, 2)}
+                </div>
+              )}
+              <div className="min-w-0 flex-1">
+                <div className="text-[14px] text-white font-medium truncate">
+                  {creatorCoin?.symbol ? creatorCoin.symbol : creatorCoinDeclaredMissing ? 'No coin found' : 'Creator Coin'}
+                </div>
+                <div className="text-[12px] text-zinc-500 truncate">
+                  {creatorCoin?.symbol ? `Connected to ${creatorGreeting || 'creator'}` : 'You can still join the waitlist.'}
+                </div>
+              </div>
+              <CheckCircle2 className="w-5 h-5 text-[#0052FF] shrink-0" />
             </div>
-          </motion.div>
+
+            <div className="rounded-2xl border border-white/10 bg-black/20 px-4 py-3">
+              <div className="flex items-center justify-between gap-3">
+                <div className="text-[12px] text-zinc-500">Wallet</div>
+                <div className="text-[12px] text-zinc-300 font-mono">{short(verifiedWallet)}</div>
+              </div>
+              <div className="mt-2 flex items-center justify-between gap-3">
+                <div className="text-[12px] text-zinc-500">Network</div>
+                <div className="text-[12px] text-zinc-300">Base</div>
+              </div>
+            </div>
+
+            <div className="text-[12px] text-zinc-500 leading-relaxed">
+              Join to get early access updates. You can disconnect anytime.
+            </div>
+          </div>
         </motion.div>
       ) : null}
 
@@ -355,7 +369,9 @@ export const VerifyStep = memo(function VerifyStep({
                     <div className="text-[12px] text-zinc-600">Connect owner wallet:</div>
                     <ConnectButtonWeb3 />
                     {connectedOwnerAddress && connectedOwnerIsOwner === false ? (
-                      <div className="text-[12px] text-amber-400">Not an owner. Try another wallet.</div>
+                      <div className="rounded-xl border border-amber-500/20 bg-amber-500/5 px-3 py-2 text-[12px] text-amber-200/90">
+                        Not an owner. Try another wallet.
+                      </div>
                     ) : null}
                     <button
                       type="button"
@@ -373,7 +389,11 @@ export const VerifyStep = memo(function VerifyStep({
                     </button>
                   </>
                 )}
-                {deployOwnerLinkError ? <div className="text-[12px] text-red-400">{deployOwnerLinkError}</div> : null}
+                {deployOwnerLinkError ? (
+                  <div className="rounded-xl border border-red-500/20 bg-red-500/5 px-3 py-2 text-[12px] text-red-200/90">
+                    {deployOwnerLinkError}
+                  </div>
+                ) : null}
               </div>
             )}
           </div>
@@ -385,7 +405,7 @@ export const VerifyStep = memo(function VerifyStep({
         <motion.div {...scaleIn} className="pt-2">
           <button
             type="button"
-            className="w-full flex items-center justify-center gap-2 min-h-[56px] rounded-2xl bg-[#0052FF] text-white font-medium text-[15px] px-6 py-4 transition-all duration-200 ease-[cubic-bezier(0.4,0,0.2,1)] hover:bg-[#0047E1] active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed disabled:active:scale-100"
+            className="w-full flex items-center justify-center gap-2 min-h-[58px] rounded-2xl bg-[#0052FF] text-white font-medium text-[15px] px-6 py-4 shadow-[0_10px_30px_-16px_rgba(0,82,255,0.8)] transition-all duration-200 ease-[cubic-bezier(0.4,0,0.2,1)] hover:bg-[#0047E1] active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed disabled:active:scale-100"
             disabled={busy || !canSubmit}
             onClick={onSubmit}
           >
@@ -398,6 +418,9 @@ export const VerifyStep = memo(function VerifyStep({
               'Join Waitlist'
             )}
           </button>
+          <div className="mt-3 text-center text-[12px] text-zinc-600">
+            Takes ~10 seconds. No transaction.
+          </div>
         </motion.div>
       ) : null}
 
