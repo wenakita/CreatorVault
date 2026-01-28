@@ -1,7 +1,9 @@
 import { memo } from 'react'
 import { motion } from 'framer-motion'
-import { Wallet, CheckCircle2, ArrowRight, Shield } from 'lucide-react'
+import { Wallet, CheckCircle2, ArrowRight, Shield, ExternalLink, Sparkles } from 'lucide-react'
 import { LINK_CSW_POINTS, SIGNUP_POINTS } from '../waitlistConstants'
+
+const ZORA_SIGNUP_URL = 'https://zora.co'
 
 const baseEase = [0.4, 0, 0.2, 1] as const
 const fadeUp = {
@@ -125,8 +127,9 @@ export const LinkCswStep = memo(function LinkCswStep({
         </div>
       </motion.div>
 
-      {/* Main CTA */}
+      {/* Main CTAs */}
       <motion.div {...fadeUp} className="space-y-3">
+        {/* Connect existing wallet */}
         <button
           type="button"
           className="w-full flex items-center justify-center gap-2 px-4 py-3.5 rounded-xl bg-[#0052FF] text-white text-[15px] font-medium hover:bg-[#0047E1] transition-all duration-200 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
@@ -141,10 +144,32 @@ export const LinkCswStep = memo(function LinkCswStep({
           ) : (
             <>
               <Wallet className="w-4 h-4" />
-              Connect Coinbase Smart Wallet
+              I have a Smart Wallet
             </>
           )}
         </button>
+
+        {/* Divider */}
+        <div className="flex items-center gap-3">
+          <div className="flex-1 h-px bg-zinc-800" />
+          <span className="text-[11px] text-zinc-600 uppercase tracking-wider">or</span>
+          <div className="flex-1 h-px bg-zinc-800" />
+        </div>
+
+        {/* Create Zora account */}
+        <a
+          href={ZORA_SIGNUP_URL}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="w-full flex items-center justify-center gap-2 px-4 py-3.5 rounded-xl border border-zinc-700 bg-zinc-900/50 text-white text-[15px] font-medium hover:bg-zinc-800/50 hover:border-zinc-600 transition-all duration-200 active:scale-[0.98]"
+        >
+          <Sparkles className="w-4 h-4" />
+          Create Zora Account
+          <ExternalLink className="w-3.5 h-3.5 text-zinc-500" />
+        </a>
+        <p className="text-[12px] text-zinc-500 text-center">
+          New to crypto? Create a free Zora account to get a Smart Wallet.
+        </p>
 
         {cswLinkError && (
           <div className="text-[12px] text-red-400 text-center">{cswLinkError}</div>
