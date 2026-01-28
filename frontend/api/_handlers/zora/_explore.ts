@@ -8,6 +8,11 @@ type ExploreList =
   | 'NEW'
   | 'LAST_TRADED'
   | 'LAST_TRADED_UNIQUE'
+  // Creator-specific
+  | 'NEW_CREATORS'
+  | 'MOST_VALUABLE_CREATORS'
+  | 'TOP_VOLUME_CREATORS_24H'
+  | 'FEATURED_CREATORS'
 
 function parseList(value: string | null): ExploreList {
   switch (value) {
@@ -16,6 +21,10 @@ function parseList(value: string | null): ExploreList {
     case 'NEW':
     case 'LAST_TRADED':
     case 'LAST_TRADED_UNIQUE':
+    case 'NEW_CREATORS':
+    case 'MOST_VALUABLE_CREATORS':
+    case 'TOP_VOLUME_CREATORS_24H':
+    case 'FEATURED_CREATORS':
       return value
     default:
       return 'TOP_GAINERS'
@@ -44,23 +53,32 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     sdk.setApiKey(key)
 
     const options = { count, after }
-    const response =
-      list === 'TOP_GAINERS'
-        ? await sdk.getCoinsTopGainers(options)
-        : list === 'TOP_VOLUME_24H'
-          ? await sdk.getCoinsTopVolume24h(options)
-          : list === 'MOST_VALUABLE'
-            ? await sdk.getCoinsMostValuable(options)
-            : list === 'NEW'
-              ? await sdk.getCoinsNew(options)
-              : list === 'LAST_TRADED'
-                ? await sdk.getCoinsLastTraded(options)
-                : await sdk.getCoinsLastTradedUnique(options)
+    
+    // Map list type to SDK function
+    const sdkFunctions: Record<ExploreList, () => Promise<any>> = {
+      'TOP_GAINERS': () => sdk.getCoinsTopGainers(options),
+      'TOP_VOLUME_24H': () => sdk.getCoinsTopVolume24h(options),
+      'MOST_VALUABLE': () => sdk.getCoinsMostValuable(options),
+      'NEW': () => sdk.getCoinsNew(options),
+      'LAST_TRADED': () => sdk.getCoinsLastTraded(options),
+      'LAST_TRADED_UNIQUE': () => sdk.getCoinsLastTradedUnique(options),
+      // Creator-specific
+      'NEW_CREATORS': () => sdk.getCreatorCoins(options),
+      'MOST_VALUABLE_CREATORS': () => sdk.getMostValuableCreatorCoins(options),
+      'TOP_VOLUME_CREATORS_24H': () => sdk.getExploreTopVolumeCreators24h(options),
+      'FEATURED_CREATORS': () => sdk.getExploreFeaturedCreators(options),
+    }
+    
+    const fn = sdkFunctions[list] || (() => sdk.getCoinsTopGainers(options))
+    const response = await fn()
+
+    // Handle different response structures
+    const data = response.data?.exploreList ?? response.data?.creatorCoins ?? response.data?.coins ?? null
 
     setCache(res, 300)
     return res.status(200).json({
       success: true,
-      data: response.data?.exploreList ?? null,
+      data,
     })
   } catch (e: any) {
     const status = typeof e?.status === 'number' ? e.status : 500
