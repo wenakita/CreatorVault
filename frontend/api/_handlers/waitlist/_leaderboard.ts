@@ -71,17 +71,34 @@ export default async function handler(req: any, res: any) {
             ORDER BY id ASC
             LIMIT ${maxUsers}
           ),
+          eligible_with_key AS (
+            SELECT
+              id,
+              COALESCE(NULLIF(primary_wallet, ''), NULLIF(embedded_wallet, '')) AS wallet_key,
+              referral_code
+            FROM eligible
+          ),
+          wallet_rollup AS (
+            SELECT
+              wallet_key,
+              MIN(id)::bigint AS canonical_signup_id,
+              MAX(referral_code) FILTER (WHERE referral_code IS NOT NULL) AS referral_code
+            FROM eligible_with_key
+            WHERE wallet_key IS NOT NULL
+            GROUP BY wallet_key
+          ),
           scored AS (
             SELECT
-              e.id AS signup_id,
-              e.primary_wallet,
-              e.embedded_wallet,
-              e.referral_code,
+              w.canonical_signup_id::bigint AS signup_id,
+              w.wallet_key AS primary_wallet,
+              NULL::text AS embedded_wallet,
+              w.referral_code,
               COALESCE(SUM(l.amount), 0)::int AS total_points,
               COALESCE(SUM(CASE WHEN l.source = 'referral_qualified' THEN l.amount ELSE 0 END), 0)::int AS invite_points
-            FROM eligible e
+            FROM wallet_rollup w
+            LEFT JOIN eligible_with_key e ON e.wallet_key = w.wallet_key
             LEFT JOIN waitlist_points_ledger l ON l.signup_id = e.id
-            GROUP BY e.id, e.primary_wallet, e.embedded_wallet, e.referral_code
+            GROUP BY w.canonical_signup_id, w.wallet_key, w.referral_code
           ),
           ranked AS (
             SELECT
@@ -108,17 +125,34 @@ export default async function handler(req: any, res: any) {
             ORDER BY id ASC
             LIMIT ${maxUsers}
           ),
+          eligible_with_key AS (
+            SELECT
+              id,
+              COALESCE(NULLIF(primary_wallet, ''), NULLIF(embedded_wallet, '')) AS wallet_key,
+              referral_code
+            FROM eligible
+          ),
+          wallet_rollup AS (
+            SELECT
+              wallet_key,
+              MIN(id)::bigint AS canonical_signup_id,
+              MAX(referral_code) FILTER (WHERE referral_code IS NOT NULL) AS referral_code
+            FROM eligible_with_key
+            WHERE wallet_key IS NOT NULL
+            GROUP BY wallet_key
+          ),
           scored AS (
             SELECT
-              e.id AS signup_id,
-              e.primary_wallet,
-              e.embedded_wallet,
-              e.referral_code,
+              w.canonical_signup_id::bigint AS signup_id,
+              w.wallet_key AS primary_wallet,
+              NULL::text AS embedded_wallet,
+              w.referral_code,
               COALESCE(SUM(l.amount), 0)::int AS total_points,
               COALESCE(SUM(CASE WHEN l.source = 'referral_qualified' THEN l.amount ELSE 0 END), 0)::int AS invite_points
-            FROM eligible e
+            FROM wallet_rollup w
+            LEFT JOIN eligible_with_key e ON e.wallet_key = w.wallet_key
             LEFT JOIN waitlist_points_ledger l ON l.signup_id = e.id
-            GROUP BY e.id, e.primary_wallet, e.embedded_wallet, e.referral_code
+            GROUP BY w.canonical_signup_id, w.wallet_key, w.referral_code
           ),
           ranked AS (
             SELECT

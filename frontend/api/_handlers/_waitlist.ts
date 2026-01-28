@@ -40,6 +40,23 @@ function isSyntheticEmail(v: string): boolean {
   return v.endsWith('@noemail.4626.fun')
 }
 
+function buildDeterministicSyntheticEmail(seed?: string | null): string {
+  const domain = 'noemail.4626.fun'
+  const safeSeed = typeof seed === 'string' ? seed.replace(/[^a-zA-Z0-9]/g, '').slice(0, 8) : ''
+  const fnv1a32 = (input: string): number => {
+    let h = 0x811c9dc5
+    for (let i = 0; i < input.length; i++) {
+      h ^= input.charCodeAt(i)
+      h = Math.imul(h, 0x01000193)
+    }
+    return h >>> 0
+  }
+  const seedNorm = typeof seed === 'string' ? seed.trim().toLowerCase() : ''
+  const token = fnv1a32(seedNorm || 'anon').toString(36).padStart(7, '0').slice(0, 12)
+  const prefix = safeSeed.length > 0 ? safeSeed.toLowerCase() : 'anon'
+  return `${prefix}+${token}@${domain}`
+}
+
 function normalizeAddress(v: string): string {
   return v.trim()
 }
@@ -268,7 +285,7 @@ export default async function handler(req: any, res: any) {
   }
 
   const emailRaw = typeof body.email === 'string' ? body.email : ''
-  const email = normalizeEmail(emailRaw)
+  let email = normalizeEmail(emailRaw)
   if (!isValidEmail(email)) {
     return res.status(400).json({ success: false, error: 'Invalid email' } satisfies ApiEnvelope<never>)
   }
@@ -288,6 +305,15 @@ export default async function handler(req: any, res: any) {
       } satisfies ApiEnvelope<never>)
     }
     primaryWallet = sessionWallet
+  }
+
+  // If the client sent a synthetic email, normalize it deterministically from the wallet identity.
+  // This ensures repeat submissions update the same row (email is UNIQUE) instead of creating duplicates.
+  if (isSyntheticEmail(email)) {
+    const seed = (primaryWallet && isValidEvmAddress(primaryWallet) ? primaryWallet : null) || null
+    if (seed) {
+      email = buildDeterministicSyntheticEmail(seed)
+    }
   }
 
   if (primaryWallet.length > 0 && !isValidEvmAddress(primaryWallet)) {

@@ -168,14 +168,22 @@ function isSyntheticEmail(v: string): boolean {
 function buildSyntheticEmail(seed?: string | null): string {
   const domain = 'noemail.4626.fun'
   const safeSeed = typeof seed === 'string' ? seed.replace(/[^a-zA-Z0-9]/g, '').slice(0, 8) : ''
-  let token = ''
-  if (typeof crypto !== 'undefined' && typeof (crypto as any).randomUUID === 'function') {
-    token = String((crypto as any).randomUUID()).replace(/[^a-zA-Z0-9]/g, '')
-  } else {
-    token = `${Math.random().toString(36).slice(2)}${Date.now().toString(36)}`
+
+  // Deterministic token so repeat signups (wallet-only) upsert by email.
+  // This prevents duplicate leaderboard rows for the same wallet.
+  const fnv1a32 = (input: string): number => {
+    let h = 0x811c9dc5
+    for (let i = 0; i < input.length; i++) {
+      h ^= input.charCodeAt(i)
+      h = Math.imul(h, 0x01000193)
+    }
+    return h >>> 0
   }
+  const seedNorm = typeof seed === 'string' ? seed.trim().toLowerCase() : ''
+  const token = fnv1a32(seedNorm || 'anon').toString(36).padStart(7, '0').slice(0, 12)
+
   const prefix = safeSeed.length > 0 ? safeSeed.toLowerCase() : 'anon'
-  return `${prefix}+${token.slice(0, 12)}@${domain}`
+  return `${prefix}+${token}@${domain}`
 }
 
 function formatPrivyConnectError(code: string): string {
