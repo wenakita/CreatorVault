@@ -83,6 +83,7 @@ export const VerifyStep = memo(function VerifyStep({
   const short = (v: string) => `${v.slice(0, 6)}…${v.slice(-4)}`
   const privyCtaLabel = privyAuthed ? 'Switch sign-in' : 'Connect Wallet'
   const privyEmbeddedCtaLabel = privyAuthed ? 'Switch sign-in' : 'Sign in with Privy'
+  const creatorGreeting = (creatorCoin?.symbol || creatorCoin?.name || '').trim()
 
   return (
     <motion.div
@@ -170,6 +171,23 @@ export const VerifyStep = memo(function VerifyStep({
               <div className="text-[13px] text-emerald-400">Verified</div>
             </div>
             <CheckCircle2 className="w-5 h-5 text-emerald-400 shrink-0" />
+          </div>
+          <div className="mt-3 rounded-2xl border border-[#0052FF]/15 bg-gradient-to-b from-[#0052FF]/10 via-black/30 to-black/20 px-4 py-3.5">
+            <div className="flex items-start gap-3">
+              {/* Base-inspired square motif */}
+              <div className="mt-0.5 w-3 h-3 rounded-[3px] bg-[#0052FF]" aria-hidden="true" />
+              <div className="min-w-0">
+                <div className="text-[10px] uppercase tracking-[0.18em] text-zinc-500 font-medium">
+                  Verified
+                </div>
+                <div className="mt-1 text-[15px] text-white/95 leading-snug">
+                  Hey <span className="text-white font-medium">{creatorGreeting || 'creator'}</span>.
+                </div>
+                <div className="mt-1 text-[13px] text-zinc-400 leading-relaxed">
+                  Welcome to <span className="text-white/90 font-medium">4626.fun</span>. You’re cleared to deploy vaults on Base.
+                </div>
+              </div>
+            </div>
           </div>
         </motion.div>
       ) : null}

@@ -1668,14 +1668,24 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
               <div className="w-8" />
             </div>
           ) : null}
-          {/* Progress bar - Base blue */}
+          {/* Progress bar - Base blue, square-led choreography */}
           <div className="mb-6">
-            <div className="h-1 rounded-full bg-zinc-800 overflow-hidden">
+            <div className="relative h-2">
+              <div className="absolute inset-x-0 top-1/2 -translate-y-1/2 h-1 rounded-full bg-zinc-800 overflow-hidden">
+                <motion.div
+                  className="h-full bg-[#0052FF]"
+                  initial={false}
+                  animate={{ width: `${progressPct}%` }}
+                  transition={{ duration: 0.24, ease: [0.4, 0, 0.2, 1] }}
+                />
+              </div>
               <motion.div
-                className="h-full bg-[#0052FF]"
+                className="absolute top-1/2 -translate-y-1/2 w-2.5 h-2.5 rounded-[3px] bg-[#0052FF] shadow-[0_0_18px_rgba(0,82,255,0.35)]"
                 initial={false}
-                animate={{ width: `${progressPct}%` }}
+                animate={{ left: `${progressPct}%` }}
                 transition={{ duration: 0.24, ease: [0.4, 0, 0.2, 1] }}
+                style={{ left: '0%', transform: 'translate(-50%, -50%)' }}
+                aria-hidden="true"
               />
             </div>
           </div>
