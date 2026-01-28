@@ -113,7 +113,7 @@ const EMPTY_ACTION_STATE: Record<ActionKey, boolean> = {
 
 const initialFlowState: FlowState = {
   persona: 'creator', // Default to creator - simplified flow
-  step: 'verify', // Start with verification
+  step: 'link-csw', // Start with wallet connection
   contactPreference: 'email',
   email: '',
   emailOptOut: true,
@@ -332,11 +332,12 @@ function flowReducer(state: FlowState, action: FlowAction): FlowState {
       return state
     }
     case 'submit_success':
-      if (state.step === 'done' || state.step === 'link-csw') return state
-      return { ...state, step: 'link-csw', doneEmail: action.doneEmail }
+      // After signup, go straight to done (CSW already linked)
+      if (state.step === 'done') return state
+      return { ...state, step: 'done', doneEmail: action.doneEmail }
     case 'csw_complete':
-      // CSW linked (or skipped) - proceed to done
-      return { ...state, step: 'done' }
+      // CSW linked (or skipped) - proceed to signup/verify
+      return { ...state, step: 'verify' }
     case 'set_email':
       return { ...state, email: action.email }
     case 'set_email_opt_out':
@@ -1179,19 +1180,7 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
     try {
       // If user already has a CSW (from Zora profile or Privy), mark as linked
       if (effectiveCswAddress) {
-        // Award points for linking CSW
-        if (doneEmail) {
-          await apiFetch('/api/waitlist/csw-link', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-            body: JSON.stringify({ 
-              email: doneEmail, 
-              cswAddress: effectiveCswAddress,
-              primaryWallet: verifiedWallet || effectiveCswAddress,
-            }),
-          })
-          await refreshPosition(doneEmail)
-        }
+        // Just mark as linked locally - points awarded on signup
         patchWaitlist({ cswLinked: true, cswLinkBusy: false })
       } else {
         // Open Privy wallet connect to link a CSW
@@ -1205,44 +1194,24 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
       })
     }
   }, [
-    apiFetch,
     effectiveCswAddress,
-    doneEmail,
     privyConnectWallet,
     patchWaitlist,
-    refreshPosition,
-    verifiedWallet,
     waitlist.cswLinkBusy,
     waitlist.cswLinked,
   ])
 
   // Auto-detect CSW when on link-csw step and CSW is available
+  // In new flow: CSW first, then signup - so just mark as linked locally
+  // Points are awarded during signup when waitlist entry is created
   useEffect(() => {
     if (step !== 'link-csw') return
     if (waitlist.cswLinked) return
-    if (!effectiveCswAddress || !doneEmail) return
+    if (!effectiveCswAddress) return
     
-    // Auto-award CSW points and mark as linked
-    const linkCsw = async () => {
-      patchWaitlist({ cswLinkBusy: true })
-      try {
-        await apiFetch('/api/waitlist/csw-link', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-          body: JSON.stringify({ 
-            email: doneEmail, 
-            cswAddress: effectiveCswAddress,
-            primaryWallet: verifiedWallet || effectiveCswAddress,
-          }),
-        })
-        await refreshPosition(doneEmail)
-        patchWaitlist({ cswLinked: true, cswLinkBusy: false })
-      } catch {
-        patchWaitlist({ cswLinkBusy: false })
-      }
-    }
-    linkCsw()
-  }, [apiFetch, doneEmail, effectiveCswAddress, patchWaitlist, refreshPosition, step, verifiedWallet, waitlist.cswLinked])
+    // Mark as linked locally (points awarded on signup)
+    patchWaitlist({ cswLinked: true })
+  }, [effectiveCswAddress, patchWaitlist, step, waitlist.cswLinked])
 
   const handleSocialAction = useCallback((action: ActionKey, _url: string) => {
     markAction(action)
@@ -1430,6 +1399,7 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
           primaryWallet: primaryWalletForSubmit(),
           solanaWallet: solanaWalletForSubmit(),
           baseSubAccount: baseSubAccountForSubmit(),
+          cswAddress: effectiveCswAddress || null, // CSW linked before signup
           referralCode: storedRef,
           claimReferralCode: claim.length > 0 ? claim : null,
           contactPreference: isEmailValid ? contactPreference : 'wallet',
@@ -1862,14 +1832,14 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
           {/* Step indicator (stable, no layout/slide jitter) */}
           <div className="mb-6 flex items-center justify-between">
             <div className="text-[11px] uppercase tracking-[0.18em] text-zinc-600">
-              {step === 'verify' ? 'Sign Up' : step === 'link-csw' ? 'Connect Wallet' : 'Complete'}
+              {step === 'link-csw' ? 'Connect Wallet' : step === 'verify' ? 'Sign Up' : 'Complete'}
             </div>
             <div className="flex items-center gap-2">
-              <div className={`h-2 w-2 rounded-[3px] ${step === 'verify' ? 'bg-white/20' : 'bg-white/10'}`} />
               <div className={`h-2 w-2 rounded-[3px] ${step === 'link-csw' ? 'bg-white/20' : 'bg-white/10'}`} />
+              <div className={`h-2 w-2 rounded-[3px] ${step === 'verify' ? 'bg-white/20' : 'bg-white/10'}`} />
               <div className={`h-2 w-2 rounded-[3px] ${step === 'done' ? 'bg-white/20' : 'bg-white/10'}`} />
               <div className="ml-1 text-[11px] text-zinc-600 tabular-nums">
-                {step === 'verify' ? '1' : step === 'link-csw' ? '2' : '3'}/3
+                {step === 'link-csw' ? '1' : step === 'verify' ? '2' : '3'}/3
               </div>
             </div>
           </div>

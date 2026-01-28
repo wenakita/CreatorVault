@@ -33,6 +33,104 @@ type ExploreMetrics = {
   }
 }
 
+function toNumber(v: unknown): number | null {
+  const n = typeof v === 'string' ? Number(v) : typeof v === 'number' ? v : NaN
+  return Number.isFinite(n) ? n : null
+}
+
+async function fetchExploreCreatorsMetrics(): Promise<ExploreMetrics | null> {
+  // 1) Prefer server-side metrics (fast + cached) via apiFetch (alias-aware).
+  try {
+    const res = await apiFetch('/api/zora/metrics?scope=creators', { method: 'GET' })
+    const json = (await res.json().catch(() => null)) as ApiEnvelope<ExploreMetrics | null> | null
+    if (res.ok && json?.success) return json.data ?? null
+  } catch {
+    // fall through to SDK fallback
+  }
+
+  // 2) Fallback: compute an approximate snapshot client-side using the public Zora SDK key.
+  const key = import.meta.env.VITE_ZORA_PUBLIC_API_KEY
+  if (typeof key !== 'string' || key.trim().length === 0) return null
+
+  const sdk: any = await import('@zoralabs/coins-sdk')
+  sdk.setApiKey(key.trim())
+
+  const BATCH = 50
+  const dayAgo = Date.now() - 24 * 60 * 60 * 1000
+
+  const extractList = (r: any) => r?.data?.exploreList ?? r?.data?.creatorCoins ?? r?.data?.coins ?? null
+
+  let creatorsTotal: number | null = null
+  let sampledCreators = 0
+  let sumMarketCap = 0
+  let sumVol24h = 0
+  let partial = true
+
+  try {
+    const resp = await sdk.getExploreTopVolumeCreators24h({ count: BATCH })
+    const list = extractList(resp)
+    if (list) {
+      const count = toNumber(list?.count)
+      creatorsTotal = count != null ? Math.max(0, Math.floor(count)) : null
+      const edges = Array.isArray(list?.edges) ? list.edges : []
+      for (const e of edges) {
+        const coin = e?.node
+        if (!coin) continue
+        const mc = toNumber(coin.marketCap)
+        const v = toNumber(coin.volume24h)
+        if (mc != null) sumMarketCap += mc
+        if (v != null) sumVol24h += v
+        sampledCreators++
+      }
+      const hasNext = Boolean(list?.pageInfo?.hasNextPage)
+      partial = hasNext || (creatorsTotal != null && creatorsTotal > sampledCreators)
+    }
+  } catch {
+    // ignore and still try new-creator count below
+  }
+
+  let creatorsNew24h: number | null = null
+  try {
+    const respNew = await sdk.getCreatorCoins({ count: BATCH })
+    const listNew = extractList(respNew)
+    if (listNew) {
+      let n = 0
+      const edges = Array.isArray(listNew?.edges) ? listNew.edges : []
+      for (const e of edges) {
+        const coin = e?.node
+        if (!coin) continue
+        const createdAt = typeof coin.createdAt === 'string' ? Date.parse(coin.createdAt) : NaN
+        if (Number.isFinite(createdAt) && createdAt >= dayAgo) n++
+      }
+      creatorsNew24h = n
+      if (creatorsTotal == null) {
+        const count = toNumber(listNew?.count)
+        creatorsTotal = count != null ? Math.max(0, Math.floor(count)) : creatorsTotal
+      }
+    }
+  } catch {
+    // ignore
+  }
+
+  // If we got nothing useful, bail.
+  const hasAny =
+    creatorsTotal != null || creatorsNew24h != null || sampledCreators > 0 || Number.isFinite(sumMarketCap) || Number.isFinite(sumVol24h)
+  if (!hasAny) return null
+
+  return {
+    scope: 'creators',
+    updatedAt: new Date().toISOString(),
+    totals: {
+      creatorsTotal,
+      creatorsNew24h,
+      creatorCoinsMarketCapUsd: sampledCreators > 0 ? sumMarketCap : null,
+      creatorCoinsVolume24hUsd: sampledCreators > 0 ? sumVol24h : null,
+      partial,
+      sampledCreators,
+    },
+  }
+}
+
 function formatCompactUsd(v: number | null): string {
   if (v == null || !Number.isFinite(v)) return '—'
   const n = v
@@ -56,12 +154,7 @@ export function ExploreCreators() {
 
   const metricsQuery = useQuery({
     queryKey: ['explore', 'creators', 'metrics'],
-    queryFn: async (): Promise<ExploreMetrics | null> => {
-      const res = await apiFetch('/api/zora/metrics?scope=creators', { method: 'GET' })
-      const json = (await res.json().catch(() => null)) as ApiEnvelope<ExploreMetrics | null> | null
-      if (!res.ok || !json?.success) return null
-      return json.data ?? null
-    },
+    queryFn: fetchExploreCreatorsMetrics,
     staleTime: 60_000,
     retry: 1,
   })

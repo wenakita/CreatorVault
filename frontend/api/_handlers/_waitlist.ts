@@ -11,6 +11,7 @@ type WaitlistRequestBody = {
   primaryWallet?: string | null
   solanaWallet?: string | null
   baseSubAccount?: string | null
+  cswAddress?: string | null  // Coinbase Smart Wallet address (linked before signup)
   referralCode?: string | null
   claimReferralCode?: string | null
   contactPreference?: string | null
@@ -332,6 +333,13 @@ export default async function handler(req: any, res: any) {
     return res.status(400).json({ success: false, error: 'Invalid Base sub-account address' } satisfies ApiEnvelope<never>)
   }
 
+  // CSW address (linked before signup in new flow)
+  const cswRaw = typeof body.cswAddress === 'string' ? body.cswAddress : ''
+  const cswAddress = normalizeAddress(cswRaw)
+  if (cswAddress.length > 0 && !isValidEvmAddress(cswAddress)) {
+    return res.status(400).json({ success: false, error: 'Invalid CSW address' } satisfies ApiEnvelope<never>)
+  }
+
   const persona =
     body.intent && typeof body.intent === 'object' && (body.intent as any).persona === 'creator'
       ? 'creator'
@@ -482,6 +490,24 @@ export default async function handler(req: any, res: any) {
         source: 'waitlist_signup',
         sourceId: `email:${email}`,
         amount: WAITLIST_POINTS.signup,
+      })
+    }
+
+    // Award CSW linking points if CSW was linked before signup
+    if (signupId && cswAddress.length > 0) {
+      // Update the signup record with CSW address if not already set
+      await db.sql`
+        UPDATE waitlist_signups
+        SET primary_wallet = COALESCE(primary_wallet, ${cswAddress})
+        WHERE id = ${signupId};
+      `
+      // Award CSW points (idempotent)
+      await awardWaitlistPoints({
+        db,
+        signupId,
+        source: 'csw_link',
+        sourceId: `csw:${cswAddress.toLowerCase()}`,
+        amount: WAITLIST_POINTS.linkCsw,
       })
     }
 

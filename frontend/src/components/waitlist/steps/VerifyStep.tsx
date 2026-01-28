@@ -99,7 +99,7 @@ export const VerifyStep = memo(function VerifyStep({
     if (privyVerifyBusy) return 'Opening…'
     if (!showPrivyReady) return 'Privy is not ready.'
     if (!privyReady) return 'Loading…'
-    return 'No gas. Takes ~10 seconds.'
+    return 'No transaction. ~10 seconds.'
   }, [privyReady, privyVerifyBusy, showPrivyReady])
 
   return (
@@ -120,7 +120,6 @@ export const VerifyStep = memo(function VerifyStep({
           </div>
         </div>
         <div className="text-[13px] text-zinc-500 leading-relaxed">{headerSubtitle}</div>
-        {verifiedWallet ? <div className="text-[11px] text-zinc-600 font-mono">connected: {short(verifiedWallet)}</div> : null}
       </motion.div>
 
       {/* Single primary CTA + progressive disclosure */}
@@ -271,10 +270,6 @@ export const VerifyStep = memo(function VerifyStep({
               <div className="text-[11px] uppercase tracking-[0.16em] text-zinc-500">Ready</div>
               <div className="text-[16px] text-white mt-1">Review & join</div>
             </div>
-            <div className="flex items-center gap-2 rounded-full border border-white/10 bg-black/20 px-3 py-1 text-[11px] text-zinc-400">
-              <ShieldCheck className="w-3.5 h-3.5 text-zinc-500" />
-              No gas
-            </div>
           </div>
 
           <div className="mt-4 grid gap-3">
@@ -296,10 +291,10 @@ export const VerifyStep = memo(function VerifyStep({
                   {creatorCoin?.symbol ? creatorCoin.symbol : creatorCoinDeclaredMissing ? 'No coin found' : 'Creator Coin'}
                 </div>
                 <div className="text-[12px] text-zinc-500 truncate">
-                  {creatorCoin?.symbol ? `Connected to ${creatorGreeting || 'creator'}` : 'You can still join the waitlist.'}
+                  {creatorCoin?.symbol ? 'Creator coin detected' : 'You can still join.'}
                 </div>
               </div>
-              <CheckCircle2 className="w-5 h-5 text-[#0052FF] shrink-0" />
+              {creatorCoin?.symbol ? <CheckCircle2 className="w-5 h-5 text-[#0052FF] shrink-0" /> : null}
             </div>
 
             <div className="rounded-2xl border border-white/10 bg-black/20 px-4 py-3">
@@ -311,10 +306,6 @@ export const VerifyStep = memo(function VerifyStep({
                 <div className="text-[12px] text-zinc-500">Network</div>
                 <div className="text-[12px] text-zinc-300">Base</div>
               </div>
-            </div>
-
-            <div className="text-[12px] text-zinc-500 leading-relaxed">
-              Join to get early access updates. You can disconnect anytime.
             </div>
           </div>
         </motion.div>

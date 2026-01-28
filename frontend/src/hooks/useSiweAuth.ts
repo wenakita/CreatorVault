@@ -12,6 +12,28 @@ const SESSION_TOKEN_KEY = 'cv_siwe_session_token'
 
 type PrivySessionResponse = { address: string; sessionToken: string; privyUserId?: string } | null
 
+// Prevent request storms:
+// `useSiweAuth()` can be mounted in multiple places; without a shared guard each instance can auto-bridge.
+let lastPrivyBridgeAttemptAt = 0
+let lastPrivyBridgeFailureAt = 0
+let lastPrivyBridgeFailureReason = ''
+
+function shouldSkipAutoPrivyBridge(): boolean {
+  const now = Date.now()
+  // Throttle repeated attempts across hook instances.
+  if (now - lastPrivyBridgeAttemptAt < 10_000) return true
+
+  // Back off harder on terminal-ish failures (e.g. user has no Base Account linked).
+  const reason = String(lastPrivyBridgeFailureReason || '').toLowerCase()
+  if (reason.includes('no base account wallet is linked') || reason.includes('link coinbase smart wallet')) {
+    return now - lastPrivyBridgeFailureAt < 5 * 60_000
+  }
+  if (reason.includes('invalid privy auth token')) {
+    return now - lastPrivyBridgeFailureAt < 60_000
+  }
+  return false
+}
+
 function coerceErrorMessage(e: unknown, fallback: string): string {
   if (typeof e === 'string' && e.trim().length > 0) return e
   if (e instanceof Error && typeof e.message === 'string' && e.message.trim().length > 0) return e.message
@@ -108,6 +130,7 @@ export function useSiweAuth() {
       setBusy(true)
       setError(null)
       try {
+        lastPrivyBridgeAttemptAt = Date.now()
         const res = await apiFetch('/api/auth/privy', {
           method: 'POST',
           headers: { Accept: 'application/json', Authorization: `Bearer ${token}` },
@@ -115,7 +138,10 @@ export function useSiweAuth() {
         const json = (await res.json().catch(() => null)) as ApiEnvelope<PrivySessionResponse> | null
         if (!res.ok || !json?.success) {
           const apiErr = coerceErrorMessage((json as any)?.error, '')
-          throw new Error(apiErr || 'Privy sign-in failed')
+          const message = apiErr || 'Privy sign-in failed'
+          lastPrivyBridgeFailureAt = Date.now()
+          lastPrivyBridgeFailureReason = message
+          throw new Error(message)
         }
 
         const sessionToken =
@@ -149,6 +175,7 @@ export function useSiweAuth() {
   useEffect(() => {
     if (busy) return
     if (!privyReady || !privyAuthenticated || !getPrivyAccessToken) return
+    if (shouldSkipAutoPrivyBridge()) return
     const existing = getStoredSessionToken()
     if (existing) return
     if (autoPrivyGlobalAttemptRef.current) return
@@ -170,6 +197,7 @@ export function useSiweAuth() {
     if (busy) return
     if (!privyReady || !privyAuthenticated || !getPrivyAccessToken) return
     if (!authAddress) return
+    if (shouldSkipAutoPrivyBridge()) return
     const existing = getStoredSessionToken()
     if (existing) return
     void (async () => {
@@ -190,6 +218,7 @@ export function useSiweAuth() {
     if (busy) return
     if (!privyReady || !privyAuthenticated || !getPrivyAccessToken) return
     if (isSignedIn) return
+    if (shouldSkipAutoPrivyBridge()) return
 
     const key = address.toLowerCase()
     if (autoPrivyAttemptKeyRef.current === key) return
