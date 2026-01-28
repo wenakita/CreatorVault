@@ -2147,7 +2147,18 @@ function DeployVaultMain() {
 
   const embeddedPrivyWallet = useMemo(() => {
     const ws = Array.isArray(wallets) ? (wallets as any[]) : []
-    return ws.find((w) => (w as any)?.walletClientType === 'privy') ?? null
+    return (
+      ws.find((w) => {
+        const t = String(
+          (w as any)?.wallet_client_type ??
+            (w as any)?.walletClientType ??
+            (w as any)?.connector_type ??
+            (w as any)?.connectorType ??
+            '',
+        ).toLowerCase()
+        return t === 'privy' || t.includes('privy') || t.includes('embedded')
+      }) ?? null
+    )
   }, [wallets])
 
   const [searchParams] = useSearchParams()
