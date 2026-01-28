@@ -74,8 +74,7 @@ export function TokenRow({ rank, coin, linkPrefix = '/explore/creators' }: Token
   const sparklineData = generateSparklineData(coin.marketCapDelta24h)
 
   const avatarUrl = coin.mediaContent?.previewImage?.small || coin.creatorProfile?.avatar?.previewImage?.small
-  const symbol = coin.symbol || '???'
-  const name = coin.name || 'Unknown'
+  const name = coin.name || coin.symbol || 'Unknown'
   const chain = coin.chainId === 8453 ? 'base' : 'base'
   const address = coin.address || ''
 
@@ -89,19 +88,16 @@ export function TokenRow({ rank, coin, linkPrefix = '/explore/creators' }: Token
       {/* Rank */}
       <span className="text-sm text-zinc-500 tabular-nums">{rank}</span>
 
-      {/* Token Name & Symbol */}
+      {/* Creator Name */}
       <div className="flex items-center gap-3 min-w-0">
         {avatarUrl ? (
-          <img src={avatarUrl} alt={name} className="w-8 h-8 rounded-full object-cover flex-shrink-0" />
+          <img src={avatarUrl} alt={name} className="w-9 h-9 rounded-full object-cover flex-shrink-0" />
         ) : (
-          <div className="w-8 h-8 rounded-full bg-gradient-to-br from-zinc-700 to-zinc-800 flex items-center justify-center flex-shrink-0">
-            <span className="text-xs font-medium text-zinc-400">{symbol.slice(0, 2).toUpperCase()}</span>
+          <div className="w-9 h-9 rounded-full bg-gradient-to-br from-zinc-700 to-zinc-800 flex items-center justify-center flex-shrink-0">
+            <span className="text-sm font-medium text-zinc-400">{name.slice(0, 2).toUpperCase()}</span>
           </div>
         )}
-        <div className="min-w-0 flex-1">
-          <div className="text-sm font-medium text-white truncate">{name}</div>
-          <div className="text-xs text-zinc-500 truncate">{symbol}</div>
-        </div>
+        <span className="text-base font-medium text-white truncate">{name}</span>
       </div>
 
       {/* Price */}
@@ -147,11 +143,8 @@ export function TokenRowSkeleton() {
     <div className="grid grid-cols-[40px_minmax(180px,2fr)_minmax(80px,1fr)_minmax(80px,1fr)_minmax(80px,1fr)_minmax(80px,1fr)_minmax(100px,1fr)] gap-4 items-center px-4 py-4 border-b border-zinc-800/50">
       <div className="h-4 w-6 bg-zinc-800 rounded animate-pulse" />
       <div className="flex items-center gap-3">
-        <div className="w-8 h-8 rounded-full bg-zinc-800 animate-pulse" />
-        <div className="space-y-2 flex-1">
-          <div className="h-4 w-24 bg-zinc-800 rounded animate-pulse" />
-          <div className="h-3 w-12 bg-zinc-800 rounded animate-pulse" />
-        </div>
+        <div className="w-9 h-9 rounded-full bg-zinc-800 animate-pulse" />
+        <div className="h-5 w-28 bg-zinc-800 rounded animate-pulse" />
       </div>
       <div className="h-4 w-16 bg-zinc-800 rounded animate-pulse" />
       <div className="h-4 w-14 bg-zinc-800 rounded animate-pulse" />

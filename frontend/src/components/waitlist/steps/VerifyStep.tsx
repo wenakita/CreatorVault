@@ -217,6 +217,23 @@ export const VerifyStep = memo(function VerifyStep({
             <div className="text-[11px] text-emerald-300/80">Already enabled.</div>
           ) : (
             <div className="space-y-2">
+              {!embeddedEoaAddress ? (
+                <div className="rounded-lg border border-white/10 bg-white/5 px-3 py-2 space-y-2">
+                  <div className="text-[11px] text-zinc-500">
+                    Embedded wallet not found. Sign in with Privy to create it.
+                  </div>
+                  <button
+                    type="button"
+                    className="w-full rounded-md border border-brand-primary/30 bg-brand-primary/20 text-zinc-100 text-[11px] font-medium px-3 py-2 transition-colors hover:bg-brand-primary/30 disabled:opacity-50 disabled:cursor-not-allowed"
+                    disabled={!showPrivyReady || privyVerifyBusy || busy || typeof onPrivyContinue !== 'function'}
+                    onClick={() => void onPrivyContinue()}
+                  >
+                    {privyVerifyBusy ? 'Opening…' : 'Sign in with Privy'}
+                  </button>
+                  {privyVerifyError ? <div className="text-[11px] text-red-400 text-center">{privyVerifyError}</div> : null}
+                </div>
+              ) : null}
+
               <div className="text-[11px] text-zinc-600">Connect an existing owner wallet to approve:</div>
               <ConnectButtonWeb3 />
 
@@ -257,7 +274,7 @@ export const VerifyStep = memo(function VerifyStep({
 
       {/* Submit button */}
       {showSubmitButton ? (
-        <div className="flex items-center justify-end pt-2">
+        <div className="flex flex-col items-end gap-1 pt-2">
           <button
             type="button"
             className="btn-accent"
@@ -266,6 +283,9 @@ export const VerifyStep = memo(function VerifyStep({
           >
             {busy ? 'Submitting…' : 'Join Waitlist'}
           </button>
+          {!canSubmit ? (
+            <div className="text-[11px] text-zinc-500">Email required. Use Back to add it.</div>
+          ) : null}
         </div>
       ) : null}
 
