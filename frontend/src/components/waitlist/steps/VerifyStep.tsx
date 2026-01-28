@@ -1,11 +1,13 @@
 import { memo } from 'react'
 import { motion } from 'framer-motion'
-import { CheckCircle2, Loader2, Wallet } from 'lucide-react'
+import { CheckCircle2, Loader2 } from 'lucide-react'
 import type { WaitlistState } from '../waitlistTypes'
 import { ConnectButtonWeb3 } from '@/components/ConnectButtonWeb3'
 
 // Base brand motion: cubic-bezier(0.4, 0, 0.2, 1), 120-240ms for snappy UI
 const baseEase = [0.4, 0, 0.2, 1] as const
+const BASE_SQUARE_BLUE = '/base/1_Base%20Brand%20Assets/The%20Square/Base_square_blue.svg'
+const BASE_SQUARE_WHITE = '/base/1_Base%20Brand%20Assets/The%20Square/Base_square_white.svg'
 const fadeUp = {
   initial: { opacity: 0, y: 12 },
   animate: { opacity: 1, y: 0 },
@@ -36,7 +38,6 @@ type VerifyStepProps = {
   embeddedEoaIsOwner?: boolean | null
   connectedOwnerIsOwner?: boolean | null
   onLinkEmbeddedEoaAsOwner?: () => void | Promise<void>
-  zoraProfileExists?: boolean | null
   // Auto-fetched Creator Coin
   creatorCoin: WaitlistState['creatorCoin']
   creatorCoinDeclaredMissing: boolean
@@ -44,8 +45,6 @@ type VerifyStepProps = {
   // Submission
   busy: boolean
   canSubmit: boolean
-  onSignOutWallet: () => void | Promise<void>
-  onNoCreatorCoin: () => void
   onPrivyContinue: () => void
   onSubmit: () => void | Promise<void>
 }
@@ -67,14 +66,11 @@ export const VerifyStep = memo(function VerifyStep({
   embeddedEoaIsOwner,
   connectedOwnerIsOwner,
   onLinkEmbeddedEoaAsOwner,
-  zoraProfileExists,
   creatorCoin,
   creatorCoinDeclaredMissing,
   creatorCoinBusy,
   busy,
   canSubmit,
-  onSignOutWallet,
-  onNoCreatorCoin,
   onPrivyContinue,
   onSubmit,
 }: VerifyStepProps) {
@@ -89,35 +85,14 @@ export const VerifyStep = memo(function VerifyStep({
     <motion.div
       key="verify"
       {...fadeUp}
-      className="space-y-5"
+      className="space-y-4"
     >
       {/* Header */}
-      <motion.div {...scaleIn} className="space-y-2">
+      <motion.div {...scaleIn} className="space-y-1">
         <h1 className="text-[28px] sm:text-[32px] font-light tracking-tight text-white leading-tight">
           Connect wallet
         </h1>
-        <p className="text-[15px] text-zinc-500 font-light">
-          Link the wallet on your Zora profile
-        </p>
       </motion.div>
-
-      {/* Wallet connected state */}
-      {verifiedWallet && (hasCreatorCoin || creatorCoinBusy) ? (
-        <motion.div
-          {...scaleIn}
-          className="flex items-center gap-3 rounded-2xl border border-[#0052FF]/20 bg-[#0052FF]/5 px-4 py-3.5"
-        >
-          <div className="w-10 h-10 rounded-xl bg-[#0052FF]/10 border border-[#0052FF]/20 flex items-center justify-center">
-            <CheckCircle2 className="w-5 h-5 text-[#0052FF]" />
-          </div>
-          <div className="min-w-0 flex-1">
-            <div className="text-[15px] text-white font-medium">Connected</div>
-            <div className="text-[13px] text-zinc-500 font-mono">
-              {verifiedWallet.slice(0, 6)}…{verifiedWallet.slice(-4)}
-            </div>
-          </div>
-        </motion.div>
-      ) : null}
 
       {/* Connect wallet button */}
       {showPrivyReady && !verifiedWallet ? (
@@ -128,7 +103,7 @@ export const VerifyStep = memo(function VerifyStep({
             disabled={!privyReady || privyVerifyBusy || busy}
             onClick={onPrivyContinue}
           >
-            <Wallet className="w-5 h-5 transition-transform duration-200 group-hover:scale-110" />
+            <img src={BASE_SQUARE_WHITE} alt="" className="w-3.5 h-3.5" aria-hidden="true" />
             {privyVerifyBusy ? 'Opening…' : privyCtaLabel}
           </button>
           {privyVerifyError ? (
@@ -141,9 +116,9 @@ export const VerifyStep = memo(function VerifyStep({
 
       {/* Loading Creator Coin */}
       {verifiedWallet && creatorCoinBusy ? (
-        <motion.div {...fadeUp} className="flex items-center justify-center gap-3 py-6">
+        <motion.div {...fadeUp} className="flex items-center justify-center gap-3 py-5">
           <div className="w-5 h-5 rounded-full border-2 border-zinc-700 border-t-[#0052FF] animate-spin" />
-          <span className="text-[14px] text-zinc-400">Looking up your Creator Coin…</span>
+          <span className="text-[14px] text-zinc-400">Finding your Creator Coin…</span>
         </motion.div>
       ) : null}
 
@@ -151,7 +126,7 @@ export const VerifyStep = memo(function VerifyStep({
       {verifiedWallet && hasCreatorCoin ? (
         <motion.div
           {...scaleIn}
-          className="rounded-2xl border border-emerald-500/20 bg-emerald-500/5 p-4"
+          className="rounded-2xl border border-zinc-800 bg-zinc-900/30 p-4"
         >
           <div className="flex items-center gap-3">
             {creatorCoin.imageUrl ? (
@@ -168,143 +143,103 @@ export const VerifyStep = memo(function VerifyStep({
             )}
             <div className="min-w-0 flex-1">
               <div className="text-[15px] text-white font-medium">{creatorCoin.symbol || 'Creator Coin'}</div>
-              <div className="text-[13px] text-emerald-400">Verified</div>
             </div>
-            <CheckCircle2 className="w-5 h-5 text-emerald-400 shrink-0" />
+            <CheckCircle2 className="w-5 h-5 text-[#0052FF] shrink-0" />
           </div>
-          <div className="mt-3 rounded-2xl border border-[#0052FF]/15 bg-gradient-to-b from-[#0052FF]/10 via-black/30 to-black/20 px-4 py-3.5">
-            <div className="flex items-start gap-3">
-              {/* Base-inspired square motif */}
-              <div className="mt-0.5 w-3 h-3 rounded-[3px] bg-[#0052FF]" aria-hidden="true" />
-              <div className="min-w-0">
-                <div className="text-[10px] uppercase tracking-[0.18em] text-zinc-500 font-medium">
-                  Verified
-                </div>
-                <div className="mt-1 text-[15px] text-white/95 leading-snug">
-                  Hey <span className="text-white font-medium">{creatorGreeting || 'creator'}</span>.
-                </div>
-                <div className="mt-1 text-[13px] text-zinc-400 leading-relaxed">
-                  Welcome to <span className="text-white/90 font-medium">4626.fun</span>. You’re cleared to deploy vaults on Base.
-                </div>
-              </div>
+          <motion.div
+            initial={{ opacity: 0, y: 6 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.2, ease: baseEase }}
+            className="mt-3 flex items-start gap-3"
+          >
+            <motion.div
+              initial={{ x: -6, opacity: 0 }}
+              animate={{ x: 0, opacity: 1 }}
+              transition={{ duration: 0.18, ease: baseEase }}
+              className="mt-[5px]"
+              aria-hidden="true"
+            >
+              <img src={BASE_SQUARE_BLUE} alt="" className="w-2.5 h-2.5" aria-hidden="true" />
+            </motion.div>
+            <div className="min-w-0 text-[13px] text-zinc-400 leading-relaxed">
+              <span className="text-white/90">Hey {creatorGreeting || 'creator'}.</span> You’re verified — ready to deploy vaults on Base.
             </div>
-          </div>
+          </motion.div>
         </motion.div>
       ) : null}
 
       {/* No Creator Coin found */}
-      {verifiedWallet && !creatorCoinBusy && !hasCreatorCoin ? (
-        <motion.div {...fadeUp} className="rounded-2xl border border-zinc-800 bg-zinc-900/50 p-4 space-y-4">
-          <div>
-            <div className="text-[15px] text-white font-medium">
-              {zoraProfileExists === false ? 'No Zora account' : 'No Creator Coin'}
-            </div>
-            <p className="text-[13px] text-zinc-500 mt-1 leading-relaxed">
-              {zoraProfileExists === false
-                ? 'Create a Zora account to continue.'
-                : 'You can still join the waitlist.'}
-            </p>
-          </div>
-          <div className="flex flex-col gap-2">
-            {zoraProfileExists === false ? (
-              <a
-                href="https://zora.co"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center justify-center text-[14px] font-medium px-4 py-3 rounded-xl bg-[#0052FF] text-white hover:bg-[#0047E1] transition-all duration-200 ease-[cubic-bezier(0.4,0,0.2,1)] active:scale-[0.98]"
-              >
-                Create Zora account
-              </a>
-            ) : null}
-            <button
-              type="button"
-              className="text-[14px] font-medium px-4 py-3 rounded-xl border border-zinc-800 text-zinc-400 hover:text-white hover:border-zinc-700 hover:bg-zinc-800/50 transition-all duration-200 ease-[cubic-bezier(0.4,0,0.2,1)]"
-              onClick={onSignOutWallet}
-            >
-              Try different wallet
-            </button>
-            {zoraProfileExists !== false ? (
-              <button
-                type="button"
-                className="text-[14px] font-medium px-4 py-3 rounded-xl border border-zinc-800 text-zinc-400 hover:text-white hover:border-zinc-700 hover:bg-zinc-800/50 transition-all duration-200 ease-[cubic-bezier(0.4,0,0.2,1)] disabled:opacity-50 disabled:cursor-not-allowed"
-                onClick={onNoCreatorCoin}
-                disabled={creatorCoinDeclaredMissing}
-              >
-                {creatorCoinDeclaredMissing ? 'Continuing without coin' : 'Continue anyway'}
-              </button>
-            ) : null}
-          </div>
-        </motion.div>
-      ) : null}
+      {/* If no Creator Coin found, we auto-continue (minimal flow). */}
 
-      {/* Optional: 1-click deploy setup */}
+      {/* Optional: 1-click deploy setup (collapsed by default) */}
       {showDeployOwnerLink ? (
-        <motion.div {...fadeUp} className="rounded-2xl border border-zinc-800 bg-zinc-900/30 p-4 space-y-4">
-          <div>
-            <div className="text-[11px] uppercase tracking-[0.15em] text-zinc-600 font-medium">1-click deploy</div>
-            <p className="text-[13px] text-zinc-500 mt-1">
-              Link your embedded wallet for seamless deploys.
-            </p>
-          </div>
-
-          <div className="space-y-2 text-[13px]">
-            <div className="flex items-center justify-between gap-3 text-zinc-500">
-              <span>Smart wallet</span>
-              <span className="font-mono text-zinc-300 text-[12px]">{cswAddress ? short(cswAddress) : '—'}</span>
+        <details className="group rounded-2xl border border-zinc-800 bg-zinc-900/20">
+          <summary className="cursor-pointer list-none px-4 py-3 flex items-center justify-between gap-3 select-none">
+            <div className="flex items-center gap-3 min-w-0">
+              <span className="inline-block w-2.5 h-2.5 rounded-[3px] bg-[#0052FF]/80" aria-hidden="true" />
+              <div className="min-w-0">
+                <div className="text-[13px] text-zinc-200">1-click deploy</div>
+                <div className="text-[12px] text-zinc-500">Optional</div>
+              </div>
             </div>
-            <div className="flex items-center justify-between gap-3 text-zinc-500">
-              <span>Embedded</span>
-              <span className="font-mono text-zinc-300 text-[12px]">
-                {embeddedEoaAddress ? short(embeddedEoaAddress) : '—'}
-              </span>
+            <div className="text-[12px] text-zinc-500 group-open:text-zinc-300 transition-colors">Details</div>
+          </summary>
+          <div className="px-4 pb-4 pt-1 space-y-3">
+            <div className="space-y-2 text-[13px]">
+              <div className="flex items-center justify-between gap-3 text-zinc-500">
+                <span>Smart wallet</span>
+                <span className="font-mono text-zinc-300 text-[12px]">{cswAddress ? short(cswAddress) : '—'}</span>
+              </div>
+              <div className="flex items-center justify-between gap-3 text-zinc-500">
+                <span>Embedded</span>
+                <span className="font-mono text-zinc-300 text-[12px]">{embeddedEoaAddress ? short(embeddedEoaAddress) : '—'}</span>
+              </div>
             </div>
-          </div>
 
-          {embeddedEoaIsOwner ? (
-            <div className="flex items-center gap-2 text-[13px] text-emerald-400">
-              <CheckCircle2 className="w-4 h-4" />
-              Enabled
-            </div>
-          ) : (
-            <div className="space-y-3">
-              {!embeddedEoaAddress ? (
-                <button
-                  type="button"
-                  className="w-full text-[14px] font-medium px-4 py-3 rounded-xl border border-[#0052FF]/30 bg-[#0052FF]/10 text-[#0052FF] hover:bg-[#0052FF]/20 transition-all duration-200 ease-[cubic-bezier(0.4,0,0.2,1)] disabled:opacity-50 disabled:cursor-not-allowed"
-                  disabled={!showPrivyReady || privyVerifyBusy || busy}
-                  onClick={() => void onPrivyContinue()}
-                >
-                  {privyVerifyBusy ? 'Opening…' : privyEmbeddedCtaLabel}
-                </button>
-              ) : (
-                <>
-                  <div className="text-[12px] text-zinc-600">Connect owner wallet:</div>
-                  <ConnectButtonWeb3 />
-
-                  {connectedOwnerAddress && connectedOwnerIsOwner === false ? (
-                    <div className="text-[12px] text-amber-400">Not an owner. Try another wallet.</div>
-                  ) : null}
-
+            {embeddedEoaIsOwner ? (
+              <div className="flex items-center gap-2 text-[13px] text-emerald-400">
+                <CheckCircle2 className="w-4 h-4" />
+                Enabled
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {!embeddedEoaAddress ? (
                   <button
                     type="button"
-                    className="w-full text-[14px] font-medium px-4 py-3 rounded-xl border border-zinc-800 text-zinc-300 hover:text-white hover:border-zinc-700 hover:bg-zinc-800/50 transition-all duration-200 ease-[cubic-bezier(0.4,0,0.2,1)] disabled:opacity-50 disabled:cursor-not-allowed"
-                    disabled={
-                      Boolean(busy || deployOwnerLinkBusy) ||
-                      !embeddedEoaAddress ||
-                      !cswAddress ||
-                      !connectedOwnerAddress ||
-                      connectedOwnerIsOwner === false
-                    }
-                    onClick={() => void onLinkEmbeddedEoaAsOwner?.()}
+                    className="w-full text-[14px] font-medium px-4 py-3 rounded-xl border border-[#0052FF]/30 bg-[#0052FF]/10 text-[#0052FF] hover:bg-[#0052FF]/20 transition-all duration-200 ease-[cubic-bezier(0.4,0,0.2,1)] disabled:opacity-50 disabled:cursor-not-allowed"
+                    disabled={!showPrivyReady || privyVerifyBusy || busy}
+                    onClick={() => void onPrivyContinue()}
                   >
-                    {deployOwnerLinkBusy ? 'Linking…' : 'Enable 1-click deploy'}
+                    {privyVerifyBusy ? 'Opening…' : privyEmbeddedCtaLabel}
                   </button>
-                </>
-              )}
-              {deployOwnerLinkError ? <div className="text-[12px] text-red-400">{deployOwnerLinkError}</div> : null}
-            </div>
-          )}
-        </motion.div>
+                ) : (
+                  <>
+                    <div className="text-[12px] text-zinc-600">Connect owner wallet:</div>
+                    <ConnectButtonWeb3 />
+                    {connectedOwnerAddress && connectedOwnerIsOwner === false ? (
+                      <div className="text-[12px] text-amber-400">Not an owner. Try another wallet.</div>
+                    ) : null}
+                    <button
+                      type="button"
+                      className="w-full text-[14px] font-medium px-4 py-3 rounded-xl border border-zinc-800 text-zinc-300 hover:text-white hover:border-zinc-700 hover:bg-zinc-800/50 transition-all duration-200 ease-[cubic-bezier(0.4,0,0.2,1)] disabled:opacity-50 disabled:cursor-not-allowed"
+                      disabled={
+                        Boolean(busy || deployOwnerLinkBusy) ||
+                        !embeddedEoaAddress ||
+                        !cswAddress ||
+                        !connectedOwnerAddress ||
+                        connectedOwnerIsOwner === false
+                      }
+                      onClick={() => void onLinkEmbeddedEoaAsOwner?.()}
+                    >
+                      {deployOwnerLinkBusy ? 'Linking…' : 'Enable'}
+                    </button>
+                  </>
+                )}
+                {deployOwnerLinkError ? <div className="text-[12px] text-red-400">{deployOwnerLinkError}</div> : null}
+              </div>
+            )}
+          </div>
+        </details>
       ) : null}
 
       {/* Submit button */}

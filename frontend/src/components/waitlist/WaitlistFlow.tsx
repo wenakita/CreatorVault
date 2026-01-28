@@ -34,6 +34,7 @@ const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 const EVM_RE = /^0x[a-fA-F0-9]{40}$/
 const SOL_RE = /^[1-9A-HJ-NP-Za-km-z]+$/
 const SHARE_MESSAGE = 'Creator vaults on Base — join the waitlist.'
+const BASE_SQUARE_BLUE = '/base/1_Base%20Brand%20Assets/The%20Square/Base_square_blue.svg'
 
 const COINBASE_SMART_WALLET_OWNER_LINK_ABI = [
   {
@@ -453,10 +454,6 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
   const setActionsDone = useCallback(
     (actionsDone: Record<ActionKey, boolean>) => dispatchWaitlist({ type: 'setActions', actions: actionsDone }),
     [],
-  )
-  const markNoCreatorCoin = useCallback(
-    () => patchWaitlist({ creatorCoinDeclaredMissing: true }),
-    [patchWaitlist],
   )
 
   const { persona, step, contactPreference, email, emailOptOut, busy, error, doneEmail } = flow
@@ -887,6 +884,16 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
     if (!totalSteps) return 0
     return Math.max(0, Math.min(100, Math.round((stepIndex / totalSteps) * 100)))
   }, [stepIndex, totalSteps])
+
+  // Minimal flow: if Creator Coin lookup completes with no match, auto-allow joining.
+  useEffect(() => {
+    if (step !== 'verify') return
+    if (!verifiedWallet) return
+    if (creatorCoinBusy) return
+    if (creatorCoin?.address) return
+    if (creatorCoinDeclaredMissing) return
+    patchWaitlist({ creatorCoinDeclaredMissing: true })
+  }, [creatorCoin?.address, creatorCoinBusy, creatorCoinDeclaredMissing, patchWaitlist, step, verifiedWallet])
 
   // Auto-fill email from Privy user when authenticated
   useEffect(() => {
@@ -1642,9 +1649,6 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
                 <div className="text-[11px] text-zinc-500">Waitlist</div>
               </div>
             </div>
-            <div className="rounded-full border border-zinc-800 bg-zinc-900/50 px-3 py-1.5 text-[11px] text-zinc-400 tabular-nums">
-              {stepIndex}/{totalSteps}
-            </div>
           </div>
         ) : (
           <div className="space-y-4 mb-6">
@@ -1679,12 +1683,14 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
                   transition={{ duration: 0.24, ease: [0.4, 0, 0.2, 1] }}
                 />
               </div>
-              <motion.div
-                className="absolute top-1/2 -translate-y-1/2 w-2.5 h-2.5 rounded-[3px] bg-[#0052FF] shadow-[0_0_18px_rgba(0,82,255,0.35)]"
+              <motion.img
+                src={BASE_SQUARE_BLUE}
+                alt=""
+                className="absolute top-1/2 w-2.5 h-2.5"
                 initial={false}
                 animate={{ left: `${progressPct}%` }}
-                transition={{ duration: 0.24, ease: [0.4, 0, 0.2, 1] }}
-                style={{ left: '0%', transform: 'translate(-50%, -50%)' }}
+                transition={{ duration: 0.2, ease: [0.4, 0, 0.2, 1] }}
+                style={{ transform: 'translate(-50%, -50%)' }}
                 aria-hidden="true"
               />
             </div>
@@ -1715,8 +1721,6 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
                 creatorCoinBusy={creatorCoinBusy}
                 busy={busy}
                 canSubmit={canSubmit}
-                onSignOutWallet={signOutWallet}
-                onNoCreatorCoin={markNoCreatorCoin}
                 onPrivyContinue={openPrivyLogin}
                 onSubmit={submitWaitlist}
               />
