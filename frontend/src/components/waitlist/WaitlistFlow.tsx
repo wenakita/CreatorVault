@@ -9,7 +9,7 @@ import { usePrivyClientStatus } from '@/lib/privy/client'
 import { toViemAccount, useBaseAccountSdk, useConnectWallet, useLogin, usePrivy, useWallets } from '@privy-io/react-auth'
 import { base } from 'wagmi/chains'
 import { ArrowLeft } from 'lucide-react'
-import { getAddress, isAddress } from 'viem'
+import { encodeAbiParameters, getAddress, isAddress } from 'viem'
 import { useMiniAppContext } from '@/hooks'
 import { apiAliasPath } from '@/lib/apiBase'
 import { fetchZoraCoin, fetchZoraProfile } from '@/lib/zora/client'
@@ -53,6 +53,28 @@ const COINBASE_SMART_WALLET_OWNER_LINK_ABI = [
     outputs: [{ name: '', type: 'bool' }],
   },
 ] as const
+
+const COINBASE_SMART_WALLET_FACTORY_ABI = [
+  {
+    inputs: [
+      { name: 'owners', type: 'bytes[]' },
+      { name: 'nonce', type: 'uint256' },
+    ],
+    name: 'getAddress',
+    outputs: [{ name: '', type: 'address' }],
+    stateMutability: 'view',
+    type: 'function',
+  },
+] as const
+
+const COINBASE_SMART_WALLET_FACTORIES = [
+  getAddress(`0x${'0ba5ed0c6aa8c49038f819e587e2633c4a9f428a'}`),
+  getAddress(`0x${'ba5ed110efdba3d005bfc882d75358acbbb85842'}`),
+] as const
+
+function asOwnerBytes(owner: `0x${string}`) {
+  return encodeAbiParameters([{ type: 'address' }], [owner])
+}
 
 type PatchAction<T> = { type: 'patch'; patch: Partial<T> } | { type: 'reset' }
 type WaitlistAction =
@@ -668,6 +690,10 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
         if (!cancelled) setConnectedOwnerIsOwner(null)
         return
       }
+      if (connectedOwnerAddressForLink.toLowerCase() === cswAddress.toLowerCase()) {
+        if (!cancelled) setConnectedOwnerIsOwner(true)
+        return
+      }
       try {
         const ok = (await (publicClient as any).readContract({
           address: cswAddress,
@@ -697,13 +723,15 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
       if (!embeddedEoaAddressForLink) throw new Error('Sign in with Privy to create your embedded wallet.')
       if (!connectedOwnerAddressForLink) throw new Error('Connect a wallet that already owns the creator smart wallet.')
 
-      const isOwner = (await (publicClient as any).readContract({
-        address: cswAddress,
-        abi: COINBASE_SMART_WALLET_OWNER_LINK_ABI,
-        functionName: 'isOwnerAddress',
-        args: [connectedOwnerAddressForLink],
-      })) as boolean
-      if (!isOwner) throw new Error('Connected wallet is not an owner of the creator smart wallet.')
+      if (connectedOwnerAddressForLink.toLowerCase() !== cswAddress.toLowerCase()) {
+        const isOwner = (await (publicClient as any).readContract({
+          address: cswAddress,
+          abi: COINBASE_SMART_WALLET_OWNER_LINK_ABI,
+          functionName: 'isOwnerAddress',
+          args: [connectedOwnerAddressForLink],
+        })) as boolean
+        if (!isOwner) throw new Error('Connected wallet is not an owner of the creator smart wallet.')
+      }
 
       const hash = await (walletClient as any).writeContract({
         account: connectedOwnerAddressForLink,
@@ -1150,6 +1178,59 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
     patchWaitlist({ creatorCoinBusy: true })
     ;(async () => {
       try {
+        let fallbackSmartWallet: string | null = null
+        if (publicClient) {
+          try {
+            const code = await publicClient.getBytecode({ address: getAddress(w) as any })
+            if (code && code !== '0x') {
+              try {
+                await (publicClient as any).readContract({
+                  address: getAddress(w) as any,
+                  abi: COINBASE_SMART_WALLET_OWNER_LINK_ABI,
+                  functionName: 'isOwnerAddress',
+                  args: [w],
+                })
+                fallbackSmartWallet = w
+              } catch {
+                // ignore
+              }
+            } else {
+              const ownerBytes = asOwnerBytes(w as `0x${string}`)
+              const nonces = [0n, 1n, 2n]
+              for (const factory of COINBASE_SMART_WALLET_FACTORIES) {
+                for (const nonce of nonces) {
+                  try {
+                    const predicted = await (publicClient as any).readContract({
+                      address: factory,
+                      abi: COINBASE_SMART_WALLET_FACTORY_ABI,
+                      functionName: 'getAddress',
+                      args: [[ownerBytes], nonce],
+                    })
+                    const predictedAddress = typeof predicted === 'string' ? predicted : ''
+                    if (!isValidEvmAddress(predictedAddress)) continue
+                    const predictedCode = await publicClient.getBytecode({ address: getAddress(predictedAddress) as any })
+                    if (!predictedCode || predictedCode === '0x') continue
+                    const isOwner = await (publicClient as any).readContract({
+                      address: getAddress(predictedAddress) as any,
+                      abi: COINBASE_SMART_WALLET_OWNER_LINK_ABI,
+                      functionName: 'isOwnerAddress',
+                      args: [w],
+                    })
+                    if (isOwner) {
+                      fallbackSmartWallet = predictedAddress
+                      break
+                    }
+                  } catch {
+                    // ignore
+                  }
+                }
+                if (fallbackSmartWallet) break
+              }
+            }
+          } catch {
+            // ignore
+          }
+        }
         const profile = await fetchZoraProfile(w)
         if (!cancelled) setZoraProfileExists(Boolean(profile))
         const coinAddrRaw = profile?.creatorCoin?.address ? String(profile.creatorCoin.address) : ''
