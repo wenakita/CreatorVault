@@ -12,8 +12,11 @@ type TokenTableHeaderProps = {
   timeframe?: string
 }
 
-// Zora V4 Fee Structure (1% total fee)
-const FEE_RATES = {
+// V4 cutoff: June 6, 2025 (Zora V4 mainnet launch)
+const V4_CUTOFF_DATE = new Date('2025-06-06T00:00:00Z')
+
+// Zora V4 Fee Structure (1% total fee) - coins created after June 6, 2025
+const FEE_RATES_V4 = {
   total: 0.01,        // 1% total trading fee
   creator: 0.50,      // 50% of fees → Creator/payoutRecipient
   platform: 0.20,     // 20% of fees → Platform Referral
@@ -21,6 +24,28 @@ const FEE_RATES = {
   protocol: 0.05,     // 5% of fees → Zora Protocol
   tradeRef: 0.04,     // 4% of fees → Trade Referral
   doppler: 0.01,      // 1% of fees → Doppler (LP hook)
+}
+
+// Legacy Fee Structure (3% total fee) - coins created before June 6, 2025
+const FEE_RATES_LEGACY = {
+  total: 0.03,        // 3% total trading fee
+  creator: 0.50,      // 50% of fees → Creator/payoutRecipient
+  platform: 0.25,     // 25% of fees → Platform Referral
+  lpRewards: 0.00,    // No LP rewards in legacy
+  protocol: 0.25,     // 25% of fees → Zora Protocol
+  tradeRef: 0.00,     // No trade referral in legacy
+  doppler: 0.00,      // No Doppler in legacy
+}
+
+// Determine if coin uses V4 fee structure based on creation date
+function isV4Coin(createdAt: string | undefined): boolean {
+  if (!createdAt) return true // Default to V4 if unknown
+  const created = new Date(createdAt)
+  return created >= V4_CUTOFF_DATE
+}
+
+function getFeeRates(createdAt: string | undefined) {
+  return isV4Coin(createdAt) ? FEE_RATES_V4 : FEE_RATES_LEGACY
 }
 
 function formatCompactNumber(value: string | number | undefined): string {
@@ -35,11 +60,11 @@ function formatCompactNumber(value: string | number | undefined): string {
   return `$${num.toFixed(4)}`
 }
 
-function formatFeeAmount(volume: string | undefined, feeRate: number): string {
+function formatFeeAmount(volume: string | undefined, totalFeeRate: number, splitRate: number): string {
   if (!volume) return '-'
   const vol = parseFloat(volume)
   if (isNaN(vol) || vol === 0) return '-'
-  const fee = vol * FEE_RATES.total * feeRate
+  const fee = vol * totalFeeRate * splitRate
   return formatCompactNumber(fee)
 }
 
@@ -71,13 +96,17 @@ export function TokenRow({ rank, coin, linkPrefix = '/explore/creators', timefra
   const chain = coin.chainId === 8453 ? 'base' : 'base'
   const address = coin.address || ''
   const payoutTo = coin.payoutRecipientAddress
+  
+  // Determine fee structure based on creation date
+  const isV4 = isV4Coin(coin.createdAt)
+  const feeRates = getFeeRates(coin.createdAt)
 
   const detailPath = `${linkPrefix}/${chain}/${address}`
 
   return (
     <Link
       to={detailPath}
-      className="grid grid-cols-[32px_minmax(120px,1.5fr)_60px_minmax(70px,1fr)_minmax(60px,1fr)_minmax(60px,1fr)_minmax(60px,1fr)_minmax(50px,1fr)_minmax(50px,1fr)_minmax(80px,1fr)] gap-2 items-center px-3 py-3 hover:bg-zinc-800/30 transition-colors cursor-pointer text-xs"
+      className="grid grid-cols-[32px_minmax(120px,1.5fr)_40px_60px_minmax(70px,1fr)_minmax(60px,1fr)_minmax(60px,1fr)_minmax(60px,1fr)_minmax(50px,1fr)_minmax(50px,1fr)_minmax(80px,1fr)] gap-2 items-center px-3 py-3 hover:bg-zinc-800/30 transition-colors cursor-pointer text-xs"
     >
       {/* Rank */}
       <span className="text-zinc-500 tabular-nums">{rank}</span>
@@ -97,6 +126,18 @@ export function TokenRow({ rank, coin, linkPrefix = '/explore/creators', timefra
         </div>
       </div>
 
+      {/* Fee Version Badge */}
+      <span 
+        className={`text-[9px] font-medium px-1.5 py-0.5 rounded ${
+          isV4 
+            ? 'bg-green-500/20 text-green-400' 
+            : 'bg-amber-500/20 text-amber-400'
+        }`}
+        title={isV4 ? '1% fee (V4 - after June 2025)' : '3% fee (Legacy - before June 2025)'}
+      >
+        {isV4 ? '1%' : '3%'}
+      </span>
+
       {/* Holders */}
       <span className="text-white tabular-nums">{coin.uniqueHolders?.toLocaleString() || '-'}</span>
 
@@ -104,19 +145,23 @@ export function TokenRow({ rank, coin, linkPrefix = '/explore/creators', timefra
       <span className="text-white tabular-nums">{formatCompactNumber(volume)}</span>
 
       {/* Creator Fee (50%) */}
-      <span className="text-green-400 tabular-nums">{formatFeeAmount(volume, FEE_RATES.creator)}</span>
+      <span className="text-green-400 tabular-nums">{formatFeeAmount(volume, feeRates.total, feeRates.creator)}</span>
 
-      {/* Platform Fee (20%) */}
-      <span className="text-blue-400 tabular-nums">{formatFeeAmount(volume, FEE_RATES.platform)}</span>
+      {/* Platform Fee */}
+      <span className="text-blue-400 tabular-nums">{formatFeeAmount(volume, feeRates.total, feeRates.platform)}</span>
 
-      {/* LP Locked (20%) */}
-      <span className="text-purple-400 tabular-nums">{formatFeeAmount(volume, FEE_RATES.lpRewards)}</span>
+      {/* LP Locked (V4 only) */}
+      <span className="text-purple-400 tabular-nums">
+        {feeRates.lpRewards > 0 ? formatFeeAmount(volume, feeRates.total, feeRates.lpRewards) : '-'}
+      </span>
 
-      {/* Zora (5%) */}
-      <span className="text-zinc-400 tabular-nums">{formatFeeAmount(volume, FEE_RATES.protocol)}</span>
+      {/* Zora Protocol */}
+      <span className="text-zinc-400 tabular-nums">{formatFeeAmount(volume, feeRates.total, feeRates.protocol)}</span>
 
-      {/* Doppler (1%) */}
-      <span className="text-zinc-500 tabular-nums">{formatFeeAmount(volume, FEE_RATES.doppler)}</span>
+      {/* Doppler (V4 only) */}
+      <span className="text-zinc-500 tabular-nums">
+        {feeRates.doppler > 0 ? formatFeeAmount(volume, feeRates.total, feeRates.doppler) : '-'}
+      </span>
 
       {/* Payout To */}
       <span className="text-zinc-400 font-mono text-[10px] truncate" title={payoutTo || undefined}>
@@ -129,16 +174,17 @@ export function TokenRow({ rank, coin, linkPrefix = '/explore/creators', timefra
 // Table Header Component
 export function TokenTableHeader({ timeframe = '1d' }: TokenTableHeaderProps) {
   return (
-    <div className="grid grid-cols-[32px_minmax(120px,1.5fr)_60px_minmax(70px,1fr)_minmax(60px,1fr)_minmax(60px,1fr)_minmax(60px,1fr)_minmax(50px,1fr)_minmax(50px,1fr)_minmax(80px,1fr)] gap-2 items-center px-3 py-2 text-[10px] text-zinc-500 uppercase tracking-wider border-b border-zinc-800 bg-zinc-900/50 sticky top-0 z-10">
+    <div className="grid grid-cols-[32px_minmax(120px,1.5fr)_40px_60px_minmax(70px,1fr)_minmax(60px,1fr)_minmax(60px,1fr)_minmax(60px,1fr)_minmax(50px,1fr)_minmax(50px,1fr)_minmax(80px,1fr)] gap-2 items-center px-3 py-2 text-[10px] text-zinc-500 uppercase tracking-wider border-b border-zinc-800 bg-zinc-900/50 sticky top-0 z-10">
       <span>#</span>
       <span>Token</span>
+      <span title="Fee version: 1% (V4, after June 2025) or 3% (Legacy)">Fee</span>
       <span>Holders</span>
       <span>{getVolumeLabel(timeframe)}</span>
-      <span className="text-green-400/70" title="50% of 1% fee → Creator/Payout Recipient">Creator</span>
-      <span className="text-blue-400/70" title="20% of 1% fee → Platform that deployed coin">Platform</span>
-      <span className="text-purple-400/70" title="20% of 1% fee → Locked as permanent LP">LP Lock</span>
-      <span className="text-zinc-400/70" title="5% of 1% fee → Zora Protocol">Zora</span>
-      <span className="text-zinc-500/70" title="1% of 1% fee → Doppler (LP hook)">Doppler</span>
+      <span className="text-green-400/70" title="50% of fees → Creator/Payout Recipient">Creator</span>
+      <span className="text-blue-400/70" title="20-25% of fees → Platform that deployed coin">Platform</span>
+      <span className="text-purple-400/70" title="20% of fees → Locked as permanent LP (V4 only)">LP Lock</span>
+      <span className="text-zinc-400/70" title="5-25% of fees → Zora Protocol">Zora</span>
+      <span className="text-zinc-500/70" title="1% of fees → Doppler LP hook (V4 only)">Doppler</span>
       <span>Payout To</span>
     </div>
   )
@@ -147,7 +193,7 @@ export function TokenTableHeader({ timeframe = '1d' }: TokenTableHeaderProps) {
 // Loading skeleton row
 export function TokenRowSkeleton() {
   return (
-    <div className="grid grid-cols-[32px_minmax(120px,1.5fr)_60px_minmax(70px,1fr)_minmax(60px,1fr)_minmax(60px,1fr)_minmax(60px,1fr)_minmax(50px,1fr)_minmax(50px,1fr)_minmax(80px,1fr)] gap-2 items-center px-3 py-3">
+    <div className="grid grid-cols-[32px_minmax(120px,1.5fr)_40px_60px_minmax(70px,1fr)_minmax(60px,1fr)_minmax(60px,1fr)_minmax(60px,1fr)_minmax(50px,1fr)_minmax(50px,1fr)_minmax(80px,1fr)] gap-2 items-center px-3 py-3">
       <div className="h-3 w-4 bg-zinc-800 rounded animate-pulse" />
       <div className="flex items-center gap-2">
         <div className="w-7 h-7 rounded-full bg-zinc-800 animate-pulse" />
@@ -156,6 +202,7 @@ export function TokenRowSkeleton() {
           <div className="h-2 w-10 bg-zinc-800 rounded animate-pulse" />
         </div>
       </div>
+      <div className="h-4 w-6 bg-zinc-800 rounded animate-pulse" />
       <div className="h-3 w-10 bg-zinc-800 rounded animate-pulse" />
       <div className="h-3 w-12 bg-zinc-800 rounded animate-pulse" />
       <div className="h-3 w-10 bg-zinc-800 rounded animate-pulse" />
