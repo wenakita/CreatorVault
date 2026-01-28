@@ -25,6 +25,7 @@ import type {
   WaitlistState,
 } from './waitlistTypes'
 import { VerifyStep } from './steps/VerifyStep'
+import { LinkCswStep } from './steps/LinkCswStep'
 import { DoneStep } from './steps/DoneStep'
 import { useWaitlistApi } from './useWaitlistApi'
 import { useWaitlistVerification } from './useWaitlistVerification'
@@ -314,6 +315,7 @@ type FlowAction =
   | { type: 'reset' }
   | { type: 'select_persona'; persona: Persona }
   | { type: 'submit_success'; doneEmail: string | null }
+  | { type: 'csw_complete' }
   | { type: 'set_email'; email: string }
   | { type: 'set_email_opt_out'; emailOptOut: boolean }
   | { type: 'set_done_email'; doneEmail: string | null }
@@ -330,8 +332,11 @@ function flowReducer(state: FlowState, action: FlowAction): FlowState {
       return state
     }
     case 'submit_success':
-      if (state.step === 'done') return state
-      return { ...state, step: 'done', doneEmail: action.doneEmail }
+      if (state.step === 'done' || state.step === 'link-csw') return state
+      return { ...state, step: 'link-csw', doneEmail: action.doneEmail }
+    case 'csw_complete':
+      // CSW linked (or skipped) - proceed to done
+      return { ...state, step: 'done' }
     case 'set_email':
       return { ...state, email: action.email }
     case 'set_email_opt_out':
@@ -567,6 +572,19 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
     const ws = Array.isArray(privyWallets) ? (privyWallets as any[]) : []
     return ws.find((w) => walletClientTypeOf(w) === 'base_account') ?? null
   }, [privyWallets, walletClientTypeOf])
+  
+  // Detect Coinbase Smart Wallet from Privy wallets
+  const coinbaseSmartWallet = useMemo(() => {
+    const ws = Array.isArray(privyWallets) ? (privyWallets as any[]) : []
+    return ws.find((w) => {
+      const t = walletClientTypeOf(w)
+      return t.includes('coinbase_smart_wallet') || t.includes('coinbase-smart-wallet')
+    }) ?? null
+  }, [privyWallets, walletClientTypeOf])
+  const coinbaseSmartWalletAddress = useMemo(() => {
+    const raw = typeof coinbaseSmartWallet?.address === 'string' ? coinbaseSmartWallet.address : ''
+    return isValidEvmAddress(raw) ? raw : null
+  }, [coinbaseSmartWallet?.address])
   const embeddedWalletAddress = useMemo(() => {
     const raw = typeof embeddedWallet?.address === 'string' ? embeddedWallet.address : ''
     return isValidEvmAddress(raw) ? raw : null
@@ -1150,13 +1168,16 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
     markAction('x')
   }, [markAction])
 
+  // Effective CSW address - from Zora profile or Privy wallet
+  const effectiveCswAddress = cswAddress || coinbaseSmartWalletAddress
+
   const handleLinkCsw = useCallback(async () => {
     if (waitlist.cswLinkBusy || waitlist.cswLinked) return
     patchWaitlist({ cswLinkBusy: true, cswLinkError: null })
     
     try {
-      // If user has a verified wallet with a CSW, mark as linked
-      if (verifiedWallet && cswAddress) {
+      // If user already has a CSW (from Zora profile or Privy), mark as linked
+      if (effectiveCswAddress) {
         // Award points for linking CSW
         if (doneEmail) {
           await apiFetch('/api/waitlist/csw-link', {
@@ -1164,16 +1185,16 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
             headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
             body: JSON.stringify({ 
               email: doneEmail, 
-              cswAddress: cswAddress,
-              primaryWallet: verifiedWallet,
+              cswAddress: effectiveCswAddress,
+              primaryWallet: verifiedWallet || effectiveCswAddress,
             }),
           })
           await refreshPosition(doneEmail)
         }
         patchWaitlist({ cswLinked: true, cswLinkBusy: false })
       } else {
-        // Open Privy to link wallet
-        await openPrivyLogin()
+        // Open Privy wallet connect to link a CSW
+        privyConnectWallet()
         patchWaitlist({ cswLinkBusy: false })
       }
     } catch (e: any) {
@@ -1184,15 +1205,43 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
     }
   }, [
     apiFetch,
-    cswAddress,
+    effectiveCswAddress,
     doneEmail,
-    openPrivyLogin,
+    privyConnectWallet,
     patchWaitlist,
     refreshPosition,
     verifiedWallet,
     waitlist.cswLinkBusy,
     waitlist.cswLinked,
   ])
+
+  // Auto-detect CSW when on link-csw step and CSW is available
+  useEffect(() => {
+    if (step !== 'link-csw') return
+    if (waitlist.cswLinked) return
+    if (!effectiveCswAddress || !doneEmail) return
+    
+    // Auto-award CSW points and mark as linked
+    const linkCsw = async () => {
+      patchWaitlist({ cswLinkBusy: true })
+      try {
+        await apiFetch('/api/waitlist/csw-link', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+          body: JSON.stringify({ 
+            email: doneEmail, 
+            cswAddress: effectiveCswAddress,
+            primaryWallet: verifiedWallet || effectiveCswAddress,
+          }),
+        })
+        await refreshPosition(doneEmail)
+        patchWaitlist({ cswLinked: true, cswLinkBusy: false })
+      } catch {
+        patchWaitlist({ cswLinkBusy: false })
+      }
+    }
+    linkCsw()
+  }, [apiFetch, doneEmail, effectiveCswAddress, patchWaitlist, refreshPosition, step, verifiedWallet, waitlist.cswLinked])
 
   const handleSocialAction = useCallback((action: ActionKey, _url: string) => {
     markAction(action)
@@ -1812,12 +1861,15 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
           {/* Step indicator (stable, no layout/slide jitter) */}
           <div className="mb-6 flex items-center justify-between">
             <div className="text-[11px] uppercase tracking-[0.18em] text-zinc-600">
-              {step === 'verify' ? 'Verify' : 'Complete'}
+              {step === 'verify' ? 'Sign Up' : step === 'link-csw' ? 'Connect Wallet' : 'Complete'}
             </div>
             <div className="flex items-center gap-2">
               <div className={`h-2 w-2 rounded-[3px] ${step === 'verify' ? 'bg-white/20' : 'bg-white/10'}`} />
-              <div className={`h-2 w-2 rounded-[3px] ${step === 'verify' ? 'bg-white/10' : 'bg-white/20'}`} />
-              <div className="ml-1 text-[11px] text-zinc-600 tabular-nums">{step === 'verify' ? '1' : '2'}/2</div>
+              <div className={`h-2 w-2 rounded-[3px] ${step === 'link-csw' ? 'bg-white/20' : 'bg-white/10'}`} />
+              <div className={`h-2 w-2 rounded-[3px] ${step === 'done' ? 'bg-white/20' : 'bg-white/10'}`} />
+              <div className="ml-1 text-[11px] text-zinc-600 tabular-nums">
+                {step === 'verify' ? '1' : step === 'link-csw' ? '2' : '3'}/3
+              </div>
             </div>
           </div>
 
@@ -1858,6 +1910,25 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
                     onPrivyEmailContinue={openPrivyEmailLogin}
                     onFallbackSignIn={fallbackSignIn}
                     onSubmit={submitWaitlist}
+                  />
+                </motion.div>
+              ) : null}
+
+              {step === 'link-csw' ? (
+                <motion.div
+                  key="step:link-csw"
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -8 }}
+                  transition={{ duration: BASE_MOTION_MS, ease: BASE_EASE }}
+                >
+                  <LinkCswStep
+                    cswLinked={waitlist.cswLinked}
+                    cswLinkBusy={waitlist.cswLinkBusy}
+                    cswLinkError={waitlist.cswLinkError}
+                    onLinkCsw={handleLinkCsw}
+                    onSkip={() => dispatchFlow({ type: 'csw_complete' })}
+                    onContinue={() => dispatchFlow({ type: 'csw_complete' })}
                   />
                 </motion.div>
               ) : null}

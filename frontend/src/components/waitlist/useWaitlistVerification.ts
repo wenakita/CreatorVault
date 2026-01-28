@@ -8,7 +8,7 @@ type SiweLike = {
 
 type UseWaitlistVerificationParams = {
   persona: Persona | null
-  step: 'persona' | 'verify' | 'email' | 'done'
+  step: 'persona' | 'verify' | 'email' | 'link-csw' | 'done'
   showPrivy: boolean
   privyStatus: string
   privyReady: boolean
