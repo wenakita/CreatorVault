@@ -162,7 +162,9 @@ function localApiRoutesPlugin(): Plugin {
         try {
           const host = req.headers.host ?? 'localhost'
           const url = new URL(req.url ?? '/', `http://${host}`)
-          const loader = routes[url.pathname]
+          // Support the `/__api/*` alias in local dev (the client prefers it to avoid adblock rules).
+          const pathname = url.pathname.startsWith('/__api/') ? `/api/${url.pathname.slice('/__api/'.length)}` : url.pathname
+          const loader = routes[pathname]
           if (!loader) return next()
 
           const mod = await loader()
@@ -193,6 +195,13 @@ export default defineConfig(({ command }) => {
 
   return {
     plugins: [react(), ...(command === 'serve' ? [localApiRoutesPlugin()] : [])],
+    // In remote/WSL/devcontainer setups, binding to 127.0.0.1 can make the dev server
+    // unreachable from the host browser. `host: true` binds to 0.0.0.0.
+    server: {
+      host: true,
+      port: 5173,
+      strictPort: true,
+    },
   resolve: {
     alias: {
       '@': resolve(__dirname, './src'),

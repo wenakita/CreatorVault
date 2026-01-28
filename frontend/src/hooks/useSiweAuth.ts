@@ -100,6 +100,47 @@ export function useSiweAuth() {
     void refresh()
   }, [refresh])
 
+  const signInWithPrivyToken = useCallback(
+    async (privyAccessToken: string | null): Promise<string | null> => {
+      const token = typeof privyAccessToken === 'string' ? privyAccessToken.trim() : ''
+      if (!token) return null
+
+      setBusy(true)
+      setError(null)
+      try {
+        const res = await apiFetch('/api/auth/privy', {
+          method: 'POST',
+          headers: { Accept: 'application/json', Authorization: `Bearer ${token}` },
+        })
+        const json = (await res.json().catch(() => null)) as ApiEnvelope<PrivySessionResponse> | null
+        if (!res.ok || !json?.success) {
+          const apiErr = coerceErrorMessage((json as any)?.error, '')
+          throw new Error(apiErr || 'Privy sign-in failed')
+        }
+
+        const sessionToken =
+          json?.data && typeof (json.data as any)?.sessionToken === 'string' ? String((json.data as any).sessionToken) : ''
+        const address = json?.data && typeof (json.data as any)?.address === 'string' ? String((json.data as any).address) : ''
+        if (!sessionToken || !address) throw new Error('Privy sign-in failed')
+
+        setStoredSessionToken(sessionToken)
+        setAuthAddress(address)
+        try {
+          localStorage.setItem('cv:privy:lastAuthAt', String(Date.now()))
+        } catch {
+          // ignore
+        }
+        return address
+      } catch (e: unknown) {
+        setError(coerceErrorMessage(e, 'Privy sign-in failed'))
+        return null
+      } finally {
+        setBusy(false)
+      }
+    },
+    [],
+  )
+
   // If Privy is authenticated, ensure we have a stored bearer token session.
   // This covers cases where:
   // - wagmi isn't connected yet
@@ -141,46 +182,6 @@ export function useSiweAuth() {
       }
     })()
   }, [authAddress, busy, getPrivyAccessToken, privyAuthenticated, privyReady, signInWithPrivyToken])
-
-  const signInWithPrivyToken = useCallback(
-    async (privyAccessToken: string | null): Promise<string | null> => {
-      const token = typeof privyAccessToken === 'string' ? privyAccessToken.trim() : ''
-      if (!token) return null
-
-      setBusy(true)
-      setError(null)
-      try {
-        const res = await apiFetch('/api/auth/privy', {
-          method: 'POST',
-          headers: { Accept: 'application/json', Authorization: `Bearer ${token}` },
-        })
-        const json = (await res.json().catch(() => null)) as ApiEnvelope<PrivySessionResponse> | null
-        if (!res.ok || !json?.success) {
-          const apiErr = coerceErrorMessage((json as any)?.error, '')
-          throw new Error(apiErr || 'Privy sign-in failed')
-        }
-
-        const sessionToken = json?.data && typeof (json.data as any)?.sessionToken === 'string' ? String((json.data as any).sessionToken) : ''
-        const address = json?.data && typeof (json.data as any)?.address === 'string' ? String((json.data as any).address) : ''
-        if (!sessionToken || !address) throw new Error('Privy sign-in failed')
-
-        setStoredSessionToken(sessionToken)
-        setAuthAddress(address)
-        try {
-          localStorage.setItem('cv:privy:lastAuthAt', String(Date.now()))
-        } catch {
-          // ignore
-        }
-        return address
-      } catch (e: unknown) {
-        setError(coerceErrorMessage(e, 'Privy sign-in failed'))
-        return null
-      } finally {
-        setBusy(false)
-      }
-    },
-    [],
-  )
 
   // Auto-bridge a Privy-authenticated user into a CreatorVault session (no SIWE signing),
   // so `/api/auth/me` and other gated API routes work seamlessly.
