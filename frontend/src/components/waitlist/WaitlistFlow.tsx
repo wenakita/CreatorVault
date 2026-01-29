@@ -25,7 +25,6 @@ import type {
   WaitlistState,
 } from './waitlistTypes'
 import { VerifyStep } from './steps/VerifyStep'
-import { LinkCswStep } from './steps/LinkCswStep'
 import { DoneStep } from './steps/DoneStep'
 import { useWaitlistApi } from './useWaitlistApi'
 import { useWaitlistVerification } from './useWaitlistVerification'
@@ -113,7 +112,7 @@ const EMPTY_ACTION_STATE: Record<ActionKey, boolean> = {
 
 const initialFlowState: FlowState = {
   persona: 'creator', // Default to creator - simplified flow
-  step: 'link-csw', // Start with wallet connection
+  step: 'verify', // Start with wallet connection + Privy auth
   contactPreference: 'email',
   email: '',
   emailOptOut: true,
@@ -332,12 +331,11 @@ function flowReducer(state: FlowState, action: FlowAction): FlowState {
       return state
     }
     case 'submit_success':
-      // After signup, go straight to done (CSW already linked)
       if (state.step === 'done') return state
       return { ...state, step: 'done', doneEmail: action.doneEmail }
     case 'csw_complete':
-      // CSW linked (or skipped) - proceed to signup/verify
-      return { ...state, step: 'verify' }
+      // Legacy - not used in simplified flow
+      return state
     case 'set_email':
       return { ...state, email: action.email }
     case 'set_email_opt_out':
@@ -1832,14 +1830,13 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
           {/* Step indicator (stable, no layout/slide jitter) */}
           <div className="mb-6 flex items-center justify-between">
             <div className="text-[11px] uppercase tracking-[0.18em] text-zinc-600">
-              {step === 'link-csw' ? 'Connect Wallet' : step === 'verify' ? 'Sign Up' : 'Complete'}
+              {step === 'verify' ? 'Connect' : 'Complete'}
             </div>
             <div className="flex items-center gap-2">
-              <div className={`h-2 w-2 rounded-[3px] ${step === 'link-csw' ? 'bg-white/20' : 'bg-white/10'}`} />
               <div className={`h-2 w-2 rounded-[3px] ${step === 'verify' ? 'bg-white/20' : 'bg-white/10'}`} />
               <div className={`h-2 w-2 rounded-[3px] ${step === 'done' ? 'bg-white/20' : 'bg-white/10'}`} />
               <div className="ml-1 text-[11px] text-zinc-600 tabular-nums">
-                {step === 'link-csw' ? '1' : step === 'verify' ? '2' : '3'}/3
+                {step === 'verify' ? '1' : '2'}/2
               </div>
             </div>
           </div>
@@ -1881,25 +1878,6 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
                     onPrivyEmailContinue={openPrivyEmailLogin}
                     onFallbackSignIn={fallbackSignIn}
                     onSubmit={submitWaitlist}
-                  />
-                </motion.div>
-              ) : null}
-
-              {step === 'link-csw' ? (
-                <motion.div
-                  key="step:link-csw"
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -8 }}
-                  transition={{ duration: BASE_MOTION_MS, ease: BASE_EASE }}
-                >
-                  <LinkCswStep
-                    cswLinked={waitlist.cswLinked}
-                    cswLinkBusy={waitlist.cswLinkBusy}
-                    cswLinkError={waitlist.cswLinkError}
-                    onLinkCsw={handleLinkCsw}
-                    onSkip={() => dispatchFlow({ type: 'csw_complete' })}
-                    onContinue={() => dispatchFlow({ type: 'csw_complete' })}
                   />
                 </motion.div>
               ) : null}
