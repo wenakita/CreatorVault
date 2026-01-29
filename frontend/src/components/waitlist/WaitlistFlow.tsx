@@ -1199,18 +1199,6 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
     waitlist.cswLinked,
   ])
 
-  // Auto-detect CSW when on link-csw step and CSW is available
-  // In new flow: CSW first, then signup - so just mark as linked locally
-  // Points are awarded during signup when waitlist entry is created
-  useEffect(() => {
-    if (step !== 'link-csw') return
-    if (waitlist.cswLinked) return
-    if (!effectiveCswAddress) return
-    
-    // Mark as linked locally (points awarded on signup)
-    patchWaitlist({ cswLinked: true })
-  }, [effectiveCswAddress, patchWaitlist, step, waitlist.cswLinked])
-
   const handleSocialAction = useCallback((action: ActionKey, _url: string) => {
     markAction(action)
     

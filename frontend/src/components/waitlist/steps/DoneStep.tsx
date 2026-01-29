@@ -97,12 +97,12 @@ export const DoneStep = memo(function DoneStep({
           href="/profile"
           className="w-full flex items-center justify-center gap-2 px-4 py-3.5 rounded-xl bg-[#0052FF] text-white text-[15px] font-medium hover:bg-[#0047E1] transition-all duration-200 active:scale-[0.98]"
         >
-          Complete Profile & Earn More
+          Earn More Points
           <ArrowRight className="w-4 h-4" />
         </a>
         
         <p className="text-center text-[13px] text-zinc-500">
-          Link your wallet, connect socials, and invite friends to earn up to <span className="text-white">715+ points</span>
+          Connect socials and invite friends to climb the leaderboard
         </p>
       </motion.div>
 

@@ -314,81 +314,84 @@ export const VerifyStep = memo(function VerifyStep({
       {/* No Creator Coin found */}
       {/* If no Creator Coin found, we auto-continue (minimal flow). */}
 
-      {/* Optional: 1-click deploy setup (collapsed by default) */}
+      {/* Link CSW to Privy - Required for vault deployment */}
       {showDeployOwnerLink ? (
-        <details className="group rounded-2xl border border-zinc-800 bg-zinc-900/20">
-          <summary className="cursor-pointer list-none px-4 py-3 flex items-center justify-between gap-3 select-none">
-            <div className="flex items-center gap-3 min-w-0">
-              <span className="inline-block w-2.5 h-2.5 rounded-[3px] bg-[#0052FF]/80" aria-hidden="true" />
-              <div className="min-w-0">
-                <div className="text-[13px] text-zinc-200">1-click deploy</div>
-                <div className="text-[12px] text-zinc-500">Optional</div>
+        <motion.div {...scaleIn} className="rounded-2xl border-2 border-[#0052FF]/30 bg-[#0052FF]/5 p-4 space-y-4">
+          <div className="flex items-start gap-3">
+            <div className="w-10 h-10 rounded-xl bg-[#0052FF]/10 flex items-center justify-center flex-shrink-0">
+              <Wallet className="w-5 h-5 text-[#0052FF]" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="text-[14px] text-white font-medium">Link Smart Wallet</div>
+              <div className="text-[12px] text-zinc-500 mt-0.5">
+                Required to deploy vaults from your CSW
               </div>
             </div>
-            <div className="text-[12px] text-zinc-500 group-open:text-zinc-300 transition-colors">Details</div>
-          </summary>
-          <div className="px-4 pb-4 pt-1 space-y-3">
-            <div className="space-y-2 text-[13px]">
-              <div className="flex items-center justify-between gap-3 text-zinc-500">
-                <span>Smart wallet</span>
-                <span className="font-mono text-zinc-300 text-[12px]">{cswAddress ? short(cswAddress) : '—'}</span>
-              </div>
-              <div className="flex items-center justify-between gap-3 text-zinc-500">
-                <span>Embedded</span>
-                <span className="font-mono text-zinc-300 text-[12px]">{embeddedEoaAddress ? short(embeddedEoaAddress) : '—'}</span>
-              </div>
-            </div>
+          </div>
 
-            {embeddedEoaIsOwner ? (
-              <div className="flex items-center gap-2 text-[13px] text-emerald-400">
-                <CheckCircle2 className="w-4 h-4" />
-                Enabled
-              </div>
-            ) : (
-              <div className="space-y-3">
-                {!embeddedEoaAddress ? (
-                  <button
-                    type="button"
-                    className="w-full text-[14px] font-medium px-4 py-3 rounded-xl border border-[#0052FF]/30 bg-[#0052FF]/10 text-[#0052FF] hover:bg-[#0052FF]/20 transition-all duration-200 ease-[cubic-bezier(0.4,0,0.2,1)] disabled:opacity-50 disabled:cursor-not-allowed"
-                    disabled={!showPrivyReady || privyVerifyBusy || busy}
-                    onClick={() => void onPrivyContinue()}
-                  >
-                    {privyVerifyBusy ? 'Opening…' : privyEmbeddedCtaLabel}
-                  </button>
-                ) : (
-                  <>
-                    <div className="text-[12px] text-zinc-600">Connect owner wallet:</div>
-                    <ConnectButtonWeb3 />
-                    {connectedOwnerAddress && connectedOwnerIsOwner === false ? (
-                      <div className="rounded-xl border border-amber-500/20 bg-amber-500/5 px-3 py-2 text-[12px] text-amber-200/90">
-                        Not an owner. Try another wallet.
-                      </div>
-                    ) : null}
+          <div className="space-y-2 text-[13px] rounded-xl bg-black/20 p-3">
+            <div className="flex items-center justify-between gap-3 text-zinc-500">
+              <span>Your CSW</span>
+              <span className="font-mono text-zinc-300 text-[12px]">{cswAddress ? short(cswAddress) : '—'}</span>
+            </div>
+            <div className="flex items-center justify-between gap-3 text-zinc-500">
+              <span>Privy wallet</span>
+              <span className="font-mono text-zinc-300 text-[12px]">{embeddedEoaAddress ? short(embeddedEoaAddress) : '—'}</span>
+            </div>
+          </div>
+
+          {embeddedEoaIsOwner ? (
+            <div className="flex items-center gap-2 text-[13px] text-emerald-400 bg-emerald-500/10 rounded-xl px-3 py-2">
+              <CheckCircle2 className="w-4 h-4" />
+              Linked — ready for deployment
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {!embeddedEoaAddress ? (
+                <button
+                  type="button"
+                  className="w-full text-[14px] font-medium px-4 py-3 rounded-xl bg-[#0052FF] text-white hover:bg-[#0047E1] transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                  disabled={!showPrivyReady || privyVerifyBusy || busy}
+                  onClick={() => void onPrivyContinue()}
+                >
+                  {privyVerifyBusy ? 'Opening…' : 'Sign in with Privy'}
+                </button>
+              ) : (
+                <>
+                  <div className="text-[12px] text-zinc-400">
+                    Connect an owner wallet of your CSW to authorize:
+                  </div>
+                  <ConnectButtonWeb3 />
+                  {connectedOwnerAddress && connectedOwnerIsOwner === false ? (
+                    <div className="rounded-xl border border-amber-500/20 bg-amber-500/5 px-3 py-2 text-[12px] text-amber-200/90">
+                      This wallet is not an owner of your CSW. Try another.
+                    </div>
+                  ) : null}
+                  {connectedOwnerAddress && connectedOwnerIsOwner !== false ? (
                     <button
                       type="button"
-                      className="w-full text-[14px] font-medium px-4 py-3 rounded-xl border border-zinc-800 text-zinc-300 hover:text-white hover:border-zinc-700 hover:bg-zinc-800/50 transition-all duration-200 ease-[cubic-bezier(0.4,0,0.2,1)] disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="w-full text-[14px] font-medium px-4 py-3 rounded-xl bg-[#0052FF] text-white hover:bg-[#0047E1] transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
                       disabled={
                         Boolean(busy || deployOwnerLinkBusy) ||
                         !embeddedEoaAddress ||
                         !cswAddress ||
-                        !connectedOwnerAddress ||
-                        connectedOwnerIsOwner === false
+                        !connectedOwnerAddress
                       }
                       onClick={() => void onLinkEmbeddedEoaAsOwner?.()}
                     >
-                      {deployOwnerLinkBusy ? 'Linking…' : 'Enable'}
+                      {deployOwnerLinkBusy ? 'Linking…' : 'Link Wallet'}
                     </button>
-                  </>
-                )}
-                {deployOwnerLinkError ? (
-                  <div className="rounded-xl border border-red-500/20 bg-red-500/5 px-3 py-2 text-[12px] text-red-200/90">
-                    {deployOwnerLinkError}
-                  </div>
-                ) : null}
-              </div>
-            )}
-          </div>
-        </details>
+                  ) : null}
+                </>
+              )}
+              {deployOwnerLinkError ? (
+                <div className="rounded-xl border border-red-500/20 bg-red-500/5 px-3 py-2 text-[12px] text-red-200/90">
+                  {deployOwnerLinkError}
+                </div>
+              ) : null}
+            </div>
+          )}
+        </motion.div>
       ) : null}
 
       {/* Submit button */}

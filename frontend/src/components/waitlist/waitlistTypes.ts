@@ -19,7 +19,7 @@ export type VerificationClaim = { method: VerificationMethod; subject: string; t
 
 export type FlowState = {
   persona: Persona | null
-  step: 'persona' | 'verify' | 'email' | 'link-csw' | 'done'
+  step: 'persona' | 'verify' | 'email' | 'done'
   contactPreference: ContactPreference
   email: string
   emailOptOut: boolean
