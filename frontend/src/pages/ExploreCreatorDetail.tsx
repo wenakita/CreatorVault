@@ -156,14 +156,30 @@ function StatRow({ label, value, icon }: { label: string; value: string; icon?: 
   )
 }
 
-// Content Coin Row Component
+// Calculate total earnings from creatorEarnings array
+function calculateTotalEarnings(earnings: ZoraCoin['creatorEarnings']): string {
+  if (!earnings || !Array.isArray(earnings) || earnings.length === 0) return '$0.00'
+  let total = 0
+  for (const e of earnings) {
+    const usd = parseFloat(e.amountUsd || '0')
+    if (!isNaN(usd)) total += usd
+  }
+  if (total === 0) return '$0.00'
+  if (total < 0.01) return `$${total.toFixed(4)}`
+  if (total < 1) return `$${total.toFixed(3)}`
+  if (total < 1000) return `$${total.toFixed(2)}`
+  if (total >= 1_000_000) return `$${(total / 1_000_000).toFixed(2)}M`
+  if (total >= 1_000) return `$${(total / 1_000).toFixed(2)}K`
+  return `$${total.toFixed(2)}`
+}
+
+// Content Coin Row Component - shows revenue instead of price
 function ContentCoinRow({ coin, rank }: { coin: ZoraCoin; rank: number }) {
   const avatarUrl = coin.mediaContent?.previewImage?.small
   const name = coin.name || coin.symbol || 'Untitled'
   const symbol = coin.symbol || '???'
-  const price = formatPrice(coin.tokenPrice?.priceInUsdc)
-  const marketCap = formatNumber(coin.marketCap)
-  const change = formatChange(coin.marketCapDelta24h)
+  const earnings = calculateTotalEarnings(coin.creatorEarnings)
+  const totalVolume = formatNumber(coin.totalVolume)
   const address = coin.address || ''
 
   return (
@@ -187,15 +203,13 @@ function ContentCoinRow({ coin, rank }: { coin: ZoraCoin; rank: number }) {
       </div>
       
       <div className="text-right">
-        <div className="text-sm text-white">{price}</div>
-        <div className={`text-xs ${change.positive ? 'text-green-500' : 'text-red-500'}`}>
-          {change.positive ? '+' : '-'}{change.value}
-        </div>
+        <div className="text-xs text-zinc-500">Earned</div>
+        <div className="text-sm text-green-400 font-medium">{earnings}</div>
       </div>
       
       <div className="text-right hidden sm:block">
-        <div className="text-xs text-zinc-500">MCap</div>
-        <div className="text-sm text-white">{marketCap}</div>
+        <div className="text-xs text-zinc-500">Volume</div>
+        <div className="text-sm text-white">{totalVolume}</div>
       </div>
     </Link>
   )
@@ -302,10 +316,10 @@ export function ExploreCreatorDetail() {
   const profileIdentifier = coin?.creatorProfile?.handle || creatorAddress
   const { data: creatorProfile } = useZoraProfile(profileIdentifier ?? undefined)
 
-  // Fetch all coins created by this creator (profileCoins)
+  // Fetch all coins created by this creator (profileCoins) - no limit
   const { data: profileCoinsData, isLoading: profileCoinsLoading } = useZoraProfileCoins(
     profileIdentifier ?? undefined,
-    { count: 50 }
+    { count: 1000 } // Fetch all coins
   )
 
   // Extract created coins from profile data
@@ -604,7 +618,7 @@ export function ExploreCreatorDetail() {
               <StatRow label="Content coins" value={String(contentCoins.length)} icon={<Coins className="w-3 h-3" />} />
             </div>
 
-            {/* Links Card - Official logos from each platform */}
+            {/* Links Card - Custom IPFS icons */}
             <div className="rounded-2xl border border-zinc-800 bg-zinc-900/30 p-5">
               <h3 className="text-sm font-medium text-zinc-400 mb-3">Links</h3>
               <div className="space-y-2">
@@ -616,8 +630,11 @@ export function ExploreCreatorDetail() {
                 >
                   <div className="flex items-center gap-3">
                     <div className="w-8 h-8 rounded-full bg-zinc-700 flex items-center justify-center overflow-hidden">
-                      {/* Zora official favicon: https://zora.co/favicon.svg */}
-                      <img src="https://zora.co/favicon.svg" alt="Zora" className="w-5 h-5" />
+                      <img 
+                        src="https://green-decisive-crane-434.mypinata.cloud/ipfs/bafkreiby3cnzgdxvaadcgl2z2wos34hfqqoynyzgh3uxm2qxl2qka6cllq" 
+                        alt="Zora" 
+                        className="w-5 h-5" 
+                      />
                     </div>
                     <span className="text-sm text-white">Zora</span>
                   </div>
@@ -632,8 +649,11 @@ export function ExploreCreatorDetail() {
                 >
                   <div className="flex items-center gap-3">
                     <div className="w-8 h-8 rounded-full bg-zinc-700 flex items-center justify-center overflow-hidden">
-                      {/* Dexscreener official favicon: https://dexscreener.com/favicon.png */}
-                      <img src="https://dexscreener.com/favicon.png" alt="Dexscreener" className="w-5 h-5" />
+                      <img 
+                        src="https://green-decisive-crane-434.mypinata.cloud/ipfs/bafkreia3wpaw347dpdn5sewij3nsdpgzoa7i4n5toohojedrdvyvhx52le" 
+                        alt="Dexscreener" 
+                        className="w-5 h-5" 
+                      />
                     </div>
                     <span className="text-sm text-white">Dexscreener</span>
                   </div>
@@ -648,8 +668,11 @@ export function ExploreCreatorDetail() {
                 >
                   <div className="flex items-center gap-3">
                     <div className="w-8 h-8 rounded-full bg-zinc-700 flex items-center justify-center overflow-hidden">
-                      {/* Basescan official logo: https://basescan.org/images/svg/brands/main.svg */}
-                      <img src="https://basescan.org/images/svg/brands/main.svg" alt="Basescan" className="w-5 h-5" />
+                      <img 
+                        src="https://green-decisive-crane-434.mypinata.cloud/ipfs/bafkreif45w3dwkgteg2gdqkdz3vhvqegy27zepslc6qgdwjfsc7247rdzy" 
+                        alt="Basescan" 
+                        className="w-5 h-5" 
+                      />
                     </div>
                     <span className="text-sm text-white">Basescan</span>
                   </div>
