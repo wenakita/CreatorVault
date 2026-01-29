@@ -116,11 +116,14 @@ function localApiRoutesPlugin(): Plugin {
       const routes: Record<string, () => Promise<{ default: (req: any, res: any) => any }>> = {
         '/api/creator-allowlist': () => import('./api/_handlers/_creator-allowlist'),
         '/api/waitlist': () => import('./api/_handlers/_waitlist'),
+        '/api/waitlist/csw-link': () => import('./api/_handlers/waitlist/_csw-link'),
         '/api/waitlist/ledger': () => import('./api/_handlers/waitlist/_ledger'),
         '/api/waitlist/leaderboard': () => import('./api/_handlers/waitlist/_leaderboard'),
         '/api/waitlist/position': () => import('./api/_handlers/waitlist/_position'),
         '/api/waitlist/profile-complete': () => import('./api/_handlers/waitlist/_profile-complete'),
         '/api/waitlist/task-claim': () => import('./api/_handlers/waitlist/_task-claim'),
+        '/api/waitlist/update-email': () => import('./api/_handlers/waitlist/_update-email'),
+        '/api/waitlist/verify-social': () => import('./api/_handlers/waitlist/_verify-social'),
         '/api/onchain/coinMarketRewardsByCoin': () => import('./api/_handlers/onchain/_coinMarketRewardsByCoin'),
         '/api/onchain/coinMarketRewardsCurrency': () => import('./api/_handlers/onchain/_coinMarketRewardsCurrency'),
         '/api/onchain/coinTradeRewardsBatch': () => import('./api/_handlers/onchain/_coinTradeRewardsBatch'),
@@ -134,6 +137,7 @@ function localApiRoutesPlugin(): Plugin {
         '/api/dexscreener/tokenStatsBatch': () => import('./api/_handlers/dexscreener/_tokenStatsBatch'),
         '/api/status/protocolReport': () => import('./api/_handlers/status/_protocolReport'),
         '/api/status/vaultReport': () => import('./api/_handlers/status/_vaultReport'),
+        '/api/auth/admin': () => import('./api/_handlers/auth/_admin'),
         '/api/auth/nonce': () => import('./api/_handlers/auth/_nonce'),
         '/api/auth/privy': () => import('./api/_handlers/auth/_privy'),
         '/api/auth/verify': () => import('./api/_handlers/auth/_verify'),
@@ -153,6 +157,10 @@ function localApiRoutesPlugin(): Plugin {
         '/api/onchain/protocolRewardsClaimable': () => import('./api/_handlers/onchain/_protocolRewardsClaimable'),
         '/api/onchain/protocolRewardsWithdrawn': () => import('./api/_handlers/onchain/_protocolRewardsWithdrawn'),
         '/api/agent/invokeSkill': () => import('./api/_handlers/agent/_invokeSkill'),
+        // Referrals
+        '/api/referrals/click': () => import('./api/_handlers/referrals/_click'),
+        '/api/referrals/me': () => import('./api/_handlers/referrals/_me'),
+        '/api/referrals/leaderboard': () => import('./api/_handlers/referrals/_leaderboard'),
         // Social proxies
         '/api/social/farcaster': () => import('./api/_handlers/social/_farcaster'),
         '/api/social/twitter': () => import('./api/_handlers/social/_twitter'),
