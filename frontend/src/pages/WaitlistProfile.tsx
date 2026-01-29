@@ -167,9 +167,10 @@ export function WaitlistProfile() {
 
   // Load saved actions from localStorage
   useEffect(() => {
-    if (!userData?.referralCode) return
+    const refCode = userData?.referralCode
+    if (!refCode) return
     try {
-      const key = `cv_waitlist_actions_${userData.referralCode}`
+      const key = `cv_waitlist_actions_${refCode}`
       const saved = localStorage.getItem(key)
       if (saved) {
         setActionsDone(JSON.parse(saved))
@@ -304,8 +305,11 @@ export function WaitlistProfile() {
     )
   }
 
-  // Error or no data
-  if (error || !userData) {
+  // Error or no data - show profile anyway with defaults
+  // This prevents redirect loops when API lookup fails
+  const showDefaultProfile = privyAuthed && !userData && !loading
+  
+  if (error && !privyAuthed) {
     return (
       <div className="min-h-[100svh] flex items-center justify-center px-4 py-12 bg-[#020202]">
         <div className="w-full max-w-[440px]">
@@ -328,9 +332,26 @@ export function WaitlistProfile() {
       </div>
     )
   }
+  
+  // If authenticated but no data found, show profile with defaults
+  // User can still do social actions even if API lookup failed
+  const effectiveUserData = userData || (showDefaultProfile ? {
+    email: userEmail || '',
+    referralCode: null,
+    cswLinked: hasLinkedCsw,
+    position: null,
+  } : null)
+  
+  if (!effectiveUserData) {
+    return (
+      <div className="min-h-[100svh] flex items-center justify-center px-4 py-12 bg-[#020202]">
+        <div className="text-zinc-500">Loading...</div>
+      </div>
+    )
+  }
 
-  const position = userData.position
-  const referralLink = userData.referralCode ? `${appUrl}?ref=${userData.referralCode}` : null
+  const position = effectiveUserData.position
+  const referralLink = effectiveUserData.referralCode ? `${appUrl}?ref=${effectiveUserData.referralCode}` : null
 
   return (
     <div className="min-h-[100svh] px-4 py-8 bg-[#020202]">
@@ -397,7 +418,7 @@ export function WaitlistProfile() {
         </motion.div>
 
         {/* CSW Linking - High Priority */}
-        {!userData.cswLinked ? (
+        {!effectiveUserData.cswLinked ? (
           <motion.div {...fadeUp} className="rounded-2xl border-2 border-[#0052FF]/40 bg-[#0052FF]/5 p-5 space-y-4">
             <div className="flex items-start gap-4">
               <div className="w-12 h-12 rounded-xl bg-[#0052FF]/10 flex items-center justify-center flex-shrink-0">
@@ -577,7 +598,7 @@ export function WaitlistProfile() {
             </div>
             <div className="flex justify-between">
               <span className="text-zinc-500">CSW Link</span>
-              <span className={userData.cswLinked ? 'text-emerald-400' : 'text-zinc-500'}>
+              <span className={effectiveUserData.cswLinked ? 'text-emerald-400' : 'text-zinc-500'}>
                 +{position?.points.csw ?? 0}
               </span>
             </div>

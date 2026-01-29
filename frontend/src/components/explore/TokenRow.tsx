@@ -155,8 +155,9 @@ export function TokenRow({ rank, coin, linkPrefix = '/explore/creators', timefra
   const gridTemplateColumns = getGridTemplateColumns(columns)
   const stickyLeft = getStickyLeftMap(columns)
 
+  // Sticky identity cells: reduce “overlay” feel with a subtle divider + softer bg.
   const stickyCellClass =
-    'sticky z-20 bg-zinc-900/70 backdrop-blur-sm group-hover:bg-zinc-800/30'
+    'sticky bg-zinc-950/70 backdrop-blur-sm group-hover:bg-zinc-900/40 border-r border-zinc-800/60'
 
   return (
     <Link
@@ -166,7 +167,7 @@ export function TokenRow({ rank, coin, linkPrefix = '/explore/creators', timefra
     >
       {/* Rank */}
       <span
-        className={`${stickyCellClass} text-zinc-500 tabular-nums px-3 py-2 text-right`}
+        className={`${stickyCellClass} z-20 text-zinc-500 tabular-nums px-3 py-2 text-right`}
         style={{ left: stickyLeft.rank }}
       >
         {rank}
@@ -174,9 +175,13 @@ export function TokenRow({ rank, coin, linkPrefix = '/explore/creators', timefra
 
       {/* Token Name */}
       <div
-        className={`${stickyCellClass} px-3 py-2 shadow-[6px_0_16px_-12px_rgba(0,0,0,0.9)]`}
+        className={`${stickyCellClass} relative z-30 px-3 py-2`}
         style={{ left: stickyLeft.name }}
       >
+        <div
+          className="pointer-events-none absolute right-0 top-0 h-full w-8 bg-gradient-to-r from-transparent to-zinc-950 opacity-80"
+          aria-hidden="true"
+        />
         <div className="flex items-center gap-2 min-w-0">
           {avatarUrl ? (
             <img src={avatarUrl} alt={name} className="w-7 h-7 rounded-full object-cover flex-shrink-0" />
@@ -251,7 +256,7 @@ export function TokenTableHeader({ timeframe = '1d', currentSort, onSortChange }
   const stickyLeft = getStickyLeftMap(columns)
   const groupSpans = buildGroupSpans(columns)
 
-  const stickyHeaderCellClass = 'sticky z-40 bg-zinc-900/80 backdrop-blur-sm'
+  const stickyHeaderCellClass = 'sticky z-50 bg-zinc-950/80 backdrop-blur-sm border-r border-zinc-800/60'
 
   return (
     <div className="bg-zinc-900/80 backdrop-blur border-b border-zinc-800">
@@ -316,9 +321,15 @@ export function TokenTableHeader({ timeframe = '1d', currentSort, onSortChange }
           return (
             <div
               key={c.id}
-              className={`${base} ${align} ${isSticky ? stickyHeaderCellClass : ''} ${c.id === 'name' ? 'shadow-[6px_0_16px_-12px_rgba(0,0,0,0.9)]' : ''}`}
+              className={`${base} ${align} ${isSticky ? stickyHeaderCellClass : ''} ${c.id === 'name' ? 'relative' : ''}`}
               style={isSticky ? { left } : undefined}
             >
+              {c.id === 'name' ? (
+                <div
+                  className="pointer-events-none absolute right-0 top-0 h-full w-8 bg-gradient-to-r from-transparent to-zinc-950 opacity-80"
+                  aria-hidden="true"
+                />
+              ) : null}
               {label}
             </div>
           )

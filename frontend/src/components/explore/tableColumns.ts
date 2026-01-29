@@ -64,7 +64,7 @@ export function getExploreColumns(opts: { variant: ExploreTableVariant; timefram
   // A DeFiLlama-like table is intentionally dense and fixed-width, with horizontal scroll.
   return [
     { id: 'rank', label: '#', group: 'identity', widthPx: 48, align: 'right', sticky: true },
-    { id: 'name', label: nameLabel, group: 'identity', widthPx: 300, align: 'left', sticky: true },
+    { id: 'name', label: nameLabel, group: 'identity', widthPx: 280, align: 'left', sticky: true },
     { id: 'feeBadge', label: 'Fee', group: 'identity', widthPx: 56, align: 'center' },
 
     { id: 'holders', label: 'Holders', group: 'market', widthPx: 96, align: 'right' },
