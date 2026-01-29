@@ -1700,13 +1700,8 @@ function DeployVaultBatcher({
           )
         }
         
-        // For external owners, check Rabby compatibility.
-        // IMPORTANT: If we have a Privy embedded owner signer available, prefer it and do NOT block on Rabby.
-        if (!canUsePrivyEmbeddedOwner && canUseExternalOwner && (isRabbyLike || isRabbyInjected)) {
-          throw new Error(
-            'Rabby blocks the eth_sign method required for smart wallet operations. Please sign in with Privy instead.',
-          )
-        }
+        // For external owners, prefer trying the operation even if the wallet is likely to block `eth_sign`.
+        // Our AA signer wrapper will attempt `eth_sign` then fall back to `personal_sign`/`signMessage` where possible.
         
         const externalOwnerExec = canUseExternalOwner ? connectedAddr : null
         const embeddedOwnerExec = canUsePrivyEmbeddedOwner ? embeddedOwnerAddr : null
@@ -2098,7 +2093,8 @@ function DeployVaultBatcher({
       {error ? (
         <div className="space-y-2">
           <div className="text-[11px] text-red-400/90">{error}</div>
-          {switchAuthCta && /eth_sign|base account|email|privy|smart wallet/i.test(error) ? (
+          {/* Only show auth-switch CTA for auth/session issues (not for signing-method incompatibility). */}
+          {switchAuthCta && /no_session|not authenticated|gas sponsorship requires a session|base account|email|privy/i.test(error) ? (
             <button type="button" className="btn-primary w-full" onClick={switchAuthCta.onClick}>
               {switchAuthCta.label}
             </button>

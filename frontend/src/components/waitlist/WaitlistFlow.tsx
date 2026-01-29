@@ -1848,15 +1848,8 @@ export function WaitlistFlow(props: { variant?: Variant; sectionId?: string }) {
                     privyAuthed={privyAuthed}
                     privyVerifyBusy={privyVerifyBusy}
                     privyVerifyError={privyVerifyError}
-                    showDeployOwnerLink={Boolean(showPrivyReady && privyAuthed && cswAddress)}
-                    deployOwnerLinkBusy={deployOwnerLinkBusy}
-                    deployOwnerLinkError={deployOwnerLinkError}
-                    cswAddress={cswAddress}
-                    embeddedEoaAddress={embeddedEoaAddressForLink}
-                    connectedOwnerAddress={connectedOwnerAddressForLink}
-                    embeddedEoaIsOwner={embeddedEoaIsOwner}
-                    connectedOwnerIsOwner={connectedOwnerIsOwner}
-                    onLinkEmbeddedEoaAsOwner={linkEmbeddedEoaAsOwner}
+                    showDeployOwnerLink={Boolean(showPrivyReady && privyAuthed && (cswAddress || coinbaseSmartWalletAddress))}
+                    cswAddress={cswAddress || coinbaseSmartWalletAddress}
                     creatorCoin={creatorCoin}
                     creatorCoinDeclaredMissing={creatorCoinDeclaredMissing}
                     creatorCoinBusy={creatorCoinBusy}

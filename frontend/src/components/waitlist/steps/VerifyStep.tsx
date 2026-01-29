@@ -4,6 +4,8 @@ import { CheckCircle2, ChevronRight, Mail, ShieldCheck, Wallet, X } from 'lucide
 import type { WaitlistState } from '../waitlistTypes'
 import { ConnectButtonWeb3 } from '@/components/ConnectButtonWeb3'
 
+// Note: ConnectButtonWeb3 and Wallet are used in the "Having trouble?" sheet
+
 // Base brand motion: cubic-bezier(0.4, 0, 0.2, 1), 120-240ms for snappy UI
 const baseEase = [0.4, 0, 0.2, 1] as const
 const BASE_SQUARE_BLUE = '/base/1_Base%20Brand%20Assets/The%20Square/Base_square_blue.svg'
@@ -28,16 +30,9 @@ type VerifyStepProps = {
   privyAuthed: boolean
   privyVerifyBusy: boolean
   privyVerifyError: string | null
-  // Optional: enable 1-click deploy by linking Privy embedded EOA as an owner of a Coinbase Smart Wallet
+  // CSW detection (simplified - just show detection, no owner linking at signup)
   showDeployOwnerLink?: boolean
-  deployOwnerLinkBusy?: boolean
-  deployOwnerLinkError?: string | null
   cswAddress?: string | null
-  embeddedEoaAddress?: string | null
-  connectedOwnerAddress?: string | null
-  embeddedEoaIsOwner?: boolean | null
-  connectedOwnerIsOwner?: boolean | null
-  onLinkEmbeddedEoaAsOwner?: () => void | Promise<void>
   // Auto-fetched Creator Coin
   creatorCoin: WaitlistState['creatorCoin']
   creatorCoinDeclaredMissing: boolean
@@ -60,14 +55,7 @@ export const VerifyStep = memo(function VerifyStep({
   privyVerifyBusy,
   privyVerifyError,
   showDeployOwnerLink,
-  deployOwnerLinkBusy,
-  deployOwnerLinkError,
   cswAddress,
-  embeddedEoaAddress,
-  connectedOwnerAddress,
-  embeddedEoaIsOwner,
-  connectedOwnerIsOwner,
-  onLinkEmbeddedEoaAsOwner,
   creatorCoin,
   creatorCoinDeclaredMissing,
   creatorCoinBusy,
@@ -314,83 +302,21 @@ export const VerifyStep = memo(function VerifyStep({
       {/* No Creator Coin found */}
       {/* If no Creator Coin found, we auto-continue (minimal flow). */}
 
-      {/* Link CSW to Privy - Required for vault deployment */}
-      {showDeployOwnerLink ? (
-        <motion.div {...scaleIn} className="rounded-2xl border-2 border-[#0052FF]/30 bg-[#0052FF]/5 p-4 space-y-4">
-          <div className="flex items-start gap-3">
-            <div className="w-10 h-10 rounded-xl bg-[#0052FF]/10 flex items-center justify-center flex-shrink-0">
-              <Wallet className="w-5 h-5 text-[#0052FF]" />
+      {/* CSW Detected - Simple confirmation */}
+      {showDeployOwnerLink && cswAddress ? (
+        <motion.div {...scaleIn} className="rounded-2xl border border-emerald-500/20 bg-emerald-500/5 p-4">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-emerald-500/10 flex items-center justify-center flex-shrink-0">
+              <CheckCircle2 className="w-5 h-5 text-emerald-400" />
             </div>
             <div className="flex-1 min-w-0">
-              <div className="text-[14px] text-white font-medium">Link Smart Wallet</div>
-              <div className="text-[12px] text-zinc-500 mt-0.5">
-                Required to deploy vaults from your CSW
+              <div className="text-[14px] text-white font-medium">Smart Wallet Detected</div>
+              <div className="text-[12px] text-zinc-500 mt-0.5 font-mono">
+                {short(cswAddress)}
               </div>
             </div>
+            <div className="text-[13px] text-emerald-400 font-medium">+250 pts</div>
           </div>
-
-          <div className="space-y-2 text-[13px] rounded-xl bg-black/20 p-3">
-            <div className="flex items-center justify-between gap-3 text-zinc-500">
-              <span>Your CSW</span>
-              <span className="font-mono text-zinc-300 text-[12px]">{cswAddress ? short(cswAddress) : '—'}</span>
-            </div>
-            <div className="flex items-center justify-between gap-3 text-zinc-500">
-              <span>Privy wallet</span>
-              <span className="font-mono text-zinc-300 text-[12px]">{embeddedEoaAddress ? short(embeddedEoaAddress) : '—'}</span>
-            </div>
-          </div>
-
-          {embeddedEoaIsOwner ? (
-            <div className="flex items-center gap-2 text-[13px] text-emerald-400 bg-emerald-500/10 rounded-xl px-3 py-2">
-              <CheckCircle2 className="w-4 h-4" />
-              Linked — ready for deployment
-            </div>
-          ) : (
-            <div className="space-y-3">
-              {!embeddedEoaAddress ? (
-                <button
-                  type="button"
-                  className="w-full text-[14px] font-medium px-4 py-3 rounded-xl bg-[#0052FF] text-white hover:bg-[#0047E1] transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
-                  disabled={!showPrivyReady || privyVerifyBusy || busy}
-                  onClick={() => void onPrivyContinue()}
-                >
-                  {privyVerifyBusy ? 'Opening…' : 'Sign in with Privy'}
-                </button>
-              ) : (
-                <>
-                  <div className="text-[12px] text-zinc-400">
-                    Connect an owner wallet of your CSW to authorize:
-                  </div>
-                  <ConnectButtonWeb3 />
-                  {connectedOwnerAddress && connectedOwnerIsOwner === false ? (
-                    <div className="rounded-xl border border-amber-500/20 bg-amber-500/5 px-3 py-2 text-[12px] text-amber-200/90">
-                      This wallet is not an owner of your CSW. Try another.
-                    </div>
-                  ) : null}
-                  {connectedOwnerAddress && connectedOwnerIsOwner !== false ? (
-                    <button
-                      type="button"
-                      className="w-full text-[14px] font-medium px-4 py-3 rounded-xl bg-[#0052FF] text-white hover:bg-[#0047E1] transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
-                      disabled={
-                        Boolean(busy || deployOwnerLinkBusy) ||
-                        !embeddedEoaAddress ||
-                        !cswAddress ||
-                        !connectedOwnerAddress
-                      }
-                      onClick={() => void onLinkEmbeddedEoaAsOwner?.()}
-                    >
-                      {deployOwnerLinkBusy ? 'Linking…' : 'Link Wallet'}
-                    </button>
-                  ) : null}
-                </>
-              )}
-              {deployOwnerLinkError ? (
-                <div className="rounded-xl border border-red-500/20 bg-red-500/5 px-3 py-2 text-[12px] text-red-200/90">
-                  {deployOwnerLinkError}
-                </div>
-              ) : null}
-            </div>
-          )}
         </motion.div>
       ) : null}
 
