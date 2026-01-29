@@ -904,6 +904,12 @@ function DeployVaultBatcher({
     const msg = String(raw || 'Deployment failed')
     const lower = msg.toLowerCase()
 
+    if (lower.includes('blocked the raw signature method') && lower.includes('eth_sign')) {
+      return (
+        "Your current wallet can’t sign the UserOp hash required for Coinbase Smart Wallet execution (`eth_sign`). " +
+        'Use Coinbase Wallet (Base Account) or a Privy embedded signer, then retry.'
+      )
+    }
     if (
       lower.includes('metamask') &&
       (lower.includes('not found') ||
@@ -1912,25 +1918,6 @@ function DeployVaultBatcher({
       throw new Error('No supported deploy path matched. Ensure ERC-4337 prerequisites are met and retry.')
     } catch (e: any) {
       let pretty = formatDeployError(e)
-      const raw = e instanceof Error ? e.message : String(e ?? '')
-      const lc = String(raw).toLowerCase()
-      // Only classify as an `eth_sign` block when the error *explicitly* references signature methods.
-      // `-32601` can also occur for other JSON-RPC methods (bundler/paymaster), so don't treat it as an eth_sign issue.
-      const mentionsEthSign =
-        lc.includes('eth_sign') ||
-        lc.includes('personal_sign') ||
-        lc.includes('raw signature') ||
-        (lc.includes('method not found') && (lc.includes('eth_sign') || lc.includes('personal_sign')))
-      const looksLikeEthSignBlocked = mentionsEthSign
-      const userRejected = lc.includes('user rejected') || lc.includes('userrejected')
-      if (looksLikeEthSignBlocked && !userRejected) {
-        // Avoid overriding a clearer error message (e.g. from our AA signer wrapper).
-        if (!/blocked the raw signature method/i.test(pretty)) {
-          pretty = `Your signer blocked the raw signature method (\`eth_sign\`). Click “${
-            switchAuthLabel ?? 'Sign in with Privy'
-          }” to continue (recommended).`
-        }
-      }
       logger.warn('[DeployVault] deploy_failed', { error: pretty })
       setError(pretty)
     } finally {

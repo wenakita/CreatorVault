@@ -82,6 +82,24 @@ export function WaitlistProfile() {
     return privyUser.email?.address || null
   }, [privyUser])
 
+  // Extract primary wallet address from Privy user (for users who signed up with wallet)
+  const userWallet = useMemo(() => {
+    if (!privyUser) return null
+    // Check linked wallets
+    const wallets = privyUser.linkedAccounts?.filter((a: any) => a.type === 'wallet') ?? []
+    if (wallets.length > 0) {
+      const w = wallets[0] as any
+      if (w?.address && isValidEvmAddress(w.address)) return w.address.toLowerCase()
+    }
+    // Also check privyWallets
+    const ws = Array.isArray(privyWallets) ? privyWallets : []
+    for (const w of ws) {
+      const addr = (w as any)?.address
+      if (addr && isValidEvmAddress(addr)) return addr.toLowerCase()
+    }
+    return null
+  }, [privyUser, privyWallets])
+
   // Extract wallet addresses
   const walletClientTypeOf = useCallback((w: any): string => {
     return String(
@@ -94,14 +112,6 @@ export function WaitlistProfile() {
     ).trim().toLowerCase()
   }, [])
 
-  const embeddedWallet = useMemo(() => {
-    const ws = Array.isArray(privyWallets) ? (privyWallets as any[]) : []
-    return ws.find((w) => {
-      const t = walletClientTypeOf(w)
-      return t === 'privy' || t.includes('privy') || t.includes('embedded')
-    }) ?? null
-  }, [privyWallets, walletClientTypeOf])
-
   // Check if user has linked a CSW (any external wallet)
   const hasLinkedCsw = useMemo(() => {
     if (!privyUser) return false
@@ -112,20 +122,26 @@ export function WaitlistProfile() {
     })
   }, [privyUser, privyWallets, walletClientTypeOf])
 
-  // Fetch user data
+  // Fetch user data - supports both email and wallet lookup
   const fetchUserData = useCallback(async () => {
-    if (!userEmail) return
+    // Need either email or wallet to fetch
+    if (!userEmail && !userWallet) return
     
     setLoading(true)
     setError(null)
     
     try {
-      const res = await fetch(`${appUrl}/api/waitlist/position?email=${encodeURIComponent(userEmail)}`)
+      // Build query params - prefer email, fallback to wallet
+      const params = new URLSearchParams()
+      if (userEmail) params.set('email', userEmail)
+      if (userWallet) params.set('wallet', userWallet)
+      
+      const res = await fetch(`${appUrl}/api/waitlist/position?${params.toString()}`)
       const json = await res.json()
       
       if (json.success && json.data) {
         setUserData({
-          email: userEmail,
+          email: json.data.email || userEmail || '',
           referralCode: json.data.referralCode || null,
           cswLinked: json.data.points?.csw > 0 || hasLinkedCsw,
           position: json.data,
@@ -139,15 +155,15 @@ export function WaitlistProfile() {
     } finally {
       setLoading(false)
     }
-  }, [appUrl, userEmail, hasLinkedCsw])
+  }, [appUrl, userEmail, userWallet, hasLinkedCsw])
 
   useEffect(() => {
-    if (privyAuthed && userEmail) {
+    if (privyAuthed && (userEmail || userWallet)) {
       fetchUserData()
     } else if (privyReady && !privyAuthed) {
       setLoading(false)
     }
-  }, [privyAuthed, userEmail, privyReady, fetchUserData])
+  }, [privyAuthed, userEmail, userWallet, privyReady, fetchUserData])
 
   // Load saved actions from localStorage
   useEffect(() => {
@@ -203,13 +219,14 @@ export function WaitlistProfile() {
       return next
     })
 
-    // Sync to server
-    if (userEmail) {
+    // Sync to server - use email or wallet
+    const identifier = userEmail || (userData?.email)
+    if (identifier) {
       try {
         await fetch(`${appUrl}/api/waitlist/task-claim`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email: userEmail, taskKey: action }),
+          body: JSON.stringify({ email: identifier, taskKey: action }),
         })
         // Refresh position
         fetchUserData()

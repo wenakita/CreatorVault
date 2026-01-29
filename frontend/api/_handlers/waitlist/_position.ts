@@ -44,6 +44,10 @@ function isValidEmail(v: string): boolean {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v)
 }
 
+function isValidEvmAddress(v: string): boolean {
+  return /^0x[a-fA-F0-9]{40}$/.test(v)
+}
+
 function safeInt(v: any): number {
   const n = typeof v === 'number' ? v : Number(v)
   return Number.isFinite(n) ? Math.floor(n) : 0
@@ -59,21 +63,44 @@ export default async function handler(req: any, res: any) {
   }
 
   const emailParam = typeof (req.query as any)?.email === 'string' ? String((req.query as any).email) : ''
+  const walletParam = typeof (req.query as any)?.wallet === 'string' ? String((req.query as any).wallet).trim().toLowerCase() : ''
+  
   const email = normalizeEmail(emailParam)
-  if (!isValidEmail(email)) {
-    return res.status(400).json({ success: false, error: 'Invalid email' } satisfies ApiEnvelope<never>)
+  const wallet = walletParam
+  
+  // Must provide either valid email or valid wallet
+  const hasValidEmail = isValidEmail(email)
+  const hasValidWallet = isValidEvmAddress(wallet)
+  
+  if (!hasValidEmail && !hasValidWallet) {
+    return res.status(400).json({ success: false, error: 'Invalid email or wallet' } satisfies ApiEnvelope<never>)
   }
 
   const db = await getDb()
   if (!db) return res.status(500).json({ success: false, error: 'DB unavailable' } satisfies ApiEnvelope<never>)
   await ensureWaitlistSchema(db as any)
 
-  const me = await db.sql`
-    SELECT id, email, referral_code, profile_completed_at
-    FROM waitlist_signups
-    WHERE email = ${email}
-    LIMIT 1;
-  `
+  // Query by email first, then by wallet
+  let me
+  if (hasValidEmail) {
+    me = await db.sql`
+      SELECT id, email, referral_code, profile_completed_at
+      FROM waitlist_signups
+      WHERE email = ${email}
+      LIMIT 1;
+    `
+  }
+  
+  // If no result by email, try by wallet
+  if ((!me?.rows?.length) && hasValidWallet) {
+    me = await db.sql`
+      SELECT id, email, referral_code, profile_completed_at
+      FROM waitlist_signups
+      WHERE LOWER(primary_wallet) = ${wallet}
+         OR LOWER(embedded_wallet) = ${wallet}
+      LIMIT 1;
+    `
+  }
   const row = me?.rows?.[0] ?? null
   const signupId = typeof row?.id === 'number' ? (row.id as number) : null
   if (!signupId) {
