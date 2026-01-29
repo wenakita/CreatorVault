@@ -1914,12 +1914,14 @@ function DeployVaultBatcher({
       let pretty = formatDeployError(e)
       const raw = e instanceof Error ? e.message : String(e ?? '')
       const lc = String(raw).toLowerCase()
-      const code = (e as any)?.code
-      const looksLikeEthSignBlocked =
+      // Only classify as an `eth_sign` block when the error *explicitly* references signature methods.
+      // `-32601` can also occur for other JSON-RPC methods (bundler/paymaster), so don't treat it as an eth_sign issue.
+      const mentionsEthSign =
         lc.includes('eth_sign') ||
-        code === -32601 ||
-        lc.includes('-32601') ||
-        (lc.includes('method not found') && lc.includes('sign'))
+        lc.includes('personal_sign') ||
+        lc.includes('raw signature') ||
+        (lc.includes('method not found') && (lc.includes('eth_sign') || lc.includes('personal_sign')))
+      const looksLikeEthSignBlocked = mentionsEthSign
       const userRejected = lc.includes('user rejected') || lc.includes('userrejected')
       if (looksLikeEthSignBlocked && !userRejected) {
         // Avoid overriding a clearer error message (e.g. from our AA signer wrapper).

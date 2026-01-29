@@ -6,6 +6,11 @@
 
 export type ApiFetchInit = RequestInit & { withCredentials?: boolean }
 
+// Some deployments don’t route `/__api/*` to the API function for non-GETs,
+// which causes noisy 405s in the console before we fall back to `/api/*`.
+// Cache that signal per page load so we stop probing the alias repeatedly.
+let aliasNonGetDisabledUntil = 0
+
 export function apiAliasPath(path: string): string {
   if (typeof path !== 'string') return path as any
   if (!path.startsWith('/api/')) return path
@@ -51,7 +56,14 @@ export async function apiFetch(path: string, init: ApiFetchInit = {}, bases?: st
   }
   delete (baseInit as any).withCredentials
 
-  const tryPaths = path.startsWith('/api/') ? [apiAliasPath(path), path] : [path]
+  const method = String((baseInit as any)?.method || 'GET').toUpperCase()
+  const canTryAlias = !(
+    method !== 'GET' &&
+    method !== 'HEAD' &&
+    typeof window !== 'undefined' &&
+    Date.now() < aliasNonGetDisabledUntil
+  )
+  const tryPaths = path.startsWith('/api/') ? (canTryAlias ? [apiAliasPath(path), path] : [path]) : [path]
   const baseList = Array.isArray(bases) && bases.length > 0 ? bases : ['']
   const alias = path.startsWith('/api/') ? apiAliasPath(path) : null
 
@@ -67,7 +79,12 @@ export async function apiFetch(path: string, init: ApiFetchInit = {}, bases?: st
         if (res.status === 404) continue
         // Some deployments serve `/__api/*` as static content, which returns 405 on POST.
         // Treat that as a miss so we fall back to the real `/api/*` handlers.
-        if (alias && p === alias && res.status === 405) continue
+        if (alias && p === alias && res.status === 405) {
+          if (typeof window !== 'undefined' && method !== 'GET' && method !== 'HEAD') {
+            aliasNonGetDisabledUntil = Date.now() + 10 * 60_000
+          }
+          continue
+        }
         return res
       } catch (e: unknown) {
         lastErr = e

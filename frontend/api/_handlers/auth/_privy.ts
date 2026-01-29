@@ -61,6 +61,27 @@ function extractBaseAccountAddress(user: any): string | null {
   return null
 }
 
+function extractAnyEvmWalletAddress(user: any): string | null {
+  const linked = Array.isArray(user?.linkedAccounts) ? user.linkedAccounts : []
+  const primaryWallet = user?.wallet && typeof user.wallet === 'object' ? [{ ...user.wallet, type: 'wallet' }] : []
+  const all = [...primaryWallet, ...linked]
+
+  for (const raw of all) {
+    const type = normalizeLower((raw as any)?.type)
+    if (type !== 'wallet') continue
+
+    const addr = typeof (raw as any)?.address === 'string' ? String((raw as any).address).trim() : ''
+    if (!isValidEvmAddress(addr)) continue
+
+    const chainType = normalizeLower((raw as any)?.chainType ?? (raw as any)?.chain_type)
+    if (chainType && chainType !== 'ethereum') continue
+
+    return addr.toLowerCase()
+  }
+
+  return null
+}
+
 function getPrivyServerAuth(): { appId: string; appSecret: string } | null {
   const appId = (process.env.PRIVY_APP_ID || '').trim()
   const appSecret = (process.env.PRIVY_APP_SECRET || '').trim()
@@ -105,19 +126,21 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const user = await client.getUserById(claims.userId)
 
     const baseAccount = extractBaseAccountAddress(user)
-    if (!baseAccount) {
+    const fallback = !baseAccount ? extractAnyEvmWalletAddress(user) : null
+    const address = baseAccount || fallback
+    if (!address) {
       return res.status(400).json({
         success: false,
-        error: 'No Base Account wallet is linked. Link Coinbase Smart Wallet (Base Account) to continue.',
+        error: 'No EVM wallet is linked in Privy. Connect a wallet and retry.',
       } satisfies ApiEnvelope<never>)
     }
 
-    const sessionToken = makeSessionToken({ address: baseAccount })
+    const sessionToken = makeSessionToken({ address })
     setCookie(req, res, COOKIE_SESSION, sessionToken, { httpOnly: true, maxAgeSeconds: 60 * 60 * 24 * 7 })
 
     return res.status(200).json({
       success: true,
-      data: { address: baseAccount, sessionToken, privyUserId: claims.userId } satisfies PrivyVerifyResponse,
+      data: { address, sessionToken, privyUserId: claims.userId } satisfies PrivyVerifyResponse,
     } satisfies ApiEnvelope<PrivyVerifyResponse>)
   } catch (e: unknown) {
     const msg = e instanceof Error ? e.message : 'Privy verification failed'
