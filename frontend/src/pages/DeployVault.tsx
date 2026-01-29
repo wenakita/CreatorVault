@@ -1669,11 +1669,20 @@ function DeployVaultBatcher({
           embeddedWalletClient = null
         }
 
+        // NOTE:
+        // Even if we have an embedded signer available, it must be an *onchain owner* of the creator smart wallet
+        // (Coinbase Smart Wallet). If it isn't, signing UserOps will fail. In that case we prompt the user to link it.
+        const embeddedIsOwner =
+          embeddedOwnerAddr
+            ? await isCoinbaseSmartWalletOwner({ smartWallet: owner as Address, ownerAddress: embeddedOwnerAddr as Address })
+            : false
+
         const canUsePrivyEmbeddedOwner =
           !canUsePrivySmartWallet &&
           !!embeddedWalletClient &&
           !!embeddedOwnerAddr &&
-          embeddedOwnerAddr.toLowerCase() !== owner.toLowerCase()
+          embeddedOwnerAddr.toLowerCase() !== owner.toLowerCase() &&
+          embeddedIsOwner
 
         const canUseExternalOwner =
           !canUsePrivySmartWallet &&
@@ -1697,6 +1706,12 @@ function DeployVaultBatcher({
           }
           throw new Error(
             'Sign in with Privy to use your embedded wallet, or connect an external wallet that owns the creator smart wallet.',
+          )
+        }
+
+        if (!canUsePrivySmartWallet && !!embeddedWalletClient && !!embeddedOwnerAddr && !embeddedIsOwner) {
+          throw new Error(
+            'Your Privy embedded wallet is not yet an owner of this Coinbase Smart Wallet. Link it once, then retry deploy.',
           )
         }
         
@@ -2197,6 +2212,15 @@ function DeployVaultMain() {
     )
   }, [wallets])
 
+  const embeddedPrivyEoaAddress = useMemo(() => {
+    try {
+      const raw = typeof (embeddedPrivyWallet as any)?.address === 'string' ? String((embeddedPrivyWallet as any).address) : ''
+      return raw && isAddress(raw) ? (getAddress(raw) as Address) : null
+    } catch {
+      return null
+    }
+  }, [embeddedPrivyWallet])
+
   const [searchParams] = useSearchParams()
   const prefillToken = useMemo(() => searchParams.get('token') ?? '', [searchParams])
   const autoLogin = useMemo(() => {
@@ -2647,12 +2671,25 @@ function DeployVaultMain() {
     },
   })
 
+  const embeddedOwnerQuery = useQuery({
+    queryKey: ['coinbaseSmartWalletOwner', canonicalSmartWalletAddress, embeddedPrivyEoaAddress],
+    enabled: !!canonicalSmartWalletAddress && !!embeddedPrivyEoaAddress,
+    staleTime: 30_000,
+    retry: 0,
+    queryFn: async () => {
+      return await isCoinbaseSmartWalletOwner({
+        smartWallet: canonicalSmartWalletAddress as Address,
+        ownerAddress: embeddedPrivyEoaAddress as Address,
+      })
+    },
+  })
+
   const linkBaseAccountOwner = useCallback(async () => {
-    if (!publicClient || !walletClient || !canonicalSmartWalletAddress || !connectedWalletAddress) return
+    if (!publicClient || !walletClient || !canonicalSmartWalletAddress || !embeddedPrivyEoaAddress || !connectedWalletAddress) return
     setLinkOwnerBusy(true)
     setLinkOwnerError(null)
     try {
-      if (baseAccountOwnerQuery.data === true) return
+      if (embeddedOwnerQuery.data === true) return
       const executor = connectedWalletAddress
       if (!executor || !isAddress(executor)) {
         throw new Error('Connect a wallet that already owns the creator smart wallet.')
@@ -2673,16 +2710,24 @@ function DeployVaultMain() {
         address: canonicalSmartWalletAddress as Address,
         abi: COINBASE_SMART_WALLET_OWNER_LINK_ABI,
         functionName: 'addOwnerAddress',
-        args: [connectedWalletAddress as Address],
+        args: [embeddedPrivyEoaAddress as Address],
       })
       await (publicClient as any).waitForTransactionReceipt({ hash })
-      await baseAccountOwnerQuery.refetch()
+      await embeddedOwnerQuery.refetch()
     } catch (e: any) {
-      setLinkOwnerError(e?.shortMessage || e?.message || 'Failed to link Base Account')
+      setLinkOwnerError(e?.shortMessage || e?.message || 'Failed to link embedded wallet')
     } finally {
       setLinkOwnerBusy(false)
     }
-  }, [connectedWalletAddress, baseAccountOwnerQuery, canonicalSmartWalletAddress, connectedWalletAddress, publicClient, walletClient])
+  }, [
+    baseAccountOwnerQuery,
+    canonicalSmartWalletAddress,
+    connectedWalletAddress,
+    embeddedOwnerQuery,
+    embeddedPrivyEoaAddress,
+    publicClient,
+    walletClient,
+  ])
 
   // Allow injected EOAs (Rabby/MetaMask/etc) to operate a Coinbase Smart Wallet canonical identity
   // when the EOA is an onchain owner of that smart wallet.
@@ -2755,13 +2800,14 @@ function DeployVaultMain() {
   // If the canonical identity is a smart wallet contract, wagmi should reflect that smart wallet address
   // via the Privy smart-wallet bridge.
   const isAuthorizedDeployer = !identityBlockingReason
-  const baseAccountIsOwner = baseAccountOwnerQuery.data === true
-  // Show link option when connected wallet differs from canonical identity
+  const embeddedIsOwner = embeddedOwnerQuery.data === true
+  // Show link option when Privy embedded EOA exists but isn't yet an onchain owner.
   const showBaseAccountLink =
-    isConnected &&
     !!canonicalSmartWalletAddress &&
-    !!connectedWalletAddress &&
-    connectedWalletAddress.toLowerCase() !== canonicalSmartWalletAddress.toLowerCase()
+    !!embeddedPrivyEoaAddress &&
+    embeddedPrivyEoaAddress.toLowerCase() !== canonicalSmartWalletAddress.toLowerCase() &&
+    embeddedOwnerQuery.isFetching === false &&
+    embeddedIsOwner === false
 
   const { data: deploySenderTokenBalance } = useReadContract({
     address: tokenIsValid ? (creatorToken as `0x${string}`) : undefined,
@@ -3581,9 +3627,9 @@ function DeployVaultMain() {
 
               {showBaseAccountLink ? (
                 <div className="rounded-lg border border-white/10 bg-black/20 p-4 space-y-3">
-                  <div className="text-[10px] uppercase tracking-wide text-zinc-600">Link Base Account</div>
+                  <div className="text-[10px] uppercase tracking-wide text-zinc-600">Enable embedded signer</div>
                   <div className="text-xs text-zinc-600">
-                    This grants your Base App smart wallet co-owner rights on the creator smart wallet. Only a current owner can approve.
+                    This links your Privy embedded wallet as an owner of the creator Coinbase Smart Wallet. It’s a one‑time transaction signed by an existing owner.
                   </div>
                   <div className="flex items-center justify-between text-[11px] text-zinc-600">
                     <span>Authorizing wallet</span>
@@ -3592,25 +3638,25 @@ function DeployVaultMain() {
                     </span>
                   </div>
                   <div className="flex items-center justify-between text-[11px] text-zinc-600">
-                    <span>Base Account</span>
-                    <span className="font-mono text-zinc-300">{shortAddress(String(connectedWalletAddress))}</span>
+                    <span>Privy embedded</span>
+                    <span className="font-mono text-zinc-300">{embeddedPrivyEoaAddress ? shortAddress(String(embeddedPrivyEoaAddress)) : '—'}</span>
                   </div>
                   <div className="flex items-center justify-between text-[11px] text-zinc-600">
                     <span>Creator smart wallet</span>
                     <span className="font-mono text-zinc-300">{shortAddress(String(canonicalSmartWalletAddress))}</span>
                   </div>
-                  {baseAccountOwnerQuery.isFetching ? (
+                  {embeddedOwnerQuery.isFetching ? (
                     <div className="text-[11px] text-zinc-600">Checking owner status…</div>
-                  ) : baseAccountIsOwner ? (
-                    <div className="text-[11px] text-emerald-300/80">Base Account is already an owner.</div>
+                  ) : embeddedIsOwner ? (
+                    <div className="text-[11px] text-emerald-300/80">Embedded wallet is already an owner.</div>
                   ) : (
                     <button
                       type="button"
                       className="btn-accent w-full disabled:opacity-60"
-                      disabled={linkOwnerBusy}
+                      disabled={linkOwnerBusy || baseAccountOwnerQuery.data !== true}
                       onClick={() => void linkBaseAccountOwner()}
                     >
-                      {linkOwnerBusy ? 'Linking…' : 'Link Base Account as owner'}
+                      {linkOwnerBusy ? 'Linking…' : baseAccountOwnerQuery.data !== true ? 'Connect an owner wallet to link' : 'Link embedded wallet as owner'}
                     </button>
                   )}
                   {linkOwnerError ? <div className="text-[11px] text-red-400/90">{linkOwnerError}</div> : null}
