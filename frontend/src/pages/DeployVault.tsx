@@ -2161,6 +2161,17 @@ function DeployVaultMain() {
   const connectedWalletAddress = useMemo(() => {
     return address && isAddress(address) ? getAddress(address) as Address : null
   }, [address])
+  
+  // Unified wallet state - considers both wagmi connection AND Privy smart wallet
+  // This allows users who authenticated via Privy (waitlist) to proceed without re-connecting wagmi
+  const hasWallet = useMemo(() => {
+    return isConnected || !!privySmartWalletAddress
+  }, [isConnected, privySmartWalletAddress])
+  
+  // Effective wallet address for display - prefer Privy smart wallet (set during waitlist), fallback to wagmi
+  const effectiveWalletAddress = useMemo(() => {
+    return privySmartWalletAddress ?? connectedWalletAddress
+  }, [privySmartWalletAddress, connectedWalletAddress])
   const deploymentVersion = useMemo(() => {
     const raw = (import.meta.env.VITE_DEPLOYMENT_VERSION as string | undefined) ?? 'v3'
     const v = String(raw).trim()
@@ -2361,7 +2372,7 @@ function DeployVaultMain() {
 
   const adminAuthQuery = useQuery({
     queryKey: ['adminAuth'],
-    enabled: isConnected && showAdvanced,
+    enabled: hasWallet && showAdvanced,
     queryFn: fetchAdminAuth,
     staleTime: 30_000,
     retry: 0,
@@ -3355,11 +3366,11 @@ function DeployVaultMain() {
                       </div>
                     )}
 
-                    {isConnected && zoraCoin?.creatorAddress && !isAuthorizedDeployerOrOperator && (
+                    {hasWallet && zoraCoin?.creatorAddress && !isAuthorizedDeployerOrOperator && (
                       <div className="text-xs text-red-400/90">
                         You are connected as{' '}
                         <span className="font-mono">
-                          {address?.slice(0, 6)}…{address?.slice(-4)}
+                          {effectiveWalletAddress?.slice(0, 6)}…{effectiveWalletAddress?.slice(-4)}
                         </span>
                         . Only the coin creator or current payout recipient can deploy this vault.
                       </div>
@@ -3378,7 +3389,7 @@ function DeployVaultMain() {
                   <div className="label">Launch</div>
                   <div className="text-xs text-zinc-600">Minimal launch details for your Creator Coin.</div>
                 </div>
-                {isConnected ? (
+                {hasWallet ? (
                   <button
                     type="button"
                     onClick={() => setShowAdvanced((v) => !v)}
@@ -3413,7 +3424,7 @@ function DeployVaultMain() {
                   <div className="text-[11px] text-red-400/80">{farcasterAuth.error}</div>
                 ) : null}
 
-                {!isConnected ? (
+                {!hasWallet ? (
                   tokenIsValid ? (
                     <input
                       value={creatorToken}
@@ -3425,10 +3436,10 @@ function DeployVaultMain() {
                       <input
                         value=""
                         disabled
-                        placeholder="Connect wallet to detect your creator coin"
+                        placeholder="Sign in to detect your creator coin"
                         className="w-full bg-black border border-zinc-800 rounded-lg px-4 py-3 text-sm text-zinc-500 placeholder:text-zinc-700 outline-none font-mono opacity-70 cursor-not-allowed"
                       />
-                      <div className="text-xs text-zinc-600">Connect your wallet to continue.</div>
+                      <div className="text-xs text-zinc-600">Sign in to continue.</div>
                     </>
                   )
                 ) : !showAdvanced ? (
@@ -3489,7 +3500,7 @@ function DeployVaultMain() {
                       placeholder="0x..."
                       className="w-full bg-black border border-zinc-800 rounded-lg px-4 py-3 text-sm text-zinc-200 placeholder:text-zinc-700 outline-none focus:border-cyan-500/50 transition-colors font-mono"
                     />
-                    {isConnected && detectedCreatorCoin ? (
+                    {hasWallet && detectedCreatorCoin ? (
                       <button
                         type="button"
                         onClick={() => setCreatorToken(detectedCreatorCoin)}
@@ -3503,7 +3514,7 @@ function DeployVaultMain() {
               </div>
 
               {/* Details */}
-              {isConnected && showAdvanced ? (
+              {hasWallet && showAdvanced ? (
                 <div className="pt-3 border-t border-zinc-900/50 space-y-4">
                   <div className="space-y-2">
                     <div className="label">Deployment</div>
@@ -3526,7 +3537,7 @@ function DeployVaultMain() {
               ) : null}
 
               {/* Smart Wallet Requirement */}
-              {isConnected && showAdvanced ? (
+              {hasWallet && showAdvanced ? (
                 <div className="pt-3 border-t border-zinc-900/50 space-y-4">
                   <div>
                     <div className="label mb-2">Your Smart Wallet</div>
@@ -3559,7 +3570,7 @@ function DeployVaultMain() {
             <div className="card rounded-xl p-8 space-y-4">
               <div className="label">Deploy</div>
 
-              {showAdvanced && isConnected && tokenIsValid && zoraCoin && canonicalIdentityAddress && connectedWalletAddress ? (
+              {showAdvanced && hasWallet && tokenIsValid && zoraCoin && canonicalIdentityAddress && effectiveWalletAddress ? (
                 <div className="rounded-lg border border-white/5 bg-black/20 p-4 space-y-2">
                   <div className="flex items-center justify-between gap-4">
                     <div className="text-[11px] text-zinc-500">Canonical identity</div>
@@ -3630,7 +3641,7 @@ function DeployVaultMain() {
                 >
                   Loading…
                 </button>
-              ) : !privyAuthenticated && !isConnected ? (
+              ) : !privyAuthenticated && !hasWallet ? (
                 <div className="space-y-3">
                   <button
                     type="button"
@@ -3656,7 +3667,7 @@ function DeployVaultMain() {
                     Sign in or connect a wallet that owns the creator smart wallet.
                   </div>
                 </div>
-              ) : !isConnected ? (
+              ) : !hasWallet ? (
                 <div className="space-y-3">
                   <ConnectButtonWeb3 />
                   <div className="text-[11px] text-zinc-600">
