@@ -19,6 +19,11 @@ function getApiSubpath(req: VercelRequest): string {
   if (!pathname) return ''
   if (pathname === '/api' || pathname === '/api/') return ''
   if (pathname.startsWith('/api/')) return pathname.slice('/api/'.length)
+  // Support our stable alias used to avoid adblock rules.
+  // In some Vercel routing configurations, the request URL can remain `/__api/*`
+  // even when the request is routed to this catch-all handler.
+  if (pathname === '/__api' || pathname === '/__api/') return ''
+  if (pathname.startsWith('/__api/')) return pathname.slice('/__api/'.length)
   if (pathname.startsWith('/')) return pathname.slice(1)
   return pathname
 }
