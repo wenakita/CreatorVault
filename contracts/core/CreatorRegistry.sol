@@ -179,6 +179,11 @@ contract CreatorRegistry is ICreatorRegistry, Ownable {
         if (_token == address(0)) revert ZeroAddress();
         if (creatorCoins[_token].token != address(0)) revert CreatorCoinAlreadyRegistered(_token);
         if (registeredTokens.length >= MAX_CREATOR_COINS) revert TooManyCreatorCoins();
+
+     // Add these validations:
+    require(bytes(_name).length > 0 && bytes(_name).length <= 64, "Invalid name length");
+    require(bytes(_symbol).length > 0 && bytes(_symbol).length <= 16, "Invalid symbol length");
+    require(_creator != address(0), "Zero creator address");
         
         creatorCoins[_token] = CreatorCoinInfo({
             token: _token,
